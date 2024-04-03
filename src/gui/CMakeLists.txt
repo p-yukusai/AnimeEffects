@@ -10,8 +10,8 @@ elseif(APPLE)
         MACOSX_PACKAGE_LOCATION "Resources"
     )
 elseif(UNIX)
-    file(COPY ${CMAKE_SOURCE_DIR}/../dist/AnimeEffects.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps/)
-    file(COPY ${CMAKE_SOURCE_DIR}/../dist/AnimeEffects.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications/)
+    file(COPY ${CMAKE_SOURCE_DIR}/dist/AnimeEffects.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps/)
+    file(COPY ${CMAKE_SOURCE_DIR}/dist/AnimeEffects.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications/)
 endif()
 
 add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
@@ -131,6 +131,6 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 add_custom_target(copy_data
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/../data ${CMAKE_CURRENT_BINARY_DIR}/data
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${CMAKE_CURRENT_BINARY_DIR}/data
 )
 add_dependencies(${PROJECT_NAME} copy_data)

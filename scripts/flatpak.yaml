@@ -1,28 +1,26 @@
 id: org.anie.AnimeEffects
 runtime: org.kde.Platform
-runtime-version: '5.15-22.08'
+runtime-version: '6.6'
 sdk: org.kde.Sdk
-finish-args:
-  - "--share=ipc"
-  - "--socket=x11"
-  - "--socket=fallback-wayland"
 command: AnimeEffects
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --share=network
+  - --filesystem=host
 modules:
-  - name: ae
-    buildsystem: simple
-    build-commands:
-      - chmod +x ./AnimeEffects 		
-      - install -D AnimeEffects /app/bin/AnimeEffects	
-      - mkdir data
-      - mv encode data
-      - mv locale data
-      - mv sample.psd data
-      - mv shader data
-      - mv themes data
-      - mv data /app/bin/
-      - chmod -R 777 /app/bin/data 
+  - name: AnimeEffects
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=RelWithDebInfo
     sources:
-      - type: file
-        path: ./AnimeEffects
       - type: dir
-        path: data
+        path: "../../AnimeEffects"	
+        
+    post-install:
+      - "cp -r data ${FLATPAK_DEST}/bin"
+        
+
+        

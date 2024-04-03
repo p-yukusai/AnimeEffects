@@ -95,11 +95,8 @@ int main(int argc, char* argv[]) {
 int entryPoint(int argc, char* argv[]) {
     int result = 0;
     // create qt application
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication app(argc, argv);
     QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
-    app.setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::Round);
-    app.setAttribute(Qt::AA_UseHighDpiPixmaps);
     // app.setAttribute(Qt::AA_DontUseNativeDialogs);
     XC_DEBUG_REPORT() << "exe path =" << app.applicationFilePath();
 

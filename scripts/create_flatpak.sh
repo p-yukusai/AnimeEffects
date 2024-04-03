@@ -19,4 +19,4 @@ cp -r data flatpakBuild
 cp src/AnimeEffects flatpakBuild
 cp scripts/flatpak.yaml flatpakBuild
 cd flatpakBuild
-flatpak-builder org.anie.AnimeEffects flatpak.yaml
+flatpak-builder org.anie.AnimeEffects flatpak.yaml --force-clean
