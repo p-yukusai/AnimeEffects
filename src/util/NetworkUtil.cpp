@@ -166,6 +166,14 @@ QFileInfo NetworkUtil::downloadGithubFile(const QString& aURL, const QString& aF
         // Max time for this is five minutes.
         mProcess->waitForFinished(60000 * 5);
     }
+    if (NetworkUtil::os() != "win"){
+        // Make executable
+        QScopedPointer<QProcess> chmodProc;
+        chmodProc.reset(new QProcess(nullptr));
+        chmodProc->start("chmod", QStringList({"u+x", downloadPath}));
+        chmodProc->waitForFinished();
+    }
+    qDebug() << downloadPath;
     if (QFile(downloadPath).exists()) {
         return QFileInfo(QFile(downloadPath));
     }

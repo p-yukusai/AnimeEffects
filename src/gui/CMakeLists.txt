@@ -1,6 +1,6 @@
 project(AnimeEffects)
 
-set(MACOSX_BUNDLE_ICON_FILE AnimeEffects.icns)
+set(MACOSX_BUNDLE_ICON_FILE AnimeEffects.icns)	
 
 if(WIN32)
     set(app_icon "icon.rc")
@@ -11,7 +11,11 @@ elseif(APPLE)
     )
 elseif(UNIX)
     file(COPY ${CMAKE_SOURCE_DIR}/dist/AnimeEffects.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps/)
+    file(COPY ${CMAKE_SOURCE_DIR}/dist/AnimeEffects.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/)
+    file(COPY ${CMAKE_SOURCE_DIR}/dist/AnimeEffects.svg DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable)
     file(COPY ${CMAKE_SOURCE_DIR}/dist/AnimeEffects.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications/)
+    file(COPY ${CMAKE_SOURCE_DIR}/dist/AnimeEffects.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications/org.anie.AnimeEffects)
+    
 endif()
 
 add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
@@ -116,6 +120,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::OpenGL
         Qt6::OpenGLWidgets
         Qt6::Xml
+        Qt6::Concurrent
     cmnd
     core
     ctrl

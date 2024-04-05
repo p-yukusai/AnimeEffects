@@ -14,6 +14,7 @@
 #include "gui/LocaleDecider.h"
 #include "util/NetworkUtil.h"
 #include <QLoggingCategory>
+#include <QtConcurrent>
 
 
 #if defined(USE_MSVC_MEMORYLEAK_DEBUG)
@@ -145,9 +146,12 @@ int entryPoint(int argc, char* argv[]) {
         mainWindow->showWithSettings();
 
         // checkForUpdates
+        QThread checkUpdateThread = QThread();
         util::NetworkUtil networking;
         QString url("https://api.github.com/repos/AnimeEffectsDevs/AnimeEffects/tags");
-        networking.checkForUpdate(url, networking, mainWindow->window(), false);
+        QtConcurrent::run(util::NetworkUtil::checkForUpdate, url, networking, mainWindow->window(), false)
+            .then([]{qDebug("Done checking for updates");})
+            .onFailed([]{qDebug("Failed checking for updates");});
 
 
 #if !defined(QT_NO_DEBUG)
