@@ -196,7 +196,11 @@ inline bool isExportParamValid(exportParam* exParam, QWidget* widget) {
         errors.append(tr("Export name or location contains an invalid character (\"&#32\")"));
         errorDetail.append(tr("Export name or location has the invalid character, please rename it to proceed."));
     }
-
+    if (params->allowTransparency && exParam->videoParams.intermediateFormat != availableIntermediateFormats::png){
+        errors.append(tr("Transparent export does not have PNG intermediate"));
+        errorDetail.append(tr("Export was set to allow transparency but the intermediate format does not support it, "
+            "please change it to PNG."));
+    }
     if (params->exportHeight == 0) {
         errors.append(tr("Export height is zero"));
         errorDetail.append(tr("Export height was set to zero, please increase the resolution."));

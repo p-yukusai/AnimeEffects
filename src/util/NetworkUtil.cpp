@@ -173,7 +173,6 @@ QFileInfo NetworkUtil::downloadGithubFile(const QString& aURL, const QString& aF
         chmodProc->start("chmod", QStringList({"u+x", downloadPath}));
         chmodProc->waitForFinished();
     }
-    qDebug() << downloadPath;
     if (QFile(downloadPath).exists()) {
         return QFileInfo(QFile(downloadPath));
     }

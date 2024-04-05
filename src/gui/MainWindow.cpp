@@ -1363,15 +1363,22 @@ void MainWindow::onExportTriggered() {
     // Get file via OS diag
     fileDiag.setViewMode(QFileDialog::Detail);
     QString selectedFile;
-    if(fileDiag.exec()){ selectedFile = fileDiag.selectedFiles()[0]; }
-    else{ return; }
+    if(fileDiag.exec()){ selectedFile = fileDiag.selectedFiles().at(0); }
+    else{ return;
+    if(QFileInfo(selectedFile).suffix() == ""){
+        auto regex = QRegularExpression("(\\*.)\\w+", QRegularExpression::CaseInsensitiveOption);
+        QString suffix = regex.match(fileDiag.selectedNameFilter()).captured(0).removeFirst();
+        qDebug() << suffix;
+        selectedFile.append(suffix);
+    }
+    qDebug() << selectedFile;
     // Generate export parameters
     genParam.exportName = QFileInfo(selectedFile).fileName();
     genParam.exportDirectory = QFileInfo(selectedFile).absoluteDir();
     genParam.exportFileName = QDir(selectedFile);
     genParam.osExportTarget = selectedFile;
-    qDebug() << "Exporting: " << genParam.osExportTarget;
     exParam->generalParams = genParam;
+
     if(exParam->exportType == exportTarget::video) {
         exParam->videoParams.format = static_cast<availableVideoFormats>(getFormatAsInt(
             exportTarget::video, QFileInfo(genParam.osExportTarget).suffix())
