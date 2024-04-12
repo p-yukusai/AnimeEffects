@@ -1364,7 +1364,7 @@ void MainWindow::onExportTriggered() {
     fileDiag.setViewMode(QFileDialog::Detail);
     QString selectedFile;
     if(fileDiag.exec()){ selectedFile = fileDiag.selectedFiles().at(0); }
-    else{ return;
+    else{ return; }
     if(QFileInfo(selectedFile).suffix() == ""){
         auto regex = QRegularExpression("(\\*.)\\w+", QRegularExpression::CaseInsensitiveOption);
         QString suffix = regex.match(fileDiag.selectedNameFilter()).captured(0).removeFirst();

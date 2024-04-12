@@ -3,6 +3,6 @@ Name=AnimeEffects
 GenericName=2D Animation tool
 Comment=2D Animation tool
 Exec=AnimeEffects
-Icon=AnimeEffects
+Icon=AnimeEffects.png
 Type=Application
 Categories=Graphics;2DGraphics;

@@ -48,15 +48,15 @@ QJsonDocument NetworkUtil::getJsonFrom(const QString& aURL) {
     return QJsonDocument::fromJson(data.data());
 }
 
-bool NetworkUtil::libExists(const QString& aLib, QString versionType) {
+auto NetworkUtil::libExists(const QString& aLib, QString versionType) -> bool {
     QProcess process;
     process.start(aLib, {std::move(versionType)}, QProcess::ReadWrite);
     process.waitForFinished();
-    if (process.exitStatus() == 0) {
-        return true;
-    } else {
+    if (process.exitStatus() != 0) {
         return false;
     }
+    // Very much a lazy hack, regex checks for numbers with dots at either side
+    return QString(process.readAll().data()).contains(QRegularExpression(R"(((\d+\.)|(\.+\d)))"));
 }
 
 // The "json" type accepts only lists of size 1.
