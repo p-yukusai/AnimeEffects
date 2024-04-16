@@ -10,6 +10,7 @@
 #include <QRegularExpression>
 #include <QDesktopServices>
 #include <QAbstractButton>
+#include <QtConcurrent/QtConcurrent>
 
 namespace util {
 
@@ -24,7 +25,8 @@ QByteArray NetworkUtil::getByteArray(QString aURL) {
     QString program = arguments[0];
     arguments.pop_front();
     mProcess.start(program, arguments);
-    mProcess.waitForFinished();
+    // Waits for a second, todo: make this only apply to start check
+    mProcess.waitForFinished(1 * 1000);
     if (mProcess.exitCode() == 0) {
         response = mProcess.readAll();
     } else {
@@ -107,7 +109,7 @@ QList<QString> NetworkUtil::libArgs(QList<QString> aArgument, QString aType) {
 // Function written in consideration of the "releases/{version}" api, e.g.
 // https://api.github.com/repos/author/project/releases/latest
 QFileInfo NetworkUtil::downloadGithubFile(const QString& aURL, const QString& aFile, int aID, QWidget* aParent) {
-    QJsonObject jsonResponse = this->getJsonFrom(aURL).object();
+    QJsonObject jsonResponse = util::NetworkUtil::getJsonFrom(aURL).object();
     QString downloadURL = "null";
 
     // Get name of assets and then check against file and ID.
@@ -133,7 +135,7 @@ QFileInfo NetworkUtil::downloadGithubFile(const QString& aURL, const QString& aF
         return {};
     }
     QString downloadPath = QDir::tempPath() + "/" + aFile;
-    QList<QString> args = this->libArgs({downloadURL, downloadPath}, "download");
+    QList<QString> args = util::NetworkUtil::libArgs({downloadURL, downloadPath}, "download");
     // qDebug() << args;
     QScopedPointer<QProcess> mProcess;
     mProcess.reset(new QProcess(nullptr));
@@ -182,7 +184,8 @@ QFileInfo NetworkUtil::downloadGithubFile(const QString& aURL, const QString& aF
 void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWidget* aParent, bool showWithoutUpdate) {
     qDebug("--------");
     qInfo() << "Checking for updates on : " << url;
-    QJsonDocument jsonResponse = networking.getJsonFrom(url);
+
+    QFuture<QJsonDocument> jsonPromise = QtConcurrent::run(util::NetworkUtil::getJsonFrom, url);
     QString currentVersion = QString::number(AE_MAJOR_VERSION) + "." + QString::number(AE_MINOR_VERSION) + "." +
         QString::number(AE_MICRO_VERSION);
     /*
@@ -190,9 +193,12 @@ void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWi
         qDebug()<< "Current version: " << currentVersion << "\n" << "Latest stable: " <<
        jsonResponse[0]["name"].toString().replace("v", "");;
     */
+    QJsonDocument jsonResponse = jsonPromise.result();
     QString latestVersion = !jsonResponse.isEmpty() ? jsonResponse[0]["name"].toString().replace("v", "") : "null";
+
     if (latestVersion != "") {
-        QMessageBox updateBox;
+        auto* updateBox = new QMessageBox(aParent);
+
         bool onLatest = false;
         bool onPreview = false;
         bool failed = false;
@@ -200,8 +206,8 @@ void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWi
         // Failed
         if (latestVersion == "null") {
             qDebug() << "Failed to get version";
-            updateBox.setWindowTitle(QApplication::translate("NetworkCheckForUpdate", "Failed"));
-            updateBox.setText(QApplication::translate(
+            updateBox->setWindowTitle(QApplication::translate("NetworkCheckForUpdate", "Failed"));
+            updateBox->setText(QApplication::translate(
                 "NetworkCheckForUpdate",
                 "<center>Unable to get latest version. <br>Please check your internet "
                 "connection and if you have curl or wget installed.</center>"
@@ -211,8 +217,8 @@ void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWi
         // Latest version
         if (latestVersion == currentVersion) {
             qDebug() << "On latest version :" << latestVersion;
-            updateBox.setWindowTitle(QApplication::translate("NetworkCheckForUpdate", "On latest"));
-            updateBox.setText(
+            updateBox->setWindowTitle(QApplication::translate("NetworkCheckForUpdate", "On latest"));
+            updateBox->setText(
                 QApplication::translate(
                     "NetworkCheckForUpdate",
                     "<center>You already have the latest stable release available. <br>Version: "
@@ -225,8 +231,8 @@ void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWi
         else if (latestVersion < currentVersion) {
             qDebug() << "On preview version :" << currentVersion;
 
-            updateBox.setWindowTitle(QApplication::translate("NetworkCheckForUpdate", "On preview"));
-            updateBox.setText(
+            updateBox->setWindowTitle(QApplication::translate("NetworkCheckForUpdate", "On preview"));
+            updateBox->setText(
                 QApplication::translate(
                     "NetworkCheckForUpdate",
                     "<center>Your current version is higher than the latest stable release. "
@@ -239,8 +245,8 @@ void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWi
         // Old version
         else {
             qDebug() << "On version :" << currentVersion;
-            updateBox.setWindowTitle(QApplication::translate("NetworkCheckForUpdate", "New release available"));
-            updateBox.setText(
+            updateBox->setWindowTitle(QApplication::translate("NetworkCheckForUpdate", "New release available"));
+            updateBox->setText(
                 QApplication::translate(
                     "NetworkCheckForUpdate", "<center>A new stable release is available, version: "
                 ) +
@@ -252,24 +258,24 @@ void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWi
         }
 
         if (onLatest || onPreview || failed) {
-            updateBox.setStandardButtons(QMessageBox::Ok);
-            updateBox.setDefaultButton(QMessageBox::Ok);
+            updateBox->setStandardButtons(QMessageBox::Ok);
+            updateBox->setDefaultButton(QMessageBox::Ok);
         } else {
             // Boilerplate go brr
             QPushButton download(QApplication::translate("NetworkCheckForUpdate", "Download"));
             QAbstractButton* downloadButton = &download;
             QPushButton goTo(QApplication::translate("NetworkCheckForUpdate", "Go to page"));
             QAbstractButton* gotoButton = &goTo;
-            updateBox.addButton(downloadButton, QMessageBox::AcceptRole);
-            updateBox.addButton(gotoButton, QMessageBox::AcceptRole);
-            updateBox.addButton(QMessageBox::Cancel);
-            updateBox.exec();
+            updateBox->addButton(downloadButton, QMessageBox::AcceptRole);
+            updateBox->addButton(gotoButton, QMessageBox::AcceptRole);
+            updateBox->addButton(QMessageBox::Cancel);
+            updateBox->exec();
 
-            if (updateBox.clickedButton() == gotoButton) {
+            if (updateBox->clickedButton() == gotoButton) {
                 QDesktopServices::openUrl(QUrl("https://github.com/AnimeEffectsDevs/AnimeEffects/releases/latest"));
-            } else if (updateBox.clickedButton() == downloadButton) {
-                QString os = networking.os();
-                QString arch = networking.arch();
+            } else if (updateBox->clickedButton() == downloadButton) {
+                QString os = util::NetworkUtil::os();
+                QString arch = util::NetworkUtil::arch();
                 QString file;
                 if (os == "win") {
                     if (arch == "x86") {
@@ -291,7 +297,7 @@ void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWi
             return;
         }
         if (showWithoutUpdate) {
-            updateBox.exec();
+            updateBox->exec();
         }
         qDebug("--------");
         return;

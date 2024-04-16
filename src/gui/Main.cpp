@@ -146,12 +146,9 @@ int entryPoint(int argc, char* argv[]) {
         mainWindow->showWithSettings();
 
         // checkForUpdates
-        QThread checkUpdateThread = QThread();
         util::NetworkUtil networking;
         QString url("https://api.github.com/repos/AnimeEffectsDevs/AnimeEffects/tags");
-        QtConcurrent::run(util::NetworkUtil::checkForUpdate, url, networking, mainWindow->window(), false)
-            .then([]{qDebug("Done checking for updates");})
-            .onFailed([]{qDebug("Failed checking for updates");});
+        util::NetworkUtil::checkForUpdate(url, networking, mainWindow->window(), false);
 
 
 #if !defined(QT_NO_DEBUG)
