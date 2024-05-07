@@ -11,6 +11,7 @@ Originally developed by hidefuku, it is now being developed and maintained by it
 * Official socials:<br>
   * Discord: <a href='https://discord.gg/sKp8Srm'>AnimeEffects Community Server</a> (courtesy of @Jose-Moreno)<br>
   * Twitter: <a href='https://twitter.com/anime_effects'>AnimeEffects</a> (maintained by @p_yukusai)<br>
+  * [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V04YLC3)
 
 Note: For the present there may be incompatible changes made, these will be made known in the release affected should they occur.<br>
 ***If you have any issues or wish to suggest new features, feel reach out to us on our socials!***
@@ -21,10 +22,10 @@ Note: For the present there may be incompatible changes made, these will be made
 ## Requirements
 * Windows/Linux/Mac
   * See compatible versions below.
-* Processor: Intel Celeron/AMD Athlon or similar
+* Processor: A 64 bit CPU
 * RAM: 4GB
 * Hard disk: 500MB free (AnimeEffects itself only needs around 100mb, this is to have space for instalation, projects and to ensure stability)
-* Graphics card: Intel UHD Graphics/AMD Vega Graphics or any card that supports OpenGL 4.0
+* Graphics card: Intel UHD Graphics/AMD Vega Graphics or any card that supports OpenGL 4.0 or higher
 * Display: 1360x720 (The GUI has been made for displays with this resolution or higher)
 * [FFmpeg](https://ffmpeg.org/download.html) (Necessary for video exporting, you can place it on your path or copy it to the "/tools" folder.)
 
@@ -37,8 +38,9 @@ Note: For the present there may be incompatible changes made, these will be made
   * None of our contributors actually has a Mac to test AnimeEffects on, but we do keep track of compilation errors and artifacts.
 
 ## Development requirements
-* Qt 5.14 or later.
-* MSVC2019/MinGW/Make (32-bit or 64-bit)
+* Qt 6.6 or later.
+* CMake 3.16 or later.
+* MSVC/GCC (64-bit)
 
 ## Linux
 ### Installing Dependencies
