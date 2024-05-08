@@ -2,11 +2,12 @@
 #include <QFile>
 #include <QTextStream>
 #include <functional>
+#include "gui/AudioPlaybackWidget.h"
 #include "XC.h"
 
 namespace {
 int kButtonSize = 28;
-static const int kButtonCount = 5;
+const int kButtonCount = 6;
 } // namespace
 
 namespace gui {
@@ -14,7 +15,7 @@ namespace gui {
 PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent):
     QWidget(aParent), mGUIResources(aResources), mButtons() {
     if (mGUIResources.getTheme().contains("high_dpi")) {
-        kButtonSize = 36;
+        kButtonSize = 34;
     }
     this->setGeometry(0, 0, kButtonSize, kButtonSize * kButtonCount);
 
@@ -24,6 +25,7 @@ PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent):
     mButtons.push_back(createButton("step", false, 3, tr("One frame forward")));
     mButtons.push_back(createButton("fast", false, 4, tr("Advance to final frame")));
     mButtons.push_back(createButton("loop", true, 5, tr("Loop")));
+    mButtons.push_back(createButton("audio", true, 6, tr("Audio track")));
 
     mGUIResources.onThemeChanged.connect(this, &PlayBackWidget::onThemeUpdated);
 }
@@ -48,6 +50,18 @@ void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
     this->connect(mButtons.at(1), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_StepBack); });
     this->connect(mButtons.at(3), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Step); });
     this->connect(mButtons.at(4), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Fast); });
+    this->connect(mButtons.at(6), &QPushButton::pressed, [=](){
+        if(mButtons.at(6)->isChecked()){
+            mButtons.at(6)->setChecked(true); // Avoid unchecking accidentally
+            return;
+        }
+        mButtons.at(6)->setChecked(true);
+        auto audioWidget = new AudioPlaybackWidget;
+        auto* audioUI = new QWidget(this, Qt::Window);
+        audioWidget->setupUi(audioUI);
+        audioUI->show();
+        mButtons.at(6)->setChecked(false);
+    });
 }
 
 bool PlayBackWidget::isLoopChecked() {
@@ -63,8 +77,8 @@ void PlayBackWidget::checkLoop(bool checkStatus) {
 
 void PlayBackWidget::PlayPause() {
     PlayBackWidget* owner = this;
-    bool isChecked = owner->mButtons.at(2)->isChecked(
-    ); // There are no functions currently available to check for playback, this'll do for now
+    bool isChecked = owner->mButtons.at(2)->isChecked();
+    // There are no functions currently available to check for playback, this'll do for now
     if (!isChecked) {
         auto name = "pause";
         owner->mButtons.at(2)->setIcon(owner->mGUIResources.icon(name));
