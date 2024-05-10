@@ -30,7 +30,7 @@ public:
     bool isLoopChecked();
     void checkLoop(bool checkStatus);
     void PlayPause();
-    int constantWidth() const;
+    static int constantWidth() ;
     void pushPauseButton();
 
 private:

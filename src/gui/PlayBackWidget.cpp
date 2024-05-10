@@ -3,7 +3,6 @@
 #include <QTextStream>
 #include <functional>
 #include "gui/AudioPlaybackWidget.h"
-#include "XC.h"
 
 namespace {
 int kButtonSize = 28;
@@ -34,23 +33,24 @@ void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
     PlayBackWidget* owner = this;
     mPushDelegate = aDelegate;
 
-    this->connect(mButtons.at(2), &QPushButton::pressed, [=]() {
+    gui::PlayBackWidget::connect(mButtons.at(2), &QPushButton::pressed, [=]() {
         const bool isChecked = owner->mButtons.at(2)->isChecked();
         const char* name = isChecked ? "play" : "pause";
         owner->mButtons.at(2)->setIcon(owner->mGUIResources.icon(name));
         owner->mButtons.at(2)->setToolTip(isChecked ? tr("Play") : tr("Pause"));
         owner->mPushDelegate(isChecked ? PushType_Pause : PushType_Play);
     });
-    this->connect(mButtons.at(5), &QPushButton::pressed, [=]() {
+    gui::PlayBackWidget::connect(mButtons.at(5), &QPushButton::pressed, [=]() {
         const bool isChecked = owner->mButtons.at(5)->isChecked();
         owner->mPushDelegate(isChecked ? PushType_NoLoop : PushType_Loop);
     });
 
-    this->connect(mButtons.at(0), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Rewind); });
-    this->connect(mButtons.at(1), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_StepBack); });
-    this->connect(mButtons.at(3), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Step); });
-    this->connect(mButtons.at(4), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Fast); });
-    this->connect(mButtons.at(6), &QPushButton::pressed, [=](){
+    gui::PlayBackWidget::connect(mButtons.at(0), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Rewind); });
+    gui::PlayBackWidget::connect(mButtons.at(1), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_StepBack); });
+    gui::PlayBackWidget::connect(mButtons.at(3), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Step); });
+    gui::PlayBackWidget::connect(mButtons.at(4), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Fast); });
+
+    gui::PlayBackWidget::connect(mButtons.at(6), &QPushButton::pressed, [=](){
         if(mButtons.at(6)->isChecked()){
             mButtons.at(6)->setChecked(true); // Avoid unchecking accidentally
             return;
@@ -94,7 +94,7 @@ void PlayBackWidget::PlayPause() {
     }
 }
 
-int PlayBackWidget::constantWidth() const { return kButtonSize + 10; }
+int PlayBackWidget::constantWidth() { return kButtonSize + 10; }
 
 void PlayBackWidget::pushPauseButton() {
     QPushButton* button = mButtons.at(2);
@@ -107,7 +107,7 @@ void PlayBackWidget::pushPauseButton() {
 
 QPushButton*
 PlayBackWidget::createButton(const QString& aName, bool aIsCheckable, int aColumn, const QString& aToolTip) {
-    QPushButton* button = new QPushButton(this);
+    auto* button = new QPushButton(this);
     XC_PTR_ASSERT(button);
     button->setObjectName(aName);
     button->setIcon(mGUIResources.icon(aName));
@@ -125,7 +125,7 @@ void PlayBackWidget::onThemeUpdated(theme::Theme& aTheme) {
         this->setStyleSheet(QTextStream(&stylesheet).readAll());
     }
 
-    if (mButtons.size() > 0) {
+    if (!mButtons.empty()) {
         for (auto button : mButtons) {
             button->setIcon(mGUIResources.icon(button->objectName()));
         }

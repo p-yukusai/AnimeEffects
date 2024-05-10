@@ -18,7 +18,18 @@
 #include <QtWidgets/QTabWidget>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidget>
+#include <QDir>
+#include <QFileInfo>
 
+struct audioConfig{
+    QString audioName = "Placeholder";
+    QFileInfo audioPath = QFileInfo();
+    bool playbackEnable = true;
+    int startFrame = 0;
+    int endFrame = 0;
+    int durationInFrames = 0;
+    int mediaIndex = 0;
+};
 
 class AudioPlaybackWidget {
 public:
@@ -42,10 +53,13 @@ public:
     QGridLayout *gridLayout_3;
     QPushButton *saveConfigButton;
     QPushButton *loadConfigButton;
+    std::vector<audioConfig>* playbackConfig = new std::vector<audioConfig> ;
 
     void setupUi(QWidget *audioWidget){
         if (audioWidget->objectName().isEmpty())
             audioWidget->setObjectName(QString::fromUtf8("audioWidget"));
+        // Initialize first config
+        playbackConfig->emplace_back();
         audioWidget->resize(648, 291);
         gridLayout = new QGridLayout(audioWidget);
         gridLayout->setObjectName(QString::fromUtf8("gridLayout"));
@@ -151,9 +165,8 @@ public:
 
         tabWidget->setCurrentIndex(0);
 
-
         QMetaObject::connectSlotsByName(audioWidget);
-    } // setupUi
+    }
     void retranslateUi(QWidget *audioWidget){
         audioWidget->setWindowTitle(QCoreApplication::translate("audioWidget", "Form", nullptr));
         selectMusButton->setText(QCoreApplication::translate("audioWidget", "Select audio file...", nullptr));
@@ -166,7 +179,7 @@ public:
         saveConfigButton->setText(QCoreApplication::translate("audioWidget", "Save current audio configuration", nullptr));
         loadConfigButton->setText(QCoreApplication::translate("audioWidget", "Load audio configuration from file", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(configTab), QCoreApplication::translate("audioWidget", "Save/Load audio config", nullptr));
-    } // retranslateUi
+    }
 
 };
 
