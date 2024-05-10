@@ -28,7 +28,6 @@ struct audioConfig{
     int startFrame = 0;
     int endFrame = 0;
     int durationInFrames = 0;
-    int mediaIndex = 0;
 };
 
 class AudioPlaybackWidget {
@@ -180,7 +179,8 @@ public:
         loadConfigButton->setText(QCoreApplication::translate("audioWidget", "Load audio configuration from file", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(configTab), QCoreApplication::translate("audioWidget", "Save/Load audio config", nullptr));
     }
-
+    static bool serialize(std::vector<audioConfig>* pConf, const QString& outPath);
+    bool deserialize(const QJsonObject& pConf) const;
 };
 
 #endif // ANIMEEFFECTS_AUDIOPLAYBACKWIDGET_H
