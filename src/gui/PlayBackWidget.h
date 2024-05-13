@@ -6,6 +6,7 @@
 #include <QWidget>
 #include <QPushButton>
 #include "gui/GUIResources.h"
+#include "gui/AudioPlaybackWidget.h"
 
 namespace gui {
 
@@ -32,6 +33,11 @@ public:
     void PlayPause();
     static int constantWidth() ;
     void pushPauseButton();
+    QWidget* audioUI = nullptr;
+    std::vector<audioConfig>* pConf;
+    QMediaPlayer* qmp = new QMediaPlayer;
+    QAudioOutput* qao = new QAudioOutput;
+    mediaState mediaPlayer {qmp, qao};
 
 private:
     QPushButton* createButton(const QString& aName, bool aIsCheckable, int aColumn, const QString& aToolTip);

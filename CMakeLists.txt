@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
 # You need to add the Qt directory to your path if you're on Windows, otherwise you'll have a very bad time
-find_package(Qt6 REQUIRED COMPONENTS Core5Compat Core Gui OpenGL OpenGLWidgets Xml Concurrent Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core5Compat Core Gui OpenGL OpenGLWidgets Xml Concurrent Widgets Multimedia)
 # Get sources
 add_subdirectory(src/util)
 add_subdirectory(src/thr)

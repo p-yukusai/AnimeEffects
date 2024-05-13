@@ -965,7 +965,7 @@ public:
         settingsTab->setTabText(settingsTab->indexOf(customParam), QCoreApplication::translate("exportWidget", "Custom Parameters", nullptr));
         exportButton->setText(QCoreApplication::translate("exportWidget", "Export", nullptr));
         cancelButton->setText(QCoreApplication::translate("exportWidget", "Cancel", nullptr));
-    } // retranslateUi
+    } // translateUi
 
     void askForTextUI(QWidget *windowWidget, const QString& questionLbl){
         askOperationCancelled = false;

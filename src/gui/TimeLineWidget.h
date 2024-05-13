@@ -17,6 +17,7 @@
 #include "gui/TimeLineEditorWidget.h"
 #include "gui/ViaPoint.h"
 #include "gui/GUIResources.h"
+#include "gui/AudioPlaybackWidget.h"
 
 namespace gui {
 
@@ -30,7 +31,7 @@ public:
 
     void setProject(core::Project* aProject);
     void updateLines(QTreeWidgetItem* aTopNode);
-    void setPlayBackActivity(bool aIsActive);
+    void setPlayBackActivity(bool aIsActive, std::vector<audioConfig>* pConf, mediaState* mediaPlayer);
     void setPlayBackLoop(bool aDoesLoop);
     void setFrame(core::Frame aFrame);
     core::Frame currentFrame() const;

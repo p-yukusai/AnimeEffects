@@ -1,7 +1,3 @@
-//
-// Created by ui on 5/8/24.
-//
-
 #ifndef ANIMEEFFECTS_AUDIOPLAYBACKWIDGET_H
 #define ANIMEEFFECTS_AUDIOPLAYBACKWIDGET_H
 
@@ -18,41 +14,50 @@
 #include <QtWidgets/QTabWidget>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidget>
+#include <QtWidgets/QSlider>
 #include <QDir>
 #include <QFileInfo>
+#include <QtMultimedia/QMediaPlayer>
+#include <QtMultimedia/QAudioOutput>
 
 struct audioConfig{
     QString audioName = "Placeholder";
     QFileInfo audioPath = QFileInfo();
     bool playbackEnable = true;
+    int volume = 50;
     int startFrame = 0;
     int endFrame = 0;
-    int durationInFrames = 0;
+};
+struct mediaState{
+    QMediaPlayer* player;
+    QAudioOutput* audioOut;
 };
 
 class AudioPlaybackWidget {
 public:
-    QGridLayout *gridLayout;
-    QTabWidget *tabWidget;
-    QWidget *musPlayer;
-    QHBoxLayout *horizontalLayout;
-    QScrollArea *musScroll;
-    QWidget *musTab;
-    QGridLayout *gridLayout_2;
-    QToolButton *addNewTrack;
-    QToolButton *selectMusButton;
-    QCheckBox *playAudio;
-    QSpinBox *endSpinBox;
-    QSpinBox *startSpinBox;
-    QLabel *startLabel;
-    QLabel *endLabel;
-    QFrame *line;
+    QGridLayout *gridLayout{};
+    QTabWidget *tabWidget{};
+    QWidget *musPlayer{};
+    QHBoxLayout *horizontalLayout{};
+    QScrollArea *musScroll{};
+    QWidget *musTab{};
+    QGridLayout *gridLayout_2{};
+    QToolButton *addNewTrack{};
+    QToolButton *selectMusButton{};
+    QCheckBox *playAudio{};
+    QSpinBox *endSpinBox{};
+    QSpinBox *startSpinBox{};
+    QLabel *startLabel{};
+    QLabel *endLabel{};
     QLabel *musDurationLabel;
-    QWidget *configTab;
-    QGridLayout *gridLayout_3;
-    QPushButton *saveConfigButton;
-    QPushButton *loadConfigButton;
-    std::vector<audioConfig>* playbackConfig = new std::vector<audioConfig> ;
+    QLabel *volumeLabel{};
+    QSlider *volumeSlider{};
+    QFrame *line{};
+    QWidget *configTab{};
+    QGridLayout *gridLayout_3{};
+    QPushButton *saveConfigButton{};
+    QPushButton *loadConfigButton{};
+    std::vector<audioConfig>* playbackConfig = new std::vector<audioConfig>;
 
     void setupUi(QWidget *audioWidget){
         if (audioWidget->objectName().isEmpty())
@@ -124,12 +129,26 @@ public:
 
         gridLayout_2->addWidget(endLabel, 0, 2, 1, 1);
 
+        volumeLabel = new QLabel(musTab);
+        volumeLabel->setObjectName(QString::fromUtf8("volumeLabel"));
+        volumeLabel->setSizePolicy(sizePolicy);
+        gridLayout_2->addWidget(volumeLabel, 2, 0, 1, 1);
+
+        volumeSlider = new QSlider(musTab);
+        volumeSlider->setObjectName(QString::fromUtf8("volumeSlider"));
+        volumeSlider->setMaximum(100);
+        volumeSlider->setMinimum(0);
+        volumeSlider->setOrientation(Qt::Horizontal);
+        volumeSlider->setSizePolicy(sizePolicy);
+        gridLayout_2->addWidget(volumeSlider, 2, 1, 1, 3);
+
+
         line = new QFrame(musTab);
         line->setObjectName(QString::fromUtf8("line"));
         line->setFrameShape(QFrame::HLine);
         line->setFrameShadow(QFrame::Sunken);
 
-        gridLayout_2->addWidget(line, 2, 0, 1, 4);
+        gridLayout_2->addWidget(line, 3, 0, 1, 4);
 
         musDurationLabel = new QLabel(musTab);
         musDurationLabel->setObjectName(QString::fromUtf8("musDurationLabel"));
@@ -160,25 +179,27 @@ public:
         gridLayout->addWidget(tabWidget, 0, 0, 1, 1);
 
 
-        retranslateUi(audioWidget);
+        translateUi(audioWidget);
 
         tabWidget->setCurrentIndex(0);
 
         QMetaObject::connectSlotsByName(audioWidget);
     }
-    void retranslateUi(QWidget *audioWidget){
-        audioWidget->setWindowTitle(QCoreApplication::translate("audioWidget", "Form", nullptr));
+    void translateUi(QWidget *audioWidget) const{
+        audioWidget->setWindowTitle(QCoreApplication::translate("audioWidget", "Audio Player", nullptr));
         selectMusButton->setText(QCoreApplication::translate("audioWidget", "Select audio file...", nullptr));
         playAudio->setText(QCoreApplication::translate("audioWidget", "Enable playback", nullptr));
         addNewTrack->setText(QCoreApplication::translate("audioWidget", "Add new audio track", nullptr));
         startLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Playback start frame</p></body></html>", nullptr));
         endLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Playback end frame</p></body></html>", nullptr));
         musDurationLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Duration (in frames): 0</p></body></html>", nullptr));
+        volumeLabel->setText(QCoreApplication::translate("audioWidget", "Media volume (0%)", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(musPlayer), QCoreApplication::translate("audioWidget", "Audio player", nullptr));
         saveConfigButton->setText(QCoreApplication::translate("audioWidget", "Save current audio configuration", nullptr));
         loadConfigButton->setText(QCoreApplication::translate("audioWidget", "Load audio configuration from file", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(configTab), QCoreApplication::translate("audioWidget", "Save/Load audio config", nullptr));
     }
+    static void aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps, int curFrame, int frameCount);
     static bool serialize(std::vector<audioConfig>* pConf, const QString& outPath);
     bool deserialize(const QJsonObject& pConf) const;
 };

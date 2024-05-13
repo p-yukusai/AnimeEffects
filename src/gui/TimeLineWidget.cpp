@@ -43,17 +43,23 @@ void TimeLineWidget::setProject(core::Project* aProject) {
     mInner->setProject(aProject);
 }
 
-void TimeLineWidget::setPlayBackActivity(bool aIsActive) {
+void TimeLineWidget::setPlayBackActivity(bool aIsActive, std::vector<audioConfig>* pConf, mediaState* mediaPlayer) {
     if (aIsActive) {
         mTimer.setInterval(static_cast<int>(getOneFrameTime()));
         mTimer.start();
         mElapsed.start();
         mBeginFrame = currentFrame();
         mLastFrame = mBeginFrame;
+        // Play audio
+        AudioPlaybackWidget::aPlayer(pConf, true, mediaPlayer, getFps(), currentFrame().get(),
+                                     mProject->attribute().maxFrame());
     } else {
         mTimer.stop();
         mBeginFrame.set(0);
         mLastFrame.set(0);
+        // Stop audio
+        AudioPlaybackWidget::aPlayer(pConf, false, mediaPlayer, getFps(), currentFrame().get(),
+                                     mProject->attribute().maxFrame());
     }
     onPlayBackStateChanged(aIsActive);
 }

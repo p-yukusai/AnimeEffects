@@ -612,7 +612,7 @@ public:
         pixmapLabel->setText(QCoreApplication::translate(
             "Form", "<html><head/><body><p align=\"center\">Initializing...</p></body></html>", nullptr
         ));
-    } // retranslateUi
+    } // translateUi
 };
 inline bool overwrite(const QString& path) {
     QMessageBox msgBox;

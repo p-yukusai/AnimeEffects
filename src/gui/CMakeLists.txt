@@ -115,21 +115,10 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        Qt6::Core
-        Qt6::Core5Compat
-        Qt6::Widgets
-        Qt6::Gui
-        Qt6::OpenGL
-        Qt6::OpenGLWidgets
-        Qt6::Xml
-        Qt6::Concurrent
-    cmnd
-    core
-    ctrl
-    gl
-    img
-    thr
-    util
+        Qt6::Core Qt6::Core5Compat Qt6::Widgets
+        Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+        Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+        cmnd core ctrl gl img thr util
 )
 
 install(TARGETS ${PROJECT_NAME}

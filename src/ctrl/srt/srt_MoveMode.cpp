@@ -8,8 +8,7 @@
 
 using namespace core;
 
-namespace ctrl {
-namespace srt {
+namespace ctrl::srt {
 
     MoveMode::MoveMode(Project& aProject, ObjectNode& aTarget, KeyOwner& aKeyOwner):
         mProject(aProject),
@@ -245,5 +244,5 @@ namespace srt {
         }
     }
 
-} // namespace srt
-} // namespace ctrl
+} // namespace ctrl::srt
+

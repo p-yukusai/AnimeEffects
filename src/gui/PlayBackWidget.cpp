@@ -2,11 +2,10 @@
 #include <QFile>
 #include <QTextStream>
 #include <functional>
-#include "gui/AudioPlaybackWidget.h"
 
 namespace {
 int kButtonSize = 28;
-const int kButtonCount = 6;
+const int kButtonCount = 7;
 } // namespace
 
 namespace gui {
@@ -14,7 +13,7 @@ namespace gui {
 PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent):
     QWidget(aParent), mGUIResources(aResources), mButtons() {
     if (mGUIResources.getTheme().contains("high_dpi")) {
-        kButtonSize = 34;
+        kButtonSize = 32;
     }
     this->setGeometry(0, 0, kButtonSize, kButtonSize * kButtonCount);
 
@@ -24,7 +23,7 @@ PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent):
     mButtons.push_back(createButton("step", false, 3, tr("One frame forward")));
     mButtons.push_back(createButton("fast", false, 4, tr("Advance to final frame")));
     mButtons.push_back(createButton("loop", true, 5, tr("Loop")));
-    mButtons.push_back(createButton("audio", true, 6, tr("Audio track")));
+    mButtons.push_back(createButton("audio", false, 6, tr("Audio track")));
 
     mGUIResources.onThemeChanged.connect(this, &PlayBackWidget::onThemeUpdated);
 }
@@ -49,18 +48,14 @@ void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
     gui::PlayBackWidget::connect(mButtons.at(1), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_StepBack); });
     gui::PlayBackWidget::connect(mButtons.at(3), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Step); });
     gui::PlayBackWidget::connect(mButtons.at(4), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Fast); });
-
     gui::PlayBackWidget::connect(mButtons.at(6), &QPushButton::pressed, [=](){
-        if(mButtons.at(6)->isChecked()){
-            mButtons.at(6)->setChecked(true); // Avoid unchecking accidentally
+        if(audioUI != nullptr && !audioUI->isHidden()){
             return;
         }
-        mButtons.at(6)->setChecked(true);
         auto audioWidget = new AudioPlaybackWidget;
-        auto* audioUI = new QWidget(this, Qt::Window);
+        audioUI = new QWidget(this, Qt::Window);
         audioWidget->setupUi(audioUI);
         audioUI->show();
-        mButtons.at(6)->setChecked(false);
     });
 }
 

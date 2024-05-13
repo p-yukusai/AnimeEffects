@@ -1,7 +1,3 @@
-//
-// Created by ui on 5/8/24.
-//
-
 #include "AudioPlaybackWidget.h"
 #include <QJsonObject>
 #include <QJsonDocument>
@@ -15,9 +11,9 @@ bool AudioPlaybackWidget::serialize(std::vector<audioConfig>* pConf, const QStri
         track["Name"] = audioConfig.audioName;
         track["Path"] = audioConfig.audioPath.absolutePath();
         track["Playback"] = audioConfig.playbackEnable;
+        track["Volume"] = audioConfig.volume;
         track["StartFrame"] = audioConfig.startFrame;
         track["EndFrame"] = audioConfig.endFrame;
-        track["Duration"] = audioConfig.durationInFrames;
         audioJson[QString::number(x)] = track;
         x++;
     }
@@ -36,9 +32,9 @@ bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf) const {
             deserialized.at(x).audioName = pConf[QString::number(x)]["Name"].toString();
             deserialized.at(x).audioPath = QFileInfo(pConf[QString::number(x)]["Path"].toString());
             deserialized.at(x).playbackEnable = pConf[QString::number(x)]["Playback"].toBool();
+            deserialized.at(x).volume = pConf[QString::number(x)]["Volume"].toInt();
             deserialized.at(x).startFrame = pConf[QString::number(x)]["StartFrame"].toInt();
             deserialized.at(x).endFrame = pConf[QString::number(x)]["EndFrame"].toInt();
-            deserialized.at(x).durationInFrames = pConf[QString::number(x)]["Duration"].toInt();
         }
         playbackConfig->clear();
         *playbackConfig = deserialized;
@@ -46,4 +42,8 @@ bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf) const {
     // TODO: Fix this later
     catch (...) { return false; }
     return true;
+}
+void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps,
+                                      int curFrame, int frameCount){
+    Q_UNIMPLEMENTED();
 }
