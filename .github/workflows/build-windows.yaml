@@ -51,6 +51,8 @@ jobs:
         dir
         cd gui
         dir
+        cd Release
+        dir
         mkdir .\AnimeEffects-Windows
         windeployqt --dir .\AnimeEffects-Windows .\AnimeEffects.exe
         Copy-Item -Path ".\data" -Destination ".\AnimeEffects-Windows\" -recurse -Force
