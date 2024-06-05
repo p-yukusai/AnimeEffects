@@ -42,7 +42,8 @@ jobs:
     - name: Build AnimeEffects
       shell: powershell
       run: |
-        cmake -S . -B build -G "Ninja Multi-Config" && cmake --build build --config Release
+        cmake -S . -B build -G "Ninja Multi-Config"
+        cmake --build build --config Release
         dir
         mkdir .\AnimeEffects-Windows
         windeployqt --dir .\AnimeEffects-Windows .\AnimeEffects.exe
