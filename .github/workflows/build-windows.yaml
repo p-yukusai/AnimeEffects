@@ -5,34 +5,38 @@ on:
         - cron: '0 0 * * *'
 
 jobs:
-  buildWin:
+  buildWin64:
     runs-on: windows-latest
     steps:
     
     - name: checkout sources
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        aqtversion: '==2.1.*'
-        version: '5.15.2'
+        aqtversion: '==3.1.*'
+        version: '6.6.2'
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_mingw81'
-        tools: "tools_cmake tools_ninja tools_mingw,qt.tools.win64_mingw810"
+        arch: 'win64_msvc2019_64'
+        modules: 'qtimageformats qtmultimedia qt5compat'
+
+    - name: Install CMake
+      uses: ssrobins/install-cmake@v1
+    - name: Install Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
         
     - name: Setup PATH
       run: |
-          echo $env:Qt5_Dir\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo $env:IQTA_TOOLS\mingw810_64\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo $env:Qt6_Dir\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo $env:IQTA_TOOLS\win64_msvc2019_64\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         
     - name: Build AnimeEffects
       shell: powershell
       run: |
-        cd src
-        qmake -spec win32-g++ CONFIG+=release CONFIGs+=qml_release
-        mingw32-make -j8
+        cmake -G Ninja
+        cmake --build build --parallel --config Release
         dir
         mkdir .\AnimeEffects-Windows
         windeployqt --dir .\AnimeEffects-Windows .\AnimeEffects.exe
@@ -47,47 +51,3 @@ jobs:
         name: AnimeEffects-Windows-x64
         path: |
               D:/a/AnimeEffects/AnimeEffects/src/AnimeEffects-Windows.zip
-
-  buildWin32:
-    runs-on: windows-latest
-    steps:
-    
-    - name: checkout sources
-      uses: actions/checkout@v3
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        aqtversion: '==2.1.*'
-        version: '5.15.2'
-        host: 'windows'
-        target: 'desktop'
-        arch: 'win32_mingw81'
-        tools: "tools_cmake tools_ninja tools_mingw,qt.tools.win32_mingw810"
-
-    - name: Setup PATH
-      run: |
-          echo $env:Qt5_Dir\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo $env:IQTA_TOOLS\mingw810_32\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-    - name: Build AnimeEffects
-      shell: powershell
-      run: |
-        cd src
-        qmake -spec win32-g++ CONFIG+=release CONFIGs+=qml_release
-        mingw32-make -j8
-        dir
-        mkdir .\AnimeEffects-Windows
-        windeployqt --dir .\AnimeEffects-Windows .\AnimeEffects.exe
-        Copy-Item -Path ".\data" -Destination ".\AnimeEffects-Windows\" -recurse -Force
-        Copy-Item ".\AnimeEffects.exe" ".\AnimeEffects-Windows\"
-        tar.exe -a -c -f AnimeEffects-Windows.zip .\AnimeEffects-Windows
-        dir
-
-    - name: Github Artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: AnimeEffects-Windows-x86
-        path: |
-              D:/a/AnimeEffects/AnimeEffects/src/AnimeEffects-Windows.zip
-
