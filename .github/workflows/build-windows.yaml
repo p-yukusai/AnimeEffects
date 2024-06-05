@@ -60,5 +60,5 @@ jobs:
       with:
         name: AnimeEffects-Windows-x64
         path: |
-              D:/a/AnimeEffects/AnimeEffects/src/AnimeEffects-Windows.zip
+              D:/a/AnimeEffects/AnimeEffects/build/src/gui/Release/AnimeEffects-Windows.zip
         compression-level: 0
