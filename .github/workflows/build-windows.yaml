@@ -44,25 +44,21 @@ jobs:
       run: |
         cmake -S . -B build -G "Ninja Multi-Config"
         cmake --build build --config Release
-        dir
         cd build
-        dir
         cd src
-        dir
         cd gui
-        dir
         cd Release
-        dir
         mkdir .\AnimeEffects-Windows
         windeployqt --dir .\AnimeEffects-Windows .\AnimeEffects.exe
-        Copy-Item -Path ".\data" -Destination ".\AnimeEffects-Windows\" -recurse -Force
+        Copy-Item -Path "..\data" -Destination ".\AnimeEffects-Windows\" -recurse -Force
         Copy-Item ".\AnimeEffects.exe" ".\AnimeEffects-Windows\"
         tar.exe -a -c -f AnimeEffects-Windows.zip .\AnimeEffects-Windows
         dir
         
     - name: Github Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: AnimeEffects-Windows-x64
         path: |
               D:/a/AnimeEffects/AnimeEffects/src/AnimeEffects-Windows.zip
+        compression-level: 0
