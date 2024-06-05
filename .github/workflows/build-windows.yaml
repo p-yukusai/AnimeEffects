@@ -47,6 +47,8 @@ jobs:
         dir
         cd build
         dir
+        cd src
+        dir
         cd gui
         dir
         mkdir .\AnimeEffects-Windows
