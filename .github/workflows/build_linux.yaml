@@ -16,7 +16,7 @@ jobs:
     - name: Get Dependencies
       run: |
         apt update
-        apt install -y software-properties-common g++ make wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
+        apt install -y software-properties-common g++ make wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file sudo
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
