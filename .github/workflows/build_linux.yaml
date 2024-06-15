@@ -16,7 +16,7 @@ jobs:
         apt update
         apt upgrade -y
         apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
-        apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins qt6-5compat-dev
+        apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins libqt6core5compat6-dev
         apt install -y libvulkan-dev
     - name: Build AnimeEffects
       shell: bash
