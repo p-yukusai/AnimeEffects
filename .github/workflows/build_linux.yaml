@@ -22,8 +22,8 @@ jobs:
       shell: bash
       run: |
         echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-        cmake -S . -B appdir -G "Ninja Multi-Config"
-        cmake --install appdir --config Release
+        cmake -S . -B build -G "Ninja Multi-Config"
+        cmake --build build --config Release
         dir
         mkdir -p bin
         dir
