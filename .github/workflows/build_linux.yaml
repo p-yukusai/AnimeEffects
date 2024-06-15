@@ -3,7 +3,6 @@ on:
     workflow_dispatch:
     schedule:
         - cron: '0 0 * * *'
-
 jobs:
   buildOnLTS:
     runs-on: ubuntu-20.04
@@ -12,27 +11,19 @@ jobs:
     steps:
     - name: Checkout sources
       uses: actions/checkout@v4
-
     - name: Get Dependencies
       run: |
         apt update
-        apt install -y software-properties-common g++ make wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
-    - name: Setup Python
-      uses: actions/setup-python@v5.1.0
+        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
     - name: Install Qt
       run: |
         apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins
-    - name: Install CMake
-      uses: ssrobins/install-cmake@v1
-    - name: Install Ninja
-      uses: seanmiddleditch/gha-setup-ninja@master
     - name: Install Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.2.0
       with:
          vulkan-query-version: 1.3.204.0
          vulkan-components: Vulkan-Headers, Vulkan-Loader
          vulkan-use-cache: true
-         
     - name: Build AnimeEffects
       shell: bash
       run: |
@@ -52,7 +43,6 @@ jobs:
         if [[ "$RELEASE_VERSION" != "" ]]; then export VERSION=$RELEASE_VERSION;fi
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
         ./linuxdeployqt-continuous-x86_64.AppImage appdir/usr/share/applications/*.desktop -extra-plugins=imageformats -appimage -verbose=2
-
     - name: Github Artifacts
       uses: actions/upload-artifact@v4
       with:
