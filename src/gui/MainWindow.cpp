@@ -1367,7 +1367,7 @@ void MainWindow::onExportTriggered() {
     else{ return; }
     if(QFileInfo(selectedFile).suffix() == ""){
         auto regex = QRegularExpression("(\\*.)\\w+", QRegularExpression::CaseInsensitiveOption);
-        QString suffix = regex.match(fileDiag.selectedNameFilter()).captured(0).removeFirst();
+        QString suffix = regex.match(fileDiag.selectedNameFilter()).captured(0).removeAt(0);
         qDebug() << suffix;
         selectedFile.append(suffix);
     }
