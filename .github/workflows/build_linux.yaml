@@ -20,7 +20,7 @@ jobs:
         apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins
     - name: Install Vulkan
       run: |
-          apt install libvulkan-dev
+          apt install -y libvulkan-dev
     - name: Build AnimeEffects
       shell: bash
       run: |
