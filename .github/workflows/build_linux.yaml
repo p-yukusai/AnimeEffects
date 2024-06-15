@@ -16,18 +16,11 @@ jobs:
     - name: Get Dependencies
       run: |
         apt update
-        apt install -y software-properties-common g++ make wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file sudo openssl
+        apt install -y software-properties-common g++ make wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
 
     - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        aqtversion: '==3.1.*'
-        version: '6.6.2'
-        host: 'linux'
-        target: 'desktop'
-        arch: 'gcc_64'
-        modules: 'qtimageformats qtmultimedia qt5compat'
-
+      run: |
+        apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins
     - name: Install CMake
       uses: ssrobins/install-cmake@v1
     - name: Install Ninja
