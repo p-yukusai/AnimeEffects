@@ -18,12 +18,9 @@ jobs:
     - name: Install Qt
       run: |
         apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins
-    - name: Install Vulkan SDK
+    - name: Install Vulkan
       run: |
-          wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key add -
-          wget -qO /etc/apt/sources.list.d/lunarg-vulkan-focal.list http://packages.lunarg.com/vulkan/lunarg-vulkan-focal.list
-          apt update
-          apt install vulkan-sdk
+          apt install libvulkan-dev
     - name: Build AnimeEffects
       shell: bash
       run: |
