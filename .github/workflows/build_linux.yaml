@@ -14,13 +14,10 @@ jobs:
     - name: Get Dependencies
       run: |
         apt update
+        apt upgrade -y
         apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
-    - name: Install Qt
-      run: |
         apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins qt6-5compat-dev
-    - name: Install Vulkan
-      run: |
-          apt install -y libvulkan-dev
+        apt install -y libvulkan-dev
     - name: Build AnimeEffects
       shell: bash
       run: |
