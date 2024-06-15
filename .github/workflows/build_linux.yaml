@@ -17,7 +17,8 @@ jobs:
       run: |
         apt update
         apt install -y software-properties-common g++ make wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
-
+    - name: Setup Python
+      uses: actions/setup-python@v5.1.0
     - name: Install Qt
       run: |
         apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins
