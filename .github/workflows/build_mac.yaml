@@ -14,11 +14,13 @@ jobs:
       shell: bash
       run: |
         export HOMEBREW_NO_AUTO_UPDATE=1 && export HOMEBREW_NO_INSTALL_CLEANUP=1
-        HOMEBREW_VERBOSE_USING_DOTS=1 brew install --verbose qt5
+        HOMEBREW_VERBOSE_USING_DOTS=1 brew install --verbose qt@5
     - name: build AnimeEffects
       shell: bash
       run: |
-        export PATH="/usr/local/opt/qt@5/bin:$PATH"
+        export PATH="/opt/homebrew/opt/qt@5/bin:$PATH"
+        export LDFLAGS="-L/opt/homebrew/opt/qt@5/lib"
+        export CPPFLAGS="-I/opt/homebrew/opt/qt@5/include"
         qmake src/AnimeEffects.pro CONFIG+=release PREFIX=/usr
         make -j$(nproc)
         make INSTALL_ROOT=appdir install

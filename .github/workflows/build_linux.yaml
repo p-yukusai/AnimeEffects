@@ -3,45 +3,44 @@ on:
     workflow_dispatch:
     schedule:
         - cron: '0 0 * * *'
-
 jobs:
   buildOnLTS:
     runs-on: ubuntu-20.04
     container:
       image: ubuntu:jammy
     steps:
-    - name: checkout sources
-      uses: actions/checkout@v3
-
-    - name: add build dependencies
+    - name: Checkout sources
+      uses: actions/checkout@v4
+    - name: Get Dependencies
       run: |
         apt update
-        apt install -y software-properties-common g++ make wget rsync
-        apt-get update
-        apt install -y build-essential libglib2.0-0 qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools libgl1-mesa-dev file
-        
-    - name: build AnimeEffects
+        apt upgrade -y
+        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
+        apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins libqt6core5compat6-dev
+        apt install -y libvulkan-dev
+    - name: Build AnimeEffects
       shell: bash
       run: |
         echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-        qmake src/AnimeEffects.pro -r CONFIG+=release PREFIX=/usr
-        make -j$(nproc)
-        make INSTALL_ROOT=appdir install
-        mkdir -p appdir/usr/bin
-        cp AnimeEffects appdir/usr/bin
-        cp -R data appdir/usr/bin/data
+        cmake -S . -B build -G "Ninja Multi-Config"
+        cmake --build build --config Release
+        dir
+        mkdir -p bin
+        dir
+        cp AnimeEffects bin
+        dir
+        cp -R data bin/data
+        dir
         find appdir/
         export APPIMAGE_EXTRACT_AND_RUN=1
-        wget -c -nv "https://github.com/p-yukusai/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
+        wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
         if [[ "$RELEASE_VERSION" != "" ]]; then export VERSION=$RELEASE_VERSION;fi
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
-        ./linuxdeployqt-continuous-x86_64.AppImage appdir/usr/share/applications/*.desktop -extra-plugins=imageformats -appimage -verbose=2
-
+        ./linuxdeployqt-continuous-x86_64.AppImage appdir/usr/share/applications/*.desktop -extra-plugins=imageformats, multimedia -appimage -verbose=2
     - name: Github Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: AnimeEffects 
         path: |
           AnimeEffects-x86_64.AppImage
-          /__w/AnimeEffects/AnimeEffects/appdir/AnimeEffects.desktop
 
