@@ -54,7 +54,7 @@ void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
         }
         auto audioWidget = new AudioPlaybackWidget;
         audioUI = new QWidget(this, Qt::Window);
-        audioWidget->setupUi(audioUI);
+        audioWidget->setupUi(audioUI, qmp, qao);
         audioUI->show();
     });
 }

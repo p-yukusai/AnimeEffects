@@ -45,5 +45,11 @@ bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf) const {
 }
 void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps,
                                       int curFrame, int frameCount){
+    // REMEMBER TO TAKE THE PREPROCESSOR OFF LATER
+#if false
+    state->player->setSource(QUrl::fromLocalFile(pConf->at(0).audioPath.absoluteFilePath()));
+    if(play){state->player->play();}
+    else{state->player->stop();}
+#endif
     Q_UNIMPLEMENTED();
 }

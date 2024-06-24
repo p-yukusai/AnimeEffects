@@ -35,6 +35,7 @@ struct mediaState{
 
 class AudioPlaybackWidget {
 public:
+    mediaState media;
     QGridLayout *gridLayout{};
     QTabWidget *tabWidget{};
     QWidget *musPlayer{};
@@ -59,7 +60,10 @@ public:
     QPushButton *loadConfigButton{};
     std::vector<audioConfig>* playbackConfig = new std::vector<audioConfig>;
 
-    void setupUi(QWidget *audioWidget){
+    void setupUi(QWidget *audioWidget, QMediaPlayer* qmp, QAudioOutput* qao){
+        qmp->setAudioOutput(qao);
+        this->media.player = qmp;
+        this->media.audioOut = qao;
         if (audioWidget->objectName().isEmpty())
             audioWidget->setObjectName(QString::fromUtf8("audioWidget"));
         // Initialize first config
