@@ -16,20 +16,19 @@ jobs:
         apt update
         apt upgrade -y
         apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
-        apt install -y libvulkan-dev openssl python3 python3-pip sudo 
-        export LD_LIBRARY_PATH=$LD_LIBARY_PATH:/usr/local/lib64:/usr/local/lib
-        export LDFLAGS="-L/usr/local/lib -L/usr/local/lib64 -Wl,-rpath,/usr/local/lib -Wl,-rpath,/usr/local/lib64"
+        apt install -y libvulkan-dev openssl python3 python3-pip 
         
     #- name: Setup Python 3.9
      # uses: actions/setup-python@v5.1.0
       #with:
        #    python-version: 3.9
-    #- name: Get aqt and its dependencies
-      #run: |
-          #python3 -m ssl
-          #python3 -m pip install --upgrade pip
-          #python3 -m pip install requests semantic_version patch py7zr texttable bs4 defusedxml
-          #python3 -m pip install aqtinstall
+       
+    - name: Get aqt and its dependencies
+      run: |
+          python3 -m ssl
+          python3 -m pip install --upgrade pip
+          python3 -m pip install requests semantic_version patch py7zr texttable bs4 defusedxml
+          python3 -m pip install aqtinstall
     - name: Get Qt 6.6
       uses: jurplel/install-qt-action@v3
       with:
@@ -39,6 +38,8 @@ jobs:
         target: 'desktop'
         arch: 'gcc_64'
         modules: 'qtimageformats qtmultimedia qt5compat qtwaylandcompositor'
+        install-deps: 'false, nosudo'
+        setup-python: 'false'
         tools: 'tools_cmake tools_ninja tools_opensslv3_src'
       #run: |
           #python3 -m aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
