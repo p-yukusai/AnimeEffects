@@ -24,17 +24,26 @@ jobs:
      # uses: actions/setup-python@v5.1.0
       #with:
        #    python-version: 3.9
-    - name: Get aqt and its dependencies
-      run: |
-          python3 -m ssl
-          python3 -m pip install --upgrade pip
-          python3 -m pip install requests semantic_version patch py7zr texttable bs4 defusedxml
-          python3 -m pip install aqtinstall
+    #- name: Get aqt and its dependencies
+      #run: |
+          #python3 -m ssl
+          #python3 -m pip install --upgrade pip
+          #python3 -m pip install requests semantic_version patch py7zr texttable bs4 defusedxml
+          #python3 -m pip install aqtinstall
     - name: Get Qt 6.6
-      run: |
-          python3 -m aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
-          python3 -m aqt install-tool linux desktop tools_cmake
-          python3 -m aqt install-tool linux desktop tools_ninja
+      uses: jurplel/install-qt-action@v3
+      with:
+        aqtversion: '==3.1.*'
+        version: '6.6.2'
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: 'qtimageformats qtmultimedia qt5compat qtwaylandcompositor'
+        tools: 'tools_cmake tools_ninja tools_opensslv3_src'
+      #run: |
+          #python3 -m aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
+          #python3 -m aqt install-tool linux desktop tools_cmake
+          #python3 -m aqt install-tool linux desktop tools_ninja
     - name: Build AnimeEffects
       shell: bash
       run: |
