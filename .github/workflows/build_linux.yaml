@@ -15,7 +15,7 @@ jobs:
       run: |
         apt update
         apt upgrade -y
-        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file openssl python3 
+        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file openssl python3  python3-pip 
         apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins libqt6core5compat6-dev
         apt install -y libvulkan-dev
         export LD_LIBRARY_PATH=$LD_LIBARY_PATH:/usr/local/lib64:/usr/local/lib
