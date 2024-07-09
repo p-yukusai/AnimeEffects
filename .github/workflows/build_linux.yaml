@@ -33,9 +33,9 @@ jobs:
           python3 -m pip install aqtinstall
     - name: Get Qt 6.6
       run: |
-          python -m aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
-          python -m aqt install-tool linux desktop tools_cmake
-          python -m aqt install-tool linux desktop tools_ninja
+          python3 -m aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
+          python3 -m aqt install-tool linux desktop tools_cmake
+          python3 -m aqt install-tool linux desktop tools_ninja
     - name: Build AnimeEffects
       shell: bash
       run: |
