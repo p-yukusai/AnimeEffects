@@ -18,6 +18,20 @@ jobs:
         apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
         apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins libqt6core5compat6-dev
         apt install -y libvulkan-dev
+    - name: Setup Python 3.9
+      uses: actions/setup-python@v5.1.0
+      with:
+           python-version: 3.9
+    - name: Get aqt and its dependencies
+      run: |
+          pip install -U pip
+          pip install requests semantic_version patch py7zr texttable bs4 defusedxml
+          pip install aqtinstall
+    - name: Get Qt 6.6
+      run: |
+          aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
+          aqt install-tool linux desktop tools_cmake
+          aqt install-tool linux desktop tools_ninja
     - name: Build AnimeEffects
       shell: bash
       run: |
