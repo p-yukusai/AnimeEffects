@@ -49,13 +49,14 @@ jobs:
         cp AnimeEffects appdir
         dir
         cp -R ../data appdir/data
+        cp -R ../dist appdir/dist
         dir
         find appdir/
         export APPIMAGE_EXTRACT_AND_RUN=1
         wget -c -nv "https://github.com/p-yukusai/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
         if [[ "$RELEASE_VERSION" != "" ]]; then export VERSION=$RELEASE_VERSION;fi
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
-        ./linuxdeployqt-continuous-x86_64.AppImage appdir/usr/share/applications/*.desktop -extra-plugins=imageformats,multimedia,qt5compat -appimage -verbose=2
+        ./linuxdeployqt-continuous-x86_64.AppImage appdir/dist/AnimeEffects.desktop -extra-plugins=imageformats,multimedia,qt5compat -appimage -verbose=2
     - name: Github Artifacts
       uses: actions/upload-artifact@v4
       with:
