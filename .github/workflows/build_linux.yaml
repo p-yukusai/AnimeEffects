@@ -25,14 +25,13 @@ jobs:
     - name: Get aqt and its dependencies
       run: |
           python -m ensurepip --upgrade
-          pip install -U pip
-          pip install requests semantic_version patch py7zr texttable bs4 defusedxml
-          pip install aqtinstall
+          python -m pip install requests semantic_version patch py7zr texttable bs4 defusedxml
+          python -m pip install aqtinstall
     - name: Get Qt 6.6
       run: |
-          aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
-          aqt install-tool linux desktop tools_cmake
-          aqt install-tool linux desktop tools_ninja
+          python -m aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
+          python -m aqt install-tool linux desktop tools_cmake
+          python -m aqt install-tool linux desktop tools_ninja
     - name: Build AnimeEffects
       shell: bash
       run: |
