@@ -28,7 +28,7 @@ jobs:
     - name: Get aqt and its dependencies
       run: |
           python3 -m ssl
-          python3 -m pip --upgrade
+          python3 -m pip install --upgrade pip
           python3 -m pip install ssl requests semantic_version patch py7zr texttable bs4 defusedxml
           python3 -m pip install aqtinstall
     - name: Get Qt 6.6
