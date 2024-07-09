@@ -15,23 +15,22 @@ jobs:
       run: |
         apt update
         apt upgrade -y
-        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file openssl
+        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file openssl python3 
         apt install -y qt6-base-dev qt6-multimedia-dev qt6-image-formats-plugins libqt6core5compat6-dev
         apt install -y libvulkan-dev
-        export PATH=$HOME/openssl/bin:$PATH
-        export LD_LIBRARY_PATH=$HOME/openssl/lib
-        export LC_ALL="en_US.UTF-8"
-        export LDFLAGS="-L /home/${{ github.actor }}/openssl/lib -Wl,-rpath,/home/username/openssl/lib"
+        export LD_LIBRARY_PATH=$LD_LIBARY_PATH:/usr/local/lib64:/usr/local/lib
+        export LDFLAGS="-L/usr/local/lib -L/usr/local/lib64 -Wl,-rpath,/usr/local/lib -Wl,-rpath,/usr/local/lib64"
         
-    - name: Setup Python 3.9
-      uses: actions/setup-python@v5.1.0
-      with:
-           python-version: 3.9
+    #- name: Setup Python 3.9
+     # uses: actions/setup-python@v5.1.0
+      #with:
+       #    python-version: 3.9
     - name: Get aqt and its dependencies
       run: |
-          python -m ensurepip --upgrade
-          python -m pip install ssl requests semantic_version patch py7zr texttable bs4 defusedxml
-          python -m pip install aqtinstall
+          python3 -m ssl
+          python3 -m ensurepip --upgrade
+          python3 -m pip install ssl requests semantic_version patch py7zr texttable bs4 defusedxml
+          python3 -m pip install aqtinstall
     - name: Get Qt 6.6
       run: |
           python -m aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
