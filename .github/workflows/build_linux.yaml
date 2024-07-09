@@ -24,9 +24,9 @@ jobs:
            python-version: 3.9
     - name: Get aqt and its dependencies
       run: |
-          pip install -U pip
-          pip install requests semantic_version patch py7zr texttable bs4 defusedxml
-          pip install aqtinstall
+          pip3 install -U pip
+          pip3 install requests semantic_version patch py7zr texttable bs4 defusedxml
+          pip3 install aqtinstall
     - name: Get Qt 6.6
       run: |
           aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
