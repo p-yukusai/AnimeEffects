@@ -38,7 +38,7 @@ jobs:
         target: 'desktop'
         arch: 'gcc_64'
         modules: 'qtimageformats qtmultimedia qt5compat qtwaylandcompositor'
-        install-deps: 'false, nosudo'
+        install-deps: 'nosudo'
         setup-python: 'false'
         tools: 'tools_cmake tools_ninja tools_opensslv3_src'
       #run: |
