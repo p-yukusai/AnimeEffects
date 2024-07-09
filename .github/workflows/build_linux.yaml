@@ -48,7 +48,7 @@ jobs:
         dir
         cp AnimeEffects bin
         dir
-        cp -R data bin/data
+        cp -R ../data bin/data
         dir
         find appdir/
         export APPIMAGE_EXTRACT_AND_RUN=1
