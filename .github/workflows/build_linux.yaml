@@ -15,8 +15,8 @@ jobs:
       run: |
         apt update
         apt upgrade -y
-        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file openssl python3 python3-pip 
-        apt install -y libvulkan-dev
+        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
+        apt install -y libvulkan-dev openssl python3 python3-pip sudo 
         export LD_LIBRARY_PATH=$LD_LIBARY_PATH:/usr/local/lib64:/usr/local/lib
         export LDFLAGS="-L/usr/local/lib -L/usr/local/lib64 -Wl,-rpath,/usr/local/lib -Wl,-rpath,/usr/local/lib64"
         
