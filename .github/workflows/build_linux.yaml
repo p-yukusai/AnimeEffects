@@ -16,7 +16,7 @@ jobs:
         apt update
         apt upgrade -y
         apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
-        apt install -y libvulkan-dev openssl python3 python3-pip libxcb-cursor0
+        apt install -y libvulkan-dev openssl python3 python3-pip libxcb-cursor0 libxrandr2
        
     - name: Get Python and install qt dependencies
       run: |
