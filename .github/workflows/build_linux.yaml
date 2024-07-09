@@ -16,7 +16,7 @@ jobs:
         apt update
         apt upgrade -y
         apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
-        apt install -y libvulkan-dev openssl python3 python3-pip 
+        apt install -y libvulkan-dev openssl python3 python3-pip libxcb-cursor0
        
     - name: Get Python and install qt dependencies
       run: |
@@ -56,7 +56,7 @@ jobs:
         wget -c -nv "https://github.com/p-yukusai/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
         if [[ "$RELEASE_VERSION" != "" ]]; then export VERSION=$RELEASE_VERSION;fi
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
-        ./linuxdeployqt-continuous-x86_64.AppImage appdir/dist/AnimeEffects.desktop -extra-plugins=imageformats,multimedia -appimage -verbose=2
+        ./linuxdeployqt-continuous-x86_64.AppImage appdir/dist/AnimeEffects.desktop -extra-plugins=imageformats,multimedia,core5compat -appimage -verbose=2
     - name: Github Artifacts
       uses: actions/upload-artifact@v4
       with:
