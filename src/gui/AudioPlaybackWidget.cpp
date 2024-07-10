@@ -45,11 +45,24 @@ bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf) const {
 }
 void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps,
                                       int curFrame, int frameCount){
-    // REMEMBER TO TAKE THE PREPROCESSOR OFF LATER
-#if false
-    state->player->setSource(QUrl::fromLocalFile(pConf->at(0).audioPath.absoluteFilePath()));
-    if(play){state->player->play();}
-    else{state->player->stop();}
-#endif
-    Q_UNIMPLEMENTED();
+    // REMEMBER TO SET THE INDEX PER EACH AUDIO TRACK
+    const auto& source = pConf->at(state->index);
+    auto* player = state->players.at(state->index);
+    auto* output = state->outputs.at(state->index);
+    if(player == nullptr){
+        std::unique_ptr<QMediaPlayer> mediaPlayer;
+        state->players.append(mediaPlayer.get());
+        player = mediaPlayer.get();
+    }
+    if(output == nullptr){
+        std::unique_ptr<QAudioOutput> audioOutput;
+        state->outputs.append(audioOutput.get());
+        output = audioOutput.get();
+    }
+    if(player->audioOutput() == nullptr){ player->setAudioOutput(output); }
+    if(player->source().isEmpty()){ player->setSource(source.audioPath.absoluteFilePath()); }
+    player->audioOutput()->setVolume(float(source.volume));
+    // TODO: Create function to set audio time based on the frame
+    if(source.playbackEnable && play){ player->play(); }
+    if(player->isPlaying() && !play){ player->stop(); }
 }

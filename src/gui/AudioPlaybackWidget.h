@@ -29,8 +29,10 @@ struct audioConfig{
     int endFrame = 0;
 };
 struct mediaState{
-    QMediaPlayer* player;
-    QAudioOutput* audioOut;
+    int index = 0;
+    bool playing = false;
+    QVector<QMediaPlayer*> players;
+    QVector<QAudioOutput*> outputs;
 };
 
 class AudioPlaybackWidget {
