@@ -54,6 +54,5 @@ jobs:
     - name: Github Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: AnimeEffects AppImage
+        name: AnimeEffects-Linux
         path: ${{ env.artifactPath }}
-        compression-level: 0
