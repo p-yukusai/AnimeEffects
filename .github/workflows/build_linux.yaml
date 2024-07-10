@@ -58,9 +58,12 @@ jobs:
         if [[ "$RELEASE_VERSION" != "" ]]; then export VERSION=$RELEASE_VERSION;fi
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
         ./linuxdeployqt-continuous-x86_64.AppImage appdir/dist/AnimeEffects.desktop -extra-plugins=imageformats,multimedia,core5compat -appimage -verbose=2
+        cd appdir
+        realpath AnimeEffects-x86_64.AppImage
     - name: Github Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: AnimeEffects 
+        name: AnimeEffects AppImage
         path: /__w/AnimeEffects/AnimeEffects/build/src/gui/Release/appdir/AnimeEffects-x86_64.AppImage
+        compression-level: 0
 
