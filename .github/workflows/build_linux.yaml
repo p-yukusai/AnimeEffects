@@ -13,16 +13,13 @@ jobs:
       uses: actions/checkout@v4
     - name: Get Dependencies
       run: |
-        apt update
-        apt upgrade -y
-        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
-        apt install -y libvulkan-dev openssl python3 python3-pip libxcb-cursor0 libxrandr2
+        apt update && apt upgrade -y
+        apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 
+        apt install -y libgl1-mesa-dev file libvulkan-dev openssl python3 python3-pip libxcb-cursor0 libxrandr2
     - name: Get Python and install qt dependencies
       run: |
-          python3 -m ssl
           python3 -m pip install --upgrade pip
-          python3 -m pip install requests semantic_version patch py7zr texttable bs4 defusedxml
-          python3 -m pip install aqtinstall
+          python3 -m pip install requests semantic_version patch py7zr texttable bs4 defusedxml aqtinstall
     - name: Get Qt 6.6
       uses: jurplel/install-qt-action@v3
       with:
@@ -53,14 +50,6 @@ jobs:
         if [[ "$RELEASE_VERSION" != "" ]]; then export VERSION=$RELEASE_VERSION;fi
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
         ./linuxdeployqt-continuous-x86_64.AppImage appdir/dist/AnimeEffects.desktop -extra-plugins=imageformats,multimedia,core5compat -appimage -verbose=2
-        dir
-        echo "---"
-        echo "artifactPath=$(realpath AnimeEffects-x86_64.AppImage)`"
-        echo "---"
-        echo "$(realpath AnimeEffects-x86_64.AppImage)"
-        echo "---"
-        realpath AnimeEffects-x86_64.AppImage
-        echo "---"
         echo "artifactPath=$(realpath AnimeEffects-x86_64.AppImage)`" >> $GITHUB_ENV
     - name: Github Artifacts
       uses: actions/upload-artifact@v4
@@ -68,4 +57,3 @@ jobs:
         name: AnimeEffects AppImage
         path: ${{ env.artifactPath }}
         compression-level: 0
-
