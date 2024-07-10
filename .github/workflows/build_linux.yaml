@@ -50,7 +50,7 @@ jobs:
         dir
         cp -R ../data appdir/data
         cp -R ../../../../dist appdir/dist
-        cp ../../../../dist/AnimeEffects.png appdir/AnimeEffects.png.png
+        cp ../../../../dist/AnimeEffects.png appdir
         dir
         find appdir/
         export APPIMAGE_EXTRACT_AND_RUN=1
