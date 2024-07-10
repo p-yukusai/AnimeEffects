@@ -53,7 +53,6 @@ jobs:
         if [[ "$RELEASE_VERSION" != "" ]]; then export VERSION=$RELEASE_VERSION;fi
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
         ./linuxdeployqt-continuous-x86_64.AppImage appdir/dist/AnimeEffects.desktop -extra-plugins=imageformats,multimedia,core5compat -appimage -verbose=2
-        cd appdir
         dir
         echo "---"
         echo "artifactPath=$(realpath AnimeEffects-x86_64.AppImage)`"
