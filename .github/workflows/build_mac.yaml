@@ -1,43 +1,57 @@
-name: MacOS
+name: MacOS Latest
 on: 
     workflow_dispatch:
     schedule:
         - cron: '0 0 * * *'
-      
 jobs:
   buildMac:
     runs-on: macOS-latest
     steps:
-    - name: checkout sources
+    - name: Checkout sources
       uses: actions/checkout@v4
-    - name: setup Homebrew
+    - name: Setup Brew
       shell: bash
       run: |
-        export HOMEBREW_NO_AUTO_UPDATE=1 && export HOMEBREW_NO_INSTALL_CLEANUP=1
-        HOMEBREW_VERBOSE_USING_DOTS=1 brew install --verbose qt@5
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        export HOMEBREW_NO_INSTALL_CLEANUP=1
+        export HOMEBREW_VERBOSE_USING_DOTS=1 
+    - name: Get Qt 6.6
+      uses: jurplel/install-qt-action@v3
+      with:
+        aqtversion: '==3.1.*'
+        version: '6.6.2'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        modules: 'qtimageformats qtmultimedia qt5compat'
+        install-deps: 'nosudo'
+        tools: 'tools_cmake tools_ninja'
+    - name: Get dependencies
+      shell: bash
+      run: |
+          brew install cmake ninja vulkan-headers
     - name: build AnimeEffects
       shell: bash
       run: |
-        export PATH="/opt/homebrew/opt/qt@5/bin:$PATH"
-        export LDFLAGS="-L/opt/homebrew/opt/qt@5/lib"
-        export CPPFLAGS="-I/opt/homebrew/opt/qt@5/include"
-        qmake src/AnimeEffects.pro CONFIG+=release PREFIX=/usr
-        make -j$(nproc)
-        make INSTALL_ROOT=appdir install
-        mkdir -p appdir/usr/bin
-        cp -R data appdir/usr/bin/data
-        find appdir/
+        echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        cmake -S . -B build -G "Ninja Multi-Config"
+        cmake --build build --config Release
+        cd build/src/gui/Release 
+        dir
         mkdir -p appdir/usr/lib
+        cp AnimeEffects appdir
+        cp -R ../data appdir/data
+        cp -R ../../../../dist appdir/dist
+        find appdir/
         macdeployqt AnimeEffects.app
         wget https://raw.githubusercontent.com/OpenZWave/ozw-admin/master/scripts/macdeployqtfix.py && chmod a+x macdeployqtfix.py
         ./macdeployqtfix.py AnimeEffects.app /usr/local/Cellar/qt/*/
-        zip -r AnimeEffects.zip AnimeEffects.app
         
     - name: Github Artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: AnimeEffects
-        path: AnimeEffects.zip
+        name: AnimeEffects-MacOS
+        path: AnimeEffects.app
 
         
       
