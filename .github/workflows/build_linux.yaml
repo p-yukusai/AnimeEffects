@@ -54,14 +54,19 @@ jobs:
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
         ./linuxdeployqt-continuous-x86_64.AppImage appdir/dist/AnimeEffects.desktop -extra-plugins=imageformats,multimedia,core5compat -appimage -verbose=2
         cd appdir
+        dir
+        echo "---"
+        echo "artifactPath=$(realpath AnimeEffects-x86_64.AppImage)`"
+        echo "---"
+        echo "$(realpath AnimeEffects-x86_64.AppImage)"
+        echo "---"
+        realpath AnimeEffects-x86_64.AppImage
+        echo "---"
+        echo "artifactPath=$(realpath AnimeEffects-x86_64.AppImage)`" >> $GITHUB_ENV
     - name: Github Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: AnimeEffects AppImage
-        path: |
-            appdir/AnimeEffects-x86_64.AppImage
-            __w/AnimeEffects/AnimeEffects/build/src/gui/Release/appdir/AnimeEffects-x86_64.AppImage
-            *.AppImage
-            appdir/*.AppImage
+        path: ${{ env.artifactPath }}
         compression-level: 0
 
