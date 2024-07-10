@@ -39,7 +39,7 @@ jobs:
         cd build/src/gui/Release 
         ls
         mkdir -p appdir/usr/lib
-        cp AnimeEffects appdir
+        cp AnimeEffects.app appdir
         cp -R ../data appdir/data
         cp -R ../../../../dist appdir/dist
         find appdir/
