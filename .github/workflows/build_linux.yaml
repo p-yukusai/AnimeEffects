@@ -17,7 +17,6 @@ jobs:
         apt upgrade -y
         apt install -y software-properties-common g++ make cmake ninja-build wget rsync build-essential libglib2.0-0 libgl1-mesa-dev file
         apt install -y libvulkan-dev openssl python3 python3-pip libxcb-cursor0 libxrandr2
-       
     - name: Get Python and install qt dependencies
       run: |
           python3 -m ssl
@@ -43,15 +42,11 @@ jobs:
         cmake -S . -B build -G "Ninja Multi-Config"
         cmake --build build --config Release
         cd build/src/gui/Release 
-        dir
         mkdir -p appdir
-        dir
         cp AnimeEffects appdir
-        dir
         cp -R ../data appdir/data
         cp -R ../../../../dist appdir/dist
         cp ../../../../dist/AnimeEffects.png appdir
-        dir
         find appdir/
         export APPIMAGE_EXTRACT_AND_RUN=1
         wget -c -nv "https://github.com/p-yukusai/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
@@ -59,13 +54,11 @@ jobs:
         chmod a+x linuxdeployqt-continuous-x86_64.AppImage
         ./linuxdeployqt-continuous-x86_64.AppImage appdir/dist/AnimeEffects.desktop -extra-plugins=imageformats,multimedia,core5compat -appimage -verbose=2
         cd appdir
-        realpath AnimeEffects-x86_64.AppImage
     - name: Github Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: AnimeEffects AppImage
         path: |
-            AnimeEffects-x86_64.AppImage
             appdir/AnimeEffects-x86_64.AppImage
             __w/AnimeEffects/AnimeEffects/build/src/gui/Release/appdir/AnimeEffects-x86_64.AppImage
             *.AppImage
