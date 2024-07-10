@@ -64,6 +64,11 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: AnimeEffects AppImage
-        path: /__w/AnimeEffects/AnimeEffects/build/src/gui/Release/appdir/AnimeEffects-x86_64.AppImage
+        path: |
+            AnimeEffects-x86_64.AppImage
+            appdir/AnimeEffects-x86_64.AppImage
+            __w/AnimeEffects/AnimeEffects/build/src/gui/Release/appdir/AnimeEffects-x86_64.AppImage
+            *.AppImage
+            appdir/*.AppImage
         compression-level: 0
 
