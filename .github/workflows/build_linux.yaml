@@ -4,7 +4,7 @@ on:
     schedule:
         - cron: '0 0 * * *'
 jobs:
-  buildOnLTS:
+  buildLinux:
     runs-on: ubuntu-20.04
     container:
       image: ubuntu:jammy
