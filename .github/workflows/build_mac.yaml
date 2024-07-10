@@ -39,10 +39,11 @@ jobs:
         cd build/src/gui/Release 
         ls
         mkdir -p appdir/usr/lib
-        cp AnimeEffects.app appdir
+        cp -R AnimeEffects.app appdir/AnimeEffects.app
         cp -R ../data appdir/data
         cp -R ../../../../dist appdir/dist
         find appdir/
+        cd appdir
         macdeployqt AnimeEffects.app
         wget https://raw.githubusercontent.com/OpenZWave/ozw-admin/master/scripts/macdeployqtfix.py && chmod a+x macdeployqtfix.py
         ./macdeployqtfix.py AnimeEffects.app /usr/local/Cellar/qt/*/
