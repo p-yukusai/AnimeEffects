@@ -62,6 +62,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: AnimeEffects 
-        path: |
-          AnimeEffects-x86_64.AppImage
+        path: /__w/AnimeEffects/AnimeEffects/build/src/gui/Release/appdir/AnimeEffects-x86_64.AppImage
 
