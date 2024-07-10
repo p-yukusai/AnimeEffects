@@ -78,10 +78,6 @@ namespace menu {
 
     void LoggableProgressDialog::updateEvents() {
         QApplication::processEvents();
-
-#ifdef Q_OS_MAC
-        QApplication::flush();
-#endif
     }
 
     bool LoggableProgressDialog::wasCanceled() const { return mCanceled; }
