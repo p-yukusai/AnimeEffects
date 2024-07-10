@@ -47,12 +47,14 @@ jobs:
         macdeployqt AnimeEffects.app
         wget https://raw.githubusercontent.com/OpenZWave/ozw-admin/master/scripts/macdeployqtfix.py && chmod a+x macdeployqtfix.py
         ./macdeployqtfix.py AnimeEffects.app /usr/local/Cellar/qt/*/
+        echo "artifactPath=$(realpath AnimeEffects.app)`"
+        echo "artifactPath=$(realpath AnimeEffects.app)`" >> $GITHUB_ENV
         
     - name: Github Artifacts
       uses: actions/upload-artifact@v3
       with:
         name: AnimeEffects-MacOS
-        path: AnimeEffects.app
+        path: ${{ env.artifactPath }}
 
         
       
