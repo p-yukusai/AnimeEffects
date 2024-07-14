@@ -24,7 +24,7 @@ PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent):
     mButtons.push_back(createButton("fast", false, 4, tr("Advance to final frame")));
     mButtons.push_back(createButton("loop", true, 5, tr("Loop")));
     mButtons.push_back(createButton("audio", false, 6, tr("Audio track")));
-
+    audioWidget->setupUi(audioUI, mediaPlayer);
     mGUIResources.onThemeChanged.connect(this, &PlayBackWidget::onThemeUpdated);
 }
 
@@ -49,12 +49,14 @@ void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
     gui::PlayBackWidget::connect(mButtons.at(3), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Step); });
     gui::PlayBackWidget::connect(mButtons.at(4), &QPushButton::pressed, [=]() { owner->mPushDelegate(PushType_Fast); });
     gui::PlayBackWidget::connect(mButtons.at(6), &QPushButton::pressed, [=](){
-        if(audioUI != nullptr && !audioUI->isHidden()){
+        if(audioUI == nullptr || audioWidget == nullptr){
+            audioWidget =  new AudioPlaybackWidget;
+            audioUI = new QWidget(this, Qt::Window);
+            audioWidget->setupUi(audioUI, mediaPlayer);
+        }
+        if(!audioUI->isHidden()){
             return;
         }
-        auto audioWidget = new AudioPlaybackWidget;
-        audioUI = new QWidget(this, Qt::Window);
-        audioWidget->setupUi(audioUI, qmp, qao);
         audioUI->show();
     });
 }

@@ -33,11 +33,11 @@ public:
     void PlayPause();
     static int constantWidth() ;
     void pushPauseButton();
-    QWidget* audioUI = nullptr;
-    std::vector<audioConfig>* pConf;
-    QMediaPlayer* qmp = new QMediaPlayer;
-    QAudioOutput* qao = new QAudioOutput;
-    mediaState mediaPlayer {qmp, qao};
+    QWidget* audioUI = new QWidget(this, Qt::Window);
+    std::vector<audioConfig>* pConf = new std::vector<audioConfig>;
+    mediaState mediaPlayer;
+    AudioPlaybackWidget* audioWidget = new AudioPlaybackWidget;
+
 
 private:
     QPushButton* createButton(const QString& aName, bool aIsCheckable, int aColumn, const QString& aToolTip);

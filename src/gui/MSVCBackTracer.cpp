@@ -46,9 +46,6 @@ void BackTracer::dumpCurrent() const {
 }
 
 void BackTracer::getSymbolText(void* aAddress, char* aOutBuffer, int aLength) const {
-    if (!mReady)
-        return;
-
     #ifdef _WIN64
     typedef DWORD64 XDWord;
     #else

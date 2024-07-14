@@ -17,6 +17,7 @@
 #include <QtWidgets/QSlider>
 #include <QDir>
 #include <QFileInfo>
+#include <QtMultimedia/QAudio>
 #include <QtMultimedia/QMediaPlayer>
 #include <QtMultimedia/QAudioOutput>
 
@@ -29,7 +30,6 @@ struct audioConfig{
     int endFrame = 0;
 };
 struct mediaState{
-    int index = 0;
     bool playing = false;
     QVector<QMediaPlayer*> players;
     QVector<QAudioOutput*> outputs;
@@ -60,16 +60,10 @@ public:
     QGridLayout *gridLayout_3{};
     QPushButton *saveConfigButton{};
     QPushButton *loadConfigButton{};
-    std::vector<audioConfig>* playbackConfig = new std::vector<audioConfig>;
 
-    void setupUi(QWidget *audioWidget, QMediaPlayer* qmp, QAudioOutput* qao){
-        qmp->setAudioOutput(qao);
-        this->media.player = qmp;
-        this->media.audioOut = qao;
+    void setupUi(QWidget *audioWidget, mediaState mediaPlayer){
         if (audioWidget->objectName().isEmpty())
             audioWidget->setObjectName(QString::fromUtf8("audioWidget"));
-        // Initialize first config
-        playbackConfig->emplace_back();
         audioWidget->resize(648, 291);
         gridLayout = new QGridLayout(audioWidget);
         gridLayout->setObjectName(QString::fromUtf8("gridLayout"));
@@ -207,7 +201,8 @@ public:
     }
     static void aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps, int curFrame, int frameCount);
     static bool serialize(std::vector<audioConfig>* pConf, const QString& outPath);
-    bool deserialize(const QJsonObject& pConf) const;
+    bool deserialize(const QJsonObject& pConf, std::vector<audioConfig>* playbackConfig) const;
+    static float getVol(int volume){ return static_cast<float>(volume / 100.0); }
 };
 
 #endif // ANIMEEFFECTS_AUDIOPLAYBACKWIDGET_H

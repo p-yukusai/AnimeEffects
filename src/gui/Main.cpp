@@ -65,7 +65,7 @@ static AEAssertHandler sAEAssertHandler;
         __try { \
             action; \
         } __except (EXCEPTION_EXECUTE_HANDLER) { \
-            qDebug("exception occurred.(%x)", GetExceptionCode()); \
+            qDebug("Exception occurred.(%x)", GetExceptionCode()); \
             gBackTracer.dumpCurrent(); \
             std::abort(); \
         }

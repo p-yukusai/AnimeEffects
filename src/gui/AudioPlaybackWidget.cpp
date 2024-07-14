@@ -23,7 +23,7 @@ bool AudioPlaybackWidget::serialize(std::vector<audioConfig>* pConf, const QStri
     file.close();
     return false;
 }
-bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf) const {
+bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf, std::vector<audioConfig>* playbackConfig) const {
     if(pConf.isEmpty()) { return false; }
     try {
         auto deserialized = std::vector<audioConfig>();
@@ -43,26 +43,32 @@ bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf) const {
     catch (...) { return false; }
     return true;
 }
-void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps,
-                                      int curFrame, int frameCount){
-    // REMEMBER TO SET THE INDEX PER EACH AUDIO TRACK
-    const auto& source = pConf->at(state->index);
-    auto* player = state->players.at(state->index);
-    auto* output = state->outputs.at(state->index);
-    if(player == nullptr){
-        std::unique_ptr<QMediaPlayer> mediaPlayer;
-        state->players.append(mediaPlayer.get());
-        player = mediaPlayer.get();
+void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps, int curFrame,
+                                  int frameCount){
+    qDebug("aPlayer initializing");
+    for(int x = 0; x < pConf->size(); x++){
+        if(pConf->size() > x + 1){ return; }
+        if(state->players.size() < x + 1 && state->outputs.size() < x + 1){
+            auto* mediaPlayer = new QMediaPlayer;
+            auto* audioOutput = new QAudioOutput;
+            state->players.append(mediaPlayer);
+            state->outputs.append(audioOutput);
+        }
+        QMediaPlayer* player = state->players.at(x);
+        QAudioOutput* output = state->outputs.at(x);
+        const audioConfig& config = pConf->at(x);
+        if(player->audioOutput() == nullptr){
+            player->setAudioOutput(output);
+        }
+        if(player->source() != QUrl::fromLocalFile(config.audioPath.absoluteFilePath())){
+            player->setSource(config.audioPath.absoluteFilePath());
+        }
+        if(output->volume() != getVol(config.volume)){ output->setVolume(getVol(config.volume)); }
+        if(!play && player->isPlaying()){ player->stop(); }
+        if(play && config.playbackEnable && !player->isPlaying()){ player->play(); state->playing = true;}
+
+        //TODO: Get this to make the audio stop on its own later
+        //if(config.startFrame > curFrame){ return; }
+        //if(config.endFrame < curFrame && player->isPlaying()){ player->stop(); return; }
     }
-    if(output == nullptr){
-        std::unique_ptr<QAudioOutput> audioOutput;
-        state->outputs.append(audioOutput.get());
-        output = audioOutput.get();
-    }
-    if(player->audioOutput() == nullptr){ player->setAudioOutput(output); }
-    if(player->source().isEmpty()){ player->setSource(source.audioPath.absoluteFilePath()); }
-    player->audioOutput()->setVolume(float(source.volume));
-    // TODO: Create function to set audio time based on the frame
-    if(source.playbackEnable && play){ player->play(); }
-    if(player->isPlaying() && !play){ player->stop(); }
 }
