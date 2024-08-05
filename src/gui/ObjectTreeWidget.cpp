@@ -106,6 +106,10 @@ ObjectTreeWidget::ObjectTreeWidget(ViaPoint& aViaPoint, GUIResources& aResources
         mDeleteAction = new QAction(tr("Delete"), this);
         mDeleteAction->connect(mDeleteAction, &QAction::triggered, this, &ObjectTreeWidget::onDeleteActionTriggered);
     }
+
+    // enable pixel scrolling
+    QTreeWidget::setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    QTreeWidget::verticalScrollBar()->setSingleStep(24);
 }
 
 void ObjectTreeWidget::setProject(core::Project* aProject) {
