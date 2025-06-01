@@ -317,6 +317,12 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         }
         mThemeBox->setCurrentIndex(mThemeBox->findData(mInitialThemeKey));
         form->addRow(tr("Theme :"), mThemeBox);
+
+        mFontSizeBox = new QSpinBox(this);
+        mFontSizeBox->setRange(8, 72); // Sensible range for font size
+        mInitialFontSize = mGUIResources.fontSize();
+        mFontSizeBox->setValue(mInitialFontSize);
+        form->addRow(tr("Font Size:"), mFontSizeBox);
     }
 
     auto projectSaving = new QFormLayout();
@@ -771,6 +777,10 @@ QString GeneralSettingDialog::theme() { return mThemeBox->currentData().toString
 
 bool GeneralSettingDialog::keyDelayHasChanged() { return mKeyDelay != mKeyDelayBox->value(); }
 
+bool GeneralSettingDialog::fontSizeHasChanged() const {
+    return mInitialFontSize != mFontSizeBox->value();
+}
+
 void GeneralSettingDialog::saveSettings() {
     QSettings settings;
     if (languageHasChanged())
@@ -815,6 +825,11 @@ void GeneralSettingDialog::saveSettings() {
     }
     if (keyDelayHasChanged()) {
         settings.setValue("generalsettings/keybindings/keyDelay", mKeyDelayBox->value());
+    }
+    if (fontSizeHasChanged()) {
+        mGUIResources.setFontSize(mFontSizeBox->value());
+        // mGUIResources.applyFontSize(); // Not strictly needed as setFontSize calls it.
+                                        // but can be kept if explicit re-application is desired here.
     }
 }
 } // namespace gui

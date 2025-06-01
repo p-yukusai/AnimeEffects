@@ -23,7 +23,6 @@ namespace {
 
 template<class tEdit>
 void setMinMaxOptionWidth(tEdit* aEdit) {
-    aEdit->setMaximumWidth(200);
     aEdit->setMinimumWidth(50);
 }
 

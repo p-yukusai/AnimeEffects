@@ -90,8 +90,8 @@ void EasyDialog::setCancel(const std::function<bool(int)>& aFunction) {
 }
 
 void EasyDialog::fixSize() {
-    this->setFixedSize(this->sizeHint());
-    this->layout()->setSizeConstraint(QLayout::SetFixedSize);
+    // this->setFixedSize(this->sizeHint());
+    // this->layout()->setSizeConstraint(QLayout::SetFixedSize);
 }
 
 } // namespace gui
