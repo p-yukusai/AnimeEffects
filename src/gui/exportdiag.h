@@ -904,7 +904,7 @@ public:
         exportTypeCombo->setItemText(1, QCoreApplication::translate("exportWidget", "Image sequence", nullptr));
         setFPSNative->setText(QCoreApplication::translate("exportWidget", "Set to native", nullptr));
         transparencyCheckBox->setText(QCoreApplication::translate("exportWidget", "Export with transparency", nullptr));
-        loopCheckBox->setText(QCoreApplication::translate("exportWidget", "Loop animation (GIF only)", nullptr));
+        loopCheckBox->setText(QCoreApplication::translate("exportWidget", "Loop animation", nullptr));
         exportWithAudioCheckBox->setText(QCoreApplication::translate("exportWidget", "Export with audio", nullptr));
         bitrateLineEdit->setPlaceholderText(QCoreApplication::translate("exportWidget", "Auto", nullptr));
         setBitrateAuto->setText(QCoreApplication::translate("exportWidget", "Set to auto", nullptr));

@@ -806,11 +806,10 @@ inline QString buildArgument(const exportParam& exParam) {
             argument.append(" -lavfi split[v],palettegen,[v]paletteuse");
         }
     }
-    // Looping (gif muxer specific)
-    if (exParam.videoParams.format == availableVideoFormats::gif) {
-        if (exParam.generalParams.loop) { argument.append(" -loop 0"); }
-        else { argument.append(" -loop -1"); }
-    }
+    // Looping (format-specific)
+    if (exParam.generalParams.loop) { argument.append(" -loop 0"); }
+    else { argument.append(" -loop -1"); }
+
     // Output
     argument.append(" " + exParam.generalParams.exportFileName.absolutePath().replace(" ", "&#32"));
     return argument;

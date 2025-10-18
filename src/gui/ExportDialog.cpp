@@ -98,7 +98,7 @@ void ExportDialog::pushSizeBox(QFormLayout& aLayout) {
             QSize& size = this->mCommonParam.size;
             size.setWidth(aValue);
             if (mFixAspect) {
-                size.setHeight((int)(mSize.height() * aValue / (double)mSize.width()));
+                size.setHeight(static_cast<int>(mSize.height() * aValue / static_cast<double>(mSize.width())));
                 y->setValue(size.height());
             }
             mSizeUpdating = false;
