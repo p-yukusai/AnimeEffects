@@ -34,3 +34,7 @@
 # Build Directory
 build*/
 /src/AnimeEffects-Windows/
+
+.cache/
+.vscode/
+CMakeSystem.cmake
