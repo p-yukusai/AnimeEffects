@@ -162,7 +162,7 @@ void GLCorePaintEngine::drawImage(
 
     auto texture = mTextureCaches.get(key, [=]() {
         auto cache = new TextureCaches::Cache();
-        cache->obj.reset(new QOpenGLTexture(ptr->mirrored()));
+        cache->obj.reset(new QOpenGLTexture(ptr->flipped(Qt::Horizontal | Qt::Vertical)));
         cache->key = key;
         cache->size = (size_t)ptr->sizeInBytes();
 
@@ -182,7 +182,7 @@ void GLCorePaintEngine::drawPixmap(const QRectF& aRect, const QPixmap& aPixmap, 
         auto texture = mTextureCaches.get(key, [=]() {
             auto cache = new TextureCaches::Cache();
             auto image = ptr->toImage();
-            cache->obj.reset(new QOpenGLTexture(image.mirrored()));
+            cache->obj.reset(new QOpenGLTexture(image.flipped(Qt::Horizontal | Qt::Vertical)));
             cache->key = key;
             cache->size = (size_t)image.sizeInBytes();
 
