@@ -755,6 +755,14 @@ QSize TimeLineEditor::modelSpaceSize() const {
 
 QPoint TimeLineEditor::currentTimeCursorPos() const { return mTimeCurrent.handlePos(); }
 
+int TimeLineEditor::frameAtPixel(int aPixelX) const {
+    return mTimeScale.frame(aPixelX - kTimeLineMargin);
+}
+
+int TimeLineEditor::pixelAtFrame(int aFrame) const {
+    return mTimeScale.pixelWidth(aFrame) + kTimeLineMargin;
+}
+
 void TimeLineEditor::render(
     QPainter& aPainter, const CameraInfo& aCamera, theme::TimeLine& aTheme, const QRect& aCullRect
 ) const {

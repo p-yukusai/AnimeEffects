@@ -57,7 +57,7 @@ public:
     void updateLines(QTreeWidgetItem* aTopNode);
     void updateLineSelection(core::ObjectNode* aRepresent);
     bool updateCursor(const core::AbstractCursor& aCursor);
-    void updateWheel(QWheelEvent* aEvent);
+    void updateWheel(QWheelEvent* aEvent, int aMouseX, int& aFrameBefore, int& aPixelAfter);
     void updateProjectAttribute();
     void updateTheme(theme::Theme&);
 
@@ -65,6 +65,9 @@ public:
 
     core::Frame currentFrame() const;
     int maxFrame() const;
+    
+    int frameAtPixel(int aPixelX) const;
+    int pixelAtFrame(int aFrame) const;
 
     QColor headerContentColor() const;
     void setHeaderContentColor(const QColor& headerContentColor);
