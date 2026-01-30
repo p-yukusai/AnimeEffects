@@ -228,10 +228,20 @@ void TimeLineWidget::wheelEvent(QWheelEvent* aEvent) {
         return;
     }
 
-    const QPoint cursor = aEvent->position().toPoint();
-    mInner->updateWheel(aEvent);
-    const QRect rectNext = mInner->rect();
-    viewTrans.setX(cursor.x() * rectNext.width() / mInner->parentWidget()->size().width() * -1);
+    // Zoom to mouse: keep the frame under the cursor at the same screen position after zoom
+    const int mouseViewportX = aEvent->position().toPoint().x();
+    const int mouseContentX = mouseViewportX - viewTrans.x();
+    
+    int frameBefore = 0;
+    int pixelAfter = 0;
+    mInner->updateWheel(aEvent, mouseContentX, frameBefore, pixelAfter);
+    
+    // Adjust scroll so the frame stays under the mouse
+    // viewportX = contentX + scrollOffset, so: newScrollOffset = mouseViewportX - pixelAfter
+    const int newScrollOffset = mouseViewportX - pixelAfter;
+    const int maxScroll = mInner->width() - viewport()->width();
+    viewTrans.setX(qBound(-maxScroll, newScrollOffset, 0));
+    
     setScrollBarValue(viewTrans);
     updateCamera();
 }

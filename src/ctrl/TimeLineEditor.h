@@ -48,6 +48,9 @@ public:
     int maxFrame() const { return mTimeMax; }
     QSize modelSpaceSize() const;
     QPoint currentTimeCursorPos() const;
+    
+    int frameAtPixel(int aPixelX) const;
+    int pixelAtFrame(int aFrame) const;
     bool checkContactWithKeyFocus(core::TimeLineEvent& aEvent, const QPoint& aPos);
     bool retrieveFocusTargets(core::TimeLineEvent& aEvent);
     QString pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Pointee<core::Project> project, bool isFolder);

@@ -279,8 +279,10 @@ bool TimeLineEditorWidget::updateCursor(const core::AbstractCursor& aCursor) {
     return (flags & ctrl::TimeLineEditor::UpdateFlag_ModFrame);
 }
 
-void TimeLineEditorWidget::updateWheel(QWheelEvent* aEvent) {
+void TimeLineEditorWidget::updateWheel(QWheelEvent* aEvent, int aMouseX, int& aFrameBefore, int& aPixelAfter) {
+    aFrameBefore = mEditor->frameAtPixel(aMouseX);
     mEditor->updateWheel(aEvent->angleDelta().y(), mViaPoint.mouseSetting().invertTimeLineScaling);
+    aPixelAfter = mEditor->pixelAtFrame(aFrameBefore);
     updateSize();
 }
 
@@ -312,6 +314,14 @@ void TimeLineEditorWidget::updateTheme(theme::Theme& aTheme) {
 }
 QSize TimeLineEditorWidget::getEditorSize() const {
     return mEditor->modelSpaceSize();
+}
+
+int TimeLineEditorWidget::frameAtPixel(int aPixelX) const {
+    return mEditor->frameAtPixel(aPixelX);
+}
+
+int TimeLineEditorWidget::pixelAtFrame(int aFrame) const {
+    return mEditor->pixelAtFrame(aFrame);
 }
 
 void TimeLineEditorWidget::paintEvent(QPaintEvent* aEvent) {
