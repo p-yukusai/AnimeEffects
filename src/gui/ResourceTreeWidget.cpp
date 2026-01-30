@@ -83,13 +83,13 @@ void ResourceTreeWidget::setProject(core::Project* aProject) {
         auto treeCount = this->topLevelItemCount();
         if (treeCount > 0) {
             // create vector
-            QScopedPointer<QVector<QTreeWidgetItem*>> trees(new QVector<QTreeWidgetItem*>());
+            std::unique_ptr<QVector<QTreeWidgetItem*>> trees(new QVector<QTreeWidgetItem*>());
             for (int i = 0; i < treeCount; ++i) {
                 trees->push_back(this->takeTopLevelItem(0));
             }
             // save
             auto hook = (ProjectHook*)mProject->hook();
-            hook->grabResourceTrees(trees.take());
+            hook->grabResourceTrees(trees.release());
         }
     }
     XC_ASSERT(this->topLevelItemCount() == 0);
