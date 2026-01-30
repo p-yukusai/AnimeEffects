@@ -211,6 +211,23 @@ void TimeLineWidget::mouseDoubleClickEvent(QMouseEvent* aEvent) {
 void TimeLineWidget::wheelEvent(QWheelEvent* aEvent) {
     aEvent->ignore();
     QPoint viewTrans = viewportTransform();
+
+    // Check if Shift is pressed for horizontal scrolling
+    if (aEvent->modifiers() & Qt::ShiftModifier) {
+        // Horizontal scroll: adjust the X position based on wheel delta
+        const int delta = aEvent->angleDelta().y();
+        const int scrollStep = 50; // Pixels to scroll per wheel step
+        viewTrans.setX(viewTrans.x() + (delta > 0 ? scrollStep : -scrollStep));
+
+        // Clamp to valid range
+        const int maxScroll = mInner->width() - viewport()->width();
+        viewTrans.setX(qBound(-maxScroll, viewTrans.x(), 0));
+
+        setScrollBarValue(viewTrans);
+        updateCamera();
+        return;
+    }
+
     const QPoint cursor = aEvent->position().toPoint();
     mInner->updateWheel(aEvent);
     const QRect rectNext = mInner->rect();
