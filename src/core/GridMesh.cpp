@@ -6,12 +6,8 @@
 #include <QScopedArrayPointer>
 #include "qjsonarray.h"
 #include "qjsonobject.h"
-#include "util/TriangleRasterizer.h"
-#include "util/CollDetect.h"
 #include "util/MathUtil.h"
 #include "util/BinarySpacePartition2D.h"
-#include "img/PixelPos.h"
-#include "img/Quad.h"
 #include "core/GridMesh.h"
 #include "core/HeightMap.h"
 #include "core/TimeLine.h"
@@ -97,7 +93,7 @@ void GridMesh::swap(GridMesh& aRhs) {
     mTexCoords.swap(aRhs.mTexCoords);
     mNormals.swap(aRhs.mNormals);
     mHexaConnections.swap(aRhs.mHexaConnections);
-    mMeshBuffer.swap(aRhs.mMeshBuffer);
+    std::swap(mMeshBuffer, aRhs.mMeshBuffer);
 
     resetIndexBuffer();
     aRhs.resetIndexBuffer();
@@ -279,7 +275,7 @@ gl::BufferObject& GridMesh::getIndexBuffer() {
 }
 
 LayerMesh::MeshBuffer& GridMesh::getMeshBuffer() {
-    if (mMeshBuffer.isNull()) {
+    if (!mMeshBuffer) {
         mMeshBuffer.reset(new MeshBuffer());
     }
     mMeshBuffer->reserve(mVertexCount);

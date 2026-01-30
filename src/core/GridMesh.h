@@ -4,6 +4,7 @@
 #include <QtOpenGL/QtOpenGL>
 #include <QSize>
 #include <QScopedArrayPointer>
+#include <memory>
 #include "XC.h"
 #include "util/Dir4.h"
 #include "util/Triangle2DPos.h"
@@ -113,7 +114,7 @@ private:
     util::ArrayBuffer<gl::Vector2> mTexCoords;
     util::ArrayBuffer<gl::Vector3> mNormals;
     util::ArrayBuffer<HexaConnection> mHexaConnections;
-    QScopedPointer<MeshBuffer> mMeshBuffer;
+    std::unique_ptr<MeshBuffer> mMeshBuffer;
     QScopedPointer<gl::BufferObject> mIndexBuffer;
 };
 
