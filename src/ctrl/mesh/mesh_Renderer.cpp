@@ -131,7 +131,7 @@ namespace mesh {
     }
 
     QPointF Renderer::getScreenPointF(const QVector2D& aShapePos) const {
-        return mInfo.camera.toScreenPos(mTargetMtx * QVector3D(aShapePos)).toPointF();
+        return mInfo.camera.toScreenPos(mTargetMtx.map(QVector3D(aShapePos))).toPointF();
     }
 
     void Renderer::setVtxBrush(bool aFocus) const {

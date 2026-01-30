@@ -39,7 +39,7 @@ namespace srt {
             const float sy = (i == 2 || i == 3) ? 1 : -1;
             const float x = sx * size.width();
             const float y = sy * size.height();
-            p[i] = aCamera.toScreenPos(matrix * QPointF(x, y));
+            p[i] = aCamera.toScreenPos(matrix.map(QPointF(x, y)));
         }
         c = (p[0] + p[1] + p[2] + p[3]) / 4.0f;
 

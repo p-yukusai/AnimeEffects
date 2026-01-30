@@ -77,7 +77,7 @@ namespace mesh {
     }
 
     QVector2D Focuser::getScreenPos(const core::CameraInfo& aCamera, const QVector2D& aModelPos) const {
-        return aCamera.toScreenPos(mTargetMtx * QVector3D(aModelPos)).toVector2D();
+        return aCamera.toScreenPos(mTargetMtx.map(QVector3D(aModelPos))).toVector2D();
     }
 
     void Focuser::setFocusEnable(bool aVtx, bool aEdge, bool aFace) {

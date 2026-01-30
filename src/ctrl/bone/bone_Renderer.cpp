@@ -36,7 +36,7 @@ namespace bone {
     void Renderer::setTargetMatrix(const QMatrix4x4& aMtx) { mTargetMtx = aMtx; }
 
     QPointF Renderer::getScreenPointF(const QVector2D& aBonePos) const {
-        return mInfo.camera.toScreenPos(mTargetMtx * QVector3D(aBonePos)).toPointF();
+        return mInfo.camera.toScreenPos(mTargetMtx.map(QVector3D(aBonePos))).toPointF();
     }
 
     void Renderer::renderBones(const Bone2* aBone) {
