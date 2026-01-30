@@ -4,7 +4,7 @@ namespace gl {
 
 TextObject::MapKey TextObject::getMapKey(const QString& aText) {
     auto bytes = aText.toUtf8();
-    auto crc16 = qChecksum(bytes.data(), bytes.size());
+    auto crc16 = qChecksum(bytes);
     return MapKey(crc16, aText);
 }
 
@@ -15,7 +15,7 @@ TextObject::TextObject(const QString& aText): mText(), mCRC16(), mTexture(), mWo
 void TextObject::setText(const QString& aText) {
     mText = aText;
     auto bytes = mText.toUtf8();
-    mCRC16 = qChecksum(bytes.data(), bytes.size());
+    mCRC16 = qChecksum(bytes);
 }
 
 int TextObject::pixelCount() const { return mTexture.size().width() * mTexture.size().height(); }

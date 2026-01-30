@@ -312,7 +312,7 @@ void PrimitiveDrawer::setViewMatrix(const QMatrix4x4& aViewMtx) {
         mScreenSize = QSize(viewport[2], viewport[3]);
     }
     // mPixelScale doesn't consider scaling which be applied different values at x and y-axis.
-    auto scrNorm = mViewMtx * QVector3D(1.0f, 0.0f, 0.0f) - mViewMtx * QVector3D(0.0f, 0.0f, 0.0f);
+    auto scrNorm = mViewMtx.map(QVector3D(1.0f, 0.0f, 0.0f)) - mViewMtx.map(QVector3D(0.0f, 0.0f, 0.0f));
     auto scrRatio =
         QVector2D(0.5f * mScreenSize.width() * scrNorm.x(), 0.5f * mScreenSize.height() * scrNorm.y()).length();
     mPixelScale = (scrRatio > FLT_EPSILON) ? 1.0f / scrRatio : 1.0f;

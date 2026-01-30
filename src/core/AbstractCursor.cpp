@@ -167,16 +167,16 @@ bool AbstractCursor::setTabletEvent(QTabletEvent* aEvent, const CameraInfo& aCam
         else{
             shouldDoubleClick = true;
         }
-        shouldUpdate = setMousePressImpl(aEvent->button(), aEvent->pos(), aCameraInfo);
+        shouldUpdate = setMousePressImpl(aEvent->button(), aEvent->position().toPoint(), aCameraInfo);
         mIsPressedTablet = true;
         mPressure = pressure;
     } else if (type == QEvent::TabletMove) {
-        shouldUpdate = setMouseMoveImpl(aEvent->button(), aEvent->pos(), aCameraInfo);
+        shouldUpdate = setMouseMoveImpl(aEvent->button(), aEvent->position().toPoint(), aCameraInfo);
         if (mIsPressedTablet) {
             mPressure = 0.5f * mPressure + 0.5f * pressure;
         }
     } else if (type == QEvent::TabletRelease) {
-        shouldUpdate = setMouseReleaseImpl(aEvent->button(), aEvent->pos(), aCameraInfo);
+        shouldUpdate = setMouseReleaseImpl(aEvent->button(), aEvent->position().toPoint(), aCameraInfo);
         mIsPressedTablet = false;
         mPressure = 1.0f;
     }
