@@ -3,7 +3,6 @@
 
 #include <QVector>
 #include <QScopedPointer>
-#include "util/ArrayBlock.h"
 #include "util/Range.h"
 #include "gl/Vector2.h"
 #include "gl/Vector3.h"

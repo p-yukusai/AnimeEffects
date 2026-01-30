@@ -1,4 +1,3 @@
-#include "XC.h"
 #include "core/Deserializer.h"
 #include "util/PackBits.h"
 #include <memory>

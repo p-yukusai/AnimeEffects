@@ -5,8 +5,6 @@
 #include <QSize>
 #include <QScopedArrayPointer>
 #include <memory>
-#include "XC.h"
-#include "util/Dir4.h"
 #include "util/Triangle2DPos.h"
 #include "util/ArrayBlock.h"
 #include "util/ArrayBuffer.h"

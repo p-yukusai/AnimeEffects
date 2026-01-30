@@ -1,4 +1,3 @@
-#include "XC.h"
 #include "gl/Global.h"
 #include "core/LayerMesh.h"
 
