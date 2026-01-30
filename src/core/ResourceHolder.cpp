@@ -1,4 +1,5 @@
 #include <QDir>
+#include <memory>
 #include "img/BlendMode.h"
 #include "core/ResourceHolder.h"
 
@@ -242,8 +243,8 @@ bool ResourceHolder::deserializeNode(Deserializer& aIn, img::ResourceNode** aDst
         return aIn.errored("invalid child count");
 
     // create instance
-    QScopedPointer<img::ResourceNode> node(new img::ResourceNode(identifier));
-    auto nodePtr = node.data();
+    std::unique_ptr<img::ResourceNode> node(new img::ResourceNode(identifier));
+    auto nodePtr = node.get();
     if (!node)
         return aIn.errored("failed to create resource node");
 
@@ -307,7 +308,7 @@ bool ResourceHolder::deserializeNode(Deserializer& aIn, img::ResourceNode** aDst
     }
 
     // success
-    *aDst = node.take();
+    *aDst = node.release();
     return true;
 }
 

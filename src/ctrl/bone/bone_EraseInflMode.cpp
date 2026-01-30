@@ -1,8 +1,5 @@
 #include "util/CollDetect.h"
-#include "util/MathUtil.h"
 #include "cmnd/ScopedMacro.h"
-#include "core/Constant.h"
-#include "ctrl/TimeLineUtil.h"
 #include "ctrl/CmndName.h"
 #include "ctrl/bone/bone_EraseInflMode.h"
 #include "ctrl/bone/bone_Renderer.h"
@@ -110,8 +107,8 @@ namespace bone {
         if (!parent)
             return result;
 
-        const QVector2D brushPos = (mTargetInvMtx * QVector3D(aBrush.center())).toVector2D();
-        const float brushRange = (mTargetInvMtx * QVector3D(mBrush.radius(), 0.0f, 0.0f) - mTargetInvMtx * QVector3D())
+        const QVector2D brushPos = (mTargetInvMtx.map(QVector3D(aBrush.center()))).toVector2D();
+        const float brushRange = (mTargetInvMtx.map(QVector3D(mBrush.radius(), 0.0f, 0.0f)) - mTargetInvMtx.map(QVector3D()))
                                      .toVector2D()
                                      .length();
 

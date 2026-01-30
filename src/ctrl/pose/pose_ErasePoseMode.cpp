@@ -61,7 +61,7 @@ namespace pose {
                 Bone2::ConstIterator itr(topBone);
                 while (itr.hasNext()) {
                     auto ptr = itr.next();
-                    auto worldPos = mTargetMtx * QVector3D(ptr->worldPos());
+                    auto worldPos = mTargetMtx.map(QVector3D(ptr->worldPos()));
                     if (mBrush.isInside(worldPos.toVector2D())) {
                         nextRots.push_back(ptr->rotate() * eraseRate);
                     } else {

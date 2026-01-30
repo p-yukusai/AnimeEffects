@@ -1,5 +1,6 @@
 #include <QMenu>
 #include <QPainter>
+#include <memory>
 #include <QScrollBar>
 #include <QDragMoveEvent>
 #include <QModelIndexList>
@@ -128,13 +129,13 @@ void ObjectTreeWidget::setProject(core::Project* aProject) {
 
         auto treeCount = this->topLevelItemCount();
         if (treeCount > 0) {
-            QScopedPointer<QVector<QTreeWidgetItem*>> trees(new QVector<QTreeWidgetItem*>());
+            std::unique_ptr<QVector<QTreeWidgetItem*>> trees(new QVector<QTreeWidgetItem*>());
             for (int i = 0; i < treeCount; ++i) {
                 trees->push_back(this->takeTopLevelItem(0));
             }
             // save
             auto hook = static_cast<ProjectHook*>(mProject->hook());
-            hook->grabObjectTrees(trees.take());
+            hook->grabObjectTrees(trees.release());
         }
     }
     XC_ASSERT(this->topLevelItemCount() == 0);
@@ -1254,15 +1255,15 @@ void ObjectTreeWidget::showEvent(QShowEvent* aEvent) {
 }
 
 void ObjectTreeWidget::dragMoveEvent(QDragMoveEvent* aEvent) {
-    QPoint cheatPos = aEvent->pos();
+    QPoint cheatPos = aEvent->position().toPoint();
     mDragIndex = cheatDragDropPos(cheatPos);
 
     QDragMoveEvent dummyEvent(
         cheatPos,
         aEvent->dropAction(),
         aEvent->mimeData(),
-        aEvent->mouseButtons(),
-        aEvent->keyboardModifiers(),
+        aEvent->buttons(),
+        aEvent->modifiers(),
         aEvent->type()
     );
     QTreeWidget::dragMoveEvent(&dummyEvent);
@@ -1279,19 +1280,19 @@ void ObjectTreeWidget::dragMoveEvent(QDragMoveEvent* aEvent) {
 
 void ObjectTreeWidget::dropEvent(QDropEvent* aEvent) {
     mDragIndex = QModelIndex();
-    QPoint cheatPos = aEvent->pos();
+    QPoint cheatPos = aEvent->position().toPoint();
     cheatDragDropPos(cheatPos);
     QDropEvent dummyEvent(
         cheatPos,
         aEvent->dropAction(),
         aEvent->mimeData(),
-        aEvent->mouseButtons(),
-        aEvent->keyboardModifiers(),
+        aEvent->buttons(),
+        aEvent->modifiers(),
         aEvent->type()
     );
-    QModelIndex cursorIndex = this->indexAt(aEvent->pos());
+    QModelIndex cursorIndex = this->indexAt(aEvent->position().toPoint());
 
-    if (this->visualRect(cursorIndex).contains(aEvent->pos())) {
+    if (this->visualRect(cursorIndex).contains(aEvent->position().toPoint())) {
         mRemovedPositions.clear();
         mInsertedPositions.clear();
 

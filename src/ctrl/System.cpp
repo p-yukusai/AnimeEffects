@@ -1,5 +1,6 @@
 #include <QDir>
 #include <QFile>
+#include <memory>
 #include <qstandardpaths.h>
 #include "gl/Global.h"
 #include "gl/DeviceInfo.h"
@@ -55,15 +56,15 @@ System::LoadResult System::newProject(
     util::IProgressReporter& aReporter,
     bool aSpecifiesCanvasSize
 ) {
-    QScopedPointer<core::Project::Hook> hookScope(aHookGrabbed);
+    std::unique_ptr<core::Project::Hook> hookScope(aHookGrabbed);
 
     XC_ASSERT(mAnimator);
     XC_ASSERT(gl::DeviceInfo::validInstanceExists());
 
     gl::Global::makeCurrent();
 
-    QScopedPointer<core::Project> projectScope;
-    projectScope.reset(new Project(QString(), *mAnimator, hookScope.take()));
+    std::unique_ptr<core::Project> projectScope;
+    projectScope.reset(new Project(QString(), *mAnimator, hookScope.release()));
     projectScope->attribute() = aAttr;
     projectScope->resourceHolder().setRootPath(QFileInfo(aFileName).path());
 
@@ -71,7 +72,7 @@ System::LoadResult System::newProject(
     loader.setCanvasSize(aAttr.imageSize(), aSpecifiesCanvasSize);
 
     if (loader.load(aFileName, *projectScope, aReporter)) {
-        mProjects.push_back(projectScope.take());
+        mProjects.push_back(projectScope.release());
         return LoadResult(mProjects.back(), "Success.");
     }
 
@@ -83,7 +84,7 @@ System::LoadResult System::newProject(
 
 System::LoadResult
 System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util::IProgressReporter& aReporter) {
-    QScopedPointer<core::Project::Hook> hookScope(aHookGrabbed);
+    std::unique_ptr<core::Project::Hook> hookScope(aHookGrabbed);
 
     XC_ASSERT(mAnimator);
     XC_ASSERT(gl::DeviceInfo::validInstanceExists());
@@ -91,12 +92,12 @@ System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util:
     gl::Global::makeCurrent();
 
     if (!aFileName.isEmpty()) {
-        QScopedPointer<core::Project> projectScope;
-        projectScope.reset(new Project(aFileName, *mAnimator, hookScope.take()));
+        std::unique_ptr<core::Project> projectScope;
+        projectScope.reset(new Project(aFileName, *mAnimator, hookScope.release()));
 
         ctrl::ProjectLoader loader;
         if (loader.load(aFileName, *projectScope, gl::DeviceInfo::instance(), aReporter)) {
-            mProjects.push_back(projectScope.take());
+            mProjects.push_back(projectScope.release());
             {
                 // Due to the transition to Qt6 every cache on load is just f*cked, TODO: Fix cache loading
                 const auto aOwner = mProjects.back()->objectTree().topNode();

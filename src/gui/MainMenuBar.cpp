@@ -32,6 +32,14 @@ QDomDocument getVideoExportDocument() {
     }
 
     QDomDocument prop;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    auto result = prop.setContent(&file, QDomDocument::ParseOption::Default);
+    if (!result) {
+        qDebug() << "invalid xml file. " << file.fileName() << result.errorMessage << ", line = " << result.errorLine
+                 << ", column = " << result.errorColumn;
+        return {};
+    }
+#else
     QString errorMessage;
     int errorLine = 0;
     int errorColumn = 0;
@@ -40,6 +48,7 @@ QDomDocument getVideoExportDocument() {
                  << ", column = " << errorColumn;
         return {};
     }
+#endif
     file.close();
 
     return prop;
@@ -495,7 +504,7 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                 #endif
                 int threes = digits / 3;
                 bool numNotOdd = digits % 2;
-                for (threes; threes > 0; --threes) {
+                for (; threes > 0; --threes) {
                     int padding = numNotOdd ? 0 : 1;
                     if (digits > 3 && threes * 3 + 1 == digits && padding == 1) {
                         vramString = QString::number(vram).insert(digits - (digits - 1), ',');

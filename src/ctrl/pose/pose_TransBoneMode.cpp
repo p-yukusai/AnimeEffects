@@ -40,7 +40,7 @@ namespace pose {
                 const QVector2D tail = focus->worldPos();
                 const util::Segment2D seg(center, tail - center);
 
-                const QVector2D cursorPos = (mTargetInvMtx * QVector3D(aCursor.worldPos())).toVector2D();
+                const QVector2D cursorPos = (mTargetInvMtx.map(QVector3D(aCursor.worldPos()))).toVector2D();
                 mMoveOffset = cursorPos - util::CollDetect::getPosOnLine(seg, cursorPos);
             }
             updated = true;
@@ -48,7 +48,7 @@ namespace pose {
             Bone2* selected = mFocuser.selectingBone();
 
             if (selected && selected->parent()) {
-                const QVector2D cursorPos = (mTargetInvMtx * QVector3D(aCursor.worldPos())).toVector2D();
+                const QVector2D cursorPos = (mTargetInvMtx.map(QVector3D(aCursor.worldPos()))).toVector2D();
 
                 const QVector2D center = selected->parent()->worldPos();
                 const QVector2D prev = selected->worldPos() - center;

@@ -1,6 +1,6 @@
-#include "XC.h"
 #include "core/Deserializer.h"
 #include "util/PackBits.h"
+#include <memory>
 
 namespace core {
 
@@ -41,14 +41,14 @@ void Deserializer::read(QList<int>& aValue, bool errorCorrection) {
     bool valueInvalid = false;
     for (int x = 0; x < size; x += 1) {
         aValue[x] = mIn.readSInt32();
-        if(aValue[x] >= 1e5){
+        if (aValue[x] >= 1e5) {
             valueInvalid = true;
         }
     }
-    if(errorCorrection){
+    if (errorCorrection) {
         qDebug("Correcting bytes.");
         mIn.skip(-4);
-        if(valueInvalid){
+        if (valueInvalid) {
             qDebug("Error correction triggered.");
             aValue = {0, 100, 100, 0};
         }
@@ -130,11 +130,10 @@ bool Deserializer::read(util::Easing::Param& aValue, bool errorCorrection) {
         aValue.cubicBezier.y1 = mIn.readFloat32();
         aValue.cubicBezier.x2 = mIn.readFloat32();
         aValue.cubicBezier.y2 = mIn.readFloat32();
-    }
-    else {
+    } else {
         aValue.cubicBezier = util::Easing::CubicBezier();
     }
-    if(!aValue.isValidParam() && errorCorrection){
+    if (!aValue.isValidParam() && errorCorrection) {
         aValue = util::Easing::Param();
         qDebug("Correcting bytes.");
         mIn.skip(-4);
@@ -317,8 +316,8 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
 
     // allocate dest
     const size_t dstSize = w * h * 4;
-    QScopedPointer<uint8> dst(new uint8[dstSize]);
-    if (dst.isNull())
+    std::unique_ptr<uint8[]> dst(new uint8[dstSize]);
+    if (!dst)
         return false;
 
     // allocate work buffer
@@ -334,7 +333,7 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
 
     util::PackBits decoder;
 
-    uint8* dstp = dst.data();
+    uint8* dstp = dst.get();
 
     // each line
     for (uint32 y = 0; y < h; ++y) {
@@ -369,7 +368,7 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
 
     // set
     aValue.size = dstSize;
-    aValue.data = dst.take();
+    aValue.data = dst.release();
 
     return true;
 }

@@ -48,7 +48,7 @@ namespace ctrl::srt {
 
                 if (mFocus.first == FocusType_Scale || mFocus.first == FocusType_ScaleX ||
                     mFocus.first == FocusType_ScaleY) {
-                    auto keyWorldPos = keyParentMtx * QVector3D(mKeyOwner.moveKey->pos());
+                    auto keyWorldPos = keyParentMtx.map(QVector3D(mKeyOwner.moveKey->pos()));
                     mBaseVec = mKeyOwner.scaleKey->scale();
 
                     const QVector3D pos = QVector3D(aCursor.worldPos());
@@ -56,7 +56,7 @@ namespace ctrl::srt {
                     const float length = QVector2D::dotProduct(vec, focusVector);
                     mBaseValue = std::max(Constant::normalizable(), length);
                 } else if (mFocus.first == srt::FocusType_Rotate) {
-                    mBaseVec = (mKeyOwner.invParentSRMtx * QVector3D(focusVector)).toVector2D();
+                    mBaseVec = (mKeyOwner.invParentSRMtx.map(QVector3D(focusVector))).toVector2D();
                 }
                 mod = true;
             }
@@ -64,17 +64,17 @@ namespace ctrl::srt {
             auto focusVector = aCamera.toWorldVector(mFocus.second);
 
             auto keyPos = mKeyOwner.moveKey->pos();
-            auto keyWorldPos = keyParentMtx * QVector3D(keyPos);
+            auto keyWorldPos = keyParentMtx.map(QVector3D(keyPos));
             auto cursorWorldPos = QVector3D(aCursor.worldPos());
             auto cursorWorldVel = QVector3D(aCursor.worldVel());
 
             if (mFocus.first == srt::FocusType_Trans) {
                 auto moveData = mKeyOwner.moveKey->data();
-                moveData.addPos((mKeyOwner.invParentSRMtx * cursorWorldVel).toVector2D());
+                moveData.addPos((mKeyOwner.invParentSRMtx.map(cursorWorldVel)).toVector2D());
                 assignMoveKey(moveData);
             } else if (mFocus.first == srt::FocusType_Rotate) {
                 auto rotData = mKeyOwner.rotateKey->data();
-                auto vec = (mKeyOwner.invParentMtx * cursorWorldPos).toVector2D() - keyPos;
+                auto vec = (mKeyOwner.invParentMtx.map(cursorWorldPos)).toVector2D() - keyPos;
                 const float length = vec.length();
                 if (length > 1.0f) {
                     auto rotate = util::MathUtil::getAngleDifferenceRad(mBaseVec, vec);

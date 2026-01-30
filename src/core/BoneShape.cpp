@@ -1,4 +1,5 @@
 #include <QtMath>
+#include <utility>
 #include "qjsonarray.h"
 #include "qjsonobject.h"
 #include "util/MathUtil.h"
@@ -365,7 +366,7 @@ QPolygonF objToPoly(QJsonObject obj, QString varName) {
     int polyCount = polyKey["PolyCount"].toInt();
     int vtxCount = 0;
     while (vtxCount != polyCount) {
-        for (auto vtx : qAsConst(polyArray)) {
+        for (auto vtx : std::as_const(polyArray)) {
             QJsonObject vertex = vtx.toObject();
             poly.append(QPointF(vertex["X"].toDouble(), vertex["Y"].toDouble()));
             vtxCount++;

@@ -27,7 +27,9 @@ bool AudioPlaybackWidget::serialize(std::vector<audioConfig>* pConf, const QStri
         x++;
     }
     QFile file(outPath);
-    file.open(QIODevice::ReadWrite);
+    if (!file.open(QIODevice::ReadWrite)) {
+        return false;
+    }
     file.write(QJsonDocument(audioJson).toJson(QJsonDocument::Indented));
     file.close();
     return true;
@@ -368,8 +370,8 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
         curUIState.musDurationLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Duration (in frames): </p></body></html>", nullptr) +
                                        "<html><head/><body><p align=\"center\">" + QString::number(val - config->at(index).startFrame) + "</p></body></html>");
     }));
-    checkConnection(QCheckBox::connect(curUIState.playAudio, &QCheckBox::stateChanged, [=](const bool val){
-        config->at(index).playbackEnable = val;
+    checkConnection(QCheckBox::connect(curUIState.playAudio, &QCheckBox::checkStateChanged, [=](const Qt::CheckState val){
+        config->at(index).playbackEnable = (val == Qt::Checked);
     }));
     checkConnection(QSlider::connect(curUIState.volumeSlider, &QSlider::valueChanged, [=](const int val){
         config->at(index).volume = val;
