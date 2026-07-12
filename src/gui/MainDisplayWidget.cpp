@@ -179,6 +179,14 @@ void MainDisplayWidget::initializeGL() {
     // check version
     {
         auto version = this->format().version();
+        // fallback, on account of us needing ogl core v4.0+ to function using gl_major and gl_minor should be fine
+        if (version < gl::Global::kVersion) {
+            int major = 0;
+            int minor = 0;
+            this->context()->functions()->glGetIntegerv(GL_MAJOR_VERSION, &major);
+            this->context()->functions()->glGetIntegerv(GL_MINOR_VERSION, &minor);
+            version = {major, minor};
+        }
         if (version < gl::Global::kVersion) {
             auto obtainedVersion = QString::number(version.first) + "." + QString::number(version.second);
             auto requiredVersion =
