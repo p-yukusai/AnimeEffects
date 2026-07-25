@@ -7,12 +7,11 @@
 | [Windows](https://github.com/AnimeEffectsDevs/AnimeEffects/releases/download/v1.7.1/AnimeEffects-Windows.zip) - [MacOS](https://github.com/AnimeEffectsDevs/AnimeEffects/releases/download/v1.7.1/AnimeEffects-MacOS.zip) - [Linux](https://github.com/AnimeEffectsDevs/AnimeEffects/releases/download/v1.7.1/AnimeEffects-Linux.zip) | [Windows](https://nightly.link/AnimeEffectsDevs/AnimeEffects/workflows/build-windows.yaml/master/AnimeEffects-Windows-x64.zip) - [MacOS](https://nightly.link/AnimeEffectsDevs/AnimeEffects/workflows/build_mac_intel.yaml/master/AnimeEffects-MacOS.zip) - [Linux](https://nightly.link/AnimeEffectsDevs/AnimeEffects/workflows/build_linux.yaml/master/AnimeEffects-Linux.zip) | [Download ZIP](https://github.com/AnimeEffectsDevs/AnimeEffects/archive/refs/heads/master.zip) |
 
 ## 🌐 README 🌐
-
-[English](./README.md) - Up-to-date <br>
-[日本語](./README-ja.md) - 更新 <br>
-[简体中文](./README-zh.md) - 最新 <br>
-[正體中文](./README-zh-t.md) - 尚未提供 <br>
-[Español](./README-es.md) - Actualizado <br>
+[English](./README.md) -
+[日本語](./README-ja.md) -
+[简体中文](./README-zh.md) -
+[正體中文](./README-zh-t.md) -
+[Español](./README-es.md)
 
 ## Description
 
