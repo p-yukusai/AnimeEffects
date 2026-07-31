@@ -112,9 +112,9 @@ void FFDKey::deserializeFromJson(QJsonObject json) {
         QJsonArray vtx = json["Positions"].toArray();
         for (int i = 0; i < vtxCount; i++) {
             QJsonObject vtxObj = vtx[i].toObject();
-            mData.positions()[i].x = vtxObj["X"].toDouble();
-            mData.positions()[i].y = vtxObj["Y"].toDouble();
-            mData.positions()[i].z = vtxObj["Z"].toDouble();
+            mData.positions()[i].x = static_cast<float>(vtxObj["X"].toDouble());
+            mData.positions()[i].y = static_cast<float>(vtxObj["Y"].toDouble());
+            mData.positions()[i].z = static_cast<float>(vtxObj["Z"].toDouble());
         }
     } else {
         mData.clear();

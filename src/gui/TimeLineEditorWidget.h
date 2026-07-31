@@ -124,7 +124,6 @@ private:
     QAction* mCopyToClipboard;
     QAction* mSetSpacing;
     QAction* mPasteKey;
-    QAction* mPasteFromClipboard;
     QAction* mDeleteKey;
     QAction* mSelectSpacing;
     QMenu* mSelectEasing;

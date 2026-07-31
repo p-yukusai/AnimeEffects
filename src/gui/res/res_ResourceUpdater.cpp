@@ -378,6 +378,12 @@ namespace gui::res {
         RESOURCE_UPDATER_DUMP("end reload");
     }
 
+    void ResourceUpdater::forceReload(Item &aItem) {
+        // reload images
+        tryReloadCorrespondingImages(aItem, &aItem.node());
+        RESOURCE_UPDATER_DUMP("end reload");
+    }
+
     std::pair<int, img::ResourceNode*>
     findCorrespondingNode(const img::ResourceNode::Children& aSearchList, const img::ResourceNode& aNode) {
         {
@@ -485,7 +491,9 @@ namespace gui::res {
 
             // load new image
             auto success = aNewNode.data().loadImage();
-            XC_ASSERT(success);
+            if (!success) {
+                return false;
+            }
             (void)success;
 
             // if layer data be modified

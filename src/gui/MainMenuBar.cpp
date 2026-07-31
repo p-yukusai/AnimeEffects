@@ -18,6 +18,7 @@
 #include <algorithm>
 #ifdef Q_OS_WINDOWS
 #define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
 #define VENDOR_ID_LEN 13

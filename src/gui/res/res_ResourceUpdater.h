@@ -18,6 +18,7 @@ namespace gui::res {
         ResourceUpdater(ViaPoint& aViaPoint, core::Project& aProject);
         void load(QTreeWidget& aTree, const QString& aFilePath);
         void reload(Item& aItem);
+        void forceReload(Item& aItem);
         void remove(QTreeWidget& aTree, Item& aTopItem);
 
     private:

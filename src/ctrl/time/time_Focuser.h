@@ -32,14 +32,13 @@ namespace time {
         bool viewIsChanged() const;
         QRect visualRect() const;
         void moveBoundingRect(int aAddFrame);
-
+        util::PlacePointer<util::LifeLink> mFocusLink;
     private:
         SingleFocus updateImpl(bool aForceSingle);
         QRect boundingRect() const;
 
         const QVector<TimeLineRow>& mRows;
         const Scaler& mScale;
-        util::PlacePointer<util::LifeLink> mFocusLink;
         QPoint mPoint;
         QRect mRange;
         bool mFoundFocus;

@@ -218,14 +218,14 @@ void Bone2::deserializeFromJson(QJsonObject json, bool isChild) {
     mWorldPos = objToVec(json, "WorldPos");
     mRotate = (float)json["Rotate"].toDouble();
     // I frankly have no idea if this works or not...
-    int bindCount = json["Nodes"].toInt();
+    const int bindCount = json["Nodes"].toInt();
     for (int i = 0; i < bindCount; ++i) {
-        mBindingNodes.push_back((ObjectNode*)this);
+        mBindingNodes.push_back(reinterpret_cast<ObjectNode *>(this));
     }
     // @todo Child pasting is broken.
     if (!isChild) {
         QJsonArray childArray = json["Children"].toArray();
-        int childCount = (int)childArray.size();
+        int childCount = static_cast<int>(childArray.size());
         int childIndex = 0;
         while (childIndex < childCount) {
             for (auto child : childArray) {

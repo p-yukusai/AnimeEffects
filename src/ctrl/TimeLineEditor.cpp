@@ -1,4 +1,3 @@
-#include <QPainter>
 #include "core/ResourceUpdatingWorkspace.h"
 #include "core/TimeKeyExpans.h"
 #include "ffd/ffd_Target.h"
@@ -7,25 +6,23 @@
 #include "qjsonarray.h"
 #include "qjsondocument.h"
 #include "qjsonobject.h"
-#include "util/TreeIterator.h"
 #include "cmnd/ScopedMacro.h"
 #include "cmnd/BasicCommands.h"
 #include "ctrl/TimeLineEditor.h"
 #include "ctrl/CmndName.h"
 #include "ctrl/time/time_Renderer.h"
 #include "core/FFDKeyUpdater.h"
-#include "core/ImageKeyUpdater.h"
+#include "gui/ObjectTreeWidget.h"
 
 using namespace core;
 
 namespace {
-
-static const int kTimeLineFpsA = 60;
-static const int kTimeLineFpsB = 30;
-static const int kTimeLineFpsC = 10;
-static const int kTimeLineMargin = 14;
-static const int kHeaderHeight = 22;
-static const int kDefaultMaxFrame = 600;
+    constexpr int kTimeLineFpsA = 60;
+    constexpr int kTimeLineFpsB = 30;
+    constexpr int kTimeLineFpsC = 10;
+    constexpr int kTimeLineMargin = 14;
+    constexpr int kHeaderHeight = 22;
+    constexpr int kDefaultMaxFrame = 600;
 
 } // namespace
 
@@ -47,7 +44,7 @@ TimeLineEditor::TimeLineEditor():
     mShowSelectionRange(false) {
     mRows.reserve(64);
 
-    const std::array<int, 3> kFrameList = {kTimeLineFpsA, kTimeLineFpsB, kTimeLineFpsC};
+    constexpr std::array<int, 3> kFrameList = {kTimeLineFpsA, kTimeLineFpsB, kTimeLineFpsC};
     mTimeScale.setFrameList(kFrameList);
 
     // reset max frame
@@ -58,7 +55,7 @@ void TimeLineEditor::setMaxFrame(int aValue) {
     mTimeMax = aValue;
     mTimeScale.setMaxFrame(mTimeMax);
     mTimeCurrent.setMaxFrame(mTimeMax);
-    mTimeCurrent.setFrame(mTimeScale, core::Frame(0));
+    mTimeCurrent.setFrame(mTimeScale, Frame(0));
 }
 
 void TimeLineEditor::setProject(Project* aProject) {
@@ -87,13 +84,13 @@ void TimeLineEditor::clearState() {
 }
 
 void TimeLineEditor::pushRow(ObjectNode* aNode, util::Range aWorldTB, bool aClosedFolder) {
-    const int left = kTimeLineMargin;
+    constexpr int left = kTimeLineMargin;
     const int right = left + mTimeScale.maxPixelWidth();
     const QRect rect(QPoint(left, aWorldTB.min()), QPoint(right, aWorldTB.max()));
     mRows.push_back(TimeLineRow(aNode, rect, aClosedFolder, aNode == mSelectingRow));
 }
 
-void TimeLineEditor::updateRowSelection(const core::ObjectNode* aRepresent) {
+void TimeLineEditor::updateRowSelection(const ObjectNode* aRepresent) {
     mSelectingRow = aRepresent;
     for (auto& row : mRows) {
         row.selecting = (row.node && row.node == aRepresent);
@@ -122,7 +119,7 @@ void TimeLineEditor::updateProjectAttribute() {
 }
 
 TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& aCursor) {
-    TimeLineEditor::UpdateFlags flags = 0;
+    UpdateFlags flags = 0;
 
     if (!mProject) {
         return flags;
@@ -264,20 +261,19 @@ bool TimeLineEditor::modifyMoveKeys(const QPoint& aWorldPos) {
     return false;
 }
 
-bool TimeLineEditor::checkContactWithKeyFocus(core::TimeLineEvent& aEvent, const QPoint& aPos) {
+bool TimeLineEditor::checkContactWithKeyFocus(TimeLineEvent& aEvent, const QPoint& aPos) {
     if (mFocus.hasRange() && !mFocus.isInRange(aPos)) {
         return false;
     }
     return mFocus.select(aEvent);
 }
 
-bool TimeLineEditor::retrieveFocusTargets(core::TimeLineEvent& aEvent) {
+bool TimeLineEditor::retrieveFocusTargets(TimeLineEvent& aEvent) {
     if (mFocus.hasRange()) {
         return mFocus.select(aEvent);
     }
     return false;
 }
-
 bool isKeyJsonValid(QJsonObject json) {
     if (json.contains("TargetsSize") && json["TargetsSize"] != 0 && json.contains("Keys") &&
         json.value("Keys").toArray().size() != 0) {
@@ -286,15 +282,15 @@ bool isKeyJsonValid(QJsonObject json) {
     return false;
 }
 
-QVector2D objToVec(QJsonObject obj, QString varName) {
-    return QVector2D(obj[varName + "X"].toDouble(), obj[varName + "Y"].toDouble());
+QVector2D objToVec(QJsonObject obj, const QString& varName) {
+    return {static_cast<float>(obj[varName + "X"].toDouble()), static_cast<float>(obj[varName + "Y"].toDouble())};
 }
 
 util::Easing::Param objToEasing(QJsonObject obj) {
     util::Easing::Param easing;
     easing.range = util::Easing::rangeToEnum(obj["aRange"].toString());
     easing.type = util::Easing::easingToEnum(obj["eType"].toString());
-    easing.weight = obj["eWeight"].toDouble();
+    easing.weight = static_cast<float>(obj["eWeight"].toDouble());
     // qDebug() << easing.type << easing.range << easing.weight;
     return easing;
 }
@@ -305,7 +301,7 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
     // the cast rounds at the third decimal for some godforsaken reason.
     switch (type) {
         case TimeKeyType_Move: {
-            MoveKey* moveKey = new MoveKey;
+            auto* moveKey = new MoveKey;
             QVector2D pos = objToVec(obj, "Pos");
             QVector2D centre = objToVec(obj, "Centre");
             MoveKey::SplineType spline =
@@ -318,29 +314,29 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
             return moveKey;
         }
         case TimeKeyType_Rotate: {
-            RotateKey* rotateKey = new RotateKey;
+            auto* rotateKey = new RotateKey;
             rotateKey->setRotate(obj["Rotate"].toDouble());
             rotateKey->data().easing() = objToEasing(obj);
             rotateKey->setFrame(obj["Frame"].toInt());
             return rotateKey;
         }
         case TimeKeyType_Scale: {
-            ScaleKey* scaleKey = new ScaleKey;
+            auto* scaleKey = new ScaleKey;
             scaleKey->setScale(objToVec(obj, "Scale"));
             scaleKey->data().easing() = objToEasing(obj);
             scaleKey->setFrame(obj["Frame"].toInt());
             return scaleKey;
         }
         case TimeKeyType_Depth: {
-            DepthKey* depthKey = new DepthKey;
-            depthKey->setDepth(obj["Depth"].toDouble());
+            auto* depthKey = new DepthKey;
+            depthKey->setDepth(static_cast<float>(obj["Depth"].toDouble()));
             depthKey->data().easing() = objToEasing(obj);
             depthKey->setFrame(obj["Frame"].toInt());
             return depthKey;
         }
         case TimeKeyType_Opa: {
-            OpaKey* opaKey = new OpaKey;
-            opaKey->setOpacity(obj["Opacity"].toDouble());
+            auto* opaKey = new OpaKey;
+            opaKey->setOpacity(static_cast<float>(obj["Opacity"].toDouble()));
             opaKey->data().easing() = objToEasing(obj);
             opaKey->setFrame(obj["Frame"].toInt());
             return opaKey;
@@ -348,10 +344,10 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
         case TimeKeyType_Bone: {
             auto* boneKey = new BoneKey;
             QJsonArray boneArray = obj["Bones"].toArray();
-            QList<core::Bone2*> bones;
+            QList<Bone2*> bones;
             for (QJsonValue bone : boneArray) {
                 QJsonObject boneObj = bone.toObject();
-                auto* newBone = new core::Bone2;
+                auto* newBone = new Bone2;
                 newBone->deserializeFromJson(boneObj, false);
                 bones.append(newBone);
             }
@@ -360,12 +356,12 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
             return boneKey;
         }
         case TimeKeyType_Pose: {
-            PoseKey* poseKey = new PoseKey;
+            auto* poseKey = new PoseKey;
             QJsonArray boneArray = obj["Bone"].toArray();
-            QList<core::Bone2*> bones;
+            QList<Bone2*> bones;
             for (QJsonValue bone : boneArray) {
                 QJsonObject boneObj = bone.toObject();
-                core::Bone2* newBone = new core::Bone2;
+                auto* newBone = new Bone2;
                 newBone->deserializeFromJson(boneObj, false);
                 bones.append(newBone);
             }
@@ -378,41 +374,35 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
             if (isFolder) {
                 return nullptr;
             }
-            MeshKey* meshKey = new MeshKey;
+            auto* meshKey = new MeshKey;
             QJsonObject mesh = obj["Mesh"].toObject();
             meshKey->data().deserializeFromJson(mesh);
             meshKey->setFrame(obj["Frame"].toInt());
             return meshKey;
         }
         case TimeKeyType_FFD: {
-            /*
             FFDKey* ffdKey = new FFDKey;
             ffdKey->data().easing() = objToEasing(obj);
             ffdKey->deserializeFromJson(obj);
             ffdKey->setFrame(obj["Frame"].toInt());
-            */
-
-            // Why not? You may be asking yourself.
-            // To that I answer a web of virtual functions and gl shenanigans
-            return nullptr;
+            return ffdKey;
         }
         case TimeKeyType_Image: {
             // Key type not acknowledged by folders
             if (isFolder) {
                 return nullptr;
             }
-            ImageKey* imageKey = new ImageKey;
+            auto* imageKey = new ImageKey;
             imageKey->data().easing() = objToEasing(obj);
             if (imageKey->deserializeFromJson(obj, project)) {
                 return imageKey;
-            } else {
-                return nullptr;
             }
+            return nullptr;
         }
         case TimeKeyType_HSV: {
-            HSVKey* hsvKey = new HSVKey;
+            auto* hsvKey = new HSVKey;
             hsvKey->data().easing() = objToEasing(obj);
-            QList<int> hsv{obj["Hue"].toInt(), obj["Saturation"].toInt(), obj["Value"].toInt(), obj["Absolute"].toInt()};
+            QList hsv{obj["Hue"].toInt(), obj["Saturation"].toInt(), obj["Value"].toInt(), obj["Absolute"].toInt()};
             hsvKey->setHSV(hsv);
             hsvKey->setFrame(obj["Frame"].toInt());
             return hsvKey;
@@ -453,7 +443,6 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
     QJsonArray tlKeys = keyJson["Keys"].toArray(); // qDebug() << keys;
     QList<TimeKey*> keyList;
     int nullLog = 0;
-    QStringList keyTypeIgnore{"Mesh", "Image", "FFD"};
     QStringList keyErrored;
     for (QJsonValue key : tlKeys) {
         auto keyObj = key.toObject();
@@ -467,29 +456,35 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
         }
     }
     QString returnString;
-    if (keyErrored.contains("FFD")) {
-        returnString = "FFD pasting is unsupported.";
-    } else if (keyList.empty()) {
+    if (keyList.empty()) {
         returnString = "No keys to copy.";
     }
     // qDebug() << project.address->fileName();
     int frameLessThanZero = 0;
     int timelineHasKey = 0;
-    int pastedKeys = 0;
 
     if (!keyList.empty()) {
+        int pastedKeys = 0;
         for (int x = 0; x < keyList.size(); x++) {
             TimeKey* keyframe = keyList[x];
             int newFrame = keyframe->frame();
             TimeKeyType type = keyframe->type();
             TimeLine* timeLine = objItem->node().timeLine();
             // invalid frame
-            if (newFrame < 0) {
-                frameLessThanZero++;
-            } else {
-                if (timeLine->hasTimeKey(type, newFrame)) {
-                    timelineHasKey++;
-                } else {
+            if (newFrame < 0) { frameLessThanZero++; }
+            else {
+                if (timeLine->hasTimeKey(type, newFrame)) { timelineHasKey++; }
+                else {
+                    if (type == TimeKeyType_FFD) {
+                        // find area key and mesh
+                        auto [aKey, aMesh] = gui::ObjectTreeWidget::getAreaMeshImpl(objItem->node(), keyframe->frame());
+                        TimeKey* areaKey = aKey;
+                        LayerMesh* areaMesh = aMesh;
+                        timeLine->current().setFFDMesh(areaMesh);
+                        timeLine->current().setFFDMeshParent(areaKey);
+                        // connect to parent mesh
+                        aKey->children().pushBack(keyframe);
+                    }
                     // a key already exists.
                     // @todo something more fancy
                     cmnd::Stack& stack = project.address->commandStack();
@@ -608,7 +603,7 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
     return returnString;
 }
 
-bool TimeLineEditor::pasteCopiedKeys(core::TimeLineEvent& aEvent, const QPoint& aWorldPos) {
+bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorldPos) {
     XC_ASSERT(!aEvent.targets().isEmpty());
 
     // a minimum frame for key pasting
@@ -699,7 +694,7 @@ bool TimeLineEditor::pasteCopiedKeys(core::TimeLineEvent& aEvent, const QPoint& 
     return true;
 }
 
-void TimeLineEditor::deleteCheckedKeys(core::TimeLineEvent& aEvent) {
+void TimeLineEditor::deleteCheckedKeys(TimeLineEvent& aEvent) {
     XC_ASSERT(!aEvent.targets().isEmpty());
 
     mOnUpdatingKey = true;
@@ -709,14 +704,14 @@ void TimeLineEditor::deleteCheckedKeys(core::TimeLineEvent& aEvent) {
         // create notifier
         auto notifier = new TimeLineUtil::Notifier(*mProject);
         notifier->event() = aEvent;
-        notifier->event().setType(core::TimeLineEvent::Type_RemoveKey);
+        notifier->event().setType(TimeLineEvent::Type_RemoveKey);
 
         // push delete keys command
         cmnd::ScopedMacro macro(stack, CmndName::tr("Delete keys"));
         macro.grabListener(notifier);
 
         for (auto target : aEvent.targets()) {
-            core::TimeLine* line = target.pos.line();
+            TimeLine* line = target.pos.line();
             XC_PTR_ASSERT(line);
             stack.push(line->createRemover(target.pos.type(), target.pos.index(), true));
         }
@@ -737,9 +732,9 @@ void TimeLineEditor::updateWheel(int aDelta, bool aInvertScaling) {
     }
 }
 
-void TimeLineEditor::setFrame(core::Frame aFrame) { mTimeCurrent.setFrame(mTimeScale, aFrame); }
+void TimeLineEditor::setFrame(Frame aFrame) { mTimeCurrent.setFrame(mTimeScale, aFrame); }
 
-core::Frame TimeLineEditor::currentFrame() const { return mTimeCurrent.frame(); }
+Frame TimeLineEditor::currentFrame() const { return mTimeCurrent.frame(); }
 
 QSize TimeLineEditor::modelSpaceSize() const {
     int height = kHeaderHeight;

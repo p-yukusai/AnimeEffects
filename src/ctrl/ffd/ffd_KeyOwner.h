@@ -28,7 +28,7 @@ namespace ffd {
 
         core::FFDKey* key;
         bool ownsKey;
-
+        bool warnMesh = true;
         core::TimeKey* parentKey;
     };
 

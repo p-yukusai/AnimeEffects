@@ -1,11 +1,6 @@
 #include <QMenu>
-#include <QPainter>
 #include <memory>
 #include <QScrollBar>
-#include <QDragMoveEvent>
-#include <QModelIndexList>
-#include <QStyle>
-#include <QProxyStyle>
 #include "ctrl/TimeLineEditor.h"
 #include "qmessagebox.h"
 #include "util/TreeUtil.h"
@@ -30,6 +25,13 @@
 #include <QFormLayout>
 #include <iostream>
 #include <sstream>
+
+#include "MainMenuBar.h"
+#include "core/FFDKeyUpdater.h"
+#include "core/ImageKeyUpdater.h"
+#include "core/ResourceUpdatingWorkspace.h"
+#include "core/TimeKeyGatherer.h"
+#include "res/res_ResourceUpdater.h"
 
 namespace {
 static const int kTopItemSize = 22;
@@ -656,8 +658,39 @@ void ObjectTreeWidget::onRenameActionTriggered(bool) {
     }
 }
 
-int extractIntFromStr(const QString& str) {
+static int extractIntFromStr(const QString& str) {
     return QRegularExpression(R"(-?\b\d+(?:\.\d+)?\b)").match(str).captured(0).toInt();
+}
+
+static core::MeshKey* getMeshKey(const core::ObjectNode& aNode, const int frame) {
+    if (!aNode.timeLine())
+        return nullptr;
+    const core::TimeLine::MapType& map = aNode.timeLine()->map(core::TimeKeyType_Mesh);
+    return (core::MeshKey*) core::TimeKeyGatherer::findLastKey(map, core::Frame(frame));
+}
+
+static core::ImageKey* getImageKey(const core::ObjectNode& aNode, const int frame) {
+    if (!aNode.timeLine())
+        return nullptr;
+    const core::TimeLine::MapType& map = aNode.timeLine()->map(core::TimeKeyType_Image);
+    auto imageKey = (core::ImageKey*) core::TimeKeyGatherer::findLastKey(map, core::Frame(frame));
+    return imageKey ? imageKey : (core::ImageKey*)aNode.timeLine()->defaultKey(core::TimeKeyType_Image);
+}
+
+std::pair<core::TimeKey*, core::LayerMesh*> ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode& aNode, const int frame) {
+    if (aNode.timeLine()) {
+        // find parent key
+        core::ImageKey* imageKey = getImageKey(aNode, frame);
+        core::MeshKey* meshKey = getMeshKey(aNode, frame);
+
+        if (imageKey && (!meshKey || imageKey->frame() > meshKey->frame())) {
+            return std::pair<core::TimeKey*, core::LayerMesh*>(imageKey, &(imageKey->data().gridMesh()));
+        }
+        if (meshKey) {
+            return std::pair<core::TimeKey*, core::LayerMesh*>(meshKey, &(meshKey->data()));
+        }
+    }
+    return std::pair<core::TimeKey*, core::LayerMesh*>(nullptr, nullptr);
 }
 
 void ObjectTreeWidget::onPasteActionTriggered(bool) const {
@@ -710,15 +743,30 @@ void ObjectTreeWidget::onPasteActionTriggered(bool) const {
         box.setDetailedText(errorLog);
     }
     if (successNum != 0) {
-        // It doesn't work without this for some godforsaken reason.
         for (auto & x : keys) {
             if (objItem->node().timeLine()->hasTimeKey(core::TimeKeyType_Image, x->frame())) {
-                auto key = ((const core::ImageKey*)&x);
+                const auto key = reinterpret_cast<const core::ImageKey *>(&x);
                 ctrl::TimeLineUtil::assignImageKeyCellSize(
                     *mProject, objItem->node(), x->frame(), key->data().gridMesh().cellSize()
                 );
             }
+            if (x->type() == core::TimeKeyType_FFD) {
+                // Do nothing for now
+            }
         }
+        // Believe me, this is the easiest way to do it...
+        auto mTree = new ResourceTreeWidget(mViaPoint, false, this->parentWidget());
+        mTree->hide();
+        mTree->setProject(mProject.get());
+        for (int x= 0; x < mTree->topLevelItemCount(); x++) {
+            qDebug() << mTree->topLevelItem(x)->text(0);
+            if (res::Item* item = res::Item::cast(mTree->topLevelItem(x))) {
+                qDebug() << x << item->node().data().identifier();
+                res::ResourceUpdater updater(mViaPoint, *mProject);
+                updater.forceReload(*item);
+            }
+        }
+        mTree->deleteLater();
     }
     if (box.text().isNull()) {
         box.setText(tr("Failed to paste key(s)"));

@@ -3,6 +3,7 @@
 #include "core/MeshKey.h"
 #include "core/ImageKey.h"
 #include "ctrl/ffd/ffd_KeyOwner.h"
+#include <QMessageBox>
 
 using namespace core;
 
@@ -66,26 +67,31 @@ namespace ffd {
         parentKey = nullptr;
     }
 
-    core::LayerMesh* KeyOwner::getParentMesh(core::ObjectNode*) {
+    core::LayerMesh* KeyOwner::getParentMesh(core::ObjectNode* aNode) {
         if (parentKey) {
             if (parentKey->type() == TimeKeyType_Mesh) {
-                return &(((MeshKey*)parentKey)->data());
-            } else if (parentKey->type() == TimeKeyType_Image) {
-                return &(((ImageKey*)parentKey)->data().gridMesh());
-            } else {
-                XC_ASSERT(0);
-                return nullptr;
+                return &dynamic_cast<MeshKey *>(parentKey)->data();
             }
+            if (parentKey->type() == TimeKeyType_Image) {
+                return &dynamic_cast<ImageKey *>(parentKey)->data().gridMesh();
+            }
+            XC_ASSERT(0);
+            return nullptr;
         }
-#if 0
-    else if (aNode && aNode->timeLine())
-    {
-        auto imageKey = (ImageKey*)aNode->timeLine()->defaultKey(TimeKeyType_Image);
-        if (imageKey) return &(imageKey->data().gridMesh());
-    }
+#if 1
+        if (warnMesh) {
+            QMessageBox::warning(nullptr, "Unable to find mesh", "TimeKeyBlender was unable to find"
+                                                                 " its mesh, FFD keys may not work correctly.");
+            warnMesh = false;
+        }
+        if (aNode && aNode->timeLine())
+        {
+            auto imageKey = static_cast<ImageKey *>(aNode->timeLine()->defaultKey(TimeKeyType_Image));
+            if (imageKey) return &imageKey->data().gridMesh();
+        }
 #endif
-        return nullptr;
-    }
+            return nullptr;
+        }
 
 } // namespace ffd
 } // namespace ctrl

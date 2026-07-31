@@ -631,7 +631,7 @@ bool MeshKey::Data::deserializeFromJson(QJsonObject json) {
     QMap<int, MeshVtx*> vtxMap;
     QJsonArray vtx = json["Vertices"].toArray();
     for (int i = 0; i < vtxCount; i++) {
-        MeshVtx* vertex = new MeshVtx(objToVec(vtx[i].toObject()));
+        auto* vertex = new MeshVtx(objToVec(vtx[i].toObject()));
         vertex->setIndex(i);
         mVertices.push_back(vertex);
         vtxMap[i] = vertex;

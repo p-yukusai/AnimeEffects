@@ -179,13 +179,18 @@ void MainDisplayWidget::initializeGL() {
     // check version
     {
         auto version = this->format().version();
-        // fallback, on account of us needing ogl core v4.0+ to function using gl_major and gl_minor should be fine
+        // fallback
         if (version < gl::Global::kVersion) {
-            int major = 0;
-            int minor = 0;
-            this->context()->functions()->glGetIntegerv(GL_MAJOR_VERSION, &major);
-            this->context()->functions()->glGetIntegerv(GL_MINOR_VERSION, &minor);
-            version = {major, minor};
+            const QString v = (const char*)this->context()->functions()->glGetString(GL_VERSION);
+            version = {v.at(0).digitValue(), v.at(2).digitValue()};
+            if (version < gl::Global::kVersion) {
+                // we ball
+                QMessageBox::warning(this, "OpenGL version check fail", "The minimum OpenGL version for AnimeEffects is "
+                    + QString::number(gl::Global::kVersion.first) + "." + QString::number(gl::Global::kVersion.second) +
+                    " but we have detected version " + QString::number(this->format().version().first) + "." + QString::number(this->format().version().second) +
+                    ". AnimeEffects will attempt to run regardless but the app may crash unexpectedly.");
+                version = {gl::Global::kVersion};
+            }
         }
         if (version < gl::Global::kVersion) {
             auto obtainedVersion = QString::number(version.first) + "." + QString::number(version.second);
