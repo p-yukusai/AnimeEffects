@@ -97,6 +97,9 @@ namespace ffd {
             XC_PTR_ASSERT(node);
             XC_PTR_ASSERT(mesh);
             XC_PTR_ASSERT(key);
+            if (mesh->vertexCount() != key->data().count()) {
+                key->data().allocAndWrite(key->data().positions(), mesh->vertexCount());
+            }
             XC_ASSERT(mesh->vertexCount() == key->data().count());
 
             // set task type

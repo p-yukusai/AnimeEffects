@@ -104,21 +104,21 @@ QJsonObject FFDKey::serializeToJson() const {
 void FFDKey::deserializeFromJson(QJsonObject json) {
     // Vertices
     json = json["FFD"].toObject();
-    int vtxCount = json["VertexCount"].toInt();
-    if (vtxCount > 0) {
-        // allocate
-        mData.alloc(vtxCount);
+    if (const int vtxCount = json["VertexCount"].toInt(); vtxCount > 0) {
+        const auto vertices = new gl::Vector3[vtxCount];
         // positions
         QJsonArray vtx = json["Positions"].toArray();
         for (int i = 0; i < vtxCount; i++) {
             QJsonObject vtxObj = vtx[i].toObject();
-            mData.positions()[i].x = static_cast<float>(vtxObj["X"].toDouble());
-            mData.positions()[i].y = static_cast<float>(vtxObj["Y"].toDouble());
-            mData.positions()[i].z = static_cast<float>(vtxObj["Z"].toDouble());
+            vertices[i].x = static_cast<float>(vtxObj["X"].toDouble());
+            vertices[i].y = static_cast<float>(vtxObj["Y"].toDouble());
+            vertices[i].z = static_cast<float>(vtxObj["Z"].toDouble());
         }
-    } else {
-        mData.clear();
+        // alloc
+        mData.allocAndWrite(vertices, vtxCount);
+        delete[] vertices;
     }
+    else { mData.clear(); }
 }
 
 bool FFDKey::serialize(Serializer& aOut) const {

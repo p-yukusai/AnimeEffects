@@ -447,9 +447,8 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
     for (QJsonValue key : tlKeys) {
         auto keyObj = key.toObject();
         TimeKey* pastedKey = getKeyFromObj(keyObj, project, isFolder);
-        if (pastedKey != nullptr) {
-            keyList.append(pastedKey);
-        } else {
+        if (pastedKey != nullptr) { keyList.append(pastedKey); }
+        else {
             auto keyType = TimeLine::getTimeKeyType(keyObj["Type"].toString());
             keyErrored.append(TimeLine::getTimeKeyName(keyType));
             nullLog++;
@@ -484,6 +483,11 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
                         timeLine->current().setFFDMeshParent(areaKey);
                         // connect to parent mesh
                         aKey->children().pushBack(keyframe);
+                        /*
+                        auto imgKey = gui::ObjectTreeWidget::getImageKey(objItem->node(), keyframe->frame());
+                        if (aKey->type() != TimeKeyType_Image) {
+                            imgKey->children().pushBack(keyframe);
+                        }*/
                     }
                     // a key already exists.
                     // @todo something more fancy

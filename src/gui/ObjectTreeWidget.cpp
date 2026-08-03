@@ -662,18 +662,18 @@ static int extractIntFromStr(const QString& str) {
     return QRegularExpression(R"(-?\b\d+(?:\.\d+)?\b)").match(str).captured(0).toInt();
 }
 
-static core::MeshKey* getMeshKey(const core::ObjectNode& aNode, const int frame) {
+core::MeshKey* ObjectTreeWidget::getMeshKey(const core::ObjectNode& aNode, const int frame) {
     if (!aNode.timeLine())
         return nullptr;
     const core::TimeLine::MapType& map = aNode.timeLine()->map(core::TimeKeyType_Mesh);
     return (core::MeshKey*) core::TimeKeyGatherer::findLastKey(map, core::Frame(frame));
 }
 
-static core::ImageKey* getImageKey(const core::ObjectNode& aNode, const int frame) {
+core::ImageKey* ObjectTreeWidget::getImageKey(const core::ObjectNode& aNode, const int frame) {
     if (!aNode.timeLine())
         return nullptr;
     const core::TimeLine::MapType& map = aNode.timeLine()->map(core::TimeKeyType_Image);
-    auto imageKey = (core::ImageKey*) core::TimeKeyGatherer::findLastKey(map, core::Frame(frame));
+    const auto imageKey = (core::ImageKey*) core::TimeKeyGatherer::findLastKey(map, core::Frame(frame));
     return imageKey ? imageKey : (core::ImageKey*)aNode.timeLine()->defaultKey(core::TimeKeyType_Image);
 }
 
@@ -707,15 +707,52 @@ void ObjectTreeWidget::onPasteActionTriggered(bool) const {
     QStringList returnVal = pasteReturnVal.split("\n");
     int successNum = extractIntFromStr(returnVal.first());
     bool aKeyErrored = returnVal.size() > 1;
+    QStringList warnings;
     QStringList errors = returnVal.filter("Error");
     QStringList nullLogs = returnVal.filter(QRegularExpression("^(?!.*[\\d:])[^\\n]*$"));
     auto keyTypeErrors = returnVal.filter("Key types errored");
-    auto keys = mEditor->getTypesFromCb(mProject->pointee());
+    auto keys = ctrl::TimeLineEditor::getTypesFromCb(mProject->pointee());
+    // Pre processing
+    if (successNum != 0) {
+        for (const auto & x : keys) {
+            if (x->type() == core::TimeKeyType_Image) {
+                const auto key = dynamic_cast<const core::ImageKey *>(x);
+                ctrl::TimeLineUtil::assignImageKeyCellSize(
+                    *mProject, objItem->node(), x->frame(), key->data().gridMesh().cellSize()
+                );
+            }
+            if (x->type() == core::TimeKeyType_FFD) {
+                const auto key = dynamic_cast<const core::FFDKey *>(x);
+                // Check if requested FFD is consistent with parent mesh
+                auto [objKey, objMesh] = getAreaMeshImpl(objItem->node(), x->frame());
+                if (key->data().count() != objMesh->vertexCount()) {
+                    warnings.append(tr("The requested FFD key mesh (at frame %1) has %2 vertices, but the parent "
+                                       "mesh of the targeted node has %3 vertices, artifacts may be present.")
+                                       .arg(x->frame()).arg(key->data().count()).arg(objMesh->vertexCount()));
+                }
+            }
+        }
+        // Believe me, this is the easiest way to do it...
+        const auto mTree = new ResourceTreeWidget(mViaPoint, false, this->parentWidget());
+        mTree->hide();
+        mTree->setProject(mProject.get());
+        for (int x= 0; x < mTree->topLevelItemCount(); x++) {
+            if (res::Item* item = res::Item::cast(mTree->topLevelItem(x))) {
+                res::ResourceUpdater updater(mViaPoint, *mProject);
+                updater.forceReload(*item);
+            }
+        }
+        mTree->deleteLater();
+    }
 
     QMessageBox box;
     if (successNum != 0) {
         if (!aKeyErrored) {
             box.setText(tr("Successfully pasted ") + QString::number(successNum) + tr(" keys."));
+            if (!warnings.empty()) {
+                box.setText(box.text() + "\nWarnings present for " + QString::number(warnings.size()) + tr(" keys. The log is available below.") );
+                box.setDetailedText(warnings.join("\n"));
+            }
         } else {
             box.setText(
                 tr("Successfully pasted ") + QString::number(successNum) + tr(" keys.\n") +
@@ -742,32 +779,7 @@ void ObjectTreeWidget::onPasteActionTriggered(bool) const {
         errorLog.append("\n-----\n");
         box.setDetailedText(errorLog);
     }
-    if (successNum != 0) {
-        for (auto & x : keys) {
-            if (objItem->node().timeLine()->hasTimeKey(core::TimeKeyType_Image, x->frame())) {
-                const auto key = reinterpret_cast<const core::ImageKey *>(&x);
-                ctrl::TimeLineUtil::assignImageKeyCellSize(
-                    *mProject, objItem->node(), x->frame(), key->data().gridMesh().cellSize()
-                );
-            }
-            if (x->type() == core::TimeKeyType_FFD) {
-                // Do nothing for now
-            }
-        }
-        // Believe me, this is the easiest way to do it...
-        auto mTree = new ResourceTreeWidget(mViaPoint, false, this->parentWidget());
-        mTree->hide();
-        mTree->setProject(mProject.get());
-        for (int x= 0; x < mTree->topLevelItemCount(); x++) {
-            qDebug() << mTree->topLevelItem(x)->text(0);
-            if (res::Item* item = res::Item::cast(mTree->topLevelItem(x))) {
-                qDebug() << x << item->node().data().identifier();
-                res::ResourceUpdater updater(mViaPoint, *mProject);
-                updater.forceReload(*item);
-            }
-        }
-        mTree->deleteLater();
-    }
+
     if (box.text().isNull()) {
         box.setText(tr("Failed to paste key(s)"));
     }

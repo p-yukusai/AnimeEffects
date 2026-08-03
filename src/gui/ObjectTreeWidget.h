@@ -51,6 +51,10 @@ public:
         QVector<img::ResourceNode*> children;
     };
 
+    static core::MeshKey *getMeshKey(const core::ObjectNode &aNode, int frame);
+
+    static core::ImageKey *getImageKey(const core::ObjectNode &aNode, int frame);
+
     static std::pair<core::TimeKey *, core::LayerMesh *> getAreaMeshImpl(core::ObjectNode &aNode, int frame);
 
 private:
