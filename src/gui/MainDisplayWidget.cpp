@@ -124,6 +124,7 @@ MainDisplayWidget::~MainDisplayWidget() {
     mTextureDrawer.reset();
     mDestinationTexturizer.reset();
     mClippingFrame.reset();
+    mFilterFrame.reset();
     mFramebuffer.reset();
     mDefaultVAO.reset();
 
@@ -244,6 +245,10 @@ void MainDisplayWidget::initializeGL() {
     mClippingFrame.reset(new core::ClippingFrame());
     mClippingFrame->resize(deviceSize());
 
+    // create filter frame for folder composite filters
+    mFilterFrame.reset(new core::FilterFrame());
+    mFilterFrame->resize(deviceSize());
+
     // create texturizer for destination colors of the framebuffer
     mDestinationTexturizer.reset(new core::DestinationTexturizer());
     mDestinationTexturizer->resize(deviceSize());
@@ -270,6 +275,9 @@ void MainDisplayWidget::paintGL() {
     mDestinationTexturizer->clearTexture();
     GL_CHECK_ERROR();
 
+    mFilterFrame->clearAll();
+    GL_CHECK_ERROR();
+
     if (!mFramebuffer->bind()) {
         XC_FATAL_ERROR("OpenGL Error", "Failed to bind framebuffer.", "");
     }
@@ -291,6 +299,8 @@ void MainDisplayWidget::paintGL() {
         mRenderInfo->clippingId = 0;
         mRenderInfo->clippingFrame = mClippingFrame.data();
         mRenderInfo->destTexturizer = mDestinationTexturizer.data();
+        mRenderInfo->filterFrame = mFilterFrame.data();
+        mRenderInfo->opacityScale = 1.0f;
         XC_ASSERT(mRenderInfo->framebuffer != 0);
         XC_ASSERT(mRenderInfo->dest != 0);
         mRenderInfo->camera.setFlip(mViewSetting.flipCanvas);
@@ -364,6 +374,8 @@ void MainDisplayWidget::resizeGL(int w, int h) {
     mClippingFrame->resize(devSize);
 
     mDestinationTexturizer->resize(devSize);
+
+    mFilterFrame->resize(devSize);
 
     if (mProjectTabBar) {
         mProjectTabBar->updateTabPosition(absSize);

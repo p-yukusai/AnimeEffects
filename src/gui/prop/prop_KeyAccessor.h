@@ -5,6 +5,7 @@
 #include "img/ResourceHandle.h"
 #include "core/Project.h"
 #include "core/ObjectNode.h"
+#include "core/BlurKey.h"
 
 namespace gui {
 namespace prop {
@@ -49,6 +50,13 @@ namespace prop {
         void assignHSVEasing(util::Easing::Param);
         void assignHSV(int aValue, QString aType);
 
+        // blur
+        void assignBlurEasing(util::Easing::Param);
+        void assignBlur(float aAmount);
+        void assignBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg);
+        void assignBlurDirectional(bool aIsDirectional);
+        core::BlurKey::Data blurData() const;
+
         // pose
         void assignPoseEasing(util::Easing::Param);
 
@@ -67,6 +75,7 @@ namespace prop {
         void knockNewDepth();
         void knockNewOpacity();
         void knockNewHSV();
+        void knockNewBlur();
         void knockNewPose();
         void knockNewFFD();
         void knockNewImage(const img::ResourceHandle& aHandle);
