@@ -59,6 +59,13 @@ void Global::makeCurrent() {
     gGLGlobalWidget->makeCurrent();
 }
 
+bool Global::makeCurrentIfReady() {
+    if (!gGLGlobalWidget || !gGLGlobalWidget->isVisible())
+        return false;
+    gGLGlobalWidget->makeCurrent();
+    return true;
+}
+
 void Global::doneCurrent() {
     XC_PTR_ASSERT(gGLGlobalWidget);
     gGLGlobalWidget->doneCurrent();

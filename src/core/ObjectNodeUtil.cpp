@@ -1,5 +1,6 @@
 #include "core/ObjectNodeUtil.h"
 #include "core/ClippingFrame.h"
+#include "core/FolderNode.h"
 #include "core/TimeKeyExpans.h"
 #include "core/Project.h"
 namespace {
@@ -19,17 +20,23 @@ QRectF fGetContainedRect(const QRectF& aLhs, const QRectF& aRhs)
 bool fCompareRenderDepth(core::Renderer::SortUnit a, core::Renderer::SortUnit b) { return a.depth < b.depth; }
 
 void fPushRenderClippeeRecursive(
-    core::ObjectNode& aNode, std::vector<core::Renderer::SortUnit>& aDest, const core::TimeCacheAccessor& aAccessor
+    core::ObjectNode& aNode, std::vector<core::Renderer::SortUnit>& aDest, const core::TimeCacheAccessor& aAccessor,
+    const core::TimeInfo& aTime
 ) {
     core::Renderer::SortUnit unit;
     unit.renderer = aNode.renderer();
     unit.depth = aAccessor.get(aNode).worldDepth();
     aDest.push_back(unit);
 
+    // a folder with an active composite filter renders its subtree itself
+    if (aNode.type() == core::ObjectType_Folder && ((core::FolderNode*)&aNode)->isCompositeFolder(aTime, aAccessor)) {
+        return;
+    }
+
     for (auto child : aNode.children()) {
         XC_PTR_ASSERT(child);
         if (child->isVisible() && child->renderer() && !child->renderer()->isClipped()) {
-            fPushRenderClippeeRecursive(*child, aDest, aAccessor);
+            fPushRenderClippeeRecursive(*child, aDest, aAccessor, aTime);
         }
     }
 }
@@ -102,7 +109,7 @@ namespace ObjectNodeUtil {
         if (!info.clippingFrame || !isClipper(&self))
             return;
 
-        ObjectNodeUtil::collectRenderClippees(self, clippees, acc);
+        ObjectNodeUtil::collectRenderClippees(self, clippees, acc, info.time);
 
         auto& frame = *info.clippingFrame;
         const uint8 id = frame.forwardClippingId();
@@ -154,18 +161,59 @@ namespace ObjectNodeUtil {
     }
 
     void collectRenderClippees(
-        ObjectNode& aNode, std::vector<Renderer::SortUnit>& aDest, const TimeCacheAccessor& aAccessor
+        ObjectNode& aNode, std::vector<Renderer::SortUnit>& aDest, const TimeCacheAccessor& aAccessor,
+        const TimeInfo& aTime
     ) {
         aDest.clear();
 
         auto p = aNode.prevSib();
 
         while (p && p->isVisible() && p->renderer() && p->renderer()->isClipped()) {
-            fPushRenderClippeeRecursive(*p, aDest, aAccessor);
+            fPushRenderClippeeRecursive(*p, aDest, aAccessor, aTime);
             p = p->prevSib();
         }
         if (!aDest.empty()) {
             std::stable_sort(aDest.begin(), aDest.end(), fCompareRenderDepth);
+        }
+    }
+
+    void collectRenderUnits(
+        ObjectNode& aNode, bool aPush, std::vector<Renderer::SortUnit>& aDest, const TimeCacheAccessor& aAccessor,
+        const TimeInfo& aTime
+    ) {
+        if (!aNode.isVisible())
+            return;
+
+        auto renderer = aNode.renderer();
+        if (!renderer)
+            return;
+
+        // a folder with an active composite filter renders its subtree itself
+        if (aNode.type() == ObjectType_Folder && !renderer->isClipped()
+            && ((FolderNode*)&aNode)->isCompositeFolder(aTime, aAccessor)) {
+            Renderer::SortUnit unit;
+            unit.renderer = renderer;
+            unit.depth = aAccessor.get(aNode).worldDepth();
+            unit.timeline = aNode.timeLine();
+            aDest.push_back(unit);
+            return;
+        }
+
+        if (aPush) {
+            if (!renderer->isClipped()) {
+                Renderer::SortUnit unit;
+                unit.renderer = renderer;
+                unit.depth = aAccessor.get(aNode).worldDepth();
+                unit.timeline = aNode.timeLine();
+                aDest.push_back(unit);
+            } else {
+                aPush = false;
+            }
+        }
+
+        auto& children = aNode.children();
+        for (auto itr = children.rbegin(); itr != children.rend(); ++itr) {
+            collectRenderUnits(**itr, aPush, aDest, aAccessor, aTime);
         }
     }
 

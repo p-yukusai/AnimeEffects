@@ -11,6 +11,9 @@ class ClippingFrame;
 namespace core {
 class DestinationTexturizer;
 }
+namespace core {
+class FilterFrame;
+}
 
 namespace core {
 
@@ -26,7 +29,9 @@ public:
         originMesh(false),
         clippingId(0),
         clippingFrame(),
-        destTexturizer() {}
+        destTexturizer(),
+        filterFrame(),
+        opacityScale(1.0f) {}
 
     CameraInfo camera;
     TimeInfo time;
@@ -38,6 +43,8 @@ public:
     uint8 clippingId;
     ClippingFrame* clippingFrame;
     DestinationTexturizer* destTexturizer;
+    FilterFrame* filterFrame;
+    float opacityScale; // 1/ (product of ancestor composite folder opacities)
 };
 
 } // namespace core

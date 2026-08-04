@@ -1,14 +1,19 @@
 #include "gl/Global.h"
 #include "gl/Util.h"
+#include "gl/BufferObject.h"
+#include "gl/Vector4.h"
 #include "core/DestinationTexturizer.h"
 
 namespace {
 static const int kAttachmentId = 0;
-}
+
+static const GLuint kFullscreenIndices[4] = {0, 1, 3, 2};
+} // namespace
 
 namespace core {
 
-DestinationTexturizer::DestinationTexturizer(): mFramebuffer(), mTexture(), mShader() {
+DestinationTexturizer::DestinationTexturizer():
+    mFramebuffer(), mTexture(), mShader(), mIndices(GL_ELEMENT_ARRAY_BUFFER) {
     mFramebuffer.reset(new gl::Framebuffer());
     mTexture.reset(new gl::Texture());
 
@@ -51,6 +56,56 @@ void DestinationTexturizer::clearTexture() {
 
     ggl.glFlush();
     GL_CHECK_ERROR();
+}
+
+void DestinationTexturizer::updateAll(GLuint aFramebuffer, GLuint aFrameTexture) {
+    XC_ASSERT(mTexture->size().isValid());
+
+    auto& ggl = gl::Global::functions();
+
+    // bind framebuffer
+    mFramebuffer->bind();
+
+    // setup drawbuffers
+    const GLenum attachments[] = {GL_COLOR_ATTACHMENT0};
+    ggl.glDrawBuffers(1, attachments);
+
+    // bind the source scene texture
+    ggl.glActiveTexture(GL_TEXTURE0);
+    ggl.glBindTexture(GL_TEXTURE_2D, aFrameTexture);
+
+    {
+        mIndices.resetData(4, GL_STATIC_DRAW, kFullscreenIndices);
+
+        static const gl::Vector4 kScreenQuad[4] = {
+            {-1.0f, -1.0f, 0.0f, 1.0f},
+            {-1.0f,  1.0f, 0.0f, 1.0f},
+            { 1.0f,  1.0f, 0.0f, 1.0f},
+            { 1.0f, -1.0f, 0.0f, 1.0f}
+        };
+
+        mShader.bind();
+        mShader.setAttributeArray("inPosition", kScreenQuad, 4);
+
+        QMatrix4x4 ident;
+        mShader.setUniformValue("uViewMatrix", ident);
+        mShader.setUniformValue("uScreenSize", QSizeF(mTexture->size()));
+        mShader.setUniformValue("uDestTexture", 0);
+
+        gl::Util::drawElements(GL_TRIANGLE_STRIP, GL_UNSIGNED_INT, mIndices);
+
+        mShader.release();
+    }
+    // unbind texture
+    ggl.glBindTexture(GL_TEXTURE_2D, 0);
+
+    // release framebuffer
+    mFramebuffer->release();
+
+    // bind default framebuffer
+    ggl.glBindFramebuffer(GL_FRAMEBUFFER, aFramebuffer);
+
+    ggl.glFlush();
 }
 
 void DestinationTexturizer::update(

@@ -67,9 +67,11 @@ public:
     private:
     void transformShape(const RenderInfo& aInfo, const TimeCacheAccessor&);
     void renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor&, bool useHSV, QList<int> HSVData);
-    void renderHSV(const RenderInfo& aInfo, const TimeCacheAccessor&, QList<int> HSVData);
+    void renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor&);
     void renderClippees(const RenderInfo& aInfo, const TimeCacheAccessor&);
     bool isClipper() const;
+    bool hasActiveBlurKey(const TimeInfo& aTime) const;
+    bool isCompositeLayer(const TimeInfo& aTime, const TimeCacheAccessor& aAccessor) const;
     
     QString mName;
     bool mIsVisible;

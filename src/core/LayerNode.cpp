@@ -1,6 +1,7 @@
 #include <QMatrix4x4>
 #include <QOpenGLFunctions>
 #include <QOpenGLContext>
+#include <cmath>
 #include "gl/Global.h"
 #include "gl/Util.h"
 #include "img/BlendMode.h"
@@ -13,7 +14,9 @@
 #include "core/FFDKeyUpdater.h"
 #include "core/ImageKeyUpdater.h"
 #include "core/ClippingFrame.h"
+#include "core/WorldBlurMath.h"
 #include "core/DestinationTexturizer.h"
+#include "core/FilterFrame.h"
 
 namespace core {
 
@@ -47,7 +50,6 @@ void LayerNode::setDefaultImage(const img::ResourceHandle& aHandle, img::BlendMo
     key->setImageOffsetByCenter();
 
     mShaderHolder.reserveShaders(aBlendMode);
-    mShaderHolder.reserveHSVShaders();
     mShaderHolder.reserveGridShader();
     mShaderHolder.reserveClipperShaders();
 }
@@ -103,12 +105,145 @@ void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccess
     if (!mIsVisible || aAccessor.get(mTimeLine).opa().isZero()) return;
 
     bool useHSV = !mTimeLine.isEmpty(TimeKeyType_HSV) && aInfo.time.frame.get() >= mTimeLine.map(TimeKeyType_HSV).values().first()->frame();
+    const QList<int> hsvData = useHSV ? aAccessor.get(mTimeLine).hsv().hsv() : QList<int>{};
 
-    renderLayer(aInfo, aAccessor, useHSV, useHSV ? aAccessor.get(mTimeLine).hsv().hsv() : QList<int>{});
+    if (!aInfo.isGrid && isCompositeLayer(aInfo.time, aAccessor)) {
+        renderComposite(aInfo, aAccessor);
+    } else {
+        renderLayer(aInfo, aAccessor, useHSV, hsvData);
+    }
 
     if (aInfo.isGrid) return;
 
     renderClippees(aInfo, aAccessor);
+}
+
+bool LayerNode::hasActiveBlurKey(const TimeInfo& aTime) const {
+    return !mTimeLine.isEmpty(TimeKeyType_Blur)
+        && aTime.frame.get() >= mTimeLine.map(TimeKeyType_Blur).values().first()->frame();
+}
+
+bool LayerNode::isCompositeLayer(const TimeInfo& aTime, const TimeCacheAccessor& aAccessor) const {
+    // a BlurKey whose blended radius is <= 0.5 (the UI step) has no visible effect, so it
+    // must not force the layer onto the composite path (mirrors the folder gate)
+    return hasActiveBlurKey(aTime) && aAccessor.get(mTimeLine).maxBlurRadius() > 0.5f;
+}
+
+// A blurred layer is isolated: the layer draws into a composite slot (its own HSV, blend
+// mode and clipping preserved), the isolated content is blurred, and the result is
+// presented onto the scene with the layer's blend mode at the layer's accumulated opacity.
+void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor) {
+    XC_PTR_ASSERT(aInfo.filterFrame);
+    auto& frame = *aInfo.filterFrame;
+    if (!mCurrentMesh)
+        return;
+
+    auto& expans = aAccessor.get(mTimeLine);
+    if (!expans.areaImageKey() || !expans.areaTexture())
+        return;
+
+    const float worldOpacity = expans.worldOpacity();
+    if (worldOpacity <= 0.0f)
+        return;
+
+    const bool useHSV = !mTimeLine.isEmpty(TimeKeyType_HSV)
+        && aInfo.time.frame.get() >= mTimeLine.map(TimeKeyType_HSV).values().first()->frame();
+    const QList<int> hsvData = useHSV ? expans.hsv().hsv() : QList<int>{};
+
+    // 1. render the layer into a composite slot at full opacity (its opacity is applied
+    // at presentation so the blur samples the crisp shape, not a faded one)
+    FilterFrame::ScopedSlot composite(frame);
+    frame.bind(composite.slot());
+    gl::Util::setViewportAsActualPixels(frame.size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+
+    {
+        RenderInfo childInfo = aInfo;
+        childInfo.framebuffer = composite.framebuffer();
+        childInfo.dest = composite.texture();
+        childInfo.opacityScale = 1.0f / worldOpacity;
+        renderLayer(childInfo, aAccessor, useHSV, hsvData);
+    }
+
+    // 2. blur the isolated content (same radius space as the folder filter: the amount is
+    // in the layer's content pixels - a content-space ellipse when directional; the
+    // content ellipse maps to an ellipse in the composite via the accumulated world
+    // transform M (composed as M*E), so the separable passes run along its principal axes
+    // with the resulting singular values as radii, scaled by the camera zoom)
+    GLuint srcTexture = composite.texture();
+    if (expans.maxBlurRadius() > 0.5f && hasActiveBlurKey(aInfo.time)) {
+        const WorldBlurEllipse ellipse = worldBlurEllipse(
+            aAccessor, this, expans.blurX(), expans.blurY(), expans.angleDeg());
+        const float zoom = aInfo.camera.scale();
+        const float radiusX = ellipse.majorRadius * zoom;
+        const float radiusY = ellipse.minorRadius * zoom;
+
+        // map the world-space ellipse directions into the composite slot's screen space:
+        // the slot holds the scene as rendered through the camera, whose view linear part
+        // is R(rotate) * diag(flip ? -1 : 1, 1) (zoom is isotropic, directions stay unit)
+        const float flipX = aInfo.camera.flip ? -1.0f : 1.0f;
+        const float cr = std::cos(aInfo.camera.rotate());
+        const float sr = std::sin(aInfo.camera.rotate());
+        const auto screenDir = [=](const QVector2D& d) {
+            const float x = flipX * d.x();
+            const float y = d.y();
+            return QVector2D(cr * x - sr * y, sr * x + cr * y);
+        };
+        const QVector2D majorScreen = screenDir(ellipse.majorDir);
+        const QVector2D minorScreen = screenDir(ellipse.minorDir);
+
+        if (FilterFrame::blurLadderLevel(radiusX, radiusY, frame.size()) > 0) {
+            srcTexture = frame.blurApply(
+                composite.slot(), majorScreen, radiusX, minorScreen, radiusY);
+        } else {
+            // the composite slot holds the screen image y-flipped (texture row = H - screen
+            // y), so a screen-space direction (dx, dy) appears in slot space as (dx, -dy);
+            // the ladder path needs no adjustment (its first downsample flips back)
+            FilterFrame::BlurParams h;
+            h.direction = QVector2D(majorScreen.x(), -majorScreen.y());
+            h.radiusTexels = radiusX;
+            FilterFrame::BlurParams v;
+            v.direction = QVector2D(minorScreen.x(), -minorScreen.y());
+            v.radiusTexels = radiusY;
+
+            FilterFrame::ScopedSlot hSlot(frame);
+            frame.bind(hSlot.slot());
+            gl::Util::setViewportAsActualPixels(frame.size());
+            gl::Util::resetRenderState();
+            gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+            frame.drawQuad(srcTexture, FilterFrame::Kind_Blur, QList<int>(), h, 1.0f);
+
+            // the vertical pass writes back into the composite slot (the same reuse the
+            // ladder path applies on its final upsample), so the direct blur holds one
+            // scratch slot instead of two
+            frame.bind(composite.slot());
+            gl::Util::setViewportAsActualPixels(frame.size());
+            gl::Util::resetRenderState();
+            gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+            frame.drawQuad(hSlot.texture(), FilterFrame::Kind_Blur, QList<int>(), v, 1.0f);
+
+            srcTexture = composite.texture();
+        }
+    }
+
+    // 3. present onto the scene with the layer's blend mode and accumulated opacity.
+    // non-Normal blend modes sample the captured scene behind the layer (DestinationText
+    // capture), so the blend sees real background pixels instead of the composite itself.
+    const img::BlendMode blendMode = expans.blendMode();
+    const float presentOpacity = worldOpacity * aInfo.opacityScale;
+    auto& ggl = gl::Global::functions();
+    ggl.glBindFramebuffer(GL_FRAMEBUFFER, aInfo.framebuffer);
+    if (blendMode != img::BlendMode_Normal) {
+        XC_PTR_ASSERT(aInfo.destTexturizer);
+        aInfo.destTexturizer->updateAll(aInfo.framebuffer, aInfo.dest);
+        frame.drawBlendPresent(srcTexture, blendMode, aInfo.destTexturizer->texture().id(), presentOpacity);
+    } else {
+        frame.drawBlendPresent(srcTexture, blendMode, 0, presentOpacity);
+    }
 }
 
 void LayerNode::renderClippees(const RenderInfo& i, const TimeCacheAccessor& a)
@@ -149,7 +284,7 @@ void LayerNode::renderClipper(const RenderInfo& aInfo, const TimeCacheAccessor& 
     // view matrix
     const QMatrix4x4 viewMatrix = aInfo.camera.viewMatrix();
     // color
-    const float opacity = expans.worldOpacity();
+    const float opacity = expans.worldOpacity() * aInfo.opacityScale;
     QColor color(255, 255, 255, xc_clamp((int)(255 * opacity), 0, 255));
     {
         shader.bind();
@@ -243,7 +378,7 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
     auto blendMode = expans.blendMode();
     const QMatrix4x4 viewMatrix = aInfo.camera.viewMatrix();
 
-    auto& shader = aInfo.isGrid ? mShaderHolder.gridShader() : (!useHSV ? mShaderHolder.shader(blendMode, isClippee) : mShaderHolder.HSVShader());
+    auto& shader = aInfo.isGrid ? mShaderHolder.gridShader() : mShaderHolder.shader(blendMode, isClippee, useHSV);
 
     // update destination color
     XC_PTR_ASSERT(aInfo.destTexturizer);
@@ -273,7 +408,7 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
     }
 
     {
-        const float opacity = expans.worldOpacity();
+        const float opacity = expans.worldOpacity() * aInfo.opacityScale;
         QColor color(255, 255, 255, xc_clamp((int)(255 * opacity), 0, 255));
         if (aInfo.isGrid)
             color = QColor(Qt::black);
@@ -325,10 +460,6 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
     ggl.glFlush();
 }
 
-void LayerNode::renderHSV(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor, QList<int> HSVData) {
-    LayerNode::renderLayer(aInfo, aAccessor, true, HSVData);
-}
-
 cmnd::Vector LayerNode::createResourceUpdater(const ResourceEvent& aEvent) {
     cmnd::Vector result;
 
@@ -356,7 +487,6 @@ void LayerNode::reserveShadersFromTimeline() {
 
     auto reserveOne = [this](ImageKey* k) {
         mShaderHolder.reserveShaders(k->data().blendMode());
-        mShaderHolder.reserveHSVShaders();
     };
 
     if (auto def = static_cast<ImageKey*>(mTimeLine.defaultKey(TimeKeyType_Image)))

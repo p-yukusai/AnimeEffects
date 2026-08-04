@@ -6,6 +6,7 @@
 #include "core/LayerMesh.h"
 #include "core/ObjectNodeUtil.h"
 #include "core/DepthKey.h"
+#include "core/BlurKey.h"
 
 namespace core {
 
@@ -208,6 +209,9 @@ void TimeKeyBlender::updateCurrents(ObjectNode* aRootNode, const TimeInfo& aTime
 
             // build hsv
             blendHSVKey(pos, aTime);
+
+            // build blur
+            blendBlurKey(pos, aTime);
 
             // build mesh
             blendMeshKey(pos, aTime);
@@ -558,6 +562,58 @@ void TimeKeyBlender::blendHSVKey(PositionType aPos, const TimeInfo& aTime) {
     }
 }
 
+
+void TimeKeyBlender::blendBlurKey(PositionType aPos, const TimeInfo& aTime) {
+    auto seekData = mSeeker->data(aPos);
+    if (!seekData.objNode || !seekData.expans)
+        return;
+    auto& node = *seekData.objNode;
+    auto& expans = *seekData.expans;
+    if (!node.timeLine())
+        return;
+
+    // set cache frame
+    expans.setKeyCache(TimeKeyType_Blur, aTime.frame);
+
+    // get blend info
+    TimeKeyGatherer blend(node.timeLine()->map(TimeKeyType_Blur), aTime);
+
+    // no key is exists
+    if (blend.isEmpty()) {
+        auto defaultKey = (BlurKey*)node.timeLine()->defaultKey(TimeKeyType_Blur);
+        if (defaultKey) {
+            const auto& d = defaultKey->data();
+            expans.setBlurEllipse(d.blurX(), d.blurY(), d.angleDeg());
+        } else {
+            expans.setBlurEllipse(0.0f, 0.0f, 0.0f);
+        }
+    } else if (blend.hasSameFrame()) {
+        // a key is exists
+        const auto& d = ((const BlurKey*)blend.point(0).key)->data();
+        expans.setBlurEllipse(d.blurX(), d.blurY(), d.angleDeg());
+    } else if (blend.isSingle()) {
+        // perfect following
+        const auto& d = ((const BlurKey*)blend.singlePoint().key)->data();
+        expans.setBlurEllipse(d.blurX(), d.blurY(), d.angleDeg());
+    } else {
+        // calculate easing; the angle follows the shortest arc between the two keys
+        const float time = getEasingRateFromTwoKeys<BlurKey>(blend);
+        const BlurKey* k0 = (const BlurKey*)blend.point(0).key;
+        const BlurKey* k1 = (const BlurKey*)blend.point(1).key;
+        const auto& d0 = k0->data();
+        const auto& d1 = k1->data();
+        float delta = d1.angleDeg() - d0.angleDeg();
+        while (delta > 180.0f)
+            delta -= 360.0f;
+        while (delta < -180.0f)
+            delta += 360.0f;
+        expans.setBlurEllipse(
+            d0.blurX() * (1.0f - time) + d1.blurX() * time,
+            d0.blurY() * (1.0f - time) + d1.blurY() * time,
+            d0.angleDeg() + delta * time
+        );
+    }
+}
 
 void TimeKeyBlender::blendOpaKey(PositionType aPos, const TimeInfo& aTime) {
     auto seekData = mSeeker->data(aPos);

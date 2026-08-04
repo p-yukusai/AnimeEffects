@@ -48,7 +48,15 @@ namespace ObjectNodeUtil {
     bool thereAreSomeKeysExceedingFrame(const ObjectNode* aRootNode, int aMaxFrame);
 
     void collectRenderClippees(
-        ObjectNode& aNode, std::vector<Renderer::SortUnit>& aDest, const TimeCacheAccessor& aAccessor
+        ObjectNode& aNode, std::vector<Renderer::SortUnit>& aDest, const TimeCacheAccessor& aAccessor,
+        const TimeInfo& aTime
+    );
+
+    // collects renderable units of a subtree; folders with an active composite filter
+    // are pushed as single units (their subtree is rendered by the folder itself)
+    void collectRenderUnits(
+        ObjectNode& aNode, bool aPush, std::vector<Renderer::SortUnit>& aDest, const TimeCacheAccessor& aAccessor,
+        const TimeInfo& aTime
     );
 
     class AttributeNotifier: public cmnd::Listener {

@@ -1,6 +1,7 @@
 #ifndef CORE_TIMEKEYEXPANS_H
 #define CORE_TIMEKEYEXPANS_H
 
+#include <algorithm>
 #include "gl/Texture.h"
 #include "core/SRTExpans.h"
 #include "core/MoveKey.h"
@@ -41,6 +42,16 @@ public:
 
     HSVKey::Data& hsv() { return mHSV; }
     const HSVKey::Data& hsv() const { return mHSV; }
+
+    void setBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg) {
+        mBlurX = aBlurX;
+        mBlurY = aBlurY;
+        mBlurAngle = aAngleDeg;
+    }
+    float blurX() const { return mBlurX; }
+    float blurY() const { return mBlurY; }
+    float angleDeg() const { return mBlurAngle; }
+    float maxBlurRadius() const { return std::max(mBlurX, mBlurY); }
 
     void setWorldOpacity(float aValue) { mWorldOpacity = aValue; }
     float worldOpacity() const { return mWorldOpacity; }
@@ -86,6 +97,9 @@ private:
     SRTExpans mSRT;
     OpaKey::Data mOpa;
     HSVKey::Data mHSV;
+    float mBlurX;
+    float mBlurY;
+    float mBlurAngle;
     float mWorldOpacity;
     float mDepth;
     float mWorldDepth;

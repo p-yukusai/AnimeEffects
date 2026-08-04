@@ -112,7 +112,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         AE_MINOR_VERSION=7
         AE_MICRO_VERSION=1
     AE_PROJECT_FORMAT_MAJOR_VERSION=0
-    AE_PROJECT_FORMAT_MINOR_VERSION=8
+    AE_PROJECT_FORMAT_MINOR_VERSION=9
     AE_PROJECT_FORMAT_OLDEST_MAJOR_VERSION=0
     AE_PROJECT_FORMAT_OLDEST_MINOR_VERSION=4
     USE_GL_CORE_PROFILE
@@ -131,14 +131,24 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 message("Copying data")
+# the app chdirs to its executable directory (Main.cpp: QDir::setCurrent(appDir))
+# and opens ./data from there, so data must sit next to the exe. Multi-config
+# generators put the exe in a per-config subdir, hence $<CONFIG>. Wipe the
+# destination first so deleted source files do not linger (copy_directory only
+# ever adds/updates).
 if (APPLE)
-    add_custom_target(copy_data
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${CMAKE_CURRENT_BINARY_DIR}/AnimeEffects.app/Contents/MacOS/data
-    )
+    set(AE_DATA_SUBDIR AnimeEffects.app/Contents/MacOS/data)
 else ()
-    add_custom_target(copy_data
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${CMAKE_CURRENT_BINARY_DIR}/data
-    )
+    set(AE_DATA_SUBDIR data)
 endif ()
+if (CMAKE_CONFIGURATION_TYPES)
+    set(AE_DATA_DEST ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${AE_DATA_SUBDIR})
+else ()
+    set(AE_DATA_DEST ${CMAKE_CURRENT_BINARY_DIR}/${AE_DATA_SUBDIR})
+endif ()
+add_custom_target(copy_data
+        COMMAND ${CMAKE_COMMAND} -E rm -rf ${AE_DATA_DEST}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${AE_DATA_DEST}
+)
 message("Data copied")
 add_dependencies(${PROJECT_NAME} copy_data)

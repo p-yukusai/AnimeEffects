@@ -4,13 +4,14 @@
 #include "core/TimeLine.h"
 #include "core/TimeKeyExpans.h"
 #include "core/DepthKey.h"
+#include "core/BlurKey.h"
 #include "core/Project.h"
 
 namespace {
 
-constexpr  int kMaxLengthOfTimeKeyName = 8;
+constexpr int kMaxLengthOfTimeKeyName = 8;
 constexpr std::array<const char*, core::TimeKeyType_TERM> kTimeKeyNames = {
-    "Move", "Rotate", "Scale", "Depth", "Opa", "Bone", "Pose", "Mesh", "FFD", "Image", "HSV"};
+    "Move", "Rotate", "Scale", "Depth", "Opa", "Bone", "Pose", "Mesh", "FFD", "Image", "HSV", "Blur"};
 
 constexpr std::array<core::TimeKeyType, core::TimeKeyType_TERM> kTimeKeyTypeInOrderOfOperations = {
     core::TimeKeyType_Image,
@@ -23,7 +24,8 @@ constexpr std::array<core::TimeKeyType, core::TimeKeyType_TERM> kTimeKeyTypeInOr
     core::TimeKeyType_Scale,
     core::TimeKeyType_Depth,
     core::TimeKeyType_Opa,
-    core::TimeKeyType_HSV};
+    core::TimeKeyType_HSV,
+    core::TimeKeyType_Blur};
 
 } // namespace
 
@@ -374,6 +376,8 @@ bool TimeLine::deserializeTimeKey(Deserializer& aIn, TimeKeyType aType, int aInd
         key = new OpaKey();
     } else if (aType == TimeKeyType_HSV) {
         key = new HSVKey();
+    } else if (aType == TimeKeyType_Blur) {
+        key = new BlurKey();
     } else if (aType == TimeKeyType_Bone) {
         key = new BoneKey();
     } else if (aType == TimeKeyType_Pose) {
