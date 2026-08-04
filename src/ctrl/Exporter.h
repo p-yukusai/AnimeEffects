@@ -17,6 +17,7 @@
 #include "core/TimeInfo.h"
 #include "core/TimeKeyBlender.h"
 #include "core/ClippingFrame.h"
+#include "core/FilterFrame.h"
 #include "core/DestinationTexturizer.h"
 #include "ctrl/VideoFormat.h"
 
@@ -132,6 +133,7 @@ private:
     core::Project& mProject;
     FramebufferList mFramebuffers;
     QScopedPointer<core::ClippingFrame> mClippingFrame;
+    QScopedPointer<core::FilterFrame> mFilterFrame;
     QScopedPointer<core::DestinationTexturizer> mDestinationTexturizer;
     gl::EasyTextureDrawer mTextureDrawer;
     core::TimeInfo mOriginTimeInfo;

@@ -1,4 +1,5 @@
 #include "core/ResourceUpdatingWorkspace.h"
+#include "core/BlurKey.h"
 #include "core/TimeKeyExpans.h"
 #include "ffd/ffd_Target.h"
 #include "qapplication.h"
@@ -410,6 +411,21 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
             hsvKey->setFrame(obj["Frame"].toInt());
             return hsvKey;
         }
+        case TimeKeyType_Blur: {
+            auto* blurKey = new BlurKey;
+            blurKey->data().easing() = objToEasing(obj);
+            blurKey->setAmount(obj["Amount"].toDouble());
+            // directional data only exists in newer clipboard payloads; fall back to the
+            // isotropic amount otherwise
+            if (obj.contains("BlurX")) {
+                blurKey->setBlurX(obj["BlurX"].toDouble());
+                blurKey->setBlurY(obj["BlurY"].toDouble());
+                blurKey->setAngleDeg(obj["Angle"].toDouble());
+                blurKey->setDirectional(true);
+            }
+            blurKey->setFrame(obj["Frame"].toInt());
+            return blurKey;
+        }
         // If you end up here you've done goofed.
         case TimeKeyType_TERM: {
             return nullptr;
@@ -583,7 +599,7 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
                 folderError = true;
                 folderErrorCount++;
             }
-            QStringList keys{"Move", "Rotate", "Scale", "Depth", "Opa", "Bone", "Pose", "HSV"};
+            QStringList keys{"Move", "Rotate", "Scale", "Depth", "Opa", "Bone", "Pose", "HSV", "Blur"};
             bool containsOtherKeys = false;
             int containsCount = 0;
             for (const QString& key : keys) {
