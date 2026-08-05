@@ -354,7 +354,13 @@ namespace prop {
             mBlurY->onValueUpdated = [=](double, double) { this->assignBlurAxis(mBlurY); };
 
             mAngle = new DecimalItem(this);
-            mAngle->setRange(-180.0, 180.0);
+            // unbounded like the rotate key so multi-turn spins (0 -> 3600) can be keyed
+            // and animated with easing; the rendered ellipse is 180-periodic, but the
+            // accumulated value drives the spin speed through the interpolation
+            mAngle->setRange(
+                util::MathUtil::getDegreeFromRadian(core::Constant::rotateMin()),
+                util::MathUtil::getDegreeFromRadian(core::Constant::rotateMax())
+            );
             mAngle->box().setSingleStep(1.0);
             mAngle->onValueUpdated = [=](double, double) { this->assignBlurAxis(mAngle); };
 

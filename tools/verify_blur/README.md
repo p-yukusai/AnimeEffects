@@ -24,8 +24,8 @@ GL is unavailable. Exit code: 0 = all pass, 1 = test failures, 2 = GL bootstrap 
   plus invariants (orthonormality, `|det M| == s1*s2`) and a brute-force max-stretch check.
 - **S2 ladder** — `FilterFrame::blurLadderLevel` vs an independent reference over a
   boundary grid (radii around 16*2^k, tiny/odd buffer sizes), with level invariants.
-- **S3 blending** — `TimeKeyBlender` blur segments: radii lerp, shortest-arc angle
-  interpolation across the 0/360 wrap, easing, exact-keyframe/after-last/no-key cases.
+- **S3 blending** — `TimeKeyBlender` blur segments: radii lerp, accumulated angle (multi-turn spins keep their turns, like the rotate key)
+  easing, exact-keyframe/after-last/no-key cases.
 - **S4 render** — full production renders vs the CPU reference blur (premultiplied,
   GL bilinear, CLAMP_TO_EDGE, ladder replica): plain/transformed layers, the edge case of
   a **layer inside a folder with transforms on both**, blur on transformed folders, three

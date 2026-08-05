@@ -596,21 +596,18 @@ void TimeKeyBlender::blendBlurKey(PositionType aPos, const TimeInfo& aTime) {
         const auto& d = ((const BlurKey*)blend.singlePoint().key)->data();
         expans.setBlurEllipse(d.blurX(), d.blurY(), d.angleDeg());
     } else {
-        // calculate easing; the angle follows the shortest arc between the two keys
+        // calculate easing; the angle interpolates linearly like the rotate key, so a
+        // multi-turn spin (e.g. 0 -> 3600) keeps its accumulated turns and the easing
+        // modulates the spin speed instead of taking the shortest arc
         const float time = getEasingRateFromTwoKeys<BlurKey>(blend);
         const BlurKey* k0 = (const BlurKey*)blend.point(0).key;
         const BlurKey* k1 = (const BlurKey*)blend.point(1).key;
         const auto& d0 = k0->data();
         const auto& d1 = k1->data();
-        float delta = d1.angleDeg() - d0.angleDeg();
-        while (delta > 180.0f)
-            delta -= 360.0f;
-        while (delta < -180.0f)
-            delta += 360.0f;
         expans.setBlurEllipse(
             d0.blurX() * (1.0f - time) + d1.blurX() * time,
             d0.blurY() * (1.0f - time) + d1.blurY() * time,
-            d0.angleDeg() + delta * time
+            d0.angleDeg() * (1.0f - time) + d1.angleDeg() * time
         );
     }
 }

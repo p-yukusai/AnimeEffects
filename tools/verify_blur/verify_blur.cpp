@@ -7,7 +7,7 @@
 //                  chains, incl. layer-in-folder transform stacks) vs an independent
 //                  double-precision Jacobi SVD reference; invariants + brute-force checks.
 //   S2 ladder      FilterFrame::blurLadderLevel vs an independent reference, boundary grid.
-//   S3 blending    TimeKeyBlender blur blending: lerp, shortest-arc angle, easing, gating.
+//   S3 blending    TimeKeyBlender blur blending: lerp, accumulated angle, easing, gating.
 //   S4 render      full production render vs the CPU reference blur (direct + ladder,
 //                  transformed layers, transformed folders, nesting, zoom, camera
 //                  rotation/flip, odd canvases).
@@ -471,7 +471,7 @@ void suiteLadder() {
 }
 
 //-------------------------------------------------------------------------------------------------
-// S3: blur key blending (lerp, shortest-arc angle, easing, frame gating)
+// S3: blur key blending (lerp, accumulated angle, easing, frame gating)
 void addBlurFull(core::ObjectNode* aNode, int aFrame, float aBX, float aBY, float aAngle, bool aSineEasing = false) {
     auto* key = new core::BlurKey();
     key->setBlurX(aBX);
@@ -508,7 +508,8 @@ void suiteBlending() {
         aNodeOut = f;
     };
 
-    // (a) shortest arc wraps forward: 350 -> 10 passes through 0/360, never 180
+    // (a) raw linear angle: 350 -> 10 sweeps the full 340 degrees (no shortest-arc
+    // normalization), matching the rotate key so multi-turn spins stay accumulated
     {
         core::ObjectTree tree;
         core::FolderNode *root, *f;
@@ -518,11 +519,11 @@ void suiteBlending() {
         const auto v = blendedBlur(tree, *root, *f, 5);
         bool ok = expect(std::abs(v[0] - 10.0f) < 1e-3 && std::abs(v[1] - 20.0f) < 1e-3,
             QString("radii lerp: (%1,%2)").arg(v[0]).arg(v[1]));
-        ok &= expect(std::abs(ref::angleDiffDeg(v[2], 0.0, 360.0)) < 1e-2,
-            QString("shortest-arc 350->10 mid: got %1").arg(v[2]));
-        caseReport("shortest arc 350->10 @mid", ok, QString("angle=%1").arg(v[2]));
+        ok &= expect(std::abs(v[2] - 180.0f) < 1e-2,
+            QString("linear 350->10 mid: got %1").arg(v[2]));
+        caseReport("linear 350->10 @mid", ok, QString("angle=%1").arg(v[2]));
     }
-    // (b) shortest arc wraps backward: 10 -> 350 passes through 0
+    // (b) raw linear backward: 10 -> 350 mid = 180
     {
         core::ObjectTree tree;
         core::FolderNode *root, *f;
@@ -530,9 +531,23 @@ void suiteBlending() {
         addBlurFull(f, 0, 0.0f, 0.0f, 10.0f);
         addBlurFull(f, 10, 0.0f, 0.0f, 350.0f);
         const auto v = blendedBlur(tree, *root, *f, 5);
-        const bool ok = expect(std::abs(ref::angleDiffDeg(v[2], 0.0, 360.0)) < 1e-2,
-            QString("shortest-arc 10->350 mid: got %1").arg(v[2]));
-        caseReport("shortest arc 10->350 @mid", ok, QString("angle=%1").arg(v[2]));
+        const bool ok = expect(std::abs(v[2] - 180.0f) < 1e-2,
+            QString("linear 10->350 mid: got %1").arg(v[2]));
+        caseReport("linear 10->350 @mid", ok, QString("angle=%1").arg(v[2]));
+    }
+    // (b2) multi-turn spin accumulates: 0 -> 3600 spins 20 turns (mid = 1800), so
+    // easing on the segment modulates the spin speed
+    {
+        core::ObjectTree tree;
+        core::FolderNode *root, *f;
+        makeTree(tree, root, f);
+        addBlurFull(f, 0, 4.0f, 8.0f, 0.0f);
+        addBlurFull(f, 10, 4.0f, 8.0f, 3600.0f);
+        const auto v = blendedBlur(tree, *root, *f, 5);
+        const bool ok = expect(
+            std::abs(v[2] - 1800.0f) < 1e-2 && std::abs(v[0] - 4.0f) < 1e-3,
+            QString("multi-turn spin mid: got %1").arg(v[2]));
+        caseReport("multi-turn 0->3600 @mid", ok, QString("angle=%1").arg(v[2]));
     }
     // (c) plain interpolation 0 -> 90
     {
