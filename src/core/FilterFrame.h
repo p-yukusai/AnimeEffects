@@ -32,6 +32,13 @@ public:
     static constexpr float kDirectBlurRadius = 16.0f;
     static constexpr int kMaxLadderLevels = 8;
 
+    // A blur whose blended radius is at or below this epsilon is treated as inactive
+    // (no composite path). The value is an epsilon rather than a visible step so that
+    // interpolating a blur amount from zero ramps in continuously: the shader's sigma
+    // floor (see kBlurFrag) keeps kernels for radii below ~0.5 identity-like, so the
+    // composite path engages visually unchanged and the smoothness is preserved.
+    static constexpr float kMinActiveBlurRadius = 0.001f;
+
     // Number of halvings the blur ladder should use for the given radii and composite
     // size; 0 means the direct two-pass blur. Pure function of the inputs (the harness
     // replica computes the same value).

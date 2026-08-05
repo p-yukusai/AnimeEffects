@@ -14,7 +14,8 @@
 //   S5 orientation ground-truth: second-moment angle of a blurred dot (folder+layer
 //                  transforms, camera rotation/flip), ellipse swap identity,
 //                  isotropic/directional equivalence, layer-vs-folder byte identity.
-//   S6 gating/edge: amount <= 0.5 renders identical to no key; key-before-frame inactive.
+//   S6 gating/edge: amount <= epsilon renders identical to no key (identity kernel
+//                  below ~0.5 lets interpolations ramp in smoothly); key-before-frame inactive.
 //   S7 interactions: blur x clippee (on folder and layer), nested folder blur, blend
 //                  modes over a captured background, layer/folder HSV ordering.
 //
@@ -732,6 +733,10 @@ void suiteRender() {
     layerCase("root layer, blur (12,0,0)", center, 0, QVector2D(1, 1), 12, 0, 0, canvas, 1.0f, {R(0, 1, 1)});
     layerCase("root layer, blur (0,12,0)", center, 0, QVector2D(1, 1), 0, 12, 0, canvas, 1.0f, {R(0, 1, 1)});
     layerCase("root layer, blur (12,4,30)", center, 0, QVector2D(1, 1), 12, 4, 30, canvas, 1.0f, {R(0, 1, 1)});
+    // sub-step radii engage the composite path with an identity-like 3-tap kernel and
+    // must match the CPU reference (old sigma floor made these render as a 5-tap blur)
+    layerCase("root layer, sub-step blur (0.6,0.6,0)", center, 0, QVector2D(1, 1), 0.6, 0.6, 0, canvas, 1.0f, {R(0, 1, 1)});
+    layerCase("root layer, sub-step blur (0.8,0.2,0)", center, 0, QVector2D(1, 1), 0.8, 0.2, 0, canvas, 1.0f, {R(0, 1, 1)});
     layerCase("root layer, blur (8,8,137)", center, 0, QVector2D(1, 1), 8, 8, 137, canvas, 1.0f, {R(0, 1, 1)});
     layerCase("root layer, blur (16,16,45)", center, 0, QVector2D(1, 1), 16, 16, 45, canvas, 1.0f, {R(0, 1, 1)});
 
@@ -1003,7 +1008,8 @@ void suiteOrientation() {
 }
 
 //-------------------------------------------------------------------------------------------------
-// S6: gating (amount <= 0.5 is inert) and frame activation
+// S6: gating (amount <= epsilon is inert; small amounts are active with an identity-like
+// kernel so interpolations ramp in smoothly) and frame activation
 void suiteGating() {
     suiteHeader("S6 gating/edge cases");
     ResPool pool;
@@ -1028,14 +1034,26 @@ void suiteGating() {
         return fx.render(tree, camera, renderFrame);
     };
 
+    // a blur at/below the epsilon (FilterFrame::kMinActiveBlurRadius) is gated off:
+    // the composite path does not engage and the frame is byte-identical to keyless
     const auto plain = renderLayerBlur(0, 0, 0, -1, 0, false);
-    const auto gated = renderLayerBlur(0.5f, 0.5f, 0.0f, 0, 0, false);
+    const auto gated = renderLayerBlur(0.001f, 0.001f, 0.0f, 0, 0, false);
     const scene::Diff dGated = scene::diffImages(plain, gated);
     bool ok = dGated.bytesIdentical;
     ++gChecks;
     if (!ok)
         ++gFails;
-    caseReport("layer blur 0.5 is inert (== keyless)", ok, diffStr(dGated));
+    caseReport("layer blur 0.001 is inert (== keyless)", ok, diffStr(dGated));
+
+    // above the epsilon the composite engages; at 0.6 the kernel is a tiny 3-tap so the
+    // result is active but close to keyless (the old 0.5 gate would have collapsed it)
+    const auto small = renderLayerBlur(0.6f, 0.6f, 0.0f, 0, 0, false);
+    const scene::Diff dSmall = scene::diffImages(plain, small);
+    ok = !dSmall.bytesIdentical && dSmall.mean > 0.001;
+    ++gChecks;
+    if (!ok)
+        ++gFails;
+    caseReport("layer blur 0.6 is active (!= keyless)", ok, diffStr(dSmall));
 
     const auto active = renderLayerBlur(4.0f, 1.0f, 30.0f, 0, 0, false);
     const scene::Diff dActive = scene::diffImages(plain, active);
@@ -1045,14 +1063,14 @@ void suiteGating() {
         ++gFails;
     caseReport("layer blur (4,1,30) is active (!= keyless)", ok, diffStr(dActive));
 
-    const auto folderGated = renderLayerBlur(0.5f, 0.5f, 0.0f, 0, 0, true);
+    const auto folderGated = renderLayerBlur(0.001f, 0.001f, 0.0f, 0, 0, true);
     const auto folderPlain = renderLayerBlur(0, 0, 0, -1, 0, true);
     const scene::Diff dFolderGated = scene::diffImages(folderPlain, folderGated);
     ok = dFolderGated.bytesIdentical;
     ++gChecks;
     if (!ok)
         ++gFails;
-    caseReport("folder blur 0.5 is inert", ok, diffStr(dFolderGated));
+    caseReport("folder blur 0.001 is inert", ok, diffStr(dFolderGated));
 
     // key at frame 5: inactive before, active from frame 5 on
     const auto before = renderLayerBlur(6.0f, 2.0f, 20.0f, 5, 4, false);

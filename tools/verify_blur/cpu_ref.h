@@ -87,10 +87,11 @@ inline Vec4 sampleBilinear(const Image& aImg, double aX, double aY) {
 
 //-------------------------------------------------------------------------------------------------
 // Exact replica of the separable Gaussian pass (kBlurFrag in src/core/FilterFrame.cpp):
-// sigma = max(radius * 0.5, 0.5), taps = ceil(3 * sigma), normalized Gaussian weights,
-// sampling at integer offsets along the pass direction through GL_LINEAR.
+// sigma = max(radius * 0.5, 0.001), taps = ceil(3 * sigma), normalized Gaussian weights,
+// sampling at integer offsets along the pass direction through GL_LINEAR. The epsilon
+// floor keeps small radii identity-like so interpolations ramp in from zero.
 inline Image gaussPass(const Image& aSrc, double aDirX, double aDirY, double aRadiusTexels) {
-    const double sigma = std::max(aRadiusTexels * 0.5, 0.5);
+    const double sigma = std::max(aRadiusTexels * 0.5, 0.001);
     const int taps = (int)std::ceil(sigma * 3.0);
     std::vector<double> weights((size_t)taps * 2 + 1);
     double wsum = 0.0;

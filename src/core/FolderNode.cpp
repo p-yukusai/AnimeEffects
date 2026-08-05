@@ -63,11 +63,14 @@ bool FolderNode::hasActiveBlurKey(const TimeInfo& aTime) const {
 }
 
 bool FolderNode::isCompositeFolder(const TimeInfo& aTime, const TimeCacheAccessor& aAccessor) const {
-    // a BlurKey whose blended radius is <= 0.5 (the UI step) has no visible effect, so it
-    // must not force the folder onto the composite path (gated so a 0-amount blur key is
-    // free). An HSV key that blends to identity (no-op adjust) is gated the same way.
+    // a BlurKey whose blended radius is at or below the epsilon has no visible effect
+    // (the shader's sigma floor renders such radii as an identity kernel), so it must
+    // not force the folder onto the composite path; the epsilon keeps interpolations
+    // ramping in smoothly from zero. An HSV key that blends to identity (no-op adjust)
+    // is gated the same way.
     return (hasActiveHSVKey(aTime) && !hsvDataIsIdentity(aAccessor.get(mTimeLine).hsv().hsv()))
-        || (hasActiveBlurKey(aTime) && aAccessor.get(mTimeLine).maxBlurRadius() > 0.5f);
+        || (hasActiveBlurKey(aTime)
+            && aAccessor.get(mTimeLine).maxBlurRadius() > FilterFrame::kMinActiveBlurRadius);
 }
 
 void FolderNode::prerender(const RenderInfo&, const TimeCacheAccessor&) {}
@@ -122,7 +125,7 @@ void FolderNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccesso
     // 2. apply filters to the composite and draw the result into the target framebuffer
     GLuint srcTexture = composite.texture();
     auto& expans = aAccessor.get(mTimeLine);
-    if (expans.maxBlurRadius() > 0.5f && hasActiveBlurKey(aInfo.time)) {
+    if (expans.maxBlurRadius() > FilterFrame::kMinActiveBlurRadius && hasActiveBlurKey(aInfo.time)) {
         // The blur is defined in the folder's content pixels (a content-space ellipse when
         // the blur is directional). The composite is in project space (children render
         // with their world transforms), so the content ellipse maps to an ellipse in the

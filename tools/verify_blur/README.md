@@ -36,8 +36,10 @@ GL is unavailable. Exit code: 0 = all pass, 1 = test failures, 2 = GL bootstrap 
   equal the world angle mapped by `R(camRot) * diag(flip ? -1 : 1, 1)`), the
   `(rx,ry,a) == (ry,rx,a+90)` identity, isotropic `amount` vs directional equal-radii
   byte identity, layer-blur vs folder-blur byte identity.
-- **S6 gating** — blended radius <= 0.5 must render byte-identical to no key (layer and
-  folder); keys activate at their frame.
+- **S6 gating** — blended radius at/below the epsilon (0.001) must render byte-identical
+  to no key (layer and folder); small radii are active with an identity-like kernel
+  (sigma floor lowered so interpolations ramp in smoothly, no step at the gate); keys
+  activate at their frame.
 - **S7 interactions** — blur crossed with other features: a clippee pair inside a blurred
   folder and a blurred layer that is itself clipped (clipping propagates into the
   composite), **folder blur nested inside folder blur** (inner ladder/direct sequencing),

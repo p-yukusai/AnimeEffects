@@ -124,9 +124,12 @@ bool LayerNode::hasActiveBlurKey(const TimeInfo& aTime) const {
 }
 
 bool LayerNode::isCompositeLayer(const TimeInfo& aTime, const TimeCacheAccessor& aAccessor) const {
-    // a BlurKey whose blended radius is <= 0.5 (the UI step) has no visible effect, so it
-    // must not force the layer onto the composite path (mirrors the folder gate)
-    return hasActiveBlurKey(aTime) && aAccessor.get(mTimeLine).maxBlurRadius() > 0.5f;
+    // a BlurKey whose blended radius is at or below the epsilon has no visible effect
+    // (identity kernel, see FilterFrame::kMinActiveBlurRadius), so it must not force
+    // the layer onto the composite path (mirrors the folder gate); the epsilon keeps
+    // interpolations ramping in smoothly from zero
+    return hasActiveBlurKey(aTime)
+        && aAccessor.get(mTimeLine).maxBlurRadius() > FilterFrame::kMinActiveBlurRadius;
 }
 
 // A blurred layer is isolated: the layer draws into a composite slot (its own HSV, blend
@@ -173,7 +176,7 @@ void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor
     // transform M (composed as M*E), so the separable passes run along its principal axes
     // with the resulting singular values as radii, scaled by the camera zoom)
     GLuint srcTexture = composite.texture();
-    if (expans.maxBlurRadius() > 0.5f && hasActiveBlurKey(aInfo.time)) {
+    if (expans.maxBlurRadius() > FilterFrame::kMinActiveBlurRadius && hasActiveBlurKey(aInfo.time)) {
         const WorldBlurEllipse ellipse = worldBlurEllipse(
             aAccessor, this, expans.blurX(), expans.blurY(), expans.angleDeg());
         const float zoom = aInfo.camera.scale();

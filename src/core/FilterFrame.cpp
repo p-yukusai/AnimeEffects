@@ -38,6 +38,10 @@ static const char* kResampleFrag =
 
 // Separable 1D Gaussian pass. sigma = radius/2, taps = ceil(3*sigma).
 // The composite texture is premultiplied; averaging premultiplied samples is correct.
+// The sigma floor is a small epsilon (not a visible radius): below the epsilon a
+// radius renders as a 3-tap kernel whose off-center weights are ~0, i.e. identity, so
+// interpolations can ramp in from zero without a step (FilterFrame::kMinActiveBlurRadius
+// matches this floor).
 static const char* kBlurFrag =
     "#version 330 \n"
     "uniform vec4 uColor;"
@@ -48,7 +52,7 @@ static const char* kBlurFrag =
     "in vec2 vTexCoord;"
     "layout(location = 0, index = 0) out vec4 oFragColor;"
     "void main() {"
-    "  float sigma = max(uBlurRadius * 0.5, 0.5);"
+    "  float sigma = max(uBlurRadius * 0.5, 0.001);"
     "  int taps = int(ceil(sigma * 3.0));"
     "  vec4 c = vec4(0.0);"
     "  float wsum = 0.0;"
