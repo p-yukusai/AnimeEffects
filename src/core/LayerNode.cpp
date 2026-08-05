@@ -397,7 +397,7 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
     } else {
         // blend func
         ggl.glEnable(GL_BLEND);
-        ggl.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+        ggl.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
         ggl.glActiveTexture(GL_TEXTURE0);
         ggl.glBindTexture(GL_TEXTURE_2D, textureId);

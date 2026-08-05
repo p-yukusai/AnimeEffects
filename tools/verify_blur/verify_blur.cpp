@@ -193,6 +193,15 @@ void fillDot(int aX, int aY, uint8_t* aPx) {
     }
 }
 
+// solid square at 50% alpha (straight): the overlap of two of these is the alpha
+// discriminator - additive gives clamp(0.5+0.5)=1.0, the over operator gives 0.75
+void fillHalf(int aX, int aY, uint8_t* aPx) {
+    aPx[0] = aPx[1] = aPx[2] = aPx[3] = 0;
+    if (aX >= 4 && aX <= 26 && aY >= 4 && aY <= 26) { // 23x23 centered in 31x31
+        aPx[0] = 200; aPx[1] = 80; aPx[2] = 60; aPx[3] = 128;
+    }
+}
+
 // keeps generated resources alive for a scene's lifetime
 struct ResPool {
     std::vector<img::ResourceNode*> nodes;
@@ -203,6 +212,10 @@ struct ResPool {
     }
     img::ResourceNode* dot(const QString& aId) {
         nodes.push_back(scene::makeImage(aId, QSize(31, 31), fillDot));
+        return nodes.back();
+    }
+    img::ResourceNode* half(const QString& aId) {
+        nodes.push_back(scene::makeImage(aId, QSize(31, 31), fillHalf));
         return nodes.back();
     }
 };
@@ -1126,6 +1139,62 @@ void suiteGating() {
     caseReport("blur key @f5 active at f6", ok, diffStr(dAfter));
 }
 
+// Alpha-semantics regression: two overlapping 50%-alpha squares must accumulate with the
+// over-rule. The over operator gives alpha = 0.5 + 0.5*(1-0.5) = 0.75 (192) at the overlap;
+// the old additive-clamp GL_ONE, GL_ONE gave 255. The RGB channel is over-blended in both
+// cases (150,60,45 = 200*0.5 + 100*0.5 straight-over, stored premultiplied), so this test
+// discriminates on alpha. Verified pre-fix: (150,60,45,255) on both paths (SCRATCHPAD).
+// Geometry: A@(45,45) -> (33,39)-(56,62), B@(58,58) -> (46,26)-(69,49); overlap (50,44).
+void suiteAlphaProbe() {
+    suiteHeader("alpha semantics probe (additive vs over)");
+    ResPool pool;
+    const QSize cnv(128, 96);
+    auto& fx = fixtureFor(cnv);
+    const core::CameraInfo camera = scene::makeCamera(cnv);
+    auto pxAt = [&](const std::vector<uint8_t>& img, int x, int y) {
+        size_t i = (size_t)(y * cnv.width() + x) * 4;
+        return QString("%1,%2,%3,%4").arg(img[i]).arg(img[i + 1]).arg(img[i + 2]).arg(img[i + 3]);
+    };
+    auto near = [&](const std::vector<uint8_t>& img, int x, int y, std::array<int, 4> exp, int tol, const char* what) {
+        const QString got = pxAt(img, x, y);
+        int bad = 0;
+        for (int c = 0; c < 4; ++c) {
+            size_t i = (size_t)(y * cnv.width() + x) * 4;
+            if (std::abs((int)img[i + c] - exp[c]) > tol)
+                ++bad;
+        }
+        ++gChecks;
+        if (bad) {
+            ++gFails;
+            caseReport(what, false, got);
+        } else {
+            caseReport(what, true, got);
+        }
+    };
+    auto render2 = [&](bool withFolder, const char* tag) {
+        core::ObjectTree tree;
+        auto* root = new core::FolderNode("root");
+        tree.grabTopNode(root);
+        if (withFolder) {
+            auto* folder = scene::addFolder(root, "folder", QVector2D(0, 0), 0.0f, QVector2D(1, 1));
+            scene::addLayer(tree, folder, pool.half("b"), "b", QVector2D(58, 58), 0.0f, QVector2D(1, 1));
+            scene::addLayer(tree, folder, pool.half("a"), "a", QVector2D(45, 45), 0.0f, QVector2D(1, 1));
+            scene::addBlur(folder, 0, 0.002f, 0.002f, 0.0f);
+        } else {
+            scene::addLayer(tree, root, pool.half("b"), "b", QVector2D(58, 58), 0.0f, QVector2D(1, 1));
+            scene::addLayer(tree, root, pool.half("a"), "a", QVector2D(45, 45), 0.0f, QVector2D(1, 1));
+        }
+        const std::vector<uint8_t> img = fx.render(tree, camera, 0);
+        const QString prefix = QString("[alpha-%1]").arg(tag);
+        // overlap alpha = over-rule 0.752 -> 192; rgb straight-over premultiplied 150,60,45
+        near(img, 50, 44, {150, 60, 45, 192}, 2, qPrintable(prefix + " overlap alpha=192"));
+        near(img, 50, 50, {100, 40, 30, 128}, 2, qPrintable(prefix + " single-square control"));
+        near(img, 10, 10, {0, 0, 0, 0}, 0, qPrintable(prefix + " outside transparent"));
+    };
+    render2(false, "direct");
+    render2(true, "composite");
+}
+
 //-------------------------------------------------------------------------------------------------
 // S7: blur crossed with other features (clipping, nested composites, blend modes, HSV)
 void suiteInteractions() {
@@ -1712,6 +1781,7 @@ int main(int argc, char** argv) {
     suiteRender();
     suiteOrientation();
     suiteGating();
+    suiteAlphaProbe();
     suiteInteractions();
     suiteSerialization();
     suiteExport();

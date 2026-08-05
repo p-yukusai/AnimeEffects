@@ -370,9 +370,11 @@ inline Image hsvAdjust(const Image& aSrc, double aHueTurns, double aSatMul, doub
 //-------------------------------------------------------------------------------------------------
 // Exact replica of the blend presentation (LayerDrawingFrag.glsl blendColor with
 // PREMULTIPLIED_INPUT=1, followed by the framebuffer blend
-// glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE) into the RGBA8
+// glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA) into the RGBA8
 // target). aSrc/aDst are the stored PREMULTIPLIED contents of the composite and of the
 // scene behind it (the DestinationTexturizer capture); opacity rides the fragment alpha.
+// The alpha channel accumulates with the over-rule (src.a + dst.a*(1-src.a)), never
+// exceeding 1 for inputs <= 1, so 16F slots are safe with this operator.
 enum class BlendOp { Normal, Multiply, Screen };
 inline double blendChannel(BlendOp aOp, double a, double b) { // A = background, B = top
     switch (aOp) {
@@ -396,7 +398,7 @@ inline Image blendPresent(const Image& aSrc, const Image& aDst, BlendOp aOp, dou
                 const double blended = da * blendChannel(aOp, t[c], straight) + (1.0 - da) * straight;
                 d[c] = (float)(blended * sa + t[c] * (1.0 - sa));
             }
-            d[3] = (float)std::min(1.0, sa + da); // GL_ONE, GL_ONE, clamped by RGBA8
+            d[3] = (float)(sa + da * (1.0 - sa)); // over-rule: GL_ONE, GL_ONE_MINUS_SRC_ALPHA
         }
     }
     return dst;

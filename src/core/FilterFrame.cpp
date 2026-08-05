@@ -363,7 +363,7 @@ void FilterFrame::drawQuad(
     if (aKind == Kind_HSV) {
         // presentation passes draw the (unpremultiplied) composite onto the accumulated scene
         ggl.glEnable(GL_BLEND);
-        ggl.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+        ggl.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     } else {
         // resample and blur passes read PREMULTIPLIED textures and write into freshly
         // cleared targets; SRC_ALPHA blending would multiply the premultiplied RGB by the
