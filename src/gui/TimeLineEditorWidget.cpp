@@ -546,6 +546,7 @@ QJsonObject getKeyTypeSerialized(int keyType, core::TimeKey* timeKey, core::Obje
         QJsonObject blur;
         addStandardToObj(&blur, data, keyType, timeKey);
         blur["Amount"] = data.amount();
+        blur["Directional"] = data.isDirectional();
         blur["BlurX"] = data.blurX();
         blur["BlurY"] = data.blurY();
         blur["Angle"] = data.angleDeg();

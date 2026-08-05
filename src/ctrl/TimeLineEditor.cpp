@@ -417,11 +417,11 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
             blurKey->setAmount(obj["Amount"].toDouble());
             // directional data only exists in newer clipboard payloads; fall back to the
             // isotropic amount otherwise
-            if (obj.contains("BlurX")) {
+            blurKey->setDirectional(obj["Directional"].toBool());
+            if (blurKey->isDirectional()){
                 blurKey->setBlurX(obj["BlurX"].toDouble());
                 blurKey->setBlurY(obj["BlurY"].toDouble());
                 blurKey->setAngleDeg(obj["Angle"].toDouble());
-                blurKey->setDirectional(true);
             }
             blurKey->setFrame(obj["Frame"].toInt());
             return blurKey;
