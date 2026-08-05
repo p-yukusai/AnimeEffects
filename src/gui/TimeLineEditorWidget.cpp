@@ -1,6 +1,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include "core/TimeKeyExpans.h"
+#include "core/BlurKey.h"
 #include "gui/TimeLineEditorWidget.h"
 #include "gui/MouseSetting.h"
 #include "gui/obj/obj_Item.h"
@@ -539,6 +540,17 @@ QJsonObject getKeyTypeSerialized(int keyType, core::TimeKey* timeKey, core::Obje
         hsv["Absolute"] = data.hsv()[3];
         return hsv;
     }
+    case core::TimeKeyType_Blur: {
+        auto data = dynamic_cast<const core::BlurKey*>(timeKey)->data();
+        // Data types: Amount, BlurX, BlurY, Angle (floats) //
+        QJsonObject blur;
+        addStandardToObj(&blur, data, keyType, timeKey);
+        blur["Amount"] = data.amount();
+        blur["BlurX"] = data.blurX();
+        blur["BlurY"] = data.blurY();
+        blur["Angle"] = data.angleDeg();
+        return blur;
+    }
     default: {
         return {};
     }
@@ -647,6 +659,13 @@ void assignEasing(const util::LinkPointer<core::Project>& mProject, int easingTy
         ctrl::TimeLineUtil::assignHSVKeyData(*mProject, *target->node, frame, newData);
     }
         break;
+    case core::TimeKeyType_Blur:{
+        auto newData =  dynamic_cast<const core::BlurKey*>(key)->data();
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *target->node, frame, newData);
+    }
+        break;
     default:
         qDebug("You somehow tried to modify an unsupported key, you absolute fool!");
     }
@@ -722,6 +741,8 @@ static QString keyToString(const core::TimeKeyType key) {
         return "Image";
     case core::TimeKeyType_HSV:
         return "HSV";
+    case core::TimeKeyType_Blur:
+        return "Blur";
     case core::TimeKeyType_FFD:
         return "FFD";
     case core::TimeKeyType_Depth:

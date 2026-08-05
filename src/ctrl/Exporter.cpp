@@ -427,6 +427,10 @@ Exporter::Result Exporter::start() {
         mClippingFrame.reset(new core::ClippingFrame());
         mClippingFrame->resize(mProject.attribute().imageSize());
 
+        // filter frame for folder composite filters
+        mFilterFrame.reset(new core::FilterFrame());
+        mFilterFrame->resize(mProject.attribute().imageSize());
+
         // create texturizer for destination colors of the framebuffer
         mDestinationTexturizer.reset(new core::DestinationTexturizer());
         mDestinationTexturizer->resize(mProject.attribute().imageSize());
@@ -481,6 +485,7 @@ bool Exporter::update() {
     // clear clipping
     mClippingFrame->clearTexture();
     mClippingFrame->resetClippingId();
+    mFilterFrame->clearAll();
 
     // clear destination texture
     mDestinationTexturizer->clearTexture();
@@ -505,6 +510,8 @@ bool Exporter::update() {
     renderInfo.clippingId = 0;
     renderInfo.clippingFrame = mClippingFrame.data();
     renderInfo.destTexturizer = mDestinationTexturizer.data();
+    renderInfo.filterFrame = mFilterFrame.data();
+    renderInfo.opacityScale = 1.0f;
 
     XC_ASSERT(renderInfo.framebuffer != 0);
     XC_ASSERT(renderInfo.dest != 0);

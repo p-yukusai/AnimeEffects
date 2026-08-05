@@ -23,6 +23,12 @@ public:
     void grabHeightMap(HeightMap* aNode);
     const HeightMap* heightMap() const { return mHeightMap.data(); }
 
+    // a folder with an active HSV/Blur key renders its subtree into a composite
+    // frame and applies the filter to the blended result
+    bool isCompositeFolder(const TimeInfo& aTime, const TimeCacheAccessor& aAccessor) const;
+    bool hasActiveHSVKey(const TimeInfo& aTime) const;
+    bool hasActiveBlurKey(const TimeInfo& aTime) const;
+
     // from ObjectNode
     virtual ObjectType type() const { return ObjectType_Folder; }
     virtual void setName(const QString& aName) { mName = aName; }
@@ -47,12 +53,12 @@ public:
     virtual void prerender(const RenderInfo&, const TimeCacheAccessor&);
     virtual void render(const RenderInfo&, const TimeCacheAccessor&);
     virtual void renderClipper(const RenderInfo&, const TimeCacheAccessor&, uint8 aClipperId);
-    virtual void renderHSV(const RenderInfo& aInfo, const TimeCacheAccessor&, QList<int> HSVData);
     virtual void setClipped(bool aIsClipped);
     virtual bool isClipped() const { return mIsClipped; }
 
 private:
     void renderClippees(const RenderInfo&, const TimeCacheAccessor&);
+    void renderComposite(const RenderInfo&, const TimeCacheAccessor&);
     bool isClipper() const;
 
     QString mName;
@@ -64,7 +70,6 @@ private:
     bool mIsClipped;
 
     std::vector<Renderer::SortUnit> mClippees; // a cache for performance
-    std::vector<Renderer::SortUnit> mRenders;
 };
 
 } // namespace core

@@ -21,6 +21,9 @@ public:
     static void clearContext();
     static void makeCurrent();
     static void doneCurrent();
+    // makes the global QOpenGLWidget's context current when it is set and visible,
+    // no-op (returns false) otherwise so callers can harden non-paint GL work.
+    static bool makeCurrentIfReady();
 
 private:
     Global() {}

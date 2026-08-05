@@ -3,6 +3,7 @@
 #include "cmnd/ScopedMacro.h"
 #include "core/TimeKeyType.h"
 #include "core/ImageKeyUpdater.h"
+#include "core/BlurKey.h"
 #include "core/FFDKeyUpdater.h"
 #include "core/ResourceUpdatingWorkspace.h"
 #include "ctrl/TimeLineUtil.h"
@@ -314,6 +315,17 @@ namespace TimeLineUtil {
         );
     }
 
+    void assignBlurKeyData(Project& aProject, ObjectNode& aTarget, int aFrame, const BlurKey::Data& aNewData) {
+        assignKeyData<BlurKey, TimeKeyType_Blur>(
+            aProject,
+            aTarget,
+            aFrame,
+            aNewData,
+            aFrame == TimeLine::kDefaultKeyIndex ? CmndName::tr("Update default blur key")
+                                                 : CmndName::tr("Update blur key")
+        );
+    }
+
     void assignPoseKeyEasing(Project& aProject, ObjectNode& aTarget, int aFrame, const util::Easing::Param& aNewData) {
         assignKeyEasing<PoseKey, TimeKeyType_Pose>(
             aProject,
@@ -457,6 +469,10 @@ namespace TimeLineUtil {
 
     void pushNewHSVKey(Project& aProject, ObjectNode& aTarget, int aFrame, HSVKey* aKey) {
         pushNewKey<HSVKey, TimeKeyType_HSV>(aProject, aTarget, aFrame, aKey, CmndName::tr("Add new HSV key"));
+    }
+
+    void pushNewBlurKey(Project& aProject, ObjectNode& aTarget, int aFrame, BlurKey* aKey) {
+        pushNewKey<BlurKey, TimeKeyType_Blur>(aProject, aTarget, aFrame, aKey, CmndName::tr("Add new blur key"));
     }
 
     void pushNewPoseKey(Project& aProject, ObjectNode& aTarget, int aFrame, PoseKey* aKey, BoneKey* aParentKey) {

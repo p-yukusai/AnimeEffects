@@ -22,6 +22,7 @@
 #include "gui/obj/obj_Notifiers.h"
 #include "gui/obj/obj_Util.h"
 #include "ctrl/ffd/ffd_Target.h"
+#include "gl/Global.h"
 #include <QFormLayout>
 #include <iostream>
 #include <sstream>
@@ -854,6 +855,9 @@ void ObjectTreeWidget::onObjectActionTriggered(bool) {
                 XC_ASSERT(resNode->data().hasImage());
 
                 // create node
+                // the LayerNode eagerly compiles its shaders, which needs a current GL
+                // context; Qt only guarantees one during paint, so harden this handler.
+                gl::Global::makeCurrentIfReady();
                 core::LayerNode* ptr =
                     new core::LayerNode(resNode->data().identifier(), mProject->objectTree().shaderHolder());
                 ptr->setVisibility(true);
@@ -1086,6 +1090,9 @@ void ObjectTreeWidget::addLayer(QTreeWidgetItem* curActionItem, core::ObjectNode
         resHandle = itemTL->current().areaImageKey()->data().resource();
     }
     // create node
+    // the LayerNode eagerly compiles its shaders, which needs a current GL
+    // context; Qt only guarantees one during paint, so harden this handler.
+    gl::Global::makeCurrentIfReady();
     auto* ptr = new core::LayerNode(nodeName, mProject->objectTree().shaderHolder());
 
     int resIdx = 0;

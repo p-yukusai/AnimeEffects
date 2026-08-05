@@ -1,4 +1,5 @@
 #include "core/TimeKeyExpans.h"
+#include "core/BlurKey.h"
 #include "ctrl/TimeLineUtil.h"
 #include "gui/prop/prop_KeyAccessor.h"
 
@@ -38,6 +39,12 @@ const core::HSVKey::Data& getHSVKeyData(const core::ObjectNode& aTarget, int aFr
     auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_HSV, aFrame);
     XC_PTR_ASSERT(key);
     return ((const core::HSVKey*)key)->data();
+}
+
+const core::BlurKey::Data& getBlurKeyData(const core::ObjectNode& aTarget, int aFrame) {
+    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_Blur, aFrame);
+    XC_PTR_ASSERT(key);
+    return ((const core::BlurKey*)key)->data();
 }
 
 #if 0
@@ -347,6 +354,66 @@ namespace prop {
         newKey->data() = currline().current().hsv();
         assignParam(newKey);
         ctrl::TimeLineUtil::pushNewHSVKey(*mProject, *mTarget, getFrame(), newKey);
+    }
+
+    void KeyAccessor::assignBlur(float aAmount) {
+        ASSERT_AND_RETURN_INVALID_TARGET();
+        const int frame = getFrame();
+        auto newData = getBlurKeyData(*mTarget, frame);
+        newData.setAmount(aAmount);
+
+        ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *mTarget, frame, newData);
+    }
+
+    core::BlurKey::Data KeyAccessor::blurData() const {
+        if (!isValid()) {
+            return core::BlurKey::Data();
+        }
+        return getBlurKeyData(*mTarget, getFrame());
+    }
+
+    void KeyAccessor::assignBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg) {
+        ASSERT_AND_RETURN_INVALID_TARGET();
+        const int frame = getFrame();
+        auto newData = getBlurKeyData(*mTarget, frame);
+        newData.setBlurX(aBlurX);
+        newData.setBlurY(aBlurY);
+        newData.setAngleDeg(aAngleDeg);
+
+        ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *mTarget, frame, newData);
+    }
+
+    void KeyAccessor::assignBlurDirectional(bool aIsDirectional) {
+        ASSERT_AND_RETURN_INVALID_TARGET();
+        const int frame = getFrame();
+        auto newData = getBlurKeyData(*mTarget, frame);
+        newData.setDirectional(aIsDirectional);
+        // opening the directional mode keeps the current size as the initial X/Y radius
+        if (aIsDirectional) {
+            newData.setBlurY(newData.blurX());
+        }
+
+        ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *mTarget, frame, newData);
+    }
+
+    void KeyAccessor::assignBlurEasing(util::Easing::Param aNext) {
+        ASSERT_AND_RETURN_INVALID_TARGET();
+        XC_ASSERT(aNext.isValidParam());
+        const int frame = getFrame();
+        auto newData = getBlurKeyData(*mTarget, frame);
+        newData.easing() = aNext;
+
+        ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *mTarget, frame, newData);
+    }
+
+    void KeyAccessor::knockNewBlur() {
+        ASSERT_AND_RETURN_INVALID_TARGET();
+        auto newKey = new core::BlurKey();
+        newKey->setBlurX(currline().current().blurX());
+        newKey->setBlurY(currline().current().blurY());
+        newKey->setAngleDeg(currline().current().angleDeg());
+        assignParam(newKey);
+        ctrl::TimeLineUtil::pushNewBlurKey(*mProject, *mTarget, getFrame(), newKey);
     }
 
     void KeyAccessor::knockNewPose() {

@@ -9,6 +9,7 @@
 #include "core/FolderNode.h"
 #include "core/ObjectNodeUtil.h"
 #include "ctrl/ImageFileLoader.h"
+#include "gl/Global.h"
 
 #include "img/oraParser.h"
 
@@ -157,6 +158,8 @@ bool ImageFileLoader::loadImage(core::Project& aProject, util::IProgressReporter
         resTree->children().pushBack(resNode);
 
         // create layer node
+        // the LayerNode eagerly compiles its shaders, which needs a current GL context
+        gl::Global::makeCurrentIfReady();
         auto* layerNode = new LayerNode(name, aProject.objectTree().shaderHolder());
         layerNode->setInitialRect(resNode->data().rect());
         layerNode->setDefaultImage(resNode->handle());
@@ -266,6 +269,8 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
             resCurrent->children().pushBack(resNode);
 
             // create layer node
+            // the LayerNode eagerly compiles its shaders, which needs a current GL context
+            gl::Global::makeCurrentIfReady();
             auto* layerNode = new LayerNode(name, aProject.objectTree().shaderHolder());
             layerNode->setVisibility(layer.isVisible());
             layerNode->setClipped(layer.clipping != 0);
@@ -325,6 +330,8 @@ void ImageFileLoader::parseOraLayer(layer &lyr, FolderNode* current, img::Resour
     auto resNode = createLayerResource(lyr);
     resCurrent->children().pushBack(resNode);
     // create layer node
+    // the LayerNode eagerly compiles its shaders, which needs a current GL context
+    gl::Global::makeCurrentIfReady();
     auto* layerNode = new LayerNode(QString::fromStdString(lyr.name), aProject->objectTree().shaderHolder());
     layerNode->setVisibility(lyr.isVisible);
     layerNode->setClipped(false); // unsupported for now
@@ -446,6 +453,8 @@ bool ImageFileLoader::loadOra(Project& aProject, util::IProgressReporter& aRepor
                 resTree->children().pushBack(resNode);
                 aReporter.setProgress(60);
                 // create layer node
+                // the LayerNode eagerly compiles its shaders, which needs a current GL context
+                gl::Global::makeCurrentIfReady();
                 auto* layerNode = new LayerNode(name, aProject.objectTree().shaderHolder());
                 layerNode->setInitialRect(resNode->data().rect());
                 layerNode->setDefaultImage(resNode->handle());
@@ -529,8 +538,10 @@ bool ImageFileLoader::loadOra(Project& aProject, util::IProgressReporter& aRepor
             if(lyr.type == IMAGE){
                 auto resNode = createLayerResource(lyr);
                 resCurrent->children().pushBack(resNode);
-                // create layer node
-                auto* layerNode = new LayerNode(QString::fromStdString(lyr.name), aProject.objectTree().shaderHolder());
+// create layer node
+                // the LayerNode eagerly compiles its shaders, which needs a current GL context
+                gl::Global::makeCurrentIfReady();
+auto* layerNode = new LayerNode(QString::fromStdString(lyr.name), aProject.objectTree().shaderHolder());
                 layerNode->setVisibility(lyr.isVisible);
                 layerNode->setClipped(false); // unsupported for now
                 layerNode->setInitialRect(lyr.rect);

@@ -16,11 +16,13 @@ add_library(${PROJECT_NAME}
     CameraInfo.cpp CameraInfo.h
     ClippingFrame.cpp ClippingFrame.h
     Constant.h
+    BlurKey.h
     DepthKey.cpp DepthKey.h
     Deserializer.cpp Deserializer.h
     DestinationTexturizer.cpp DestinationTexturizer.h
     FFDKey.cpp FFDKey.h
     FFDKeyUpdater.cpp FFDKeyUpdater.h
+    FilterFrame.cpp FilterFrame.h
     FolderNode.cpp FolderNode.h
     Frame.h
     GridMesh.cpp GridMesh.h
@@ -69,6 +71,7 @@ add_library(${PROJECT_NAME}
     TimeKeyType.h
     TimeLine.cpp TimeLine.h
     TimeLineEvent.cpp TimeLineEvent.h
+    WorldBlurMath.h
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
     ..
@@ -79,7 +82,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
     AE_MICRO_VERSION=1
     AE_MINOR_VERSION=7
     AE_PROJECT_FORMAT_MAJOR_VERSION=0
-    AE_PROJECT_FORMAT_MINOR_VERSION=8
+    AE_PROJECT_FORMAT_MINOR_VERSION=9
     AE_PROJECT_FORMAT_OLDEST_MAJOR_VERSION=0
     AE_PROJECT_FORMAT_OLDEST_MINOR_VERSION=4
     USE_GL_CORE_PROFILE

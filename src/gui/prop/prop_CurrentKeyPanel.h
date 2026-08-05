@@ -107,6 +107,30 @@ namespace prop {
     };
 
     //-------------------------------------------------------------------------------------------------
+    class BlurKeyGroup: public KeyGroup {
+    public:
+        BlurKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources);
+
+        void setKeyEnabled(bool aEnabled);
+        void setKeyExists(bool aIsExists);
+        void setKeyValue(const core::TimeKey* aKey);
+        bool keyExists() const;
+
+    private:
+        void updateDirectionalRows(bool aVisible);
+        void assignBlurAxis(DecimalItem* aEdited);
+
+        KeyAccessor& mAccessor;
+        KeyKnocker* mKnocker;
+        EasingItem* mEasing;
+        DecimalItem* mAmount;
+        DecimalItem* mBlurX;
+        DecimalItem* mBlurY;
+        DecimalItem* mAngle;
+        CheckItem* mDirectional;
+        bool mKeyExists;
+    };
+
     class HSVKeyGroup: public KeyGroup {
         Q_OBJECT
     public:
@@ -211,6 +235,7 @@ namespace prop {
         QScopedPointer<DepthKeyGroup> mDepthPanel;
         QScopedPointer<OpaKeyGroup> mOpaPanel;
         QScopedPointer<HSVKeyGroup> mHSVPanel;
+        QScopedPointer<BlurKeyGroup> mBlurPanel;
         QScopedPointer<PoseKeyGroup> mPosePanel;
         QScopedPointer<FFDKeyGroup> mFFDPanel;
         QScopedPointer<ImageKeyGroup> mImagePanel;

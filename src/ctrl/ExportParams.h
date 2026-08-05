@@ -26,6 +26,7 @@
 #include "core/Project.h"
 #include "core/TimeInfo.h"
 #include "core/ClippingFrame.h"
+#include "core/FilterFrame.h"
 #include "core/DestinationTexturizer.h"
 #include "gl/Util.h"
 #include "qpushbutton.h"
@@ -826,6 +827,7 @@ public:
     typedef std::list<FramebufferPtr> FramebufferList;
     FramebufferList mFramebuffers;
     QScopedPointer<core::ClippingFrame> mClippingFrame;
+    QScopedPointer<core::FilterFrame> mFilterFrame;
     QScopedPointer<core::DestinationTexturizer> mDestinationTexturizer;
     gl::EasyTextureDrawer mTextureDrawer;
     core::TimeInfo mOriginTimeInfo;
@@ -1030,6 +1032,8 @@ public:
             // clipping frame
             mClippingFrame.reset(new core::ClippingFrame());
             mClippingFrame->resize(mProject.attribute().imageSize());
+            mFilterFrame.reset(new core::FilterFrame());
+            mFilterFrame->resize(mProject.attribute().imageSize());
             // create texturizer for destination colors of the framebuffer
             mDestinationTexturizer.reset(new core::DestinationTexturizer());
             mDestinationTexturizer->resize(mProject.attribute().imageSize());
@@ -1182,6 +1186,7 @@ public:
             // clear clipping
             mClippingFrame->clearTexture();
             mClippingFrame->resetClippingId();
+            mFilterFrame->clearAll();
             // clear destination texture
             mDestinationTexturizer->clearTexture();
             // bind framebuffer
@@ -1202,6 +1207,8 @@ public:
             renderInfo.clippingId = 0;
             renderInfo.clippingFrame = mClippingFrame.data();
             renderInfo.destTexturizer = mDestinationTexturizer.data();
+            renderInfo.filterFrame = mFilterFrame.data();
+            renderInfo.opacityScale = 1.0f;
             // assert info and render
             XC_ASSERT(renderInfo.framebuffer != 0);
             XC_ASSERT(renderInfo.dest != 0);

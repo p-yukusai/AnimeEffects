@@ -25,6 +25,11 @@ public:
         gl::BufferObject& aPositions
     );
 
+    // copies the whole bound framebuffer (screen-aligned quad, identity view) instead of a
+    // mesh region; used as the destination source for composite presentation passes whose
+    // blend must sample the scene behind a full-screen composite quad
+    void updateAll(GLuint aFramebuffer, GLuint aFrameTexture);
+
     gl::Texture& texture() { return *mTexture; }
     const gl::Texture& texture() const { return *mTexture; }
 
@@ -34,6 +39,7 @@ private:
     QScopedPointer<gl::Framebuffer> mFramebuffer;
     QScopedPointer<gl::Texture> mTexture;
     gl::EasyShaderProgram mShader;
+    gl::BufferObject mIndices;
 };
 
 } // namespace core

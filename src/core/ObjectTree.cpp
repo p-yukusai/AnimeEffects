@@ -8,40 +8,18 @@
 #include "core/ObjectTree.h"
 #include "core/LayerNode.h"
 #include "core/FolderNode.h"
+#include "core/ObjectNodeUtil.h"
 #include "core/ObjectTreeEvent.h"
 #include "core/TimeCacheAccessor.h"
 #include "core/BoneKeyUpdater.h"
 #include "core/ImageKeyUpdater.h"
+#include "gl/Global.h"
 
 namespace core {
 
 //-------------------------------------------------------------------------------------------------
 class SortAndRenderCall {
     static bool compareDepth(Renderer::SortUnit a, Renderer::SortUnit b) { return a.depth < b.depth; }
-
-    void pushNodeRecursive(ObjectNode* aNode, bool aPush) {
-        if (!aNode || !aNode->isVisible())
-            return;
-
-        auto renderer = aNode->renderer();
-        if (renderer) {
-            if (aPush) {
-                if (!renderer->isClipped()) {
-                    Renderer::SortUnit unit;
-                    unit.renderer = renderer;
-                    unit.depth = mAccessor->get(*aNode).worldDepth();
-                    mArray.push_back(unit);
-                } else {
-                    aPush = false;
-                }
-            }
-        }
-
-        auto& children = aNode->children();
-        for (auto itr = children.rbegin(); itr != children.rend(); ++itr) {
-            pushNodeRecursive(*itr, aPush);
-        }
-    }
 
     std::vector<Renderer::SortUnit> mArray;
     const TimeCacheAccessor* mAccessor;
@@ -63,9 +41,9 @@ public:
             }
         }
 
-        // sort
+        // sort (folders with an active composite filter are pushed as single units)
         mArray.clear();
-        pushNodeRecursive(aTopNode, true);
+        ObjectNodeUtil::collectRenderUnits(*aTopNode, true, mArray, aAccessor, aInfo.time);
         std::stable_sort(mArray.begin(), mArray.end(), compareDepth);
 
         // render
@@ -485,6 +463,8 @@ ObjectNode* ObjectTree::createSerialNode(int aType) {
     ObjectNode* node = nullptr;
 
     if (aType == ObjectType_Layer) {
+        // the LayerNode eagerly compiles its shaders, which needs a current GL context
+        gl::Global::makeCurrentIfReady();
         LayerNode* layer = new LayerNode(QString("no name"), mShaderHolder);
         layer->setVisibility(true);
         node = layer;

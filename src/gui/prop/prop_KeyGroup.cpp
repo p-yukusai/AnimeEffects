@@ -34,11 +34,23 @@ namespace prop {
         label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         mLabels.push_back(label);
         mItems.push_back(aItem);
+        mItemVisibles.push_back(true);
 
         if (aItem->itemLayout()) {
             mLayout->addRow(label, aItem->itemLayout());
         } else if (aItem->itemWidget()) {
             mLayout->addRow(label, aItem->itemWidget());
+        }
+    }
+
+    void KeyGroup::setItemVisible(ItemBase* aItem, bool aVisible) {
+        for (int i = 0; i < (int)mItems.size(); ++i) {
+            if (mItems[i] == aItem) {
+                mItemVisibles[i] = aVisible;
+                mLabels[i]->setVisible(mChecked && aVisible);
+                aItem->setItemVisible(mChecked && aVisible);
+                return;
+            }
         }
     }
 
@@ -52,11 +64,10 @@ namespace prop {
             this->setChecked(aChecked);
             this->setFixedHeight(aChecked ? QWIDGETSIZE_MAX : 22);
 
-            for (auto label : mLabels) {
-                label->setVisible(aChecked);
-            }
-            for (auto item : mItems) {
-                item->setItemVisible(aChecked);
+            for (int i = 0; i < (int)mLabels.size(); ++i) {
+                const bool show = aChecked && mItemVisibles[i];
+                mLabels[i]->setVisible(show);
+                mItems[i]->setItemVisible(show);
             }
         }
     }

@@ -15,6 +15,8 @@ namespace prop {
         KeyGroup(const QString& aTitle, int aLabelWidth);
         virtual ~KeyGroup();
         void addItem(const QString& aLabel, ItemBase* aItem);
+        // shows/hides one row (label + item); the choice persists across collapse/expand
+        void setItemVisible(ItemBase* aItem, bool aVisible);
         void makeSureExpand();
 
     private slots:
@@ -25,6 +27,7 @@ namespace prop {
 
         QVector<QWidget*> mLabels;
         QVector<ItemBase*> mItems;
+        QVector<bool> mItemVisibles;
         QFormLayout* mLayout;
         int mLabelWidth;
         bool mChecked;

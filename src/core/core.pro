@@ -48,6 +48,7 @@ SOURCES += \
     CameraInfo.cpp \
     GridMesh.cpp \
     HSVKey.cpp \
+    BlurKey.h \
     LayerNode.cpp \
     ObjectNodeUtil.cpp \
     ObjectTree.cpp \
@@ -78,6 +79,8 @@ SOURCES += \
     FFDKeyUpdater.cpp \
     BoneKeyUpdater.cpp \
     ClippingFrame.cpp \
+    FilterFrame.cpp FilterFrame.h \
+    WorldBlurMath.h \
     ShaderHolder.cpp \
     TimeCacheLock.cpp \
     TimeCacheAccessor.cpp \

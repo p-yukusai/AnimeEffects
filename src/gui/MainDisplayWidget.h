@@ -17,6 +17,7 @@
 #include "core/TimeInfo.h"
 #include "core/ClippingFrame.h"
 #include "core/DestinationTexturizer.h"
+#include "core/FilterFrame.h"
 #include "ctrl/Driver.h"
 #include "ctrl/Painter.h"
 #include "gui/MainViewSetting.h"
@@ -87,6 +88,7 @@ private:
     QScopedPointer<QOpenGLFramebufferObject> mFramebuffer;
     QScopedPointer<core::ClippingFrame> mClippingFrame;
     QScopedPointer<core::DestinationTexturizer> mDestinationTexturizer;
+    QScopedPointer<core::FilterFrame> mFilterFrame;
     QScopedPointer<gl::EasyTextureDrawer> mTextureDrawer;
     QScopedPointer<ctrl::PainterHandle> mPainterHandle;
     QReadWriteLock mRenderingLock;

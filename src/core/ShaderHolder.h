@@ -13,19 +13,14 @@ public:
     ShaderHolder();
     ~ShaderHolder();
 
-    gl::EasyShaderProgram& reserveShader(img::BlendMode aBlendMode, bool aIsClippee);
+    gl::EasyShaderProgram& reserveShader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV);
     void reserveShaders(img::BlendMode aBlendMode);
-    gl::EasyShaderProgram& shader(img::BlendMode aBlendMode, bool aIsClippee);
-    const gl::EasyShaderProgram& shader(img::BlendMode aBlendMode, bool aIsClippee) const;
+    gl::EasyShaderProgram& shader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV);
+    const gl::EasyShaderProgram& shader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV) const;
 
     gl::EasyShaderProgram& reserveGridShader();
     gl::EasyShaderProgram& gridShader();
     const gl::EasyShaderProgram& gridShader() const;
-
-    gl::EasyShaderProgram& reserveHSVShader();
-    void reserveHSVShaders();
-    gl::EasyShaderProgram& HSVShader();
-    const gl::EasyShaderProgram& HSVShader() const;
 
     gl::EasyShaderProgram& reserveClipperShader(bool aIsClippee);
     void reserveClipperShaders();
@@ -34,7 +29,6 @@ public:
 
 private:
     QVector<gl::EasyShaderProgram*> mShaders;
-    QVector<gl::EasyShaderProgram*> mHSVShaders;
     QVector<gl::EasyShaderProgram*> mGridShaders;
     QVector<gl::EasyShaderProgram*> mClipperShaders;
 };

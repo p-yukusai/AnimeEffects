@@ -3,6 +3,7 @@
 #include "core/Constant.h"
 #include "core/TimeKeyExpans.h"
 #include "core/DepthKey.h"
+#include "core/BlurKey.h"
 #include "ctrl/TimeLineUtil.h"
 #include "gui/ResourceDialog.h"
 #include "gui/prop/prop_CurrentKeyPanel.h"
@@ -299,6 +300,130 @@ namespace prop {
     bool OpaKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
+    BlurKeyGroup::BlurKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+        KeyGroup(tr("Blur"), aLabelWidth),
+        mAccessor(aAccessor),
+        mKnocker(),
+        mEasing(),
+        mAmount(),
+        mBlurX(),
+        mBlurY(),
+        mAngle(),
+        mDirectional(),
+        mKeyExists(false) {
+        mKnocker = new KeyKnocker(tr("Blur"));
+        mKnocker->set([=]() {
+            this->mAccessor.knockNewBlur();
+            this->makeSureExpand();
+        });
+        aPanel.addGroup(mKnocker);
+
+        {
+            aPanel.addGroup(this);
+
+            // easing
+            mEasing = new EasingItem(this, mGUIResources);
+            this->addItem(tr("Easing :"), mEasing);
+            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
+                this->mAccessor.assignBlurEasing(aNext);
+            };
+
+            // amount (isotropic radius, the default/direct mode)
+            mAmount = new DecimalItem(this);
+            mAmount->setRange(0.0, 512.0);
+            mAmount->box().setSingleStep(0.5);
+            mAmount->onValueUpdated = [=](double, double aNext) { this->mAccessor.assignBlur((float)aNext); };
+
+            // directional: extra content-space axes + angle unlocked by a checkbox
+            mDirectional = new CheckItem(this);
+            mDirectional->onValueUpdated = [=](bool aNext) {
+                this->mAccessor.assignBlurDirectional(aNext);
+                this->updateDirectionalRows(aNext);
+            };
+
+            // blur X/Y radii and angle in the layer's content space; each edit keeps the
+            // other axes from the current key data
+            mBlurX = new DecimalItem(this);
+            mBlurX->setRange(0.0, 512.0);
+            mBlurX->box().setSingleStep(0.5);
+            mBlurX->onValueUpdated = [=](double, double) { this->assignBlurAxis(mBlurX); };
+
+            mBlurY = new DecimalItem(this);
+            mBlurY->setRange(0.0, 512.0);
+            mBlurY->box().setSingleStep(0.5);
+            mBlurY->onValueUpdated = [=](double, double) { this->assignBlurAxis(mBlurY); };
+
+            mAngle = new DecimalItem(this);
+            // unbounded like the rotate key so multi-turn spins (0 -> 3600) can be keyed
+            // and animated with easing; the rendered ellipse is 180-periodic, but the
+            // accumulated value drives the spin speed through the interpolation
+            mAngle->setRange(
+                util::MathUtil::getDegreeFromRadian(core::Constant::rotateMin()),
+                util::MathUtil::getDegreeFromRadian(core::Constant::rotateMax())
+            );
+            mAngle->box().setSingleStep(1.0);
+            mAngle->onValueUpdated = [=](double, double) { this->assignBlurAxis(mAngle); };
+
+            this->addItem(tr("Amount :"), mAmount);
+            this->addItem(tr("Directional: "), mDirectional);
+            this->addItem(tr("Blur X :"), mBlurX);
+            this->addItem(tr("Blur Y :"), mBlurY);
+            this->addItem(tr("Angle :"), mAngle);
+        }
+        setKeyEnabled(false);
+        setKeyExists(false);
+        updateDirectionalRows(false);
+    }
+
+    void BlurKeyGroup::setKeyEnabled(bool aEnabled) {
+        mKnocker->setEnabled(aEnabled);
+        this->setEnabled(aEnabled);
+    }
+
+    void BlurKeyGroup::setKeyExists(bool aIsExists) {
+        mKeyExists = aIsExists;
+        mKnocker->setVisible(!aIsExists);
+        this->setVisible(aIsExists);
+    }
+
+    void BlurKeyGroup::setKeyValue(const core::TimeKey* aKey) {
+        TIMEKEY_PTR_TYPE_ASSERT(aKey, Blur);
+        const core::BlurKey::Data& data = ((const core::BlurKey*)aKey)->data();
+        mEasing->setValue(data.easing(), false);
+        mAmount->setValue(data.amount());
+        // setValue (not box().setChecked) so the item's change stamp stays in sync -
+        // a stale stamp swallows the user's next click (mStamp == value() == no signal)
+        mDirectional->setValue(data.isDirectional(), false);
+        mBlurX->setValue(data.blurX());
+        mBlurY->setValue(data.blurY());
+        mAngle->setValue(data.angleDeg());
+        updateDirectionalRows(data.isDirectional());
+    }
+
+    bool BlurKeyGroup::keyExists() const { return mKeyExists; }
+
+    void BlurKeyGroup::updateDirectionalRows(bool aVisible) {
+        this->setItemVisible(mBlurX, aVisible);
+        this->setItemVisible(mBlurY, aVisible);
+        this->setItemVisible(mAngle, aVisible);
+    }
+
+    void BlurKeyGroup::assignBlurAxis(DecimalItem* aEdited) {
+        const core::BlurKey::Data cur = mAccessor.blurData();
+        float blurX = cur.blurX();
+        float blurY = cur.blurY();
+        float angle = cur.angleDeg();
+        if (aEdited == mBlurX) {
+            blurX = (float)mBlurX->value();
+        } else if (aEdited == mBlurY) {
+            blurY = (float)mBlurY->value();
+        } else {
+            angle = (float)mAngle->value();
+        }
+        mAccessor.assignBlurEllipse(blurX, blurY, angle);
+    }
+
+    //-------------------------------------------------------------------------------------------------
     HSVKeyGroup::HSVKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
         KeyGroup(tr("HSV"), aLabelWidth),
         mAccessor(aAccessor),
@@ -374,7 +499,7 @@ namespace prop {
         mHue->setValue(data.hsv()[0]);
         mSaturation->setValue(data.hsv()[1]);
         mValue->setValue(data.hsv()[2]);
-        mAbsolute->box().setChecked(bool(data.hsv()[3]));
+        mAbsolute->setValue(bool(data.hsv()[3]), false);
     }
 
     bool HSVKeyGroup::keyExists() const { return mKeyExists; }
@@ -557,6 +682,7 @@ namespace prop {
         mDepthPanel(),
         mOpaPanel(),
         mHSVPanel(),
+        mBlurPanel(),
         mPosePanel(),
         mFFDPanel(),
         mImagePanel() {
@@ -611,6 +737,7 @@ namespace prop {
         mDepthPanel.reset(new DepthKeyGroup(*this, mKeyAccessor, mLabelWidth, mGUIResources));
         mOpaPanel.reset(new OpaKeyGroup(*this, mKeyAccessor, mLabelWidth, mGUIResources));
         mHSVPanel.reset(new HSVKeyGroup(*this, mKeyAccessor, mLabelWidth, mGUIResources));
+        mBlurPanel.reset(new BlurKeyGroup(*this, mKeyAccessor, mLabelWidth, mGUIResources));
         mPosePanel.reset(new PoseKeyGroup(*this, mKeyAccessor, mLabelWidth, mGUIResources));
         mFFDPanel.reset(new FFDKeyGroup(*this, mKeyAccessor, mLabelWidth, mGUIResources));
         mImagePanel.reset(new ImageKeyGroup(*this, mKeyAccessor, mLabelWidth, mViaPoint, mGUIResources));
@@ -627,6 +754,7 @@ namespace prop {
         mDepthPanel->setKeyEnabled(enabled);
         mOpaPanel->setKeyEnabled(enabled);
         mHSVPanel->setKeyEnabled(enabled);
+        mBlurPanel->setKeyEnabled(enabled);
         mPosePanel->setKeyEnabled(enabled);
         mFFDPanel->setKeyEnabled(enabled);
         mImagePanel->setKeyEnabled(enabled);
@@ -644,6 +772,7 @@ namespace prop {
             mDepthPanel->setKeyExists(timeLine.hasTimeKey(core::TimeKeyType_Depth, frame));
             mOpaPanel->setKeyExists(timeLine.hasTimeKey(core::TimeKeyType_Opa, frame));
             mHSVPanel->setKeyExists(timeLine.hasTimeKey(core::TimeKeyType_HSV, frame));
+            mBlurPanel->setKeyExists(timeLine.hasTimeKey(core::TimeKeyType_Blur, frame));
             mPosePanel->setKeyExists(timeLine.hasTimeKey(core::TimeKeyType_Pose, frame), hasAreaBone);
             mFFDPanel->setKeyExists(timeLine.hasTimeKey(core::TimeKeyType_FFD, frame), hasAnyMesh);
             mImagePanel->setKeyExists(timeLine.hasTimeKey(core::TimeKeyType_Image, frame), hasAnyImage);
@@ -672,6 +801,9 @@ namespace prop {
             }
             if (mHSVPanel->keyExists()) {
                 mHSVPanel->setKeyValue(timeLine.timeKey(core::TimeKeyType_HSV, frame));
+            }
+            if (mBlurPanel->keyExists()) {
+                mBlurPanel->setKeyValue(timeLine.timeKey(core::TimeKeyType_Blur, frame));
             }
             if (mPosePanel->keyExists()) {
                 mPosePanel->setKeyValue(timeLine.timeKey(core::TimeKeyType_Pose, frame));

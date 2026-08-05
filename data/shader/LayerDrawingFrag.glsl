@@ -29,10 +29,19 @@
 
 #variation BLEND_FUNC BlendNormal
 #variation IS_CLIPPEE 0
+#variation USE_HSV 0
+#variation PREMULTIPLIED_INPUT 0
 
 uniform vec4 uColor;
 uniform sampler2D uTexture;
 uniform sampler2D uDestTexture;
+
+#if USE_HSV
+uniform bool setColor;
+uniform float hue;
+uniform float saturation;
+uniform float value;
+#endif
 
 #if IS_CLIPPEE
 uniform int uClippingId;
@@ -43,6 +52,26 @@ in vec2 vTexCoord;
 in vec2 vDestCoord;
 
 layout(location = 0, index = 0) out vec4 oFragColor;
+
+#if USE_HSV
+vec3 RGBtoHSV(vec3 c)
+{
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+vec3 HSVtoRGB(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+#endif
 
 vec4 blendColor(const vec4 src, const vec4 dst)
 {
@@ -82,9 +111,29 @@ vec4 blendColor(const vec4 src, const vec4 dst)
 
 void main(void)
 {
-    vec4 color = uColor * texture(uTexture, vTexCoord);
+    vec4 color = texture(uTexture, vTexCoord);
+#if PREMULTIPLIED_INPUT
+    color.rgb /= max(color.a, 0.001);
+#endif
+    color *= uColor;
     ivec2 destCoord = ivec2(vDestCoord);
     vec4 destColor = texelFetch(uDestTexture, destCoord, 0);
+
+#if USE_HSV
+    vec3 hsv = RGBtoHSV(color.xyz);
+    if (setColor)
+    {
+        hsv.x = hue;
+    }
+    else
+    {
+        hsv.x += hue;
+    }
+    hsv.x = fract(hsv.x);
+    hsv.y = min(1.0, hsv.y * saturation);
+    hsv.z = min(1.0, hsv.z * value);
+    color.xyz = HSVtoRGB(hsv);
+#endif
 
 #if IS_CLIPPEE
     uvec2 clippingData = texelFetch(uClippingTexture, destCoord, 0).xy;

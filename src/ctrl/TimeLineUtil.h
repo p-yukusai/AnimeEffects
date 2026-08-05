@@ -11,6 +11,7 @@
 #include "core/MoveKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
+#include "core/BlurKey.h"
 #include "core/DepthKey.h"
 #include "core/OpaKey.h"
 #include "core/HsvKey.h"
@@ -106,6 +107,10 @@ namespace TimeLineUtil {
         core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const core::HSVKey::Data& aNewData
     );
 
+    void assignBlurKeyData(
+        core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const core::BlurKey::Data& aNewData
+    );
+
     void assignPoseKeyEasing(
         core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const util::Easing::Param& aNewData
     );
@@ -135,6 +140,7 @@ namespace TimeLineUtil {
     void pushNewOpaKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::OpaKey* aKey);
 
     void pushNewHSVKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::HSVKey* aKey);
+    void pushNewBlurKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::BlurKey* aKey);
 
     void pushNewPoseKey(
         core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::PoseKey* aKey, core::BoneKey* aParentKey
