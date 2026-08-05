@@ -4,6 +4,8 @@
 #include <array>
 #include <QVector2D>
 #include <QMatrix4x4>
+
+#include "Project.h"
 #include "util/LifeLink.h"
 #include "util/TreeNodeBase.h"
 #include "util/TreeIterator.h"
@@ -67,8 +69,9 @@ public:
 
     // serialize
     bool serialize(Serializer& aOut) const;
-    void deserializeFromJson(QJsonObject json, bool isChild);
-    QJsonObject serializeToJson(bool isChild) const;
+    void deserializeFromJson(QJsonObject json, Project *aProject, const Bone2 *origin);
+    QJsonObject serializeToJson();
+    util::IDAssigner<const void*> boneIDAssigner;
     bool deserialize(Deserializer& aIn);
 
 private:

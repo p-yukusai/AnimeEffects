@@ -450,7 +450,7 @@ QJsonObject getKeyTypeSerialized(int keyType, core::TimeKey* timeKey, core::Obje
         QJsonArray boneArray;
         for (auto bone : data.topBones()) {
             QJsonObject topBone;
-            topBone["Bone"] = bone->serializeToJson(false);
+            topBone["Bone"] = bone->serializeToJson();
             boneArray.append(topBone);
         }
         bones["Bones"] = boneArray;
@@ -464,7 +464,7 @@ QJsonObject getKeyTypeSerialized(int keyType, core::TimeKey* timeKey, core::Obje
         QJsonArray boneArray;
         for (auto bone : data.topBones()) {
             QJsonObject topBone;
-            topBone["Bone"] = bone->serializeToJson(false);
+            topBone["Bone"] = bone->serializeToJson();
             boneArray.append(topBone);
         }
         pose["Poses"] = boneArray;

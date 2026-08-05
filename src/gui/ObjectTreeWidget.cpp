@@ -702,7 +702,7 @@ void ObjectTreeWidget::onPasteActionTriggered(bool) const {
     }
     obj::Item* objItem = obj::Item::cast(mActionItem);
     bool objIsFolder = objItem->childCount() != 0;
-    auto pasteReturnVal = mEditor->pasteCbKeys(objItem, mProject->pointee(), objIsFolder);
+    auto pasteReturnVal = ctrl::TimeLineEditor::pasteCbKeys(objItem, mProject->pointee(), objIsFolder);
     // Result handler
     QStringList returnVal = pasteReturnVal.split("\n");
     int successNum = extractIntFromStr(returnVal.first());
@@ -711,7 +711,7 @@ void ObjectTreeWidget::onPasteActionTriggered(bool) const {
     QStringList errors = returnVal.filter("Error");
     QStringList nullLogs = returnVal.filter(QRegularExpression("^(?!.*[\\d:])[^\\n]*$"));
     auto keyTypeErrors = returnVal.filter("Key types errored");
-    auto keys = ctrl::TimeLineEditor::getTypesFromCb(mProject->pointee());
+    auto keys = ctrl::TimeLineEditor::getTypesFromCb(mProject->pointee(), &objItem->node());
     // Pre processing
     if (successNum != 0) {
         for (const auto & x : keys) {
@@ -730,6 +730,10 @@ void ObjectTreeWidget::onPasteActionTriggered(bool) const {
                                        "mesh of the targeted node has %3 vertices, artifacts may be present.")
                                        .arg(x->frame()).arg(key->data().count()).arg(objMesh->vertexCount()));
                 }
+            }
+            if (x->type() == core::TimeKeyType_Bone) {
+                const auto key = dynamic_cast<core::BoneKey *>(x);
+                key->resetCaches(*mProject.get(), objItem->node());
             }
         }
         // Believe me, this is the easiest way to do it...
@@ -764,7 +768,7 @@ void ObjectTreeWidget::onPasteActionTriggered(bool) const {
         box.setText(tr("Failed to paste key(s)"));
         if (!aKeyErrored) {
             box.setDetailedText(
-                tr("Clipboard does not contain valid JSON information or timeline already has a key in the same frame.")
+                tr("Clipboard does not contain valid JSON information or the timeline already has a key in the same frame.")
             );
         }
     }

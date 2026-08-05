@@ -54,7 +54,7 @@ public:
     bool checkContactWithKeyFocus(core::TimeLineEvent& aEvent, const QPoint& aPos);
     bool retrieveFocusTargets(core::TimeLineEvent& aEvent);
     static QString pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Pointee<core::Project> project, bool isFolder);
-    static QList<core::TimeKey*> getTypesFromCb(util::LifeLink::Pointee<core::Project> project);
+    static QList<core::TimeKey*> getTypesFromCb(util::LifeLink::Pointee<core::Project> project, core::ObjectNode *node);
     bool pasteCopiedKeys(core::TimeLineEvent& aEvent, const QPoint& aWorldPos);
     void deleteCheckedKeys(core::TimeLineEvent& aEvent);
     util::LinkPointer<core::Project> mProject;

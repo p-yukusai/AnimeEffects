@@ -295,7 +295,7 @@ util::Easing::Param objToEasing(QJsonObject obj) {
     return easing;
 }
 
-TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project, bool isFolder) {
+TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project, bool isFolder, ObjectNode* aOwner) {
     TimeKeyType type = TimeLine::getTimeKeyType(obj["Type"].toString());
     // We're losing precision for float casts from json strings because
     // the cast rounds at the third decimal for some godforsaken reason.
@@ -344,15 +344,18 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
         case TimeKeyType_Bone: {
             auto* boneKey = new BoneKey;
             QJsonArray boneArray = obj["Bones"].toArray();
-            QList<Bone2*> bones;
-            for (QJsonValue bone : boneArray) {
-                QJsonObject boneObj = bone.toObject();
-                auto* newBone = new Bone2;
-                newBone->deserializeFromJson(boneObj, false);
-                bones.append(newBone);
+            // top bone count
+            if (static_cast<int>(boneArray.size()) < 0) { return nullptr; }
+            // deserialize all bones
+            for (auto bone : boneArray) {
+                auto* topBone = new Bone2();
+                boneKey->data().topBones().push_back(topBone);
+                topBone->deserializeFromJson(bone.toObject(), project.address, nullptr);
+                topBone->updateWorldTransform();
             }
-            boneKey->data().topBones().append(bones);
+            boneKey->resetCaches(*project.address, *aOwner);
             boneKey->setFrame(obj["Frame"].toInt());
+
             return boneKey;
         }
         case TimeKeyType_Pose: {
@@ -362,7 +365,7 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
             for (QJsonValue bone : boneArray) {
                 QJsonObject boneObj = bone.toObject();
                 auto* newBone = new Bone2;
-                newBone->deserializeFromJson(boneObj, false);
+                newBone->deserializeFromJson(boneObj, project.address, nullptr);
                 bones.append(newBone);
             }
             poseKey->data().topBones() = bones;
@@ -415,7 +418,7 @@ TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project
     return nullptr;
 }
 
-QList<TimeKey*> TimeLineEditor::getTypesFromCb(util::LifeLink::Pointee<Project> project) {
+QList<TimeKey*> TimeLineEditor::getTypesFromCb(util::LifeLink::Pointee<Project> project, ObjectNode* node) {
     QClipboard* qcb = QGuiApplication::clipboard(); // qDebug() << qcb->text();
     QJsonObject keyJson = QJsonDocument::fromJson(QByteArray::fromStdString(qcb->text().toStdString())).object();
     if (!isKeyJsonValid(keyJson)) {
@@ -426,7 +429,7 @@ QList<TimeKey*> TimeLineEditor::getTypesFromCb(util::LifeLink::Pointee<Project> 
     for (QJsonValue key : keys) {
         auto keyObj = key.toObject();
         // To get all keys isFolder is set to false.
-        TimeKey* pastedKey = getKeyFromObj(keyObj, project, false);
+        TimeKey* pastedKey = getKeyFromObj(keyObj, project, false, node);
         if (pastedKey != nullptr) {
             keyList.append(pastedKey);
         }
@@ -446,7 +449,7 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
     QStringList keyErrored;
     for (QJsonValue key : tlKeys) {
         auto keyObj = key.toObject();
-        TimeKey* pastedKey = getKeyFromObj(keyObj, project, isFolder);
+        TimeKey* pastedKey = getKeyFromObj(keyObj, project, isFolder, &objItem->node());
         if (pastedKey != nullptr) { keyList.append(pastedKey); }
         else {
             auto keyType = TimeLine::getTimeKeyType(keyObj["Type"].toString());

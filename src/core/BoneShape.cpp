@@ -401,8 +401,8 @@ QJsonObject BoneShape::serializeToJson() const {
     addVecToJson(mVUnit, &shape, "Unit");
     shape["DirAngle"] = mVDirAngle;
     shape["Length"] = mLength;
-    addVecToJson(mRadius[0], &shape, "Radius0");
-    addVecToJson(mRadius[1], &shape, "Radius1");
+    addVecToJson(mRadius.at(0), &shape, "Radius0");
+    addVecToJson(mRadius.at(1), &shape, "Radius1");
     shape["RootBendAngle0"] = mRootBendRange.angle[0];
     shape["RootBendAngle1"] = mRootBendRange.angle[1];
     shape["TailBendRange0"] = mTailBendRange.angle[0];

@@ -8,11 +8,11 @@
 
 namespace {
 
-static const int kMaxLengthOfTimeKeyName = 8;
-static const std::array<const char*, core::TimeKeyType_TERM> kTimeKeyNames = {
+constexpr  int kMaxLengthOfTimeKeyName = 8;
+constexpr std::array<const char*, core::TimeKeyType_TERM> kTimeKeyNames = {
     "Move", "Rotate", "Scale", "Depth", "Opa", "Bone", "Pose", "Mesh", "FFD", "Image", "HSV"};
 
-static const std::array<core::TimeKeyType, core::TimeKeyType_TERM> kTimeKeyTypeInOrderOfOperations = {
+constexpr std::array<core::TimeKeyType, core::TimeKeyType_TERM> kTimeKeyTypeInOrderOfOperations = {
     core::TimeKeyType_Image,
     core::TimeKeyType_Mesh,
     core::TimeKeyType_FFD,
@@ -30,15 +30,15 @@ static const std::array<core::TimeKeyType, core::TimeKeyType_TERM> kTimeKeyTypeI
 namespace core {
 
 //---------------------------------------------------------------------------------------
-QString TimeLine::getTimeKeyName(TimeKeyType aType) { return QString(kTimeKeyNames.at(aType)); }
+QString TimeLine::getTimeKeyName(const TimeKeyType aType) { return {kTimeKeyNames.at(aType)}; }
 
 TimeKeyType TimeLine::getTimeKeyType(const QString& aName) {
     for (int i = 0; i < TimeKeyType_TERM; ++i) {
-        if (getTimeKeyName((TimeKeyType)i) == aName) {
-            return (TimeKeyType)i;
+        if (getTimeKeyName(static_cast<TimeKeyType>(i)) == aName) {
+            return static_cast<TimeKeyType>(i);
         }
     }
-    return core::TimeKeyType_TERM;
+    return TimeKeyType_TERM;
 }
 
 TimeKeyType TimeLine::getTimeKeyTypeInOrderOfOperations(int aIndex) {

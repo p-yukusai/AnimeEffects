@@ -15,12 +15,11 @@ public:
     IdType getId(tData aData) {
         if (mMap.contains(aData)) {
             return mMap[aData];
-        } else {
-            auto id = mCurrent;
-            ++mCurrent;
-            mMap[aData] = id;
-            return id;
         }
+        auto id = mCurrent;
+        ++mCurrent;
+        mMap[aData] = id;
+        return id;
     }
 
     void clear() {

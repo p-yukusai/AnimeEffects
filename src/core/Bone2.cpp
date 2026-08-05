@@ -3,6 +3,9 @@
 #include "util/MathUtil.h"
 #include "core/Bone2.h"
 
+#include "BoneKey.h"
+#include "ObjectNode.h"
+
 namespace core {
 
 Bone2::Bone2():
@@ -194,77 +197,94 @@ bool Bone2::serialize(Serializer& aOut) const {
 }
 
 template<typename vec2d>
-void addVecToJson(vec2d vector, QJsonObject* json, QString varName) {
+static void addVecToJson(vec2d vector, QJsonObject* json, QString varName) {
     json->insert(varName + "X", vector.x());
     json->insert(varName + "Y", vector.y());
 }
 
-QVector2D objToVec(QJsonObject obj, const QString& varName) {
-    return {(float)obj[varName + "X"].toDouble(), (float)obj[varName + "Y"].toDouble()};
+static QVector2D objToVec(QJsonObject obj, const QString& varName) {
+    return {static_cast<float>(obj[varName + "X"].toDouble()), static_cast<float>(obj[varName + "Y"].toDouble())};
 }
 
-void Bone2::deserializeFromJson(QJsonObject json, bool isChild) {
-    if (!isChild) {
-        json = json["Bone"].toObject();
-
-        qDebug("<--Init-->");
+static ObjectNode* getChild(ObjectNode* aNode, const QString& aName) {
+    for (const auto child : aNode->children()) {
+        if (child->name() == aName) { return child; }
+        if (!child->children().empty()) {
+            if (const auto recChild = getChild(child, aName)) { return recChild; }
+        }
     }
-    mOrigin = nullptr;
+    return nullptr;
+}
+
+static ObjectNode* getNode(Project* aProject, const QString& aName) {
+    auto curNode = aProject->objectTree().topNode();
+    if (curNode->name() == aName) { return curNode; }
+    while (curNode) {
+        if (const auto recChild = getChild(curNode, aName)) { return recChild; }
+        curNode = curNode->nextSib();
+    }
+    return nullptr;
+}
+
+void Bone2::deserializeFromJson(QJsonObject json, Project* aProject, const Bone2* origin) {
+    // Maybe I'll handle this at some point but since by necessity the caches will be wiped i don't see the point
+    json = json["Bone"].toObject();
+   [[maybe_unused]]const sint32 originId = json["OriginID"].toInt();
+    mOrigin = origin;
     mLocalPos = objToVec(json, "LocalPos");
-    mLocalAngle = (float)json["LocalAngle"].toDouble();
+    mLocalAngle = static_cast<float>(json["LocalAngle"].toDouble());
     mRange[0] = objToVec(json, "Range0");
     mRange[1] = objToVec(json, "Range1");
     mShape.deserializeFromJson(json);
     mWorldPos = objToVec(json, "WorldPos");
-    mRotate = (float)json["Rotate"].toDouble();
-    // I frankly have no idea if this works or not...
+    mWorldAngle = static_cast<float>(json["WorldAngle"].toDouble());
+    mRotate = static_cast<float>(json["Rotate"].toDouble());
+    // TODO: Testing
     const int bindCount = json["Nodes"].toInt();
-    for (int i = 0; i < bindCount; ++i) {
-        mBindingNodes.push_back(reinterpret_cast<ObjectNode *>(this));
-    }
-    // @todo Child pasting is broken.
-    if (!isChild) {
-        QJsonArray childArray = json["Children"].toArray();
-        int childCount = static_cast<int>(childArray.size());
-        int childIndex = 0;
-        while (childIndex < childCount) {
-            for (auto child : childArray) {
-                QJsonObject childObj = child.toObject();
-                auto* childBone = new Bone2;
-                childBone->deserializeFromJson(childObj, true);
-                children().insert(childIndex, childBone);
+    if (bindCount < 0) {
+        for (int i = 0; i < bindCount; ++i) {
+            const QString nodeName = json["Nodes"].toArray()[i].toString();
+            if (auto* node = getNode(aProject, nodeName)) {
+                mBindingNodes.push_back(node);
             }
-            childIndex++;
         }
+    }
+    const int childCount = json["ChildCount"].toInt();
+    // iterate children
+    for (int i = 0; i < childCount; ++i) {
+        auto* child = new Bone2();
+        this->children().pushBack(child);
+        child->deserializeFromJson(json["Children"].toArray()[i].toObject(), aProject, nullptr);
     }
 }
 
-QJsonObject Bone2::serializeToJson(bool isChild) const {
+QJsonObject Bone2::serializeToJson() {
     QJsonObject bone;
+    const auto id = boneIDAssigner.getId(this);
+    bone["BoneID"] = id;
+    bone["OriginID"] = boneIDAssigner.getId(mOrigin);
     addVecToJson(mLocalPos, &bone, "LocalPos");
     bone["LocalAngle"] = mLocalAngle;
-    addVecToJson(mRange[0], &bone, "Range0");
-    addVecToJson(mRange[1], &bone, "Range1");
+    addVecToJson(mRange.at(0), &bone, "Range0");
+    addVecToJson(mRange.at(1), &bone, "Range1");
     bone["Shape"] = mShape.serializeToJson();
     addVecToJson(mWorldPos, &bone, "WorldPos");
     bone["WorldAngle"] = mWorldAngle;
     bone["Rotate"] = mRotate;
-    bone["Nodes"] = mBindingNodes.size();
-    if (!isChild) {
-        QJsonArray childBones;
-        for (auto child : children()) {
-            QJsonObject childBone = child->serializeToJson(true);
-            childBones.append(childBone);
-            while (!child->children().empty()) {
-                for (auto childSib : child->children()) {
-                    QJsonObject childBone = childSib->serializeToJson(true);
-                    childBones.append(childBone);
-                    child = childSib;
-                }
-            }
-        }
-        bone["Children"] = childBones;
+    bone["NodeSize"] = mBindingNodes.size();
+    QJsonArray nodes;
+    for (const auto node : mBindingNodes) {
+        nodes.append(node->name());
     }
+    bone["Nodes"] = nodes;
+    bone["ChildCount"] = static_cast<int>(children().size());
+    QJsonArray boneArray;
+    for (const auto child : children()) {
+        QJsonObject childBone;
+        childBone["Bone"] = child->serializeToJson();
+        boneArray.append(childBone);
+    }
+    bone["Children"] = boneArray;
     return bone;
 }
 

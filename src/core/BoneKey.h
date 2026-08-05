@@ -90,7 +90,6 @@ private:
     void destroyCaches();
     bool serializeBone(Serializer& aOut, const Bone2* aBone) const;
     bool deserializeBone(Deserializer& aIn, Bone2* aBone);
-
     Data mData;
     CacheList mCaches;
     util::LinkPointer<ObjectNode> mCacheOwner;
