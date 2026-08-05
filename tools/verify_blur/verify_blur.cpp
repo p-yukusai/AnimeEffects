@@ -1017,7 +1017,8 @@ void suiteGating() {
     auto& fx = fixtureFor(cnv);
     const core::CameraInfo camera = scene::makeCamera(cnv);
 
-    auto renderLayerBlur = [&](float bx, float by, float ang, int keyFrame, int renderFrame, bool onFolder) {
+    auto renderLayerBlur = [&](float bx, float by, float ang, int keyFrame, int renderFrame, bool onFolder,
+                               float opacity = 1.0f) {
         core::ObjectTree tree;
         auto* root = new core::FolderNode("root");
         tree.grabTopNode(root);
@@ -1029,6 +1030,9 @@ void suiteGating() {
         } else {
             blurNode = scene::addLayer(tree, root, pool.wedge("w"), "layer", QVector2D(64, 48), 20.0f, QVector2D(1.4f, 0.8f));
         }
+        if (opacity != 1.0f)
+            core::getOrCreateDefaultKey<core::OpaKey, core::TimeKeyType_Opa>(*blurNode->timeLine())
+                ->setOpacity(opacity);
         if (keyFrame >= 0)
             scene::addBlur(blurNode, keyFrame, bx, by, ang);
         return fx.render(tree, camera, renderFrame);
@@ -1063,6 +1067,29 @@ void suiteGating() {
         ++gFails;
     caseReport("layer blur (4,1,30) is active (!= keyless)", ok, diffStr(dActive));
 
+    // the gate must hold under fractional opacity: an epsilon blur on a semi-transparent
+    // layer is still gated off and byte-identical to the same keyless frame
+    const auto plain07 = renderLayerBlur(0, 0, 0, -1, 0, false, 0.7f);
+    const auto gated07 = renderLayerBlur(0.001f, 0.001f, 0.0f, 0, 0, false, 0.7f);
+    const scene::Diff dGated07 = scene::diffImages(plain07, gated07);
+    ok = dGated07.bytesIdentical;
+    ++gChecks;
+    if (!ok)
+        ++gFails;
+    caseReport("layer blur 0.001 @ opacity 0.7 is inert", ok, diffStr(dGated07));
+
+    // sub-step radius on a semi-transparent layer engages the composite with an
+    // identity-like kernel; the composite round trip (premultiplied 8-bit quantization)
+    // is the only residual and must stay far below the old 0.5-gate step (which jumped
+    // from nothing to a real sigma-0.5 kernel)
+    const auto sub07 = renderLayerBlur(0.4f, 0.4f, 0.0f, 0, 0, false, 0.7f);
+    const scene::Diff dSub07 = scene::diffImages(plain07, sub07);
+    ok = !dSub07.bytesIdentical && dSub07.mean < 1.0;
+    ++gChecks;
+    if (!ok)
+        ++gFails;
+    caseReport("layer blur 0.4 @ opacity 0.7 is near-identity", ok, diffStr(dSub07));
+
     const auto folderGated = renderLayerBlur(0.001f, 0.001f, 0.0f, 0, 0, true);
     const auto folderPlain = renderLayerBlur(0, 0, 0, -1, 0, true);
     const scene::Diff dFolderGated = scene::diffImages(folderPlain, folderGated);
@@ -1071,6 +1098,15 @@ void suiteGating() {
     if (!ok)
         ++gFails;
     caseReport("folder blur 0.001 is inert", ok, diffStr(dFolderGated));
+
+    const auto folderGated07 = renderLayerBlur(0.001f, 0.001f, 0.0f, 0, 0, true, 0.7f);
+    const auto folderPlain07 = renderLayerBlur(0, 0, 0, -1, 0, true, 0.7f);
+    const scene::Diff dFolderGated07 = scene::diffImages(folderPlain07, folderGated07);
+    ok = dFolderGated07.bytesIdentical;
+    ++gChecks;
+    if (!ok)
+        ++gFails;
+    caseReport("folder blur 0.001 @ opacity 0.7 is inert", ok, diffStr(dFolderGated07));
 
     // key at frame 5: inactive before, active from frame 5 on
     const auto before = renderLayerBlur(6.0f, 2.0f, 20.0f, 5, 4, false);
