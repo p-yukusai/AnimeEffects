@@ -323,12 +323,12 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
     // allocate work buffer
     const size_t srcSize = util::PackBits::worstEncodedSize((size_t)w);
     const size_t wrkSize = (size_t)w;
-    QScopedPointer<uint8> src(new uint8[srcSize]);
-    QScopedPointer<uint8> wrk(new uint8[wrkSize]);
-    XCMemBlock wrkBlock(wrk.data(), wrkSize);
-    if (src.isNull())
+    std::unique_ptr<uint8[]> src(new uint8[srcSize]);
+    std::unique_ptr<uint8[]> wrk(new uint8[wrkSize]);
+    XCMemBlock wrkBlock(wrk.get(), wrkSize);
+    if (!src)
         return false;
-    if (wrk.isNull())
+    if (!wrk)
         return false;
 
     util::PackBits decoder;
@@ -342,15 +342,15 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
             // line length
             const size_t linelen = (size_t)mIn.readUInt32();
             // compressed bytes
-            mIn.readBuf(src.data(), linelen);
+            mIn.readBuf(src.get(), linelen);
 
             // decode
-            if (!decoder.decode(XCMemBlock(src.data(), linelen), wrkBlock)) {
+            if (!decoder.decode(XCMemBlock(src.get(), linelen), wrkBlock)) {
                 return false;
             }
 
             // merge channel bytes
-            const uint8* wp = wrk.data();
+            const uint8* wp = wrk.get();
             const uint8* we = wp + wrkSize;
             for (uint8* dp = dstp + i; wp < we; dp += 4, ++wp)
                 *dp = *wp;
