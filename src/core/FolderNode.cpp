@@ -203,8 +203,13 @@ void FolderNode::renderClippees(const RenderInfo& i, const TimeCacheAccessor& a)
 }
 
 void FolderNode::renderClipper(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor, uint8 aClipperId) {
+    // A clipped child contributes only its CLIPPED alpha, which is a subset of its
+    // clip base's alpha, and the base writes its own alpha into this texture: skipping
+    // clipped children keeps the union exactly the folder's composite alpha. Writing
+    // their RAW bitmap alpha instead would leak content outside the clip region into
+    // the folder's clip mask (visible when layers above the folder clip against it).
     for (auto child : this->children()) {
-        if (child->renderer()) {
+        if (child->renderer() && !child->renderer()->isClipped()) {
             child->renderer()->renderClipper(aInfo, aAccessor, aClipperId);
         }
     }
