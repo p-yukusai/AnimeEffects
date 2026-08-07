@@ -274,7 +274,8 @@ void FilterFrame::createQuadBuffers() {
 }
 
 static void fBuildLayerDrawingVariant(
-    gl::EasyShaderProgram& aShader, const QString& aBlendFunc, int aIsClippee, int aUseHSV, int aPremultiplied
+    gl::EasyShaderProgram& aShader, const QString& aBlendFunc, int aIsClippee, int aUseHSV, int aPremultiplied,
+    int aNonSeparable, int aPremultipliedSrc
 ) {
     gl::ExtendShader source;
     if (!source.openFromFileVert("./data/shader/LayerDrawingVert.glsl")) {
@@ -284,6 +285,8 @@ static void fBuildLayerDrawingVariant(
         XC_FATAL_ERROR("FileIO Error", "Failed to open fragment shader file.", source.log());
     }
     source.setVariationValue("BLEND_FUNC", aBlendFunc);
+    source.setVariationValue("BLEND_NONSEPARABLE", aNonSeparable ? "1" : "0");
+    source.setVariationValue("BLEND_PREMULTIPLIED_SRC", aPremultipliedSrc ? "1" : "0");
     source.setVariationValue("IS_CLIPPEE", aIsClippee ? "1" : "0");
     source.setVariationValue("USE_HSV", aUseHSV ? "1" : "0");
     source.setVariationValue("PREMULTIPLIED_INPUT", aPremultiplied ? "1" : "0");
@@ -315,7 +318,7 @@ void FilterFrame::createShaders() {
     build(Kind_Resample, kFullscreenVert, kResampleFrag);
 
     // HSV pass: shared layer fragment shader with variations
-    fBuildLayerDrawingVariant(mPassShaders[Kind_HSV], QString("BlendNormal"), 0, 1, 1);
+    fBuildLayerDrawingVariant(mPassShaders[Kind_HSV], QString("BlendNormal"), 0, 1, 1, 0, 0);
 }
 
 gl::EasyShaderProgram& FilterFrame::presentShader(img::BlendMode aMode) {
@@ -324,7 +327,10 @@ gl::EasyShaderProgram& FilterFrame::presentShader(img::BlendMode aMode) {
         mPresentShaders[aMode].reset(new gl::EasyShaderProgram());
         auto shader = mPresentShaders[aMode].data();
         auto blendFunc = QString("Blend") + img::getBlendFuncNameFromBlendMode(aMode);
-        fBuildLayerDrawingVariant(*shader, blendFunc, 0, 0, 1);
+        fBuildLayerDrawingVariant(
+            *shader, blendFunc, 0, 0, 1, img::isNonSeparableBlendMode(aMode) ? 1 : 0,
+            img::isPremultipliedSrcBlendMode(aMode) ? 1 : 0
+        );
     }
     return *mPresentShaders[aMode];
 }

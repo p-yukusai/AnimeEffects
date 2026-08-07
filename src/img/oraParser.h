@@ -117,11 +117,15 @@ public:
             return img::BlendMode_SoftLight;
         case BLEND::DIFF:
             return img::BlendMode_Difference;
-             // Unsupported blend modes
         case BLEND::COLOR:
+            return img::BlendMode_Color;
         case BLEND::LUMINOSITY:
+            return img::BlendMode_Luminosity;
         case BLEND::HUE:
+            return img::BlendMode_Hue;
         case BLEND::SATURATION:
+            return img::BlendMode_Saturation;
+             // Unsupported blend modes
         case BLEND::PLUS:
         default:
             return img::BlendMode_Normal;

@@ -269,7 +269,7 @@ ResourceNode* Util::createResourceNodes(PSDFormat& aFormat, bool aLoadImage) {
             resNode->data().setPos(rect.topLeft());
             resNode->data().setUserData(&layer);
             resNode->data().setIsLayer(true);
-            resNode->data().setBlendMode(getBlendModeFromPSD(layer.blendMode));
+            resNode->data().setBlendMode(getBlendModeFromPSD(layer.blendMode, psdHasCspTslyFlag(layer)));
             resNode->data().setIsVisible(layer.isVisible());
 
             if (aLoadImage) {

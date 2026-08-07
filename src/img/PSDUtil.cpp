@@ -156,7 +156,8 @@ bool PSDUtil::blendImage(
     // 'diff' = difference, 'smud' = exclusion, 'fsub' = subtract, 'fdiv' = divide,
     // 'hue ' = hue, 'sat ' = saturation, 'colr' = color, 'lum ' = luminosity,
 
-    // unsupported = pass, diss, dkCl, lgCl, hue , sat , colr, lum ,
+    // unsupported = diss only ('pass' maps to Normal in getBlendModeFromPSD;
+    // the rest of the non-separable set is fully supported by BlendMode.h)
 }
 
 //------------------------------------------------------------//

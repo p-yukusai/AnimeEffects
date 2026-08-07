@@ -3,8 +3,20 @@
 
 namespace img {
 
-BlendMode getBlendModeFromPSD(const std::string& aMode) {
+BlendMode getBlendModeFromPSD(const std::string& aMode, bool aCspTslyFlag) {
+    // Note: CSP exports its own "Add (Glow)"/"Glow Dodge" modes as plain
+    // "lddg"/"div " keys PLUS a "tsly" layer-info flag (value 0 = CSP-specific
+    // layer, 1 = plain; verified against a pair of CSP-authored PSDs - the same
+    // document exported with the glow modes vs the plain equivalents differs ONLY
+    // in that flag, the blend 4CCs are identical). Adobe never writes "tsly", so
+    // aCspTslyFlag is false for every non-CSP file. The .anm format carries the
+    // modes via the "adgl"/"gldd" quad ids instead.
     if (aMode == "norm") {
+        return BlendMode_Normal;
+    } else if (aMode == "pass") {
+        // pass-through only appears on group records (and is Photoshop's default group
+        // mode): the children blend with the backdrop directly, which is exactly what a
+        // Normal (non-composite) folder does here
         return BlendMode_Normal;
     } else if (aMode == "dark") {
         return BlendMode_Darken;
@@ -19,9 +31,9 @@ BlendMode getBlendModeFromPSD(const std::string& aMode) {
     } else if (aMode == "scrn") {
         return BlendMode_Screen;
     } else if (aMode == "div ") {
-        return BlendMode_ColorDodge;
+        return aCspTslyFlag ? BlendMode_GlowDodge : BlendMode_ColorDodge;
     } else if (aMode == "lddg") {
-        return BlendMode_LinearDodge;
+        return aCspTslyFlag ? BlendMode_AddGlow : BlendMode_LinearDodge;
     } else if (aMode == "over") {
         return BlendMode_Overlay;
     } else if (aMode == "sLit") {
@@ -44,6 +56,18 @@ BlendMode getBlendModeFromPSD(const std::string& aMode) {
         return BlendMode_Subtract;
     } else if (aMode == "fdiv") {
         return BlendMode_Divide;
+    } else if (aMode == "hue ") {
+        return BlendMode_Hue;
+    } else if (aMode == "sat ") {
+        return BlendMode_Saturation;
+    } else if (aMode == "colr") {
+        return BlendMode_Color;
+    } else if (aMode == "lum ") {
+        return BlendMode_Luminosity;
+    } else if (aMode == "dkCl") {
+        return BlendMode_DarkerColor;
+    } else if (aMode == "lgCl") {
+        return BlendMode_LighterColor;
     }
 
     return BlendMode_TERM;
@@ -91,6 +115,22 @@ QString getBlendFuncNameFromBlendMode(BlendMode aMode) {
         return "Subtract";
     case BlendMode_Divide:
         return "Divide";
+    case BlendMode_AddGlow:
+        return "AddGlow";
+    case BlendMode_GlowDodge:
+        return "GlowDodge";
+    case BlendMode_Hue:
+        return "Hue";
+    case BlendMode_Saturation:
+        return "Saturation";
+    case BlendMode_Color:
+        return "Color";
+    case BlendMode_Luminosity:
+        return "Luminosity";
+    case BlendMode_DarkerColor:
+        return "DarkerColor";
+    case BlendMode_LighterColor:
+        return "LighterColor";
     default:
         return "Normal";
     }
@@ -138,6 +178,22 @@ QString getBlendNameFromBlendMode(BlendMode aMode) {
         return BlendModeName::tr("Subtract");
     case BlendMode_Divide:
         return BlendModeName::tr("Divide");
+    case BlendMode_AddGlow:
+        return BlendModeName::tr("Add (Glow)");
+    case BlendMode_GlowDodge:
+        return BlendModeName::tr("Glow Dodge");
+    case BlendMode_Hue:
+        return BlendModeName::tr("Hue");
+    case BlendMode_Saturation:
+        return BlendModeName::tr("Saturation");
+    case BlendMode_Color:
+        return BlendModeName::tr("Color");
+    case BlendMode_Luminosity:
+        return BlendModeName::tr("Luminosity");
+    case BlendMode_DarkerColor:
+        return BlendModeName::tr("Darker Color");
+    case BlendMode_LighterColor:
+        return BlendModeName::tr("Lighter Color");
     default:
         return BlendModeName::tr("Normal");
     }
@@ -185,6 +241,25 @@ QString getQuadIdFromBlendMode(BlendMode aMode) {
         return "fsub";
     case BlendMode_Divide:
         return "fdiv";
+    // CSP's own quad ids for the glow modes (the .anm format). CSP writes
+    // these modes to PSD as plain "lddg"/"div " (no way to distinguish them
+    // from the standard modes there), so there is no PSD import mapping.
+    case BlendMode_AddGlow:
+        return "adgl";
+    case BlendMode_GlowDodge:
+        return "gldd";
+    case BlendMode_Hue:
+        return "hue ";
+    case BlendMode_Saturation:
+        return "sat ";
+    case BlendMode_Color:
+        return "colr";
+    case BlendMode_Luminosity:
+        return "lum ";
+    case BlendMode_DarkerColor:
+        return "dkCl";
+    case BlendMode_LighterColor:
+        return "lgCl";
     default:
         return "    ";
     }
@@ -231,6 +306,22 @@ BlendMode getBlendModeFromQuadId(const QString& aName) {
         return BlendMode_Subtract;
     } else if (aName == "fdiv") {
         return BlendMode_Divide;
+    } else if (aName == "adgl") {
+        return BlendMode_AddGlow;
+    } else if (aName == "gldd") {
+        return BlendMode_GlowDodge;
+    } else if (aName == "hue ") {
+        return BlendMode_Hue;
+    } else if (aName == "sat ") {
+        return BlendMode_Saturation;
+    } else if (aName == "colr") {
+        return BlendMode_Color;
+    } else if (aName == "lum ") {
+        return BlendMode_Luminosity;
+    } else if (aName == "dkCl") {
+        return BlendMode_DarkerColor;
+    } else if (aName == "lgCl") {
+        return BlendMode_LighterColor;
     }
 
     return BlendMode_TERM;

@@ -32,7 +32,7 @@ img::ResourceNode* createLayerResource(
     resNode->data().grabImage(imagePair.first, aInOutRect.size(), img::Format_RGBA8);
     resNode->data().setPos(aInOutRect.topLeft());
     resNode->data().setIsLayer(true);
-    resNode->data().setBlendMode(img::getBlendModeFromPSD(aLayer.blendMode));
+    resNode->data().setBlendMode(img::getBlendModeFromPSD(aLayer.blendMode, img::psdHasCspTslyFlag(aLayer)));
     resNode->data().setIsVisible(aLayer.isVisible());
     return resNode;
 }
