@@ -64,7 +64,11 @@ struct image {
 
 struct layerStack {
     LayerType type = IMAGE;
-    int capacity = 0;
+    int capacity = 0; // direct children (LEGACY: only the GUI resource path
+                      // img/Util.cpp:401 still consumes it; direct-children
+                      // undercounts nested stacks, the same class of bug the
+                      // restored ImageFileLoader walk fixed via `subtree`)
+    int subtree = 0;  // flat-list entries belonging to this element's subtree (folders only)
     std::string name = "";
     float opacity = 1.0f;
     bool isVisible = true;

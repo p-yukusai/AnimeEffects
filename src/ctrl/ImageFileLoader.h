@@ -26,6 +26,12 @@ public:
 
     bool load(const QString& aPath, core::Project& aProject, util::IProgressReporter& aReporter);
 
+    // How to import an .ora: Ask shows the interactive layered/merged prompt (the default,
+    // the app behavior); Layered/Merged skip the dialog entirely (headless callers such as
+    // the test harness have no user to answer it).
+    enum class OraImportMode { Ask, Layered, Merged };
+    void setOraImportMode(OraImportMode aMode) { mOraImportMode = aMode; }
+
     [[nodiscard]] const QString& log() const { return mLog; }
 
 private:
@@ -46,6 +52,7 @@ private:
     gl::DeviceInfo mGLDeviceInfo;
     QSize mCanvasSize;
     bool mForceCanvasSize;
+    OraImportMode mOraImportMode = OraImportMode::Ask;
     static void parseOraLayer(layer &lyr, core::FolderNode* current, img::ResourceNode* resCurrent, const float* globalDepth, const float* parentDepth, core::Project* aProject);
     static void parseOraStack(stack &stk, std::vector<core::FolderNode*>& treeStack, std::vector<img::ResourceNode*>& resStack, float* globalDepth, QRect rect, core::Project* aProject, int* progress, util::IProgressReporter& aReporter);
 };

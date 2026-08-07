@@ -398,6 +398,11 @@ ResourceNode* Util::createResourceNodes(bool merged, const std::string& aFilePat
 
             // push tree
             resStack.push_back(resNode);
+            // LEGACY: `capacity` counts only DIRECT children, so a nested stack's
+            // descendants overflow into the wrong resource folder on this GUI path;
+            // the main project loader (ctrl/ImageFileLoader.cpp) walks with the
+            // parser's `subtree` count instead. Marked, not dropped: this path is
+            // still live and would need a subtree-based walk to be correct.
             skipped.back() = layer.capacity + 1;
             // update vars
             resCurrent = resStack.back();
