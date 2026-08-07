@@ -39,3 +39,15 @@ build*/
 .vscode/
 CMakeSystem.cmake
 compile_commands.json
+
+# golden-suite scratch (failed-case dumps)
+tests/golden/.scratch/
+# one-time real-file analysis (symlinked external PSDs, per-file evidence dumps)
+tests/golden/.scratch_real/
+
+# PSD verification harness against a private real-file corpus (local-only tooling)
+tools/verify_blend/
+
+# local working notes (not part of any PR)
+SCRATCHPAD_ARCHIVED.md
+SCRATCHPAD.md

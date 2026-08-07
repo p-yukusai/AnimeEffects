@@ -2,6 +2,8 @@
 
 #include <cmath>
 #include <cstring>
+#include <map>
+#include <memory>
 #include <QImage>
 
 #include "gl/Global.h"
@@ -26,7 +28,24 @@ namespace scene {
 
 namespace {
 constexpr double kDegToRad = 3.14159265358979323846 / 180.0;
+
+std::map<QString, std::unique_ptr<Fixture>> gFixtures;
+} // namespace
+
+// cached fixture per canvas size (fixtures hold GL objects; recreating them per case
+// would churn the context)
+Fixture& fixtureFor(const QSize& aSize) {
+    const QString key = QString("%1x%2").arg(aSize.width()).arg(aSize.height());
+    auto it = gFixtures.find(key);
+    if (it == gFixtures.end()) {
+        std::unique_ptr<Fixture> fx(new Fixture());
+        fx->init(aSize);
+        it = gFixtures.emplace(key, std::move(fx)).first;
+    }
+    return *it->second;
 }
+
+void clearFixtures() { gFixtures.clear(); }
 
 Fixture::Fixture() = default;
 Fixture::~Fixture() = default;
@@ -80,6 +99,8 @@ std::vector<uint8_t> Fixture::render(core::ObjectTree& aTree, const core::Camera
 
     return readTexture(targetTex->id(), size);
 }
+
+std::vector<uint8_t> Fixture::readTexturizer() { return readTexture(texturizer->texture().id(), size); }
 
 std::vector<uint8_t> Fixture::readTexture(GLuint aTex, const QSize& aSize) {
     auto& ggl = gl::Global::functions();

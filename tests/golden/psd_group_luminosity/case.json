@@ -1,0 +1,14 @@
+{
+    "author": "krita",
+    "borderCrop": 3,
+    "canvas": [
+        64,
+        64
+    ],
+    "frame": 0,
+    "input": "input.psd",
+    "maxChannelDiff": 6,
+    "meanDiff": 0.6,
+    "name": "psd_group_luminosity",
+    "provenance": "expected.png authored by tests/golden/author_goldens.sh (flatpak krita, headless)"
+}
