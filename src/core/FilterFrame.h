@@ -140,6 +140,9 @@ private:
     // blend func, no per-pass HSV (a blurred layer's own HSV is already baked into its
     // composite), no clipping (content is pre-masked inside the composite).
     gl::EasyShaderProgram& presentShader(img::BlendMode aMode);
+    // same, but with USE_HSV=1: a folder presenting its own HSV key with a non-Normal
+    // blend mode needs the combined variant (the plain HSV pass is fixed to BlendNormal)
+    gl::EasyShaderProgram& presentHSVShader(img::BlendMode aMode);
 
     GLuint ladderFramebuffer(int aLevel) const { return mFramebuffersL[aLevel - 1]->id(); }
     GLuint ladderFramebuffer2(int aLevel) const { return mFramebuffersL2[aLevel - 1]->id(); }
@@ -165,6 +168,8 @@ private:
     gl::EasyShaderProgram mPassShaders[3];
     // per-blend present variants (see presentShader)
     std::array<QScopedPointer<gl::EasyShaderProgram>, img::BlendMode_TERM> mPresentShaders;
+    // per-blend present variants with per-pass HSV (see presentHSVShader)
+    std::array<QScopedPointer<gl::EasyShaderProgram>, img::BlendMode_TERM> mPresentHSVShaders;
     gl::BufferObject mIndices;
 };
 

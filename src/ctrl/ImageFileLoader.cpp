@@ -302,6 +302,15 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
             folderNode->setClipped(layer.clipping != 0);
             folderNode->setDefaultDepth(globalDepth - parentDepth);
             folderNode->setDefaultOpacity(static_cast<float>(layer.opacity) / 255.0f);
+            // 'diss' (dissolve) is the only group mode still unsupported, so
+            // only it (plus unknown 4CCs) reads back as TERM; hue/sat/colr/lum/
+            // dkCl/lgCl are fully mapped modes. Fall back to Normal for TERM,
+            // matching the pre-feature behavior that dropped the group mode
+            // entirely (TERM would index the shader arrays out of bounds at
+            // render time - presentShader(mPresentShaders[TERM]) is OOB).
+            const auto folderBlend = img::getBlendModeFromPSD(layer.blendMode, img::psdHasCspTslyFlag(layer));
+            folderNode->setBlendMode(
+                folderBlend == img::BlendMode_TERM ? img::BlendMode_Normal : folderBlend);
 
             // push tree
             current->children().pushBack(folderNode);
