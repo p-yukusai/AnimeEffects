@@ -252,6 +252,20 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     aReporter.setProgress(1);
     file->close(); // do not use anymore
 
+    // the renderer only produces 8-bit RGBA, so reject the color modes / bit depths
+    // it cannot represent with a clear message instead of failing later on decode
+    const auto& header = reader.format()->header();
+    if (header.mode != img::PSDFormat::ColorMode_RGB) {
+        mLog = QStringLiteral("Unsupported PSD color mode: %1. Only RGB is supported.")
+                   .arg(QString::fromLatin1(img::PSDFormat::colorModeName((img::PSDFormat::ColorMode)header.mode)));
+        return false;
+    }
+    if (header.depth != 8) {
+        mLog = QStringLiteral("Unsupported PSD bit depth: %1-bit. Only 8-bit is supported.")
+                   .arg(header.depth);
+        return false;
+    }
+
     // update reporter
     aReporter.setSection(QCoreApplication::translate("Image Loader", "Building a Object Tree..."));
     aReporter.setMaximum(reader.format()->layerAndMaskInfo().layerCount);
@@ -337,6 +351,10 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
         if (layer.entryType == PSDFormat::LayerEntryType_Layer) {
             // create layer resource (Note that the rect be modified.)
             auto resNode = createLayerResource(format->header(), layer, name, rect);
+            if (!resNode->data().hasImage()) {
+                mLog = "Failed to decode the image data of a layer ('" + name + "').";
+                return false;
+            }
             resCurrent->children().pushBack(resNode);
 
             // create layer node

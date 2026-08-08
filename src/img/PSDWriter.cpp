@@ -164,15 +164,15 @@ bool PSDWriter::writeLayerAndMaskInfo() {
         write((uint32)0);
     }
 
-    // additional layer info
+    // additional layer info (document-level): real writers and psd-tools align each
+    // block's size to a multiple of 4 (the reader mirrors this in loadAdditionalLayerInfo)
     for (const PSDFormat::AdditionalLayerInfoPtr& addiInfo : form.additionalLayerInfos) {
-        const bool isOddLength = (addiInfo->dataLength % 2 != 0);
+        const uint32 pad = (4 - addiInfo->dataLength % 4) % 4;
         write((const uint8*)"8BIM", 4);
         write((const uint8*)addiInfo->key.c_str(), 4);
-        write(addiInfo->dataLength + (uint32)(isOddLength ? 1u : 0u));
+        write(addiInfo->dataLength + pad);
         write(addiInfo->data.get(), addiInfo->dataLength);
-        if (isOddLength)
-            writeZero(1);
+        writeZero(pad);
 
         if (checkFailure())
             return false;

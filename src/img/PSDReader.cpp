@@ -485,7 +485,7 @@ bool PSDReader::loadLayerAndMaskInfo() {
         }
 #endif
         // additional layer info
-        if (!loadAdditionalLayerInfo(layer->additionalInfos, layer, layerEnd)) {
+        if (!loadAdditionalLayerInfo(layer->additionalInfos, layer, layerEnd, false)) {
             mSection = "layer and mask info/layer info/layer records/" + mSection;
             return false;
         }
@@ -501,8 +501,8 @@ bool PSDReader::loadLayerAndMaskInfo() {
             channel->compressionId = readUInt16();
             PSDREADER_VERBOSE("channel image comp: %d", channel->compressionId);
             if (channel->compressionId != 0 && channel->compressionId != 1) {
-                mSection = "layer and mask info/layer info/channel image data/compression id";
-                mValue = std::to_string(channel->compressionId);
+                mSection = "layer and mask info/layer info/channel image data/compression";
+                mValue = std::to_string(channel->compressionId) + " (unsupported; only Raw (0) and RLE (1) are supported)";
                 mResultCode = ResultCode_UnsupportedValue;
                 return false;
             }
@@ -552,7 +552,7 @@ bool PSDReader::loadLayerAndMaskInfo() {
     }
 
     // additional layer info
-    if (!loadAdditionalLayerInfo(form.additionalLayerInfos, nullptr, endPos)) {
+    if (!loadAdditionalLayerInfo(form.additionalLayerInfos, nullptr, endPos, true)) {
         return false;
     }
 
@@ -565,7 +565,7 @@ bool PSDReader::loadLayerAndMaskInfo() {
 // additional layer info
 //------------------------------------------------------------//
 bool PSDReader::loadAdditionalLayerInfo(
-    std::list<PSDFormat::AdditionalLayerInfoPtr>& aList, PSDFormat::Layer* aLayer, const std::ios::pos_type& aEndPos
+    std::list<PSDFormat::AdditionalLayerInfoPtr>& aList, PSDFormat::Layer* aLayer, const std::ios::pos_type& aEndPos, bool aGlobal
 ) {
     int length = aEndPos - tellg();
     std::string dumpKeys; // for dump
@@ -660,6 +660,16 @@ bool PSDReader::loadAdditionalLayerInfo(
         if (checkFailure())
             return false;
 
+        // some writers pad document-level (global) additional layer info blocks
+        // so each block's size is a multiple of 4 (psd-tools uses padding=4 for
+        // the global section, padding=1 for the per-layer extras). Skip the pad
+        // bytes so the next block stays aligned.
+        if (aGlobal && info->dataLength % 4 != 0) {
+            skip(4 - info->dataLength % 4);
+            if (checkFailure())
+                return false;
+        }
+
         // to next
         length = aEndPos - tellg();
     }
@@ -679,7 +689,7 @@ bool PSDReader::loadImageData() {
 
     PSDFormat::Header& header = mFormat->header();
     PSDFormat::ImageData& form = mFormat->imageData();
-    const uint32 rowBytes = (header.width * header.height + 7) / 8;
+    const uint32 rowBytes = (header.width * header.height + 7) / 8; // loose RLE scanline sanity bound (unchanged)
     const int modeChannelCount = PSDFormat::getChannelCount((PSDFormat::ColorMode)header.mode);
 
     form.compressionId = readUInt16();
@@ -688,8 +698,8 @@ bool PSDReader::loadImageData() {
         return false;
 
     if (form.compressionId != 0 && form.compressionId != 1) {
-        mSection = "image data/compression id";
-        mValue = std::to_string(form.compressionId);
+        mSection = "image data/compression";
+        mValue = std::to_string(form.compressionId) + " (unsupported; only Raw (0) and RLE (1) are supported)";
         mResultCode = ResultCode_UnsupportedValue;
         return false;
     }
@@ -728,8 +738,10 @@ bool PSDReader::loadImageData() {
         channel->compressionId = form.compressionId;
 
         if (form.compressionId == 0) {
-            // raw image
-            channel->dataLength = rowBytes * header.height;
+            // raw image: each channel plane is width * height * bytes-per-pixel
+            // (8-bit -> 1, 16-bit -> 2), no scanline padding in the merged section.
+            const uint32 bytesPerPixel = (header.depth + 7) / 8;
+            channel->dataLength = (uint32)header.width * (uint32)header.height * bytesPerPixel;
             channel->data.reset(new uint8[channel->dataLength]);
             readBuf(channel->data.get(), channel->dataLength);
         } else if (form.compressionId == 1) {
