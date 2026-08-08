@@ -31,15 +31,6 @@ class PSDUtil {
 public:
     enum ColorFormat { ColorFormat_RGB8, ColorFormat_RGBA8 };
 
-    static bool blendImage(
-        uint8* aResult,
-        const uint8* aBack,
-        const QRect& aRectRB,
-        const uint8* aFront,
-        const QRect& aRectF,
-        const std::string& aMode
-    );
-
     static XCMemBlock
     makeClippedImage(const uint8* aTarget, const QRect& aRectT, const uint8* aBase, const QRect& aRectB);
 
