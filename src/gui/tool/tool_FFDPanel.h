@@ -29,6 +29,8 @@ namespace tool {
 
     private:
         void createBrush();
+        void applyIcons();
+        void onThemeUpdated(theme::Theme&);
         void updateTypeParam(ctrl::FFDParam::Type aType);
 
         GUIResources& mResources;

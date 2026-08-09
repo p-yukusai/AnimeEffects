@@ -23,6 +23,7 @@ namespace gui {
 class ObjectTreeWidget: public QTreeWidget {
     Q_OBJECT
     obj::Item* createFileItem(core::ObjectNode& aNode);
+    void updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bool aVisible);
 
 public:
     enum { kItemColumn = 0 };

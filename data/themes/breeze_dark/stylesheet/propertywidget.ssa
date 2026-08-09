@@ -1,10 +1,26 @@
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: right;
+    width:  16px;
+    height: 16px;
+}
+
+QComboBox::down-arrow {
+    image: url(data/themes/breeze_dark/icon/caret-down.svg);
+    width:   10px;
+    height:  10px;
+}
+QComboBox::down-arrow:disabled {
+    image: url(data/themes/breeze_dark/icon/caret-down.svg);
+}
+
 QSplitter#propertysplitter {
     width: 380px;
 }
 
 QFrame#holder {
     background-color: #323232;
-    border-radius:2px;
+    border-radius:8px;
 }
 
 QCheckBox#keyIcon {
@@ -15,17 +31,17 @@ QCheckBox#keyIcon::indicator {
     height: 15px;
 }
 QCheckBox#keyIcon::indicator:unchecked {
-    image: url(data/themes/breeze_dark/icon/breeze/checkbox_unchecked.svg);
+    image: url(data/themes/breeze_dark/icon/caret-right.svg);
 }
 
 QCheckBox#keyIcon::indicator:checked {
-    image: url(data/themes/breeze_dark/icon/breeze/checkbox_checked.svg);
+    image: url(data/themes/breeze_dark/icon/caret-down.svg);
 }
 
 QGroupBox#keyGroup {
     background-color: #323232;
     border:0px solid transparent;
-    border-radius:4px;
+    border-radius:8px;
     margin: 2px;
     padding-top: 16px;
     padding-bottom: 4px;
@@ -48,15 +64,15 @@ QGroupBox#keyGroup::indicator {
 }
 
 QGroupBox#keyGroup::indicator:unchecked {
-    image: url(data/themes/breeze_dark/icon/breeze/checkbox_unchecked.svg);
+    image: url(data/themes/breeze_dark/icon/caret-right.svg);
 }
 
 QGroupBox#keyGroup::indicator:checked {
-    image: url(data/themes/breeze_dark/icon/breeze/checkbox_checked.svg);
+    image: url(data/themes/breeze_dark/icon/caret-down.svg);
 }
 
 QGroupBox#attrGroup {
-    border-radius:4px;
+    border-radius:8px;
     margin: 2px;
     padding-top: 18px;
     padding-bottom: 4px;
@@ -79,17 +95,17 @@ QGroupBox#attrGroup::indicator {
 }
 
 QGroupBox#attrGroup::indicator:unchecked {
-    image: url(data/themes/breeze_dark/icon/breeze/checkbox_unchecked.svg);
+    image: url(data/themes/breeze_dark/icon/caret-right.svg);
 }
 
 QGroupBox#attrGroup::indicator:checked {
-    image: url(data/themes/breeze_dark/icon/breeze/checkbox_checked.svg);
+    image: url(data/themes/breeze_dark/icon/caret-down.svg);
 }
 
 QGroupBox#keyKnocker {
     background-color: #323232;
     border:0px solid transparent;
-    border-radius:4px;
+    border-radius:8px;
     margin: 2px;
     padding-left: 4px;
     padding-right: 4px;
@@ -99,37 +115,37 @@ QGroupBox#keyKnocker {
 
 QPushButton#keyKnocker {
     border: 1px solid #76797c;
-    border-radius: 2px;
+    border-radius: 4px;
     padding: 0px;
     margin: 0px;
     width: 14px;
     height: 14px;
 }
 QPushButton#keyKnocker::enabled {
-    image: url(data/themes/breeze_dark/icon/knockkey.png);
+    image: url(data/themes/breeze_dark/icon/plus.svg);
 }
 QPushButton#keyKnocker::disabled {
-    image: url(data/themes/breeze_dark/icon/minus.png);
+    image: url(data/themes/breeze_dark/icon/minus.svg);
 }
 
 QPushButton#browser {
     border: 1px solid #76797c;
-    border-radius: 2px;
+    border-radius: 4px;
     padding: 2px;
     width: 18px;
     height: 15px;
 }
 QPushButton#browser::enabled {
-    image: url(data/themes/breeze_dark/icon/filew.png);
+    image: url(data/themes/breeze_dark/icon/file.svg);
 }
 QPushButton#browser::disabled {
-    image: url(data/themes/breeze_dark/icon/file.png);
+    image: url(data/themes/breeze_dark/icon/file.svg);
 }
 
 QGroupBox#propertyPanel {
     background-color: #2d2d2d;
     border:0px solid transparent;
-    border-radius:4px;
+    border-radius:8px;
     margin-top: 2px;
     margin-bottom: 2px;
     margin-left: 2px;
@@ -153,9 +169,9 @@ QGroupBox#propertyPanel::indicator {
 }
 
 QGroupBox#propertyPanel::indicator:unchecked {
-    image: url(data/themes/breeze_dark/icon/breeze/checkbox_unchecked.svg);
+    image: url(data/themes/breeze_dark/icon/caret-right.svg);
 }
 
 QGroupBox#propertyPanel::indicator:checked {
-    image: url(data/themes/breeze_dark/icon/breeze/checkbox_checked.svg);
+    image: url(data/themes/breeze_dark/icon/caret-down.svg);
 }

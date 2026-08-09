@@ -1,4 +1,6 @@
 #include <QMenu>
+#include <QPainter>
+#include <QTreeWidgetItemIterator>
 #include <memory>
 #include <QScrollBar>
 #include "ctrl/TimeLineEditor.h"
@@ -232,6 +234,42 @@ int ObjectTreeWidget::itemHeight(const core::ObjectNode& aNode) const {
     return ctrl::TimeLineRow::calculateHeight(aNode);
 }
 
+void ObjectTreeWidget::updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bool aVisible) {
+    if (aVisible) {
+        // Visible items render with the view's natural text color. Leave the
+        // brush unset: forcing palette().color(WindowText) bakes a color that
+        // differs from what the view actually draws under a stylesheet (the
+        // stylesheet's QWidget color rule leaks into the palette), which read
+        // as slightly faded text until the item was re-clicked.
+        aItem->setForeground(kItemColumn, QBrush());
+    } else {
+        // hidden layers read as faded: muted text blended toward the window
+        // color (the palette's Disabled group is not derived for the app's
+        // custom palettes, so it can't be relied on).
+        const QPalette pal = palette();
+        QColor textColor = pal.color(QPalette::WindowText);
+        const QColor bg = pal.color(QPalette::Window);
+        textColor.setRgbF(textColor.redF() * 0.45 + bg.redF() * 0.55,
+                          textColor.greenF() * 0.45 + bg.greenF() * 0.55,
+                          textColor.blueF() * 0.45 + bg.blueF() * 0.55);
+        aItem->setForeground(kItemColumn, QBrush(textColor));
+    }
+
+    const bool isFolder = (aItem->flags() & Qt::ItemIsDropEnabled) != 0;
+    QIcon icon = mGUIResources.icon(isFolder ? "folder" : "file");
+    if (!aVisible) {
+        const QPixmap pm = icon.pixmap(kItemSize, kItemSize);
+        QPixmap faded(pm.size());
+        faded.fill(Qt::transparent);
+        QPainter painter(&faded);
+        painter.setOpacity(0.45);
+        painter.drawPixmap(0, 0, pm);
+        painter.end();
+        icon = QIcon(faded);
+    }
+    aItem->setIcon(kItemColumn, icon);
+}
+
 obj::Item* ObjectTreeWidget::createFolderItem(core::ObjectNode& aNode) {
 
     obj::Item* item = new obj::Item(*this, aNode);
@@ -240,16 +278,18 @@ obj::Item* ObjectTreeWidget::createFolderItem(core::ObjectNode& aNode) {
     item->setIcon(kItemColumn, mGUIResources.icon("folder"));
     item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
     item->setCheckState(kItemColumn, aNode.isVisible() ? Qt::Checked : Qt::Unchecked);
+    updateItemVisibilityAppearance(item, aNode.isVisible());
     return item;
 }
 
 obj::Item* ObjectTreeWidget::createFileItem(core::ObjectNode& aNode) {
     auto* item = new obj::Item(*this, aNode);
     item->setSizeHint(kItemColumn, QSize(kItemSize, itemHeight(aNode)));
-    item->setIcon(kItemColumn, mGUIResources.icon("filew"));
+    item->setIcon(kItemColumn, mGUIResources.icon("file"));
     item->setFlags(item->flags() & ~Qt::ItemIsDropEnabled);
     item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
     item->setCheckState(kItemColumn, aNode.isVisible() ? Qt::Checked : Qt::Unchecked);
+    updateItemVisibilityAppearance(item, aNode.isVisible());
     return item;
 }
 
@@ -350,6 +390,20 @@ void ObjectTreeWidget::onThemeUpdated(theme::Theme& aTheme) {
     if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
         this->setStyleSheet(QTextStream(&stylesheet).readAll());
     }
+
+    // Item colors are derived from the (possibly changed) palette and the icons
+    // from the (rebuilt) icon map, so re-apply them to every node. Without this
+    // items keep the previous theme's colors/icons until toggled or re-clicked.
+    // The top-level item is the document root (a FolderNode container, not a
+    // user folder): it has no check state and no icon by design, so leave it
+    // out or the folder icon would appear on it.
+    QTreeWidgetItemIterator it(this);
+    for (; *it; ++it) {
+        obj::Item* item = obj::Item::cast(*it);
+        if (item && (*it)->parent()) {
+            updateItemVisibilityAppearance(item, item->node().isVisible());
+        }
+    }
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -387,6 +441,7 @@ void ObjectTreeWidget::onItemClicked(QTreeWidgetItem* aItem, int aColumn) {
         if (mProject) {
             const bool isVisible = objItem->checkState(kItemColumn) == Qt::Checked;
             objItem->node().setVisibility(isVisible);
+            updateItemVisibilityAppearance(aItem, isVisible);
             onVisibilityUpdated();
         }
     }

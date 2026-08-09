@@ -53,6 +53,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     PropertyWidget.cpp PropertyWidget.h
     ResourceDialog.cpp ResourceDialog.h
     ResourceTreeWidget.cpp ResourceTreeWidget.h
+    TabCloseButton.cpp TabCloseButton.h
     TargetWidget.cpp TargetWidget.h
     TimeLineEditorWidget.cpp TimeLineEditorWidget.h
     TimeLineInfoWidget.cpp TimeLineInfoWidget.h
@@ -117,7 +118,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core Qt6::Core5Compat Qt6::Widgets
         Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
-        Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+        Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
         cmnd core ctrl gl img thr util
 )
 
@@ -142,9 +143,77 @@ if (CMAKE_CONFIGURATION_TYPES)
 else ()
     set(AE_DATA_DEST ${CMAKE_CURRENT_BINARY_DIR}/${AE_DATA_SUBDIR})
 endif ()
+# Generated icon dir: build-tree only, never wiped, so ninja can cache the
+# tint outputs across builds. copy_data merges it into the exe's data dir.
+set(AE_GEN_ICONS_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated-icons)
+
 add_custom_target(copy_data
         COMMAND ${CMAKE_COMMAND} -E rm -rf ${AE_DATA_DEST}
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${AE_DATA_DEST}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${AE_GEN_ICONS_DIR} ${AE_DATA_DEST}
 )
 message("Data copied")
 add_dependencies(${PROJECT_NAME} copy_data)
+
+# ---------------------------------------------------------------------------
+# Build-time icon tinting.
+# The repo tracks one canonical monochrome set in data/icons; this regenerates
+# each theme's icon dir with the theme color (and the scrollbar thumbs with
+# their per-theme shades). Outputs are tracked by ninja, so tinting only
+# re-runs when the canonical set or the tool changes.
+# ---------------------------------------------------------------------------
+add_executable(icon_tint ${CMAKE_SOURCE_DIR}/tools/icon_tint/icon_tint.cpp)
+target_link_libraries(icon_tint PRIVATE Qt6::Gui Qt6::Core)
+set_target_properties(icon_tint PROPERTIES EXCLUDE_FROM_ALL FALSE)
+
+file(GLOB AE_CANONICAL_ICONS CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/data/icons/*.png ${CMAKE_SOURCE_DIR}/data/icons/*.svg)
+# Manifest of the canonical set: rewritten whenever the glob changes, so icon
+# additions/removals dirty every theme rule (per-file deps alone cannot see a
+# file disappear) and the per-theme wipe clears the stale outputs.
+set(AE_CANONICAL_MANIFEST ${CMAKE_CURRENT_BINARY_DIR}/ae-canonical-icons.txt)
+file(WRITE ${AE_CANONICAL_MANIFEST} "${AE_CANONICAL_ICONS}")
+
+set(AE_ICON_THEMES
+    "default#3c3c3c#b0b0b0#8f8f8f"
+    "classic#3c3c3c#b0b0b0#8f8f8f"
+    "breeze_dark#e0e0e0#7e7e7e#a0a0a0"
+    "breeze_dark_high_dpi#e0e0e0#7e7e7e#a0a0a0"
+)
+
+set(AE_ALL_ICON_OUTPUTS "")
+foreach(entry ${AE_ICON_THEMES})
+    string(REPLACE "#" ";" parts "${entry}")
+    list(GET parts 0 theme)
+    list(GET parts 1 color)
+    list(GET parts 2 thumb)
+    list(GET parts 3 hover)
+
+    set(theme_out "")
+    foreach(icon ${AE_CANONICAL_ICONS})
+        get_filename_component(name ${icon} NAME)
+        list(APPEND theme_out ${AE_GEN_ICONS_DIR}/themes/${theme}/icon/${name})
+    endforeach()
+    list(APPEND AE_ALL_ICON_OUTPUTS ${theme_out})
+
+    set(theme_cmds
+        # wipe first so outputs that left the canonical set (e.g. png -> svg
+        # migrations) do not linger and get merged into the exe data
+        COMMAND ${CMAKE_COMMAND} -E rm -rf ${AE_GEN_ICONS_DIR}/themes/${theme}/icon
+        COMMAND $<TARGET_FILE:icon_tint> ${CMAKE_SOURCE_DIR}/data/icons ${AE_GEN_ICONS_DIR}/themes/${theme}/icon ${color}
+    )
+    if(thumb AND hover)
+        list(APPEND theme_cmds
+            COMMAND $<TARGET_FILE:icon_tint> ${CMAKE_SOURCE_DIR}/data/icons ${AE_GEN_ICONS_DIR}/themes/${theme}/icon ${thumb} scrollbar_handle.png
+            COMMAND $<TARGET_FILE:icon_tint> ${CMAKE_SOURCE_DIR}/data/icons ${AE_GEN_ICONS_DIR}/themes/${theme}/icon ${hover} scrollbar_handle_hover.png
+        )
+    endif()
+    add_custom_command(
+        OUTPUT ${theme_out}
+        ${theme_cmds}
+        DEPENDS ${AE_CANONICAL_ICONS} ${AE_CANONICAL_MANIFEST} icon_tint
+        VERBATIM
+    )
+endforeach()
+
+add_custom_target(tint_icons ALL DEPENDS ${AE_ALL_ICON_OUTPUTS})
+add_dependencies(copy_data tint_icons)

@@ -18,8 +18,12 @@ namespace tool {
         SingleOutItem(int aButtonCount, const QSize& aButtonSize, QWidget* aParent);
         void setChoice(int aButtonIndex);
         void setToolTips(const QStringList& aTips);
-        void setIcons(const QVector<QIcon*>& aIcons);
-        void setIcons(const QVector<QIcon>& aIcons);
+        // aIconSize: per-group icon size; defaults to the button size. Vector icons
+        // (phosphor/at-icons glyphs fill ~80% of their canvas) render smaller than
+        // the legacy rasters at the same size, so SVG groups pass 16 to match the
+        // toolbox buttons.
+        void setIcons(const QVector<QIcon*>& aIcons, const QSize& aIconSize = QSize());
+        void setIcons(const QVector<QIcon>& aIcons, const QSize& aIconSize = QSize());
         void connect(const std::function<void(int)>& aPressed);
         int updateGeometry(const QPoint& aPos, int aWidth);
         void setVisible(bool aIs) {

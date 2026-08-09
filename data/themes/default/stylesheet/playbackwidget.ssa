@@ -1,20 +1,33 @@
-QPushButton#playbackButton {
-    border-radius: 2px;
+/*
+ *  Playback widget stylesheet (default/classic).
+ *
+ *  Transparent buttons; background appears only on hover/active feedback.
+ */
+
+QPushButton {
+    color: #3c3c3c;
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
     padding: 2px;
 }
 
-QPushButton#playbackButton:hover {
-
+QPushButton:hover {
+    background-color: #e0e0e0;
 }
 
-QPushButton#playbackButton:disabled {
-
+QPushButton:pressed {
+    background-color: #d0d0d0;
 }
 
-QPushButton#playbackButton:pressed {
-    margin-top: 3px;
+QPushButton:checked {
+    background-color: #dbe6f7;
 }
 
-QPushButton#playbackButton:checked {
-    margin-top: 2px;
+QPushButton:checked:hover {
+    background-color: #cddbf0;
+}
+
+QPushButton:disabled {
+    color: #9a9a9a;
 }

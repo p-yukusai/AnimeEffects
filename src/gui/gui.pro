@@ -102,6 +102,7 @@ SOURCES += \
     res/res_ResourceUpdater.cpp \
     ProjectHook.cpp \
     ProjectTabBar.cpp \
+    TabCloseButton.cpp \
     EasyDialog.cpp \
     menu/menu_ProgressReporter.cpp \
     tool/tool_ViewPanel.cpp \
@@ -172,6 +173,7 @@ HEADERS += \
     res/res_ResourceUpdater.h \
     ProjectHook.h \
     ProjectTabBar.h \
+    TabCloseButton.h \
     EasyDialog.h \
     menu/menu_ProgressReporter.h \
     tool/tool_ViewPanel.h \

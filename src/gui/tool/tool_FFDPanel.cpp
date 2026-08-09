@@ -2,7 +2,7 @@
 #include "gui/tool/tool_ItemTable.h"
 
 namespace {
-int kButtonSize = 23;
+int kButtonSize = 20;
 int kButtonSpace = kButtonSize;
 } // namespace
 
@@ -22,22 +22,38 @@ namespace tool {
         mEraseRadius(),
         mErasePressure() {
         this->setTitle(tr("FFD"));
+        mResources.onThemeChanged.connect(this, &FFDPanel::onThemeUpdated);
         createBrush();
         updateTypeParam(mParam.type);
     }
 
+    void FFDPanel::applyIcons() {
+        mTypeGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
+        , QSize(16, 16));
+        mHardnessGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("hardness-1") << mResources.icon("hardness-2")
+                             << mResources.icon("hardness-3")
+        );
+        mEraseHardnessGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("hardness-1") << mResources.icon("hardness-2")
+                             << mResources.icon("hardness-3")
+        );
+    }
+
+    void FFDPanel::onThemeUpdated(theme::Theme&) {
+        applyIcons();
+    }
+
     void FFDPanel::createBrush() {
         if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 36;
+            kButtonSize = 32;
             kButtonSpace = kButtonSize;
         }
         // type
         mTypeGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
         mTypeGroup->setChoice(mParam.type);
         mTypeGroup->setToolTips(QStringList() << tr("Move vertex") << tr("Deform mesh") << tr("Erase deformations"));
-        mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
-        );
         mTypeGroup->connect([=](int aIndex) {
             this->mParam.type = (ctrl::FFDParam::Type)aIndex;
             this->updateTypeParam(this->mParam.type);
@@ -48,10 +64,6 @@ namespace tool {
         mHardnessGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
         mHardnessGroup->setChoice(mParam.hardness);
         mHardnessGroup->setToolTips(QStringList() << tr("Soft") << tr("Normal") << tr("Hard"));
-        mHardnessGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("hardness1") << mResources.icon("hardness2")
-                             << mResources.icon("hardness3")
-        );
         mHardnessGroup->connect([=](int aIndex) {
             this->mParam.hardness = aIndex;
             this->onParamUpdated(false);
@@ -87,10 +99,6 @@ namespace tool {
         mEraseHardnessGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
         mEraseHardnessGroup->setChoice(mParam.eraseHardness);
         mEraseHardnessGroup->setToolTips(QStringList() << tr("Soft") << tr("Normal") << tr("Hard"));
-        mEraseHardnessGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("hardness1") << mResources.icon("hardness2")
-                             << mResources.icon("hardness3")
-        );
         mEraseHardnessGroup->connect([=](int aIndex) {
             this->mParam.eraseHardness = aIndex;
             this->onParamUpdated(false);

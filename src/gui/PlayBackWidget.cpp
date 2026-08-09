@@ -4,7 +4,9 @@
 #include <functional>
 
 namespace {
-int kButtonSize = 28;
+int kButtonSize = 24;
+int kIconSize = 20;
+const int kGap = 4;
 const int kButtonCount = 7;
 } // namespace
 
@@ -13,13 +15,14 @@ namespace gui {
 PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent, core::Project& mProject):
     QWidget(aParent), mGUIResources(aResources), mButtons() {
     if (mGUIResources.getTheme().contains("high_dpi")) {
-        kButtonSize = 32;
+        kButtonSize = 28;
+        kIconSize = 24;
     }
-    this->setGeometry(0, 0, kButtonSize, kButtonSize * kButtonCount);
+    this->setGeometry(0, 0, kButtonSize, (kButtonSize + kGap) * kButtonCount);
     aProject = &mProject;
 
     mButtons.push_back(createButton("rewind", false, 0, tr("Return to initial frame")));
-    mButtons.push_back(createButton("stepback", false, 1, tr("One frame back")));
+    mButtons.push_back(createButton("step-back", false, 1, tr("One frame back")));
     mButtons.push_back(createButton("play", true, 2, tr("Play")));
     mButtons.push_back(createButton("step", false, 3, tr("One frame forward")));
     mButtons.push_back(createButton("fast", false, 4, tr("Advance to final frame")));
@@ -122,11 +125,11 @@ PlayBackWidget::createButton(const QString& aName, bool aIsCheckable, int aColum
     XC_PTR_ASSERT(button);
     button->setObjectName(aName);
     button->setIcon(mGUIResources.icon(aName));
-    button->setIconSize(QSize(kButtonSize, kButtonSize));
+    button->setIconSize(QSize(kIconSize, kIconSize));
     button->setCheckable(aIsCheckable);
     button->setToolTip(aToolTip);
     button->setFocusPolicy(Qt::NoFocus);
-    button->setGeometry(0, 2 + kButtonSize * aColumn, kButtonSize, kButtonSize);
+    button->setGeometry(0, 2 + (kButtonSize + kGap) * aColumn, kButtonSize, kButtonSize);
     return button;
 }
 

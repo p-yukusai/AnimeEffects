@@ -29,6 +29,7 @@ public:
     ~GUIResources();
 
     QIcon icon(const QString& aName) const;
+    QColor viewportBackground() const;
 
     QStringList themeList();
     bool hasTheme(const QString& aThemeId);
@@ -66,7 +67,6 @@ public:
 
     }
 
-    QString getThemeLocation() { return mTheme.path(); };
     QString getTheme() { return mTheme.id(); };
     // signals
     util::Signaler<void(theme::Theme&)> onThemeChanged;
@@ -81,8 +81,8 @@ private:
     void loadIcons();
     void detectThemes();
 
-    QString iconPath(const QString& aName);
     void loadIcon(const QString& aPath);
+    QString dialogButtonStyleSheet() const;
 
     QString mResourceDir;
     IconMap mIconMap;

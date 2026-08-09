@@ -1,4 +1,4 @@
-﻿#include "gui/GUIResources.h"
+#include "gui/GUIResources.h"
 #include <QApplication>
 #include <QStyleFactory>
 
@@ -38,18 +38,59 @@ QIcon GUIResources::icon(const QString& aName) const {
     }
 }
 
-QString GUIResources::iconPath(const QString& aName) {
-    bool loadLightIcons = mTheme.isDefault() && mTheme.isDark();
-    return mTheme.path() + "/icon" + (loadLightIcons ? "/light" : "") + "/" + aName + ".png";
+QColor GUIResources::viewportBackground() const {
+    if (mTheme.isDefault()) {
+        return QColor(216, 216, 216); // light theme
+    }
+    return QColor(64, 64, 64); // dark themes
+}
+
+QString GUIResources::dialogButtonStyleSheet() const {
+    // Flat, modern styling for dialog buttons. This is applied application-wide so
+    // that parentless dialogs (e.g. QMessageBox) inherit it as well, matching the
+    // per-widget QPushButton styling defined in each theme's standard.ssa.
+    if (mTheme.id().contains("dark")) {
+        return QStringLiteral(
+            "QPushButton {"
+            "    color: #eff0f1;"
+            "    background-color: #3d3d3d;"
+            "    border: 1px solid #565656;"
+            "    border-radius: 4px;"
+            "    padding: 4px 12px;"
+            "    outline: none;"
+            "}"
+            "QPushButton:hover { background-color: #484848; border-color: #646464; }"
+            "QPushButton:pressed { background-color: #303030; }"
+            "QPushButton:checked { background-color: #303030; }"
+            "QPushButton:disabled { color: #707070; background-color: #2c2c2c; border-color: #3e3e3e; }"
+            "QPushButton:focus { border-color: #808080; }"
+        );
+    }
+    return QStringLiteral(
+        "QPushButton {"
+        "    color: #202020;"
+        "    background-color: #f2f2f2;"
+        "    border: 1px solid #b8b8b8;"
+        "    border-radius: 4px;"
+        "    padding: 4px 12px;"
+        "    outline: none;"
+        "}"
+        "QPushButton:hover { background-color: #e6e6e6; border-color: #a8a8a8; }"
+        "QPushButton:pressed { background-color: #d8d8d8; }"
+        "QPushButton:checked { background-color: #d8d8d8; }"
+        "QPushButton:disabled { color: #9a9a9a; background-color: #f6f6f6; border-color: #d0d0d0; }"
+        "QPushButton:focus { border-color: #909090; }"
+    );
 }
 
 void GUIResources::loadIcon(const QString& aPath) {
     QString name = QFileInfo(aPath).baseName();
-    QPixmap source(aPath);
 
-    QIcon* icon = new QIcon();
+    // Theme icon dirs are generated at build time (tools/icon_tint), so the
+    // images are already colored for the theme. QIcon(aPath) keeps vector
+    // sources (SVG) scalable instead of pinning them to a raster size.
+    QIcon* icon = new QIcon(aPath);
     mIconMap[name] = icon;
-    icon->addPixmap(source, QIcon::Normal, QIcon::Off);
 
 #if 0
     {
@@ -79,12 +120,13 @@ void GUIResources::loadIcons() {
         mIconMap.clear();
     }
 
-    bool loadLightIcons = mTheme.isDefault() && mTheme.isDark();
-    const QString iconDirPath(mResourceDir + "/themes/" + mTheme.id() + "/icon" + (loadLightIcons ? "/light" : ""));
+    const QString iconDirPath(mResourceDir + "/themes/" + mTheme.id() + "/icon");
 
+    // Legacy icons are raster, the phosphor/at-icons ones are per-theme SVG
+    // (both generated at build time by tools/icon_tint).
     QStringList filters;
-    filters << "*.png";
-    QDirIterator itr(iconDirPath, filters, QDir::Files, QDirIterator::Subdirectories);
+    filters << "*.png" << "*.svg";
+    QDirIterator itr(iconDirPath, filters, QDir::Files, QDirIterator::NoIteratorFlags);
 
     while (itr.hasNext()) {
         loadIcon(itr.next());
@@ -122,16 +164,22 @@ bool GUIResources::hasTheme(const QString& aThemeId) { return mThemeMap.contains
 
 void GUIResources::setTheme(const QString& aThemeId) {
     setAppStyle();
-    if (mTheme.id() != aThemeId && hasTheme(aThemeId)) {
+    const bool themeChanged = (mTheme.id() != aThemeId && hasTheme(aThemeId));
+    if (themeChanged) {
         mTheme = mThemeMap.value(aThemeId);
         loadIcons();
-        onThemeChanged(mTheme);
     }
     setPaletteDefault();
-    if (mTheme.id().contains("dark")){
+    if (mTheme.id().contains("dark")) {
         setPaletteDark();
     }
     QApplication::setPalette(palette);
+    qApp->setStyleSheet(dialogButtonStyleSheet());
+    // Notify after the new palette is live so palette-reading handlers
+    // (timeline theme, object-tree item colors) observe the new theme.
+    if (themeChanged) {
+        onThemeChanged(mTheme);
+    }
 }
 
 void GUIResources::triggerOnThemeChanged() { onThemeChanged(mTheme); }

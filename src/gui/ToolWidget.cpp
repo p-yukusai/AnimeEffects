@@ -102,11 +102,11 @@ void ToolWidget::createViewPanel() {
         delete mViewPanel;
     mViewPanel = new tool::ViewPanel(this, mResources, tr("View Settings"));
 
-    mViewPanel->addButton("showmesh", true, tr("Show mesh"), [=](bool aChecked) {
+    mViewPanel->addButton("show-mesh", true, tr("Show mesh"), [=](bool aChecked) {
         this->viewSetting().showLayerMesh = aChecked;
         this->onViewSettingChanged(this->viewSetting());
     });
-    mViewPanel->addButton("cutimages", true, tr("Do not draw outside the frame"), [=](bool aChecked) {
+    mViewPanel->addButton("image", true, tr("Do not draw outside the frame"), [=](bool aChecked) {
         this->viewSetting().cutImagesByTheFrame = aChecked;
         this->onViewSettingChanged(this->viewSetting());
     });
@@ -114,7 +114,7 @@ void ToolWidget::createViewPanel() {
     QString _rotateViewAntiClockwiseKeyBindingText =
         this->mKeyCommandMap.get("RotateCanvas15AntiClockwise")->binding.text();
     mViewPanel->addButton(
-        "rotateac",
+        "rotate-ccw",
         false,
         tr("Rotate the canvas counterclockwise (%1)").arg(_rotateViewAntiClockwiseKeyBindingText),
         [=](bool) {
@@ -126,7 +126,7 @@ void ToolWidget::createViewPanel() {
 
     QString _rotateResetKeyBindingText = this->mKeyCommandMap.get("ResetCanvasAngle")->binding.text();
     mViewPanel->addButton(
-        "resetrot",
+        "reset-rotation",
         false,
         tr("Reset rotation of the canvas (%1)").arg(_rotateResetKeyBindingText),
         [=](bool) {
@@ -138,7 +138,7 @@ void ToolWidget::createViewPanel() {
 
     QString _rotateViewClockwiseKeyBindingText = this->mKeyCommandMap.get("RotateCanvas15Clockwise")->binding.text();
     mViewPanel->addButton(
-        "rotatecw",
+        "rotate-cw",
         false,
         tr("Rotate the canvas clockwise (%1)").arg(_rotateViewClockwiseKeyBindingText),
         [=](bool) {

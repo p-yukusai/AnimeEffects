@@ -1,7 +1,7 @@
 #include "gui/tool/tool_SRTPanel.h"
 
 namespace {
-int kButtonSize = 23;
+int kButtonSize = 20;
 int kButtonSpace = kButtonSize;
 } // namespace
 
@@ -18,20 +18,30 @@ namespace tool {
         mAddScale(),
         mAdjust() {
         this->setTitle(tr("Transform"));
+        mResources.onThemeChanged.connect(this, &SRTPanel::onThemeUpdated);
         createMode();
         updateTypeParam(mParam.mode);
     }
 
+    void SRTPanel::applyIcons() {
+        mTypeGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("move") << mResources.icon("move-centroid"), QSize(16, 16));
+    }
+
+    void SRTPanel::onThemeUpdated(theme::Theme&) {
+        applyIcons();
+    }
+
     void SRTPanel::createMode() {
         if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 36;
+            kButtonSize = 32;
             kButtonSpace = kButtonSize;
         }
         // mode
         mTypeGroup.reset(new SingleOutItem(2, QSize(kButtonSpace, kButtonSpace), this));
         mTypeGroup->setChoice(mParam.mode);
         mTypeGroup->setToolTips(QStringList() << tr("Transform") << tr("Move Centroid"));
-        mTypeGroup->setIcons(QVector<QIcon>() << mResources.icon("move") << mResources.icon("transcent"));
+        applyIcons();
         mTypeGroup->connect([=](int aIndex) {
             this->mParam.mode = aIndex;
             this->updateTypeParam(aIndex);

@@ -1,33 +1,34 @@
-QPushButton#playbackButton {
+/*
+ *  Playback widget stylesheet (breeze_dark_high_dpi).
+ *
+ *  Em-based mirror of breeze_dark/stylesheet/playbackwidget.ssa.
+ */
+
+QPushButton {
     color: #eff0f1;
-    border: 0.1em solid #76797c;
-    border-radius: 0.2em;
-    padding: 0.2em;
-    background-color: #323232;
+    background-color: transparent;
+    border: none;
+    border-radius: 0.25em;
+    padding: 0.125em;
 }
 
-QPushButton#playbackButton:hover {
-    color: #eff0f1;
-    border: 0.1em solid #7e7e7e;
-    background-color: #323232;
+QPushButton:hover {
+    background-color: #484848;
 }
 
-QPushButton#playbackButton:disabled {
-    color: #454545;
-    border: 0.1em solid #76797c;
-    background: #323232;
+QPushButton:pressed {
+    background-color: #2f2f2f;
 }
 
-QPushButton#playbackButton:pressed {
-    color: #eff0f1;
-    border: 0.1em inset #76797c;
-    margin-top: 0.3em;
-    background-color: #323232;
+QPushButton:checked {
+    background-color: #626568;
 }
 
-QPushButton#playbackButton:checked {
-    color: #eff0f1;
-    border: 0.1em inset #76797c;
-    margin-top: 0.2em;
-    background-color: #323232;
+QPushButton:checked:hover {
+    background-color: #6f7376;
+}
+
+QPushButton:disabled {
+    color: #707070;
+    background-color: #2c2c2c;
 }

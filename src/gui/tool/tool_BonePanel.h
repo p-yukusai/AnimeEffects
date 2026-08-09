@@ -26,6 +26,8 @@ namespace tool {
 
     private:
         void createMode();
+        void applyIcons();
+        void onThemeUpdated(theme::Theme&);
         void updateTypeParam(ctrl::BoneEditMode aType);
 
         GUIResources& mResources;

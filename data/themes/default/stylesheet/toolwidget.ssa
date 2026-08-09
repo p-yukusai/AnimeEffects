@@ -1,100 +1,77 @@
-QPushButton#toolButton {
-    border-radius: 6px;
-    padding: -1px;
-    width: 26px;
-    height: 26px;
-    icon-size: 26px;
-}
-
-QPushButton#toolButton:hover {
-
-}
-
-QPushButton#toolButton:disabled {
-
-}
-
-QPushButton#toolButton:pressed {
-    margin-top: 3px;
-}
-
-QPushButton#toolButton:checked {
-    margin-top: 2px;
-}
-
-QPushButton#viewButton {
-    border-radius: 6px;
-    padding: -1px;
-    width: 26px;
-    height: 26px;
-    icon-size: 26px;
-}
-
-QPushButton#viewButton:hover {
-
-}
-
-QPushButton#viewButton:disabled {
-
-}
-
-QPushButton#viewButton:pressed {
-    margin-top: 3px;
-}
-
-QPushButton#viewButton:checked {
-    margin-top: 2px;
-}
+/*
+ *  Tool dock stylesheet (default).
+ *
+ *  Design tokens:
+ *    radius:  4px controls, 8px containers
+ *    surface hierarchy: window #ececec > panel #fcfcfc > button #f2f2f2
+ *    interactive feedback is expressed with background color only;
+ *    borders are never used to give a control its shape.
+ */
 
 QGroupBox {
-    border-radius:8px;
+    color: #3c3c3c;
+    background-color: #fcfcfc;
+    border: none;
+    border-radius: 8px;
     margin-top: 6px;
-    padding-left:  6px;
+    padding-left: 6px;
     padding-right: 6px;
-    padding-top:   12px;
+    padding-top: 12px;
     padding-bottom: 24px;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
-    subcontrol-position:top left;
+    subcontrol-position: top left;
+    color: #3c3c3c;
 }
 
 QPushButton {
-    border-radius: 2px;
+    color: #3c3c3c;
+    background-color: #f2f2f2;
+    border: none;
+    border-radius: 4px;
     padding: 2px;
 }
 
 QPushButton:hover {
-
-}
-
-QPushButton:disabled {
-
+    background-color: #e6e6e6;
 }
 
 QPushButton:pressed {
-    margin-top: 2px;
+    background-color: #d8d8d8;
 }
 
 QPushButton:checked {
-    margin-top: 0px;
+    background-color: #e0e8f5;
+}
+
+QPushButton:checked:hover {
+    background-color: #d2ddec;
+}
+
+QPushButton:disabled {
+    color: #9a9a9a;
+    background-color: #efefef;
 }
 
 QSlider::groove:horizontal {
     height: 3px;
+    background: #e0e0e0;
+    border: none;
+    border-radius: 2px;
     margin: 2px 0;
-    border-radius: 1px;
 }
 
 QSlider::handle:horizontal {
+    background: #fdfdfd;
+    border: 1px solid #a0a0b0;
     width: 7px;
     margin: -6px 0; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */
-    border-radius: 2px;
+    border-radius: 4px;
 }
 
 QCheckBox#checkItem {
-
 }
 
 QCheckBox#checkItem::indicator {

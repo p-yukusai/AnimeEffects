@@ -763,11 +763,11 @@ bool GeneralSettingDialog::ffmpegCheck(const QString& ffmpeg, GeneralSettingDial
         ffmpegNotif.setWindowTitle(tr("FFmpeg doesn't export"));
         ffmpegNotif.setText(tr("FFmpeg was unable to export, please troubleshoot."));
         ffmpegNotif.setDetailedText(
-            "File exists: " + QString(QFileInfo::exists("./data/themes/classic/icon/filew.png")? "True" : "False") +
-            "\nFile readable: " + QString(QFileInfo("./data/themes/classic/icon/filew.png").isReadable()? "True" : "False") +
-            "\nFile writeable: " + QString(QFileInfo("./data/themes/classic/icon/filew.png").isWritable()? "True" : "False") +
-            "\nFolder writeable: " + QString(QDir("./data/themes/classic/icon/").exists() ? "True" : "False") +
-            "\nFolder readable: " + QString(QDir("./data/themes/classic/icon/").isReadable() ? "True" : "False")
+            "File exists: " + QString(QFileInfo::exists("./data/icons/file.png")? "True" : "False") +
+            "\nFile readable: " + QString(QFileInfo("./data/icons/file.png").isReadable()? "True" : "False") +
+            "\nFile writeable: " + QString(QFileInfo("./data/icons/file.png").isWritable()? "True" : "False") +
+            "\nFolder writeable: " + QString(QDir("./data/icons/").exists() ? "True" : "False") +
+            "\nFolder readable: " + QString(QDir("./data/icons/").isReadable() ? "True" : "False")
             );
         ffmpegNotif.addButton(QMessageBox::Ok);
         ffmpegNotif.exec();

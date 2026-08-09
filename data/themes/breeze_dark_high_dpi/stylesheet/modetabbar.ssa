@@ -1,46 +1,46 @@
 QTabBar {
-    background-color: #2d2d2d;
+    background-color: #2b2b2b;
+    left: 0px;
+    border-radius: 0px;
 }
 
-QTabBar::tab {
-    color: #B8B8B8;
-
-    background-color: qlineargradient(
-        x1:0, y1:0, x2:0, y2:1,
-        stop:0   #383838,
-        stop:1   #303030);
-
-    border: 0.1em solid #404040;
-    border-top-color: #505050;
-    border-left-color: #505050;
-    border-right-color: #303030;
-    border-top-right-radius: 0em;
-    border-top-left-radius: 0em;
-    width: 12.8em;
-    min-height: 1em;
-    max-height: 1em;
+QTabBar::tab:top,
+QTabBar::tab:top:last,
+QTabBar::tab:top:only-one {
+    color: #8f8f8f;
+    background-color: #333333;
+    border: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    width: 128px;
+    min-height: 18px;
+    max-height: 18px;
     min-width: 8ex;
-    margin-top: 0em;
+    padding: 0px;
+    margin: 0px;
 }
 
-QTabBar::tab:hover {
-    background-color: qlineargradient(
-    x1:0, y1:0, x2:0, y2:1,
-    stop:0   #747474,
-    stop:0.6 #7A7A7A,
-    stop:1   #7F7F7F);
-}
-
-QTabBar::tab:selected {
-    color: #D2D2D2;
+QTabBar::tab:top:selected {
+    color: #f2f2f2;
     background-color: #404040;
-    border-top-color: #505050;
-    border-left-color: #505050;
-    border-right-color: #505050;
-    margin-top: -0.4em;
+    border: none;
 }
 
-QTabBar::tab:!selected {
-    margin-top: 0.2em;
-    border-left-color: #404040;
+QTabBar::tab:top:!selected {
+    border: none;
+}
+
+QTabBar::tab:top:next-selected {
+    border: none;
+}
+
+QTabBar::tab:top:!selected:hover,
+QTabBar::tab:top:!selected:first:hover {
+    background-color: #3d3d3d;
+    border: none;
+}
+
+QTabBar::tab:top:selected:hover {
+    background-color: #484848;
+    border: none;
 }

@@ -2,7 +2,7 @@
 #include "gui/tool/tool_ItemTable.h"
 
 namespace {
-int kButtonSize = 23;
+int kButtonSize = 20;
 int kButtonSpace = kButtonSize;
 } // namespace
 
@@ -12,22 +12,31 @@ namespace tool {
     PosePanel::PosePanel(QWidget* aParent, GUIResources& aResources):
         QGroupBox(aParent), mResources(aResources), mParam(), mTypeGroup(), mDIWeight(), mEIRadius(), mEIPressure() {
         this->setTitle(tr("Pose editor"));
+        mResources.onThemeChanged.connect(this, &PosePanel::onThemeUpdated);
         createMode();
         updateTypeParam(mParam.mode);
     }
 
+    void PosePanel::applyIcons() {
+        mTypeGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
+        , QSize(16, 16));
+    }
+
+    void PosePanel::onThemeUpdated(theme::Theme&) {
+        applyIcons();
+    }
+
     void PosePanel::createMode() {
         if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 36;
+            kButtonSize = 32;
             kButtonSpace = kButtonSize;
         }
         // type
         mTypeGroup.reset(new SingleOutItem(ctrl::PoseEditMode_TERM, QSize(kButtonSpace, kButtonSpace), this));
         mTypeGroup->setChoice(mParam.mode);
         mTypeGroup->setToolTips(QStringList() << tr("Move bone") << tr("Pull bones") << tr("Erase bone pose"));
-        mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
-        );
+        applyIcons();
 
         mTypeGroup->connect([=](int aIndex) {
             this->mParam.mode = (ctrl::PoseEditMode)aIndex;

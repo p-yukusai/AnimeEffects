@@ -225,7 +225,7 @@ namespace bone {
 
     void NodeSelector::renderTags(const core::RenderInfo& aInfo, QPainter& aPainter) {
         auto tagHeight = mCurrentTopTag->sortedRect.height();
-        QPixmap iconPix = mGraphicStyle.icon("dooropen").pixmap(tagHeight);
+        QPixmap iconPix = mGraphicStyle.icon("door-open").pixmap(tagHeight);
 
         QFont font = mGraphicStyle.font();
         aPainter.setFont(font);

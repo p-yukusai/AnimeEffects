@@ -33,6 +33,7 @@
 #include <QDialogButtonBox>
 #include <QDebug>
 #include "util/SelectArgs.h"
+#include "gui/GUIResources.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -154,7 +155,7 @@ public:
         return QCoreApplication::translate("ExportDiag", input.toStdString().c_str());
     }
 
-    void setupUi(QWidget *exportWidget, const QString& themePath, int projectLastFrame)
+    void setupUi(QWidget *exportWidget, gui::GUIResources& aResources, int projectLastFrame)
     {
         if (exportWidget->objectName().isEmpty())
             exportWidget->setObjectName(QString::fromUtf8("exportWidget"));
@@ -229,8 +230,7 @@ public:
         sizePolicy2.setVerticalStretch(0);
         sizePolicy2.setHeightForWidth(insertFrameRangeButton->sizePolicy().hasHeightForWidth());
         insertFrameRangeButton->setSizePolicy(sizePolicy2);
-        QIcon icon;
-        icon.addFile(QString(themePath + "/icon/knockkey.png"), QSize(), QIcon::Normal, QIcon::Off);
+        QIcon icon = aResources.icon("plus");
         insertFrameRangeButton->setIcon(icon);
 
         gridLayout_2->addWidget(insertFrameRangeButton, 23, 0, 1, 1);
@@ -240,8 +240,7 @@ public:
         removeFrameRangeButton = new QPushButton(globalParamScrollContents);
         removeFrameRangeButton->setObjectName(QString::fromUtf8("removeFrameRangeButton"));
         removeFrameRangeButton->setSizePolicy(sizePolicy2);
-        QIcon rfIcon;
-        rfIcon.addFile(QString(themePath + "/icon/minus.png"), QSize(), QIcon::Normal, QIcon::Off);
+        QIcon rfIcon = aResources.icon("minus");
         removeFrameRangeButton->setIcon(rfIcon);
 
         gridLayout_2->addWidget(removeFrameRangeButton, 24, 0, 1, 1);
@@ -317,8 +316,7 @@ public:
 
         setWidthNative = new QPushButton(globalParamScrollContents);
         setWidthNative->setObjectName(QString::fromUtf8("setWidthNative"));
-        QIcon icon1;
-        icon1.addFile(QString(themePath + "/icon/rotatecw.png"), QSize(), QIcon::Normal, QIcon::Off);
+        QIcon icon1 = aResources.icon("rotate-cw");
         setWidthNative->setIcon(icon1);
 
         gridLayout_2->addWidget(setWidthNative, 3, 2, 1, 1);
@@ -402,11 +400,9 @@ public:
         gridLayout_2->addWidget(renderingLabel, 2, 1, 1, 1);
 
         exportTypeCombo = new QComboBox(globalParamScrollContents);
-        QIcon icon2;
-        icon2.addFile(QString(themePath +"/icon/animation.png"), QSize(), QIcon::Normal, QIcon::Off);
+        QIcon icon2 = aResources.icon("animation");
         exportTypeCombo->addItem(icon2, QString());
-        QIcon icon3;
-        icon3.addFile(QString(themePath + "/icon/cutimages.png"), QSize(), QIcon::Normal, QIcon::Off);
+        QIcon icon3 = aResources.icon("image");
         exportTypeCombo->addItem(icon3, QString());
         exportTypeCombo->setObjectName(QString::fromUtf8("exportTypeCombo"));
 

@@ -2,7 +2,7 @@
 #include "gui/tool/tool_ItemTable.h"
 
 namespace {
-int kButtonSize = 23;
+int kButtonSize = 20;
 int kButtonSpace = kButtonSize;
 } // namespace
 
@@ -19,13 +19,26 @@ namespace tool {
         mEIRadius(),
         mEIPressure() {
         this->setTitle(tr("Bone editor"));
+        mResources.onThemeChanged.connect(this, &BonePanel::onThemeUpdated);
         createMode();
         updateTypeParam(mParam.mode);
     }
 
+    void BonePanel::applyIcons() {
+        mTypeGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("plus") << mResources.icon("minus") << mResources.icon("move")
+                             << mResources.icon("bind") << mResources.icon("influence") << mResources.icon("paint-brush")
+                             << mResources.icon("eraser")
+        , QSize(16, 16));
+    }
+
+    void BonePanel::onThemeUpdated(theme::Theme&) {
+        applyIcons();
+    }
+
     void BonePanel::createMode() {
         if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 36;
+            kButtonSize = 32;
             kButtonSpace = kButtonSize;
         }
 
@@ -36,11 +49,7 @@ namespace tool {
             QStringList() << tr("Add bones") << tr("Remove bones") << tr("Move joints") << tr("Bind bone to node")
                           << tr("Adjust influence") << tr("Paint influence") << tr("Erase influence")
         );
-        mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("plus") << mResources.icon("minus") << mResources.icon("move")
-                             << mResources.icon("bind") << mResources.icon("influence") << mResources.icon("pencil")
-                             << mResources.icon("eraser")
-        );
+        applyIcons();
 
         mTypeGroup->connect([=](int aIndex) {
             this->mParam.mode = (ctrl::BoneEditMode)aIndex;

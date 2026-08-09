@@ -59,6 +59,12 @@ public:
     void onSaveProjectTriggered();
     void onSaveProjectAsTriggered();
     void onCloseProjectTriggered();
+    void onTabSaveRequested(core::Project&);
+    void onTabSaveAsRequested(core::Project&);
+    void onTabCloseRequested(core::Project&);
+    void onTabCloseOthersRequested(core::Project&);
+    void onTabCloseAllRequested();
+    void onTabCopyPathRequested(core::Project&);
     void onExportTriggered();
     void onExportImageSeqTriggered(const QString& aSuffix);
     void onQuickExportTriggered(const QString& aFormat);
@@ -78,7 +84,10 @@ private:
 
     void resetProjectRefs(core::Project* aProject);
     bool processProjectSaving(core::Project& aProject, bool aRename = false);
-    int confirmProjectClosing(bool aCurrentOnly);
+    int confirmProjectClosing(const QVector<core::Project*>& aProjects);
+    int confirmProjectClosing(const QString& aMessage);
+    bool closeProjects(const QVector<core::Project*>& aProjects);
+    void closeProjectTab(core::Project& aProject);
     void onProjectTabChanged(core::Project&);
     void onThemeUpdated(theme::Theme&);
 

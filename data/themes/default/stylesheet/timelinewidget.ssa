@@ -1,9 +1,7 @@
-/*
-gui--TimeLineEditorWidget {
-    qproperty-trackColor: rgba(55, 57, 58, 180);
-}*/
+/* Ruler and track colors come from theme::TimeLine (palette-derived), so no
+   qproperty block is needed here. */
 
 gui--TimeCursor {
-    qproperty-bodyColor: rgba(30, 230, 230, 180);
+    qproperty-bodyColor: rgba(230, 230, 230, 180);
     qproperty-edgeColor: rgba(80, 80, 80, 180);
 }

@@ -6,6 +6,7 @@
 #include <QScopedPointer>
 #include <QTabBar>
 #include <QReadWriteLock>
+#include <QColor>
 #include <QtMath>
 #include "util/LinkPointer.h"
 #include "gl/Global.h"
@@ -42,6 +43,8 @@ public:
     void setProjectTabBar(ProjectTabBar* aTabBar);
     void updateRender();
     void resetCamera();
+    void setViewportBackground(const QColor& aColor);
+    const QColor& viewportBackground() const { return mViewportBackground; }
 
     QReadWriteLock& renderingLock() { return mRenderingLock; }
     const QReadWriteLock& renderingLock() const { return mRenderingLock; }
@@ -96,6 +99,7 @@ private:
     core::AbstractCursor mAbstractCursor;
     ctrl::Driver* mDriver;
     ProjectTabBar* mProjectTabBar;
+    QColor mViewportBackground;
     bool mUsingTablet;
     MainViewSetting mViewSetting;
     CanvasMover mCanvasMover;

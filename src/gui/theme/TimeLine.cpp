@@ -4,8 +4,8 @@ namespace theme {
 
 //-------------------------------------------------------------------------------------------------
 TimeLine::TimeLine():
-    mHeaderContentColor(QColor(60, 60, 70, 255)),
-    mHeaderBackgroundColor(QColor(160, 160, 160, 255)),
+    mHeaderContentColor(QColor(75, 75, 75, 255)),
+    mHeaderBackgroundColor(QColor(236, 236, 236, 255)),
     mTrackColor(QColor(250, 250, 250, 255)),
     mTrackEdgeColor(QColor(190, 190, 190, 255)),
     mTrackTextColor(QColor(170, 170, 170, 255)),
@@ -19,8 +19,8 @@ void TimeLine::reset() {
     qreal lightness = palette.window().color().lightnessF();
 
     if (lightness > 0.5) { // Light theme
-        mHeaderContentColor = QColor(60, 60, 70, 255);
-        mHeaderBackgroundColor = QColor(160, 160, 160, 255);
+        mHeaderContentColor = QColor(75, 75, 75, 255);   // neutral, no chroma
+        mHeaderBackgroundColor = QColor(236, 236, 236, 255); // matches the chrome
 
         mTrackColor = QColor(250, 250, 250, 255);
         mTrackEdgeColor = QColor(190, 190, 190, 255);

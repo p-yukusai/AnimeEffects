@@ -34,12 +34,13 @@ namespace tool {
         }
     }
 
-    void SingleOutItem::setIcons(const QVector<QIcon*>& aIcons) {
+    void SingleOutItem::setIcons(const QVector<QIcon*>& aIcons, const QSize& aIconSize) {
+        const QSize size = aIconSize.isValid() ? aIconSize : mButtonSize;
         int i = 0;
         for (auto icon : aIcons) {
             if (i < mButtons.size()) {
                 mButtons.at(i)->setIcon(*icon);
-                mButtons.at(i)->setIconSize(mButtonSize);
+                mButtons.at(i)->setIconSize(size);
                 ++i;
             } else {
                 break;
@@ -47,12 +48,13 @@ namespace tool {
         }
     }
 
-    void SingleOutItem::setIcons(const QVector<QIcon>& aIcons) {
+    void SingleOutItem::setIcons(const QVector<QIcon>& aIcons, const QSize& aIconSize) {
+        const QSize size = aIconSize.isValid() ? aIconSize : mButtonSize;
         int i = 0;
         for (auto icon : aIcons) {
             if (i < mButtons.size()) {
                 mButtons.at(i)->setIcon(icon);
-                mButtons.at(i)->setIconSize(mButtonSize);
+                mButtons.at(i)->setIconSize(size);
                 ++i;
             } else {
                 break;
@@ -70,7 +72,8 @@ namespace tool {
 
     int SingleOutItem::updateGeometry(const QPoint& aPos, int aWidth) {
         // type
-        ItemTable table(aPos, aWidth, mButtonSize);
+        // 2px gap between mode buttons, matching the toolbox FlowLayout spacing
+        ItemTable table(aPos, aWidth, mButtonSize, QSize(2, 2));
         for (auto button : mButtons) {
             table.pushGeometry(*button);
         }

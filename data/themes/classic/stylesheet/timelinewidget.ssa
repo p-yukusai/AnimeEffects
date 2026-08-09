@@ -1,6 +1,6 @@
 gui--TimeLineEditorWidget {
-    qproperty-headerContentColor: rgba(60, 60, 70, 255);
-    qproperty-headerBackgroundColor: rgba(160, 160, 160, 255);
+    qproperty-headerContentColor: rgba(75, 75, 75, 255);
+    qproperty-headerBackgroundColor: rgba(236, 236, 236, 255);
 
     qproperty-trackColor: rgba(250, 250, 250, 255);
     qproperty-trackColor: rgba(250, 250, 250, 255);
