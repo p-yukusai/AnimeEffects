@@ -39,7 +39,7 @@ private:
     bool loadImageResources();
     bool loadLayerAndMaskInfo();
     bool loadAdditionalLayerInfo(
-        std::list<PSDFormat::AdditionalLayerInfoPtr>& aList, PSDFormat::Layer* aLayer, const std::ios::pos_type& aEndPos
+        std::list<PSDFormat::AdditionalLayerInfoPtr>& aList, PSDFormat::Layer* aLayer, const std::ios::pos_type& aEndPos, bool aGlobal
     );
     bool loadImageData();
     bool checkFailure();

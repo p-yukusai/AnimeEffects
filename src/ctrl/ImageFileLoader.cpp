@@ -32,7 +32,7 @@ img::ResourceNode* createLayerResource(
     resNode->data().grabImage(imagePair.first, aInOutRect.size(), img::Format_RGBA8);
     resNode->data().setPos(aInOutRect.topLeft());
     resNode->data().setIsLayer(true);
-    resNode->data().setBlendMode(img::getBlendModeFromPSD(aLayer.blendMode));
+    resNode->data().setBlendMode(img::getBlendModeFromPSD(aLayer.blendMode, img::psdHasCspTslyFlag(aLayer)));
     resNode->data().setIsVisible(aLayer.isVisible());
     return resNode;
 }
@@ -63,6 +63,51 @@ img::ResourceNode* createFolderResource(const QString& aName, const QPoint& aPos
     auto resNode = new img::ResourceNode(aName);
     resNode->data().setPos(aPos);
     resNode->data().setIsLayer(false);
+    return resNode;
+}
+
+img::ResourceNode* createMergedResource(
+    const img::PSDFormat::Header& aHeader,
+    const img::PSDFormat::ImageData& aImageData,
+    const QSize& aCanvasSize,
+    const QString& aName,
+    QRect& aInOutRect
+) {
+    // The merged alpha channel (id -1) is only meaningful when the file declares
+    // transparency (negative layer count). Flattened RGB files carry a dummy zero
+    // alpha that would blank the content (and its white-matting would destroy the
+    // RGB), so drop it and import the bitmap as opaque.
+    img::PSDFormat::ChannelList channels;
+    for (const img::PSDFormat::ChannelPtr& channel : aImageData.channels) {
+        if (aImageData.hasTransparency || channel->id >= 0) {
+            auto copy = new img::PSDFormat::Channel();
+            copy->id = channel->id;
+            copy->compressionId = channel->compressionId;
+            copy->dataLength = channel->dataLength;
+            if (channel->dataLength > 0) {
+                copy->data.reset(new uint8[channel->dataLength]);
+                std::memcpy(copy->data.get(), channel->data.get(), channel->dataLength);
+            }
+            channels.push_back(img::PSDFormat::ChannelPtr(copy));
+        }
+    }
+
+    auto mem = img::PSDUtil::makeInterleavedImage(
+        aHeader, channels, img::PSDUtil::ColorFormat_RGBA8, aCanvasSize.width(), aCanvasSize.height());
+    if (mem.data == nullptr) {
+        return nullptr;
+    }
+
+    mem = img::Util::recreateForBiLinearSampling(mem, aCanvasSize);
+    const QRect rect(QPoint(-1, -1), aCanvasSize + QSize(2, 2));
+
+    auto resNode = new img::ResourceNode(aName);
+    resNode->data().grabImage(mem, rect.size(), img::Format_RGBA8);
+    resNode->data().setPos(rect.topLeft());
+    resNode->data().setIsLayer(true);
+    resNode->data().setBlendMode(img::BlendMode_Normal);
+    resNode->data().setIsVisible(true);
+    aInOutRect = rect;
     return resNode;
 }
 
@@ -207,6 +252,20 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     aReporter.setProgress(1);
     file->close(); // do not use anymore
 
+    // the renderer only produces 8-bit RGBA, so reject the color modes / bit depths
+    // it cannot represent with a clear message instead of failing later on decode
+    const auto& header = reader.format()->header();
+    if (header.mode != img::PSDFormat::ColorMode_RGB) {
+        mLog = QStringLiteral("Unsupported PSD color mode: %1. Only RGB is supported.")
+                   .arg(QString::fromLatin1(img::PSDFormat::colorModeName((img::PSDFormat::ColorMode)header.mode)));
+        return false;
+    }
+    if (header.depth != 8) {
+        mLog = QStringLiteral("Unsupported PSD bit depth: %1-bit. Only 8-bit is supported.")
+                   .arg(header.depth);
+        return false;
+    }
+
     // update reporter
     aReporter.setSection(QCoreApplication::translate("Image Loader", "Building a Object Tree..."));
     aReporter.setMaximum(reader.format()->layerAndMaskInfo().layerCount);
@@ -244,6 +303,32 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     resStack.push_back(createFolderResource("topnode", QPoint(0, 0)));
     aProject.resourceHolder().pushImageTree(*resStack.back(), mFileInfo.absoluteFilePath());
 
+    if (layers.empty()) {
+        // flattened PSD (no layer records): the merged image data section holds the
+        // whole bitmap; import it as a single opaque layer instead of an empty canvas
+        const auto& imageData = format->imageData();
+        QRect rect;
+        const QString name = mFileInfo.baseName();
+        auto resNode = createMergedResource(format->header(), imageData, canvasSize, name, rect);
+        if (resNode) {
+            resStack.back()->children().pushBack(resNode);
+
+            // create layer node
+            // the LayerNode eagerly compiles its shaders, which needs a current GL context
+            gl::Global::makeCurrentIfReady();
+            auto* layerNode = new LayerNode(name, aProject.objectTree().shaderHolder());
+            layerNode->setInitialRect(rect);
+            layerNode->setDefaultImage(resNode->handle());
+            layerNode->setDefaultDepth(0.0f);
+            layerNode->setDefaultOpacity(1.0f);
+            topNode->children().pushBack(layerNode);
+            aReporter.setProgress(1);
+        } else {
+            mLog = "failed to decode the merged image data";
+            return false;
+        }
+    }
+
     // for each layer
     for (auto itr = layers.rbegin(); itr != layers.rend(); ++itr) {
         FolderNode* current = treeStack.back();
@@ -266,6 +351,10 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
         if (layer.entryType == PSDFormat::LayerEntryType_Layer) {
             // create layer resource (Note that the rect be modified.)
             auto resNode = createLayerResource(format->header(), layer, name, rect);
+            if (!resNode->data().hasImage()) {
+                mLog = "Failed to decode the image data of a layer ('" + name + "').";
+                return false;
+            }
             resCurrent->children().pushBack(resNode);
 
             // create layer node
@@ -302,6 +391,15 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
             folderNode->setClipped(layer.clipping != 0);
             folderNode->setDefaultDepth(globalDepth - parentDepth);
             folderNode->setDefaultOpacity(static_cast<float>(layer.opacity) / 255.0f);
+            // 'diss' (dissolve) is the only group mode still unsupported, so
+            // only it (plus unknown 4CCs) reads back as TERM; hue/sat/colr/lum/
+            // dkCl/lgCl are fully mapped modes. Fall back to Normal for TERM,
+            // matching the pre-feature behavior that dropped the group mode
+            // entirely (TERM would index the shader arrays out of bounds at
+            // render time - presentShader(mPresentShaders[TERM]) is OOB).
+            const auto folderBlend = img::getBlendModeFromPSD(layer.blendMode, img::psdHasCspTslyFlag(layer));
+            folderNode->setBlendMode(
+                folderBlend == img::BlendMode_TERM ? img::BlendMode_Normal : folderBlend);
 
             // push tree
             current->children().pushBack(folderNode);
@@ -414,18 +512,29 @@ bool ImageFileLoader::loadOra(Project& aProject, util::IProgressReporter& aRepor
             return false;
         }
     }
-    QMessageBox loadMerged;
-    loadMerged.setWindowTitle(tr("Select oraFile type"));
-    loadMerged.setText(tr("How do you wish to load this oraFile file?"));
-    QAbstractButton* layerButton = loadMerged.addButton(tr("Load layered"), QMessageBox::YesRole);
-    QAbstractButton* mergeButton = loadMerged.addButton(tr("Load merged"), QMessageBox::YesRole);
-    QAbstractButton* cancelButton = loadMerged.addButton(tr("Cancel file load"), QMessageBox::NoRole);
-    loadMerged.exec();
-    if (loadMerged.clickedButton() == mergeButton || loadMerged.clickedButton() == layerButton){
+    // The layered/merged choice is interactive by default (mOraImportMode == Ask);
+    // headless callers pre-select it via setOraImportMode so no dialog is shown.
+    bool merged;
+    if (mOraImportMode == OraImportMode::Ask) {
+        QMessageBox loadMerged;
+        loadMerged.setWindowTitle(tr("Select oraFile type"));
+        loadMerged.setText(tr("How do you wish to load this oraFile file?"));
+        QAbstractButton* layerButton = loadMerged.addButton(tr("Load layered"), QMessageBox::YesRole);
+        QAbstractButton* mergeButton = loadMerged.addButton(tr("Load merged"), QMessageBox::YesRole);
+        QAbstractButton* cancelButton = loadMerged.addButton(tr("Cancel file load"), QMessageBox::NoRole);
+        loadMerged.exec();
+        if (loadMerged.clickedButton() != mergeButton && loadMerged.clickedButton() != layerButton) {
+            mLog = "User cancelled image load";
+            return false;
+        }
+        merged = loadMerged.clickedButton() == mergeButton;
+    } else {
+        merged = mOraImportMode == OraImportMode::Merged;
+    }
+    {
         aReporter.setSection("Loading ORA file...");
         aReporter.setMaximum(100);
         aReporter.setProgress(0);
-        bool merged = loadMerged.clickedButton() == mergeButton;
         if(merged){
             aReporter.setProgress(20);
             auto imageBytes = QByteArray::fromStdString(oraFile->read("mergedimage.png"));
@@ -520,17 +629,21 @@ bool ImageFileLoader::loadOra(Project& aProject, util::IProgressReporter& aRepor
         img::ResourceNode* resCurrent = resStack.back();
         // for each layer
         for (const auto& lyr: *layers) {
-            if (!skipped.empty()) {
-                skipped.back() -= 1;
-                if (skipped.back() == 0) {
-                    current->setInitialRect(calculateBoundingRectFromChildren(*current));
-                    current = prev.back();
-                    resCurrent = resPrev.back();
-                    skipped.pop_back();
-                    prev.pop_back();
-                    resPrev.pop_back();
-                }
+            // close every folder whose subtree is complete: the flat list is pre-order,
+            // so the current element is the first entry beyond them
+            while (!skipped.empty() && skipped.back() == 0) {
+                current->setInitialRect(calculateBoundingRectFromChildren(*current));
+                current = prev.back();
+                resCurrent = resPrev.back();
+                skipped.pop_back();
+                prev.pop_back();
+                resPrev.pop_back();
             }
+            // the current element is a descendant of every still-open folder (nesting
+            // means the innermost counter alone is not enough: deeper elements also
+            // count toward their ancestors' subtrees)
+            for (auto& remaining : skipped)
+                remaining -= 1;
             XC_PTR_ASSERT(current);
             XC_PTR_ASSERT(resCurrent);
             const float* parentDepth = new float{ObjectNodeUtil::getInitialWorldDepth(*current)};
@@ -571,12 +684,15 @@ auto* layerNode = new LayerNode(QString::fromStdString(lyr.name), aProject.objec
                 folderNode->setClipped(false);
                 folderNode->setDefaultDepth(globalDepth - *parentDepth);
                 folderNode->setDefaultOpacity(lyr.opacity);
+                // ORA stacks carry composite-op like layers; oraBlendToPSDBlend maps
+                // unsupported ops (svg:plus, hue/sat/color/luminosity) to Normal
+                folderNode->setBlendMode(oraParser::oraBlendToPSDBlend(lyr.composite.blend));
                 // push tree
                 current->children().pushBack(folderNode);
                 treeStack.back() = folderNode;
                 // update depth and ID
                 globalDepth -= 1.0f;
-                skipped.back() = lyr.capacity + 1;
+                skipped.back() = lyr.subtree; // flat entries belonging to this folder
                 // update vars
                 current = treeStack.back();
                 resCurrent = resStack.back();
@@ -650,9 +766,6 @@ auto* layerNode = new LayerNode(QString::fromStdString(lyr.name), aProject.objec
         delete globalDepth;
         return true;
         #endif
-    }
-    if(loadMerged.clickedButton() == cancelButton){
-        mLog = "User cancelled image load";
     }
     return false;
 }

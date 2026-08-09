@@ -52,11 +52,21 @@ struct Fixture {
     // renders the tree at the given frame into the target and reads it back (RGBA8)
     std::vector<uint8_t> render(core::ObjectTree& aTree, const core::CameraInfo& aCamera, int aFrame);
 
+    // debug: read back the DestinationTexturizer's capture texture
+    std::vector<uint8_t> readTexturizer();
+
     // reads back any texture (used to inspect FilterFrame slot contents)
     std::vector<uint8_t> readTexture(GLuint aTex, const QSize& aSize);
 
     core::FilterFrame& filterFrame() { return *filters; }
 };
+
+// cached fixture per canvas size (fixtures hold GL objects; recreating them per case
+// would churn the context)
+Fixture& fixtureFor(const QSize& aSize);
+
+// drops the cached fixtures; call while the GL context is still current
+void clearFixtures();
 
 core::TimeInfo makeTimeInfo(int aFrame);
 core::CameraInfo makeCamera(const QSize& aSize, float aZoom = 1.0f, float aRotDeg = 0.0f, bool aFlip = false);

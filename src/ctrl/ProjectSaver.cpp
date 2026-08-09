@@ -1,4 +1,5 @@
 #include <fstream>
+#include "core/FormatVersion.h"
 #include "core/Serializer.h"
 #include "ctrl/ProjectSaver.h"
 

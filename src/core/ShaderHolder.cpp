@@ -43,6 +43,10 @@ gl::EasyShaderProgram& ShaderHolder::reserveShader(img::BlendMode aBlendMode, bo
 
         auto blendFunc = QString("Blend") + img::getBlendFuncNameFromBlendMode(aBlendMode);
         source.setVariationValue("BLEND_FUNC", blendFunc);
+        source.setVariationValue("BLEND_NONSEPARABLE", img::isNonSeparableBlendMode(aBlendMode) ? "1" : "0");
+        source.setVariationValue(
+            "BLEND_PREMULTIPLIED_SRC", img::isPremultipliedSrcBlendMode(aBlendMode) ? "1" : "0"
+        );
 
         source.setVariationValue("IS_CLIPPEE", aIsClippee ? "1" : "0");
 

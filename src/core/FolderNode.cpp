@@ -8,6 +8,7 @@
 #include "core/DepthKey.h"
 #include "core/FilterFrame.h"
 #include "core/WorldBlurMath.h"
+#include "core/DestinationTexturizer.h"
 
 namespace {
 
@@ -30,6 +31,7 @@ FolderNode::FolderNode(const QString& aName):
     mHeightMap(),
     mTimeLine(),
     mIsClipped(),
+    mBlendMode(img::BlendMode_Normal),
     mClippees() {}
 
 FolderNode::~FolderNode() { qDeleteAll(children()); }
@@ -67,8 +69,10 @@ bool FolderNode::isCompositeFolder(const TimeInfo& aTime, const TimeCacheAccesso
     // (the shader's sigma floor renders such radii as an identity kernel), so it must
     // not force the folder onto the composite path; the epsilon keeps interpolations
     // ramping in smoothly from zero. An HSV key that blends to identity (no-op adjust)
-    // is gated the same way.
-    return (hasActiveHSVKey(aTime) && !hsvDataIsIdentity(aAccessor.get(mTimeLine).hsv().hsv()))
+    // is gated the same way. A non-Normal blend mode always takes the composite path
+    // (the subtree is grouped, then blended against the scene with the folder's mode).
+    return mBlendMode != img::BlendMode_Normal
+        || (hasActiveHSVKey(aTime) && !hsvDataIsIdentity(aAccessor.get(mTimeLine).hsv().hsv()))
         || (hasActiveBlurKey(aTime)
             && aAccessor.get(mTimeLine).maxBlurRadius() > FilterFrame::kMinActiveBlurRadius);
 }
@@ -193,8 +197,20 @@ void FolderNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccesso
     gl::Global::functions().glBindFramebuffer(GL_FRAMEBUFFER, aInfo.framebuffer);
     const bool needHSV = hasActiveHSVKey(aInfo.time)
         && !hsvDataIsIdentity(aAccessor.get(mTimeLine).hsv().hsv());
-    frame.drawQuad(srcTexture, FilterFrame::Kind_HSV, aAccessor.get(mTimeLine).hsv().hsv(), FilterFrame::BlurParams(),
-        ownOpacity, needHSV);
+    // a non-Normal folder blend mode samples the captured scene behind the folder
+    // (DestinationTexturizer capture), so the blend sees the real background instead
+    // of the composite itself; the opacity rides uColor.a exactly like the Normal
+    // present (the folder's own opacity is applied here, ancestors' at their presents)
+    if (mBlendMode != img::BlendMode_Normal) {
+        XC_PTR_ASSERT(aInfo.destTexturizer);
+        aInfo.destTexturizer->updateAll(aInfo.framebuffer, aInfo.dest);
+        frame.drawQuad(
+            srcTexture, FilterFrame::Kind_HSV, aAccessor.get(mTimeLine).hsv().hsv(), FilterFrame::BlurParams(),
+            ownOpacity, needHSV, QSizeF(), QSizeF(), false, mBlendMode, aInfo.destTexturizer->texture().id());
+    } else {
+        frame.drawQuad(srcTexture, FilterFrame::Kind_HSV, aAccessor.get(mTimeLine).hsv().hsv(), FilterFrame::BlurParams(),
+            ownOpacity, needHSV);
+    }
 }
 
 void FolderNode::renderClippees(const RenderInfo& i, const TimeCacheAccessor& a) {
@@ -203,8 +219,13 @@ void FolderNode::renderClippees(const RenderInfo& i, const TimeCacheAccessor& a)
 }
 
 void FolderNode::renderClipper(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor, uint8 aClipperId) {
+    // A clipped child contributes only its CLIPPED alpha, which is a subset of its
+    // clip base's alpha, and the base writes its own alpha into this texture: skipping
+    // clipped children keeps the union exactly the folder's composite alpha. Writing
+    // their RAW bitmap alpha instead would leak content outside the clip region into
+    // the folder's clip mask (visible when layers above the folder clip against it).
     for (auto child : this->children()) {
-        if (child->renderer()) {
+        if (child->renderer() && !child->renderer()->isClipped()) {
             child->renderer()->renderClipper(aInfo, aAccessor, aClipperId);
         }
     }
@@ -219,13 +240,33 @@ void FolderNode::setClipped(bool aIsClipped) { mIsClipped = aIsClipped; }
 
 bool FolderNode::serialize(Serializer& aOut) const {
     static const std::array<uint8, 8> sig = {'F', 'o', 'l', 'd', 'e', 'r', 'N', 'd'};
-    return ObjectNodeUtil::writeObjectBlock(aOut, sig, mName, mIsVisible, mIsSlimmedDown,
-                                  mInitialRect, mIsClipped, mTimeLine);
+    if (!ObjectNodeUtil::writeObjectBlock(aOut, sig, mName, mIsVisible, mIsSlimmedDown,
+            mInitialRect, mIsClipped, mTimeLine)) {
+        return false;
+    }
+    // the folder blend mode landed in AE_PROJECT_FORMAT_MINOR_VERSION 10; the 4CC layout
+    // mirrors ImageKey/ResourceHolder so a folder mode survives the binary round-trip
+    aOut.writeFixedString(img::getQuadIdFromBlendMode(mBlendMode), 4);
+    return aOut.checkStream();
 }
 
 bool FolderNode::deserialize(Deserializer& aIn) {
-    return ObjectNodeUtil::readObjectBlock(aIn, "FolderNd", mName, mIsVisible, mIsSlimmedDown,
-                            mInitialRect, mIsClipped, mTimeLine);
+    if (!ObjectNodeUtil::readObjectBlock(aIn, "FolderNd", mName, mIsVisible, mIsSlimmedDown,
+            mInitialRect, mIsClipped, mTimeLine)) {
+        return false;
+    }
+    // projects saved before the blend-mode bump (minor < 10) have no mode in the block;
+    // the folder keeps its pass-through default
+    if (aIn.version().minorVersion() >= 10) {
+        QString bname;
+        aIn.readFixedString(bname, 4);
+        auto bmode = img::getBlendModeFromQuadId(bname);
+        if (bmode == img::BlendMode_TERM) {
+            return aIn.errored("invalid folder blending mode");
+        }
+        mBlendMode = bmode;
+    }
+    return aIn.checkStream();
 }
 
 } // namespace core

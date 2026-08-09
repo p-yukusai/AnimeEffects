@@ -274,7 +274,8 @@ void FilterFrame::createQuadBuffers() {
 }
 
 static void fBuildLayerDrawingVariant(
-    gl::EasyShaderProgram& aShader, const QString& aBlendFunc, int aIsClippee, int aUseHSV, int aPremultiplied
+    gl::EasyShaderProgram& aShader, const QString& aBlendFunc, int aIsClippee, int aUseHSV, int aPremultiplied,
+    int aNonSeparable, int aPremultipliedSrc
 ) {
     gl::ExtendShader source;
     if (!source.openFromFileVert("./data/shader/LayerDrawingVert.glsl")) {
@@ -284,6 +285,8 @@ static void fBuildLayerDrawingVariant(
         XC_FATAL_ERROR("FileIO Error", "Failed to open fragment shader file.", source.log());
     }
     source.setVariationValue("BLEND_FUNC", aBlendFunc);
+    source.setVariationValue("BLEND_NONSEPARABLE", aNonSeparable ? "1" : "0");
+    source.setVariationValue("BLEND_PREMULTIPLIED_SRC", aPremultipliedSrc ? "1" : "0");
     source.setVariationValue("IS_CLIPPEE", aIsClippee ? "1" : "0");
     source.setVariationValue("USE_HSV", aUseHSV ? "1" : "0");
     source.setVariationValue("PREMULTIPLIED_INPUT", aPremultiplied ? "1" : "0");
@@ -315,7 +318,7 @@ void FilterFrame::createShaders() {
     build(Kind_Resample, kFullscreenVert, kResampleFrag);
 
     // HSV pass: shared layer fragment shader with variations
-    fBuildLayerDrawingVariant(mPassShaders[Kind_HSV], QString("BlendNormal"), 0, 1, 1);
+    fBuildLayerDrawingVariant(mPassShaders[Kind_HSV], QString("BlendNormal"), 0, 1, 1, 0, 0);
 }
 
 gl::EasyShaderProgram& FilterFrame::presentShader(img::BlendMode aMode) {
@@ -324,9 +327,26 @@ gl::EasyShaderProgram& FilterFrame::presentShader(img::BlendMode aMode) {
         mPresentShaders[aMode].reset(new gl::EasyShaderProgram());
         auto shader = mPresentShaders[aMode].data();
         auto blendFunc = QString("Blend") + img::getBlendFuncNameFromBlendMode(aMode);
-        fBuildLayerDrawingVariant(*shader, blendFunc, 0, 0, 1);
+        fBuildLayerDrawingVariant(
+            *shader, blendFunc, 0, 0, 1, img::isNonSeparableBlendMode(aMode) ? 1 : 0,
+            img::isPremultipliedSrcBlendMode(aMode) ? 1 : 0
+        );
     }
     return *mPresentShaders[aMode];
+}
+
+gl::EasyShaderProgram& FilterFrame::presentHSVShader(img::BlendMode aMode) {
+    XC_ASSERT(aMode < img::BlendMode_TERM);
+    if (!mPresentHSVShaders[aMode]) {
+        mPresentHSVShaders[aMode].reset(new gl::EasyShaderProgram());
+        auto shader = mPresentHSVShaders[aMode].data();
+        auto blendFunc = QString("Blend") + img::getBlendFuncNameFromBlendMode(aMode);
+        fBuildLayerDrawingVariant(
+            *shader, blendFunc, 0, 1, 1, img::isNonSeparableBlendMode(aMode) ? 1 : 0,
+            img::isPremultipliedSrcBlendMode(aMode) ? 1 : 0
+        );
+    }
+    return *mPresentHSVShaders[aMode];
 }
 
 void FilterFrame::drawQuad(
@@ -378,6 +398,9 @@ void FilterFrame::drawQuad(
         // BlendNormal present reads the dest only as a dummy; the blend-aware present
         // samples the real captured scene instead (aPresentDest).
         const GLuint destTexture = (aPresentBlend != img::BlendMode_Normal) ? aPresentDest : aSrcTexture;
+        // a blend-aware present texelFetches unit1 in LayerDrawingFrag.glsl; an unset
+        // dest (0) would silently sample the default texture, so require the capture
+        XC_ASSERT(aPresentBlend == img::BlendMode_Normal || aPresentDest != 0);
         ggl.glActiveTexture(GL_TEXTURE1);
         ggl.glBindTexture(GL_TEXTURE_2D, destTexture);
         ggl.glActiveTexture(GL_TEXTURE0);
@@ -387,38 +410,46 @@ void FilterFrame::drawQuad(
     // applied (a folder presenting its own keyed HSV), use the USE_HSV variant; otherwise
     // the content's HSV is already baked into the composite, so present with the per-mode
     // blend func and PREMULTIPLIED_INPUT (no identity-HSV round trip on the shader input).
-    const bool presentBlend = (aKind == Kind_HSV && !aNeedHSV);
-    auto& shader = presentBlend ? presentShader(aPresentBlend) : mPassShaders[aKind];
-    shader.bind();
-    shader.setAttributeArray("inPosition", positions.data(), 4);
-    shader.setAttributeArray("inTexCoord", texCoords.data(), 4);
+    // A folder with BOTH its own HSV and a non-Normal blend mode needs the combined
+    // USE_HSV + per-mode blend variant (the plain HSV pass is fixed to BlendNormal).
+    gl::EasyShaderProgram* shader;
+    if (aKind == Kind_HSV && !aNeedHSV) {
+        shader = &presentShader(aPresentBlend);
+    } else if (aKind == Kind_HSV && aNeedHSV && aPresentBlend != img::BlendMode_Normal) {
+        shader = &presentHSVShader(aPresentBlend);
+    } else {
+        shader = &mPassShaders[aKind];
+    }
+    shader->bind();
+    shader->setAttributeArray("inPosition", positions.data(), 4);
+    shader->setAttributeArray("inTexCoord", texCoords.data(), 4);
 
     QColor color(255, 255, 255, xc_clamp((int)(255 * aOpacity), 0, 255));
-    shader.setUniformValue("uColor", color);
-    shader.setUniformValue("uTexture", 0);
-    shader.setUniformValue("uScreenSize", QSizeF(target));
-    shader.setUniformValue("uImageSize", QSizeF(src));
-    shader.setUniformValue("uTexCoordOffset", QVector2D(0, 0));
+    shader->setUniformValue("uColor", color);
+    shader->setUniformValue("uTexture", 0);
+    shader->setUniformValue("uScreenSize", QSizeF(target));
+    shader->setUniformValue("uImageSize", QSizeF(src));
+    shader->setUniformValue("uTexCoordOffset", QVector2D(0, 0));
 
     if (aKind == Kind_HSV) {
         QMatrix4x4 ident;
-        shader.setUniformValue("uViewMatrix", ident);
-        shader.setUniformValue("uDestTexture", 1);
+        shader->setUniformValue("uViewMatrix", ident);
+        shader->setUniformValue("uDestTexture", 1);
         if (aNeedHSV) {
             // per-pass HSV (folder presentation of its own key)
-            shader.setUniformValue("setColor", bool(aHSV.size() > 3 ? aHSV[3] : 0));
-            shader.setUniformValue("hue", (float)(aHSV.size() > 0 ? aHSV[0] : 0) / 360.0f);
-            shader.setUniformValue("saturation", (float)(aHSV.size() > 1 ? aHSV[1] : 100) / 100.0f);
-            shader.setUniformValue("value", (float)(aHSV.size() > 2 ? aHSV[2] : 100) / 100.0f);
+            shader->setUniformValue("setColor", bool(aHSV.size() > 3 ? aHSV[3] : 0));
+            shader->setUniformValue("hue", (float)(aHSV.size() > 0 ? aHSV[0] : 0) / 360.0f);
+            shader->setUniformValue("saturation", (float)(aHSV.size() > 1 ? aHSV[1] : 100) / 100.0f);
+            shader->setUniformValue("value", (float)(aHSV.size() > 2 ? aHSV[2] : 100) / 100.0f);
         }
     } else if (aKind == Kind_Blur) {
-        shader.setUniformValue("uTexelSize", QVector2D(1.0f / target.width(), 1.0f / target.height()));
-        shader.setUniformValue("uBlurDirection", aBlur.direction);
-        shader.setUniformValue("uBlurRadius", aBlur.radiusTexels);
+        shader->setUniformValue("uTexelSize", QVector2D(1.0f / target.width(), 1.0f / target.height()));
+        shader->setUniformValue("uBlurDirection", aBlur.direction);
+        shader->setUniformValue("uBlurRadius", aBlur.radiusTexels);
     }
 
     gl::Util::drawElements(GL_TRIANGLE_STRIP, GL_UNSIGNED_INT, mIndices);
-    shader.release();
+    shader->release();
 
     ggl.glActiveTexture(GL_TEXTURE0);
     ggl.glBindTexture(GL_TEXTURE_2D, 0);

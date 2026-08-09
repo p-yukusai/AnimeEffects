@@ -1,6 +1,8 @@
 #include "core/Serializer.h"
 #include "util/PackBits.h"
 
+#include <memory>
+
 namespace core {
 
 Serializer::Serializer(util::StreamWriter& aOut): mOut(aOut), mIDAssigner() {
@@ -192,9 +194,9 @@ void Serializer::writeImage(const XCMemBlock& aImage, const QSize& aSize) {
     const size_t wrkSize = (size_t)w;
     const size_t dstSize = util::PackBits::worstEncodedSize(wrkSize);
 
-    QScopedPointer<uint8> wrk(new uint8[wrkSize]);
-    QScopedPointer<uint8> dst(new uint8[dstSize]);
-    const XCMemBlock wrkBlock(wrk.data(), wrkSize);
+    std::unique_ptr<uint8[]> wrk(new uint8[wrkSize]);
+    std::unique_ptr<uint8[]> dst(new uint8[dstSize]);
+    const XCMemBlock wrkBlock(wrk.get(), wrkSize);
 
     util::PackBits encoder;
 
@@ -207,17 +209,17 @@ void Serializer::writeImage(const XCMemBlock& aImage, const QSize& aSize) {
         for (int i = 0; i < 4; ++i) {
             // separate channel bytes
             const uint8* sp = src + i;
-            const uint8* we = wrk.data() + wrkSize;
-            for (uint8* wp = wrk.data(); wp < we; ++wp, sp += 4)
+            const uint8* we = wrk.get() + wrkSize;
+            for (uint8* wp = wrk.get(); wp < we; ++wp, sp += 4)
                 *wp = *sp;
 
             // encode
-            size_t size = encoder.encode(wrkBlock, dst.data());
+            size_t size = encoder.encode(wrkBlock, dst.get());
 
             // line length
             mOut.write((uint32)size);
             // compressed bytes
-            mOut.writeBytes(XCMemBlock(dst.data(), size), 1);
+            mOut.writeBytes(XCMemBlock(dst.get(), size), 1);
         }
         src += w * 4;
     }

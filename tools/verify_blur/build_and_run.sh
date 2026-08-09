@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Builds the directional-blur verification harness against the ASan-instrumented
 # libraries in build-asan/ and runs it (from the repo root, shaders load from ./data).
-# Usage: tools/verify_blur/build_and_run.sh [--no-build]
+# Usage: tools/verify_blur/build_and_run.sh [--no-build] [harness args...]
+#   harness args are passed to the binary, e.g.:
+#     tools/verify_blur/build_and_run.sh --no-build --golden-gen   # regenerate golden inputs
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -17,7 +19,7 @@ if [[ "${1:-}" != "--no-build" ]]; then
         -DUSE_GL_CORE_PROFILE \
         -Isrc -Isrc/deps/pugixml/src \
         $(pkg-config --cflags $QT_MODULES) \
-        tools/verify_blur/verify_blur.cpp tools/verify_blur/scene.cpp \
+        tools/verify_blur/verify_blur.cpp tools/verify_blur/scene.cpp tools/verify_blur/golden.cpp \
         -Wl,--start-group \
         build-asan/src/core/Debug/libcore.a \
         build-asan/src/ctrl/Debug/libctrl.a \
@@ -30,20 +32,23 @@ if [[ "${1:-}" != "--no-build" ]]; then
         -Wl,--end-group \
         $(pkg-config --libs $QT_MODULES) -lGL \
         -o build-asan/verify_blur
+else
+    shift # --no-build consumed; the rest goes to the binary
 fi
 
-run() { # $1 = Qt platform
-    echo "--- running with QT_QPA_PLATFORM=$1 ---"
-    QT_QPA_PLATFORM="$1" ./build-asan/verify_blur
+run() { # $1 = Qt platform, rest = harness args
+    local platform="$1"; shift
+    echo "--- running with QT_QPA_PLATFORM=$platform ---"
+    QT_QPA_PLATFORM="$platform" ./build-asan/verify_blur "$@"
 }
 
 set +e
-run offscreen
+run offscreen "$@"
 code=$?
 if [[ $code -eq 2 ]]; then
     # exit code 2 = GL bootstrap failure; retry on the real display
     echo "offscreen GL unavailable, retrying on X11 (DISPLAY=${DISPLAY:-:0})"
-    QT_QPA_PLATFORM=xcb DISPLAY="${DISPLAY:-:0}" ./build-asan/verify_blur
+    QT_QPA_PLATFORM=xcb DISPLAY="${DISPLAY:-:0}" ./build-asan/verify_blur "$@"
     code=$?
 fi
 exit $code

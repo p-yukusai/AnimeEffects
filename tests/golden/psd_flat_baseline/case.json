@@ -1,0 +1,13 @@
+{
+    "borderCrop": 3,
+    "canvas": [
+        64,
+        64
+    ],
+    "frame": 0,
+    "input": "input.psd",
+    "maxChannelDiff": 6,
+    "meanDiff": 0.6,
+    "name": "psd_flat_baseline",
+    "provenance": "expected.png authored by tests/golden/author_goldens.sh (flatpak Krita --export)"
+}

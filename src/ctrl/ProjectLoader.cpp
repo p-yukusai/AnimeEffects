@@ -5,6 +5,7 @@
 #include "util/IDSolver.h"
 #include "ctrl/ProjectLoader.h"
 #include "core/Deserializer.h"
+#include "core/FormatVersion.h"
 #include <qstandardpaths.h>
 
 namespace ctrl {

@@ -20,6 +20,20 @@ public:
         ColorMode_Lab = 9,
     };
 
+    static const char* colorModeName(ColorMode aMode) {
+        switch (aMode) {
+        case ColorMode_Bitmap:       return "Bitmap";
+        case ColorMode_Grayscale:    return "Grayscale";
+        case ColorMode_Indexed:      return "Indexed";
+        case ColorMode_RGB:          return "RGB";
+        case ColorMode_CMYK:         return "CMYK";
+        case ColorMode_Multichannel: return "Multichannel";
+        case ColorMode_Duotone:      return "Duotone";
+        case ColorMode_Lab:          return "Lab";
+        default:                     return "Unknown";
+        }
+    }
+
     enum LayerEntryType {
         LayerEntryType_Layer,
         LayerEntryType_OpenFolder,

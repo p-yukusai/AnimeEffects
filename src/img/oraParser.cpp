@@ -62,7 +62,11 @@ void oraParser::parse(layerStack* layer_stack, pugi::xml_node::iterator::pointer
             layer_stack->y = attr.as_int();
         }
         else if(charIsEqualTo(attr.name(), "opacity")){
-            layer_stack->opacity = attr.as_float();
+            // pugixml as_float() is strtod-based and honors LC_NUMERIC: under a
+            // comma-decimal locale (de_DE, cs_CZ, ...) "0.8" parses as 0.0, silently
+            // zeroing layer/stack opacity. QString::toFloat() always parses C-locale
+            // (dot separator), which is what the ORA spec's xs:float uses.
+            layer_stack->opacity = QString::fromUtf8(attr.as_string()).toFloat();
         }
         else if(charIsEqualTo(attr.name(), "visibility")){
             visAttrExists = true;
@@ -88,17 +92,26 @@ void oraParser::parse(layerStack* layer_stack, pugi::xml_node::iterator::pointer
     for ([[maybe_unused]] auto child: xml_node->children()) {
         capacity += 1;
     }
+    // direct children only: legacy consumer img/Util.cpp:401 (the GUI ORA-resource
+    // path) still walks with this; the project-import loader uses `subtree` below
     layer_stack->capacity = capacity;
     oraImage.layers.append(*layer_stack);
+    const int selfIndex = (int)oraImage.layers.size() - 1;
 
-    layerStack childLayer;
-    for (auto sib: xml_node->next_sibling()) {
-        parse(&childLayer, &sib);
-    }
-
-    for(auto child: xml_node->children()){
+    // recurse into children only: sibling iteration is the caller's job (a nested
+    // sibling loop here re-appends the following siblings' descendants, duplicating
+    // entries and scrambling the nesting the loader rebuilds from `capacity`). Each
+    // child gets a FRESH layerStack: reusing one instance across elements bleeds
+    // attributes (e.g. a stack without composite-op would inherit the previous
+    // element's blend mode instead of the spec default svg:src-over).
+    for (auto child: xml_node->children()){
+        layerStack childLayer;
         parse(&childLayer, &child);
     }
+    // the flat list is pre-order, so everything appended after this entry belongs to its
+    // subtree; the loader rebuilds the nesting from these counts (`capacity` alone -
+    // direct children - undercounts deeper descendants)
+    oraImage.layers[selfIndex].subtree = (int)oraImage.layers.size() - selfIndex - 1;
 }
 
 bool oraParser::initialize() {
@@ -119,30 +132,12 @@ bool oraParser::initialize() {
         layer.name = QFileInfo(QString::fromStdString(oraFile->get_filename())).baseName().toStdString();
         layer.type = ROOT;
         oraImage.layers.append(layer);
-        layerStack childLayer;
-        for (auto sib: mainStack.next_sibling()) {
-            if(charIsEqualTo(sib.name(), "layer")){
-                childLayer.type = IMAGE;
-            }
-            else if(charIsEqualTo(sib.name(), "stack")){
-                childLayer.type = FOLDER;
-            }
-            else{
-                qDebug() << "Unknown stack child type: " << sib.value();
-            }
-            parse(&childLayer, &sib);
-        }
-
-        for(auto child: mainStack.children()){
-            if(charIsEqualTo(child.name(), "layer")){
-                childLayer.type = IMAGE;
-            }
-            else if(charIsEqualTo(child.name(), "stack")){
-                childLayer.type = FOLDER;
-            }
-            else{
-                qDebug() << "Unknown stack child type: " << child.name();
-            }
+        // the root stack's children in document order, each with a FRESH layerStack:
+        // reusing one instance across elements bleeds attributes (an element missing
+        // an attribute would inherit the previous element's value instead of the
+        // default), and sibling recursion belongs to this loop, not to parse()
+        for (auto child: mainStack.children()){
+            layerStack childLayer;
             parse(&childLayer, &child);
         }
     }

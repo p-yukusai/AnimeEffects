@@ -5,6 +5,7 @@
 #include "util/TextUtil.h"
 #include "cmnd/BasicCommands.h"
 #include "cmnd/ScopedMacro.h"
+#include "core/FormatVersion.h"
 #include "core/ObjectNodeUtil.h"
 #include "ctrl/CmndName.h"
 #include "gui/MainMenuBar.h"

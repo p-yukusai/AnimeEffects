@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>
+#include "img/BlendMode.h"
 
 namespace ref {
 
@@ -370,20 +371,143 @@ inline Image hsvAdjust(const Image& aSrc, double aHueTurns, double aSatMul, doub
 //-------------------------------------------------------------------------------------------------
 // Exact replica of the blend presentation (LayerDrawingFrag.glsl blendColor with
 // PREMULTIPLIED_INPUT=1, followed by the framebuffer blend
-// glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA) into the RGBA8
-// target). aSrc/aDst are the stored PREMULTIPLIED contents of the composite and of the
-// scene behind it (the DestinationTexturizer capture); opacity rides the fragment alpha.
-// The alpha channel accumulates with the over-rule (src.a + dst.a*(1-src.a)), never
-// exceeding 1 for inputs <= 1, so 16F slots are safe with this operator.
-enum class BlendOp { Normal, Multiply, Screen };
-inline double blendChannel(BlendOp aOp, double a, double b) { // A = background, B = top
-    switch (aOp) {
-    case BlendOp::Multiply: return a * b;
-    case BlendOp::Screen: return 1.0 - (1.0 - a) * (1.0 - b);
-    default: return b;
+// glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA) into the
+// RGBA8 target). aSrc/aDst are the stored PREMULTIPLIED contents of the composite and of the
+// scene behind it (the DestinationTexturizer capture).
+// Shader order (matters): the source is un-multiplied (color.rgb /= max(color.a, 0.001)), THEN
+// `color *= uColor` where uColor is the app's QColor(255, 255, 255, quantizedOpacity) - the RGB
+// factor is exactly 1.0 (white), so the opacity scales the ALPHA only, then the blend runs
+// against the dest texel, then the over-rule applies on top. uColor.a is quantized like the
+// app's 8-bit color, so a fractional present opacity must be passed pre-quantized
+// ((int)(255 * op) / 255). The alpha channel accumulates with the over-rule
+// (src.a + dst.a*(1-src.a)), never exceeding 1 for inputs <= 1, so 16F slots are safe with
+// this operator.
+// Per-channel blend math mirrors the BLEND_* macros of LayerDrawingFrag.glsl lines 7-28
+// (A = background, B = top). The ternary guards (B == 0.0 / B == 1.0, A < 0.5, B < 0.5)
+// evaluate exactly one branch like GLSL, so the guarded divisions never see a zero divisor
+// and the exact-float comparisons behave identically on 8-bit quantized data.
+inline double blendColorBurn(double a, double b) { return b == 0.0 ? b : std::max(0.0, 1.0 - (1.0 - a) / b); }
+inline double blendColorDodge(double a, double b) { return b == 1.0 ? b : std::min(1.0, a / (1.0 - b)); }
+inline double blendLinearBurn(double a, double b) { return std::max(0.0, a + b - 1.0); }
+inline double blendLinearDodge(double a, double b) { return std::min(1.0, a + b); }
+inline double blendChannel(img::BlendMode aMode, double a, double b) {
+    switch (aMode) {
+    case img::BlendMode_Darken: return a > b ? b : a;
+    case img::BlendMode_Multiply: return a * b;
+    case img::BlendMode_ColorBurn: return blendColorBurn(a, b);
+    case img::BlendMode_LinearBurn: return blendLinearBurn(a, b);
+    case img::BlendMode_Lighten: return a > b ? a : b;
+    case img::BlendMode_Screen: return 1.0 - (1.0 - a) * (1.0 - b);
+    case img::BlendMode_ColorDodge: return blendColorDodge(a, b);
+    case img::BlendMode_LinearDodge: return blendLinearDodge(a, b);
+    case img::BlendMode_Overlay: return a < 0.5 ? 2.0 * a * b : 1.0 - 2.0 * (1.0 - a) * (1.0 - b);
+    case img::BlendMode_SoftLight:
+        return a < 0.5 ? 2.0 * a * b + a * a * (1.0 - 2.0 * b)
+                       : std::sqrt(a) * (2.0 * b - 1.0) + 2.0 * a * (1.0 - b);
+    case img::BlendMode_HardLight: return b < 0.5 ? 2.0 * a * b : 1.0 - 2.0 * (1.0 - a) * (1.0 - b);
+    case img::BlendMode_VividLight:
+        return b < 0.5 ? blendColorBurn(a, 2.0 * b) : blendColorDodge(a, 2.0 * (b - 0.5));
+    case img::BlendMode_LinearLight:
+        return b < 0.5 ? blendLinearBurn(a, 2.0 * b) : blendLinearDodge(a, 2.0 * (b - 0.5));
+    case img::BlendMode_PinLight:
+        return b < 0.5 ? (a > 2.0 * b ? 2.0 * b : a) : (a > 2.0 * (b - 0.5) ? a : 2.0 * (b - 0.5));
+    case img::BlendMode_HardMix:
+        return (b < 0.5 ? blendColorBurn(a, 2.0 * b) : blendColorDodge(a, 2.0 * (b - 0.5))) < 0.5 ? 0.0 : 1.0;
+    case img::BlendMode_Difference: return std::abs(a - b);
+    case img::BlendMode_Exclusion: return a + b - 2.0 * a * b;
+    case img::BlendMode_Subtract: return std::max(0.0, a - b);
+    case img::BlendMode_Divide: return b == 0.0 ? b : std::min(1.0, a / b);
+    // CSP Add (Glow) / Glow Dodge (mirror the BLEND_PREMULTIPLIED_SRC macros):
+    // B is already the alpha-premultiplied source (see blendPresent's psrc), so
+    // these are the plain per-channel formulas. Glow Dodge replicates CSP's 8-bit
+    // integer math (out = min(255, (bg*255) // max(255-fg, 1)), truncating
+    // division; floor + 0.001 guards float rounding like the shader).
+    case img::BlendMode_AddGlow: return std::min(a + b, 1.0);
+    case img::BlendMode_GlowDodge:
+        return std::min(std::floor(a * 65025.0 / std::max(255.0 - b * 255.0, 1.0) + 0.001) / 255.0, 1.0);
+    default: return b; // BlendMode_Normal
     }
 }
-inline Image blendPresent(const Image& aSrc, const Image& aDst, BlendOp aOp, double aOpacity) {
+
+// Whole-RGB blends for the non-separable modes (Hue..LighterColor), mirroring the
+// vec3 BLEND_* helpers of LayerDrawingFrag.glsl (W3C compositing spec, Rec.601 luma).
+// A = background, B = top.
+inline double blendLum(const double c[3]) { return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; }
+// ClipColor is deliberately NOT denominator-clamped (a follow-up review suggested
+// clamping l-n / x-l in the replica): the replica must mirror the shader bit-for-bit
+// (data/shader/LayerDrawingFrag.glsl BlendClipColor). The ratios are algebraically
+// bounded anyway wherever the branches fire in the non-separable path: each mode ends
+// in BlendSetLum(c, BlendLum(A)) with A a background color, so the target luma is
+// L in [0,1]; the n<0 branch then has l-n > l >= 0 and the x>1 branch has x-l > 1-l,
+// giving ratios in (0,1) that clamp output back into range. A clamped replica would
+// diverge from the GPU on in-range inputs while buying nothing on out-of-range ones.
+inline void blendClipColor(double c[3]) {
+    const double l = blendLum(c);
+    const double n = std::min(c[0], std::min(c[1], c[2]));
+    const double x = std::max(c[0], std::max(c[1], c[2]));
+    if (n < 0.0)
+        for (int i = 0; i < 3; ++i)
+            c[i] = l + (c[i] - l) * (l / (l - n));
+    if (x > 1.0)
+        for (int i = 0; i < 3; ++i)
+            c[i] = l + (c[i] - l) * ((1.0 - l) / (x - l));
+}
+inline void blendSetLum(double c[3], double l) {
+    const double d = l - blendLum(c);
+    for (int i = 0; i < 3; ++i)
+        c[i] += d;
+    blendClipColor(c);
+}
+inline void blendSetSat(double c[3], double s) {
+    const double lo = std::min(c[0], std::min(c[1], c[2]));
+    const double hi = std::max(c[0], std::max(c[1], c[2]));
+    for (int i = 0; i < 3; ++i)
+        c[i] = hi > lo ? (c[i] - lo) * (s / (hi - lo)) : 0.0;
+}
+inline double blendSat(const double c[3]) {
+    return std::max(c[0], std::max(c[1], c[2])) - std::min(c[0], std::min(c[1], c[2]));
+}
+// writes the blended RGB triple for any mode (separable modes per channel)
+inline void blendRgb(img::BlendMode aMode, const double a[3], const double b[3], double out[3]) {
+    double t[3];
+    switch (aMode) {
+    case img::BlendMode_Hue:
+        for (int i = 0; i < 3; ++i) t[i] = b[i];
+        blendSetSat(t, blendSat(a));
+        blendSetLum(t, blendLum(a));
+        break;
+    case img::BlendMode_Saturation:
+        for (int i = 0; i < 3; ++i) t[i] = a[i];
+        blendSetSat(t, blendSat(b));
+        blendSetLum(t, blendLum(a));
+        break;
+    case img::BlendMode_Color:
+        for (int i = 0; i < 3; ++i) t[i] = b[i];
+        blendSetLum(t, blendLum(a));
+        break;
+    case img::BlendMode_Luminosity:
+        for (int i = 0; i < 3; ++i) t[i] = a[i];
+        blendSetLum(t, blendLum(b));
+        break;
+    case img::BlendMode_DarkerColor: {
+        const double* p = blendLum(b) <= blendLum(a) ? b : a;
+        for (int i = 0; i < 3; ++i) t[i] = p[i];
+        break;
+    }
+    case img::BlendMode_LighterColor: {
+        const double* p = blendLum(b) > blendLum(a) ? b : a;
+        for (int i = 0; i < 3; ++i) t[i] = p[i];
+        break;
+    }
+    default:
+        for (int i = 0; i < 3; ++i)
+            t[i] = blendChannel(aMode, a[i], b[i]);
+        break;
+    }
+    for (int i = 0; i < 3; ++i)
+        out[i] = t[i];
+}
+inline Image blendPresent(const Image& aSrc, const Image& aDst, img::BlendMode aMode, double aOpacity) {
     Image dst(aSrc.w, aSrc.h);
     for (int y = 0; y < aSrc.h; ++y) {
         for (int x = 0; x < aSrc.w; ++x) {
@@ -391,12 +515,39 @@ inline Image blendPresent(const Image& aSrc, const Image& aDst, BlendOp aOp, dou
             const float* t = aDst.at(x, y);
             float* d = dst.at(x, y);
             const double da = t[3];
-            const double sa = (double)s[3] * aOpacity; // uColor folds opacity into alpha only
             const double inv = 1.0 / std::max((double)s[3], 0.001);
+            const double sa = (double)s[3] * aOpacity; // result.a = src.a after `color *= uColor`
+            // shader order: straight = s[c] * inv, then `color *= uColor` scales the
+            // alpha by the present opacity (uColor.rgb is white = 1.0), then the
+            // blend, then the over-rule
+            const double straight[3] = {s[0] * inv, s[1] * inv, s[2] * inv};
+            // non-separable blends run on STRAIGHT colors: the dest is stored premultiplied
+            // (t[c] = Cb * da), so the shader's BLEND_NONSEPARABLE branch recovers Cb by
+            // dividing by the alpha first (a transparent pixel has no defined straight
+            // color and contributes nothing, so 0 is its neutral input). Separable modes
+            // keep the premultiplied dest as-is (mirrors the shader exactly).
+            const double dest[3] = {t[0], t[1], t[2]};
+            const double destStraight[3] = {
+                da > 0.0 ? t[0] / da : 0.0, da > 0.0 ? t[1] / da : 0.0, da > 0.0 ? t[2] / da : 0.0};
+            double blended[3];
+            // CSP Add (Glow) / Glow Dodge (BLEND_PREMULTIPLIED_SRC): the blend input
+            // is the alpha-premultiplied source rounded to 8-bit (psrc =
+            // round(straight*sa*255)/255, sa = src alpha x present opacity), the
+            // result replaces the backdrop outright, and the fragment alpha is 1.0
+            // (the framebuffer alpha pass is bypassed) - mirroring the shader.
+            if (img::isPremultipliedSrcBlendMode(aMode)) {
+                const double psrc[3] = {std::floor(straight[0] * sa * 255.0 + 0.5) / 255.0,
+                    std::floor(straight[1] * sa * 255.0 + 0.5) / 255.0, std::floor(straight[2] * sa * 255.0 + 0.5) / 255.0};
+                blendRgb(aMode, destStraight, psrc, blended);
+                for (int c = 0; c < 3; ++c)
+                    d[c] = (float)blended[c];
+                d[3] = 1.0f;
+                continue;
+            }
+            blendRgb(aMode, img::isNonSeparableBlendMode(aMode) ? destStraight : dest, straight, blended);
             for (int c = 0; c < 3; ++c) {
-                const double straight = s[c] * inv;
-                const double blended = da * blendChannel(aOp, t[c], straight) + (1.0 - da) * straight;
-                d[c] = (float)(blended * sa + t[c] * (1.0 - sa));
+                const double v = da * blended[c] + (1.0 - da) * straight[c];
+                d[c] = (float)(v * sa + t[c] * (1.0 - sa));
             }
             d[3] = (float)(sa + da * (1.0 - sa)); // over-rule: GL_ONE, GL_ONE_MINUS_SRC_ALPHA
         }

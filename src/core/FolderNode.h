@@ -29,6 +29,13 @@ public:
     bool hasActiveHSVKey(const TimeInfo& aTime) const;
     bool hasActiveBlurKey(const TimeInfo& aTime) const;
 
+    // from Renderer: a folder carries its own blend mode (default Normal =
+    // pass-through, children render directly; any other mode composites the subtree
+    // and blends the group result against the scene)
+    virtual bool hasBlendMode() const { return true; }
+    virtual img::BlendMode blendMode() const { return mBlendMode; }
+    virtual void setBlendMode(img::BlendMode aMode) { mBlendMode = aMode; }
+
     // from ObjectNode
     virtual ObjectType type() const { return ObjectType_Folder; }
     virtual void setName(const QString& aName) { mName = aName; }
@@ -68,6 +75,7 @@ private:
     QScopedPointer<HeightMap> mHeightMap;
     TimeLine mTimeLine;
     bool mIsClipped;
+    img::BlendMode mBlendMode;
 
     std::vector<Renderer::SortUnit> mClippees; // a cache for performance
 };
