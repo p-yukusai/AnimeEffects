@@ -31,8 +31,18 @@ public:
 
     TimeLineEditor();
 
+    // Ruler constants shared with the header drawing (time_Renderer) and the
+    // playhead's frame-number badge (gui::TimeCursor).
+    static constexpr int kHeaderHeight = 22;
+    static constexpr int kRulerFps = 60;
+    // Ruler number text geometry, relative to the header top.
+    static constexpr int kNumberTop = -1;
+    static constexpr int kNumberHeight = 14;
+
     void setProject(core::Project* aProject);
     void setFrame(core::Frame aFrame);
+
+    core::TimeFormatType timeFormatType() const { return timelineFormat; }
 
     UpdateFlags updateCursor(const core::AbstractCursor& aCursor);
     void updateWheel(int aDelta, bool aInvertScaling);

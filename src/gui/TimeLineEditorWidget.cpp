@@ -1,7 +1,11 @@
 #include <QMenu>
 #include <QMessageBox>
+#include <QPainter>
+#include <QFontMetrics>
+#include <algorithm>
 #include "core/TimeKeyExpans.h"
 #include "core/BlurKey.h"
+#include "core/TimeFormat.h"
 #include "gui/TimeLineEditorWidget.h"
 #include "gui/MouseSetting.h"
 #include "gui/obj/obj_Item.h"
@@ -16,16 +20,34 @@
 namespace gui {
 //-------------------------------------------------------------------------------------------------
 TimeCursor::TimeCursor(QWidget* aParent):
-    QWidget(aParent), mBodyColor(QColor(230, 230, 230, 180)), mEdgeColor(QColor(80, 80, 80, 180)) {
+    QWidget(aParent),
+    mNumberColor(QColor(230, 230, 230, 255)),
+    mEdgeColor(QColor(97, 85, 245, 255)),
+    mFrameText(),
+    mBadgeColor(),
+    mLineX(2) {
     this->setAutoFillBackground(false);
 }
 
 void TimeCursor::setCursorPos(const QPoint& aPos, int aHeight) {
-    const QPoint range(5, 5);
+    const QFontMetrics fm(font());
+    const int badgeWidth = fm.horizontalAdvance(mFrameText) + kBadgePadding * 2;
+    // The playhead line sits in the middle of the widget; widen the widget as
+    // needed so the frame-number badge fits around the line. aPos.y() is the
+    // ruler header's top, so the badge lands exactly on the numbers row.
+    mLineX = std::max(1, badgeWidth / 2);
+
     QRect rect;
-    rect.setTopLeft(aPos - range);
-    rect.setBottomRight(aPos + range + QPoint(0, aHeight));
+    rect.setTopLeft(aPos - QPoint(mLineX, 0));
+    rect.setBottomRight(aPos + QPoint(mLineX, 0) + QPoint(0, aHeight));
     this->setGeometry(rect);
+    update();
+}
+
+void TimeCursor::setHeaderInfo(const QString& aFrameText, const QColor& aBadgeColor) {
+    mFrameText = aFrameText;
+    mBadgeColor = aBadgeColor;
+    update();
 }
 
 void TimeCursor::paintEvent(QPaintEvent* aEvent) {
@@ -33,16 +55,28 @@ void TimeCursor::paintEvent(QPaintEvent* aEvent) {
     QPainter painter;
     painter.begin(this);
 
-    const QPoint range(5, 5);
-    const QBrush kBrushBody(mBodyColor);
-    const QBrush kBrushEdge(mEdgeColor);
+    // Playhead line: starts at the bottom of the frame-number row (the badge
+    // covers the row above it) and runs down the tracks.
+    painter.setPen(QPen(mEdgeColor, 1));
+    painter.drawLine(mLineX, ctrl::TimeLineEditor::kNumberHeight, mLineX, this->geometry().height());
 
-    painter.setPen(QPen(kBrushEdge, 1));
-    painter.setBrush(kBrushBody);
-    painter.drawLine(range + QPoint(0, range.y()), range + QPoint(0, this->geometry().height()));
-
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.drawEllipse(QPointF(range), range.x() - static_cast<qreal>(0.5f), range.y() - static_cast<qreal>(0.5f));
+    // Frame-number badge covering only the numbers row: a solid
+    // ruler-background rect that hides the ruler's own numbers, with the
+    // current frame in the highlight color.
+    if (!mFrameText.isEmpty()) {
+        const QFontMetrics fm(font());
+        const int textWidth = fm.horizontalAdvance(mFrameText);
+        const int badgeWidth = textWidth + kBadgePadding * 2;
+        const QRect badge(mLineX - badgeWidth / 2, 0, badgeWidth, ctrl::TimeLineEditor::kNumberHeight);
+        painter.fillRect(badge, mBadgeColor);
+        // Draw the number with the exact same rect and alignment as the ruler
+        // numbers (time_Renderer::renderHeader) so it sits in the same row.
+        const QRect numberRect(
+            mLineX - textWidth / 2, ctrl::TimeLineEditor::kNumberTop, textWidth, ctrl::TimeLineEditor::kNumberHeight
+        );
+        painter.setPen(mNumberColor);
+        painter.drawText(numberRect, mFrameText);
+    }
 
     painter.end();
 }
@@ -51,9 +85,9 @@ QColor TimeCursor::edgeColor() const { return mEdgeColor; }
 
 void TimeCursor::setEdgeColor(const QColor& cursorEdgeColor) { mEdgeColor = cursorEdgeColor; }
 
-QColor TimeCursor::bodyColor() const { return mBodyColor; }
+QColor TimeCursor::numberColor() const { return mNumberColor; }
 
-void TimeCursor::setBodyColor(const QColor& cursorBodyColor) { mBodyColor = cursorBodyColor; }
+void TimeCursor::setNumberColor(const QColor& cursorNumberColor) { mNumberColor = cursorNumberColor; }
 
 //-------------------------------------------------------------------------------------------------
 TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent):
@@ -216,9 +250,13 @@ int TimeLineEditorWidget::maxFrame() const { return mEditor->maxFrame(); }
 void TimeLineEditorWidget::updateTimeCursorPos() {
     if (mCamera) {
         auto pos = mEditor->currentTimeCursorPos();
-        mTimeCursor.setCursorPos(
-            QPoint(pos.x(), pos.y() - static_cast<int>(mCamera->leftTopPos().y())), mCamera->screenHeight()
-        );
+        const core::TimeFormat format(util::Range(0, mEditor->maxFrame()), ctrl::TimeLineEditor::kRulerFps);
+        const QString frameText = format.frameToString(mEditor->currentFrame().get(), mEditor->timeFormatType());
+        mTimeCursor.setHeaderInfo(frameText, mTimelineTheme.headerBackgroundColor());
+        // The ruler header starts at the camera's top; anchor the cursor widget
+        // there so the badge lands on the numbers row.
+        const int headerTop = -mCamera->leftTopPos().toPoint().y();
+        mTimeCursor.setCursorPos(QPoint(pos.x(), headerTop), mCamera->screenHeight());
     }
 }
 
@@ -312,6 +350,7 @@ void TimeLineEditorWidget::updateProjectAttribute() {
 void TimeLineEditorWidget::updateTheme(theme::Theme& aTheme) {
     Q_UNUSED(aTheme) // TODO
     mTimelineTheme.reset();
+    updateTimeCursorPos();
 }
 QSize TimeLineEditorWidget::getEditorSize() const {
     return mEditor->modelSpaceSize();

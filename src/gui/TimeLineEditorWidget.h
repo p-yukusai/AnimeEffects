@@ -15,22 +15,28 @@ namespace gui {
 class TimeCursor: public QWidget {
     Q_OBJECT
 
-    Q_PROPERTY(QColor bodyColor READ bodyColor WRITE setBodyColor DESIGNABLE true)
+    Q_PROPERTY(QColor numberColor READ numberColor WRITE setNumberColor DESIGNABLE true)
     Q_PROPERTY(QColor edgeColor READ edgeColor WRITE setEdgeColor DESIGNABLE true)
 public:
     TimeCursor(QWidget* aParent);
     void setCursorPos(const QPoint& aPos, int aHeight);
+    void setHeaderInfo(const QString& aFrameText, const QColor& aBadgeColor);
     virtual void paintEvent(QPaintEvent* aEvent);
 
-    QColor bodyColor() const;
-    void setBodyColor(const QColor& bodyColor);
+    QColor numberColor() const;
+    void setNumberColor(const QColor& numberColor);
 
     QColor edgeColor() const;
     void setEdgeColor(const QColor& edgeColor);
 
 private:
-    QColor mBodyColor;
+    static constexpr int kBadgePadding = 3;
+
+    QColor mNumberColor;
     QColor mEdgeColor;
+    QString mFrameText;
+    QColor mBadgeColor;
+    int mLineX;
 };
 
 class TimeLineEditorWidget: public QWidget {

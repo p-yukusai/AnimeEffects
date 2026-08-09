@@ -11,6 +11,6 @@ gui--TimeLineEditorWidget {
 }
 
 gui--TimeCursor {
-    qproperty-bodyColor: rgba(230, 230, 230, 180);
-    qproperty-edgeColor: rgba(80, 80, 80, 180);
+    qproperty-numberColor: rgba(30, 30, 30, 255);
+    qproperty-edgeColor: rgba(97, 85, 245, 255);
 }

@@ -18,11 +18,9 @@
 using namespace core;
 
 namespace {
-    constexpr int kTimeLineFpsA = 60;
     constexpr int kTimeLineFpsB = 30;
     constexpr int kTimeLineFpsC = 10;
     constexpr int kTimeLineMargin = 14;
-    constexpr int kHeaderHeight = 22;
     constexpr int kDefaultMaxFrame = 600;
 
 } // namespace
@@ -45,7 +43,7 @@ TimeLineEditor::TimeLineEditor():
     mShowSelectionRange(false) {
     mRows.reserve(64);
 
-    constexpr std::array<int, 3> kFrameList = {kTimeLineFpsA, kTimeLineFpsB, kTimeLineFpsC};
+    constexpr std::array<int, 3> kFrameList = {TimeLineEditor::kRulerFps, kTimeLineFpsB, kTimeLineFpsC};
     mTimeScale.setFrameList(kFrameList);
 
     // reset max frame
@@ -800,7 +798,7 @@ void TimeLineEditor::render(
     renderer.setTimeScale(mTimeScale);
 
     renderer.renderLines(mRows, camRect, cullRect);
-    renderer.renderHeader(kHeaderHeight, kTimeLineFpsA);
+    renderer.renderHeader(kHeaderHeight, TimeLineEditor::kRulerFps);
     // renderer.renderHandle(mTimeCurrent.handlePos(), mTimeCurrent.handleRange());
 
     if (mShowSelectionRange) {
