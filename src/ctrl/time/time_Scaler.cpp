@@ -37,19 +37,24 @@ namespace time {
 
     Scaler::Attribute Scaler::attribute(int aFrame) const {
         Attribute attr;
-        attr.grid.setX((mIndex + 1) * aFrame);
+        const int spacing = mIndex + 1; // on-screen pixels per frame
+        attr.grid.setX(spacing * aFrame);
 
         if (aFrame % mFrameList[0] == 0) {
             attr.grid.setY(10);
             attr.showNumber = true;
         } else if (aFrame % mFrameList[1] == 0) {
             attr.grid.setY(8);
-            attr.showNumber = (mIndex >= 3);
+            // Number a tick tier only once it has room on screen, so zooming in
+            // reveals progressively finer frame numbers.
+            attr.showNumber = (spacing * mFrameList[1] >= 64);
         } else if (aFrame % mFrameList[2] == 0) {
             attr.grid.setY(6);
-            attr.showNumber = false;
+            attr.showNumber = (spacing * mFrameList[2] >= 64);
         } else {
-            attr.grid.setY(3);
+            // Drop the per-frame minor ticks when zoomed out far enough that
+            // they would pack tighter than a few pixels apart.
+            attr.grid.setY(spacing >= 4 ? 3 : 0);
             attr.showNumber = false;
         }
         return attr;

@@ -1,4 +1,5 @@
 #include "ctrl/time/time_Renderer.h"
+#include "ctrl/TimeLineEditor.h"
 
 using namespace core;
 
@@ -94,26 +95,37 @@ namespace time {
         // draw header info
         {
             const QBrush kBrush(mTheme.headerContentColor());
-            const int numberHeight = 14;
             const int numberWidth = 6;
             const QPoint lt(mMargin, cameraRect.top());
             const QPoint rb = lt + QPoint(mScale->maxPixelWidth(), aHeight);
             const TimeFormat timeFormat(mRange, aFps);
 
-            mPainter.setPen(QPen(kBrush, 1));
-
             for (int i = mRange.min(); i <= mRange.max(); ++i) {
                 auto attr = mScale->attribute(i);
+                if (attr.grid.y() <= 0) continue;
 
                 QPoint pos(lt.x() + attr.grid.x(), rb.y());
+
+                // Fade the tick tiers so minor blips recede and even the
+                // numbered major ticks stay a step below full brightness.
+                const qreal alpha = attr.grid.y() >= 10 ? 0.85
+                                  : attr.grid.y() >= 8  ? 0.65
+                                  : attr.grid.y() >= 6  ? 0.45
+                                                        : 0.25;
+                QColor tickColor = kBrush.color();
+                tickColor.setAlphaF(alpha);
+                mPainter.setPen(QPen(tickColor, 1));
                 mPainter.drawLine(pos, pos + QPoint(0, -attr.grid.y()));
 
                 if (attr.showNumber) {
+                    mPainter.setPen(QPen(kBrush, 1));
                     QString number = timeFormat.frameToString(i, timeFormatVar);
                     const int width = static_cast<int>(numberWidth * number.size());
                     const int left = pos.x() - (width >> 1);
-                    const int top = lt.y() - 1;
-                    const QRect rect(QPoint(left, top), QPoint(left + width + 1, top + numberHeight));
+                    const int top = lt.y() + ctrl::TimeLineEditor::kNumberTop;
+                    const QRect rect(
+                        QPoint(left, top), QPoint(left + width + 1, top + ctrl::TimeLineEditor::kNumberHeight)
+                    );
                     mPainter.drawText(rect, number);
                 }
             }
