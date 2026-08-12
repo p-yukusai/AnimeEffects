@@ -1,8 +1,6 @@
 #include "gui/ScrollBarStyle.h"
 
-#include <QApplication>
 #include <QMenu>
-#include <QEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QStyleOption>
@@ -21,23 +19,18 @@ const QColor kPillColor(0x56, 0x56, 0x56);
 const QColor kPillColorActive(0x7e, 0x7e, 0x7e);
 } // namespace
 
-ScrollBarStyle::ScrollBarStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {
+ScrollBarStyle::ScrollBarStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
+
+void ScrollBarStyle::polish(QWidget* aWidget) {
     // Menus are opaque OS popup windows by default (their backing is the
     // palette Window role). For real rounded corners the popup must be an
-    // alpha window, so watch for menus at polish time — before the platform
-    // window is created — and mark them translucent.
-    if (qApp)
-        qApp->installEventFilter(this);
-}
-
-bool ScrollBarStyle::eventFilter(QObject* aObject, QEvent* aEvent) {
-    if (aEvent->type() == QEvent::Polish) {
-        if (auto* menu = qobject_cast<QMenu*>(aObject)) {
-            menu->setAttribute(Qt::WA_TranslucentBackground);
-            menu->setAttribute(Qt::WA_NoSystemBackground);
-        }
+    // alpha window, so mark them translucent at polish time — before the
+    // platform window is created.
+    if (qobject_cast<QMenu*>(aWidget)) {
+        aWidget->setAttribute(Qt::WA_TranslucentBackground);
+        aWidget->setAttribute(Qt::WA_NoSystemBackground);
     }
-    return QObject::eventFilter(aObject, aEvent);
+    QProxyStyle::polish(aWidget);
 }
 
 int ScrollBarStyle::pixelMetric(PixelMetric aMetric, const QStyleOption* aOption,

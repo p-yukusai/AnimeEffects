@@ -21,7 +21,7 @@ public:
                             QPainter* aPainter, const QWidget* aWidget = nullptr) const override;
     void drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOption, QPainter* aPainter,
                        const QWidget* aWidget = nullptr) const override;
-    bool eventFilter(QObject* aObject, QEvent* aEvent) override;
+    void polish(QWidget* aWidget) override;
 };
 
 } // namespace gui
