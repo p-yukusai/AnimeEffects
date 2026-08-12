@@ -42,7 +42,7 @@ jobs:
           cd build/src/gui/Release
           mkdir .\AnimeEffects-Windows-x64
           windeployqt --dir .\AnimeEffects-Windows-x64 .\AnimeEffects.exe
-          Copy-Item -Path "..\data" -Destination ".\AnimeEffects-Windows-x64\" -recurse -Force
+          Copy-Item -Path ".\data" -Destination ".\AnimeEffects-Windows-x64\" -recurse -Force
           Copy-Item ".\AnimeEffects.exe" ".\AnimeEffects-Windows-x64\"
       - name: Github Artifacts
         uses: actions/upload-artifact@v4
