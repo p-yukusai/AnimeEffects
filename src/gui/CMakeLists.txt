@@ -162,9 +162,8 @@ add_dependencies(${PROJECT_NAME} copy_data)
 # ---------------------------------------------------------------------------
 # Build-time icon tinting.
 # The repo tracks one canonical monochrome set in data/icons; this regenerates
-# each theme's icon dir with the theme color (and the scrollbar thumbs with
-# their per-theme shades). Outputs are tracked by ninja, so tinting only
-# re-runs when the canonical set or the tool changes.
+# each theme's icon dir with the theme color. Outputs are tracked by ninja, so
+# tinting only re-runs when the canonical set or the tool changes.
 # ---------------------------------------------------------------------------
 add_executable(icon_tint ${CMAKE_SOURCE_DIR}/tools/icon_tint/icon_tint.cpp)
 target_link_libraries(icon_tint PRIVATE Qt6::Gui Qt6::Core)
@@ -178,10 +177,10 @@ set(AE_CANONICAL_MANIFEST ${CMAKE_CURRENT_BINARY_DIR}/ae-canonical-icons.txt)
 file(WRITE ${AE_CANONICAL_MANIFEST} "${AE_CANONICAL_ICONS}")
 
 set(AE_ICON_THEMES
-    "default#3c3c3c#b0b0b0#8f8f8f"
-    "classic#3c3c3c#b0b0b0#8f8f8f"
-    "breeze_dark#e0e0e0#7e7e7e#a0a0a0"
-    "breeze_dark_high_dpi#e0e0e0#7e7e7e#a0a0a0"
+    "default#3c3c3c"
+    "classic#3c3c3c"
+    "breeze_dark#e0e0e0"
+    "breeze_dark_high_dpi#e0e0e0"
 )
 
 set(AE_ALL_ICON_OUTPUTS "")
@@ -189,8 +188,6 @@ foreach(entry ${AE_ICON_THEMES})
     string(REPLACE "#" ";" parts "${entry}")
     list(GET parts 0 theme)
     list(GET parts 1 color)
-    list(GET parts 2 thumb)
-    list(GET parts 3 hover)
 
     set(theme_out "")
     foreach(icon ${AE_CANONICAL_ICONS})
@@ -205,12 +202,6 @@ foreach(entry ${AE_ICON_THEMES})
         COMMAND ${CMAKE_COMMAND} -E rm -rf ${AE_GEN_ICONS_DIR}/themes/${theme}/icon
         COMMAND $<TARGET_FILE:icon_tint> ${CMAKE_SOURCE_DIR}/data/icons ${AE_GEN_ICONS_DIR}/themes/${theme}/icon ${color}
     )
-    if(thumb AND hover)
-        list(APPEND theme_cmds
-            COMMAND $<TARGET_FILE:icon_tint> ${CMAKE_SOURCE_DIR}/data/icons ${AE_GEN_ICONS_DIR}/themes/${theme}/icon ${thumb} scrollbar_handle.png
-            COMMAND $<TARGET_FILE:icon_tint> ${CMAKE_SOURCE_DIR}/data/icons ${AE_GEN_ICONS_DIR}/themes/${theme}/icon ${hover} scrollbar_handle_hover.png
-        )
-    endif()
     add_custom_command(
         OUTPUT ${theme_out}
         ${theme_cmds}
