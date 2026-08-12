@@ -24,6 +24,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     ../XCReport.h
     ../XCType.h
     CanvasMover.cpp CanvasMover.h
+    DockSash.cpp DockSash.h
     DriverHolder.cpp DriverHolder.h
     EasyDialog.cpp EasyDialog.h
     ExportDialog.cpp ExportDialog.h
@@ -56,8 +57,8 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     ResourceTreeWidget.cpp ResourceTreeWidget.h
     TabCloseButton.cpp TabCloseButton.h
     TargetWidget.cpp TargetWidget.h
+    ThinSplitter.cpp ThinSplitter.h
     TimeLineEditorWidget.cpp TimeLineEditorWidget.h
-    TimeLineInfoWidget.cpp TimeLineInfoWidget.h
     TimeLineWidget.cpp TimeLineWidget.h
     ToolWidget.cpp ToolWidget.h
     ViaPoint.cpp ViaPoint.h

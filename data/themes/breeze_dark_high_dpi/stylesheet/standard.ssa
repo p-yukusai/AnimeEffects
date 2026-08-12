@@ -433,15 +433,6 @@ QSizeGrip
     height: 0.5em;
 }
 
-/**
- *  Set the separator to be transparent, since the dock has a border.
- *  On PyQt6, neither the border nor the background seem to be respected.
- */
-QMainWindow::separator
-{
-    border: 0.09em transparent #76797c;
-    background: transparent;
-}
 
 QMenu::separator
 {
@@ -2108,10 +2099,24 @@ QToolBox::tab:hover
 
 QSplitter::handle
 {
-    border: 0.09em solid #2c2c2c;
-    background: -0.5em solid #2c2c2c;
-    max-width: 0em;
-    max-height: 0em;
+    background: transparent;
+    border: none;
+}
+
+QMainWindow::separator
+{
+    background: transparent;
+    border: none;
+}
+
+QMainWindow::separator:vertical
+{
+    width: 0px;
+}
+
+QMainWindow::separator:horizontal
+{
+    height: 0px;
 }
 
 /**

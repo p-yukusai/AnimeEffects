@@ -59,6 +59,7 @@ DEPENDPATH  += ..
 
 SOURCES += \
     AnimationSettingDialog.cpp \
+    DockSash.cpp \
     Main.cpp \
     MainDisplayWidget.cpp \
     MainWindow.cpp \
@@ -66,10 +67,10 @@ SOURCES += \
     PlayBackWidget.cpp \
     PropertyWidget.cpp \
     TimeLineEditorWidget.cpp \
-    TimeLineInfoWidget.cpp \
     TimeLineWidget.cpp \
     ToolWidget.cpp \
     TargetWidget.cpp \
+    ThinSplitter.cpp \
     exportdiag.cpp \
     prop/prop_Panel.cpp \
     prop/prop_KeyGroup.cpp \
@@ -130,6 +131,7 @@ SOURCES += \
 
 HEADERS += \
     AnimationSettingDialog.h \
+    DockSash.h \
     MainDisplayMode.h \
     MainDisplayWidget.h \
     MainWindow.h \
@@ -137,10 +139,10 @@ HEADERS += \
     PlayBackWidget.h \
     PropertyWidget.h \
     TimeLineEditorWidget.h \
-    TimeLineInfoWidget.h \
     TimeLineWidget.h \
     ToolWidget.h \
     TargetWidget.h \
+    ThinSplitter.h \
     exportdiag.h \
     prop/prop_Panel.h \
     prop/prop_KeyGroup.h \

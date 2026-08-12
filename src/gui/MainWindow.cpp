@@ -6,6 +6,7 @@
 #include "gl/Global.h"
 #include "ctrl/Exporter.h"
 #include "gui/MainWindow.h"
+#include "gui/DockSash.h"
 #include "gui/ExportDialog.h"
 #include "gui/NewProjectDialog.h"
 #include "gui/ProjectHook.h"
@@ -140,7 +141,8 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
     // create targeting widget
     {
         auto* dockWidget = new QDockWidget(this);
-        dockWidget->setWindowTitle(tr("Animation Dock"));
+        dockWidget->setObjectName("animationDock");
+        dockWidget->setWindowTitle(tr("Animation"));
         dockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
         dockWidget->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
         this->addDockWidget(Qt::BottomDockWidgetArea, dockWidget);
@@ -152,18 +154,25 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
     // create property widget
     {
         auto* dockWidget = new QDockWidget(this);
-        dockWidget->setWindowTitle(tr("Property Dock"));
+        dockWidget->setObjectName("propertiesDock");
+        dockWidget->setWindowTitle(tr("Properties"));
         dockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
         dockWidget->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
         this->addDockWidget(Qt::RightDockWidgetArea, dockWidget);
 
         mDockPropertyWidget = dockWidget;
 
+        // Panel width budget: min = default = 320 (everything fits; the
+        // fields cap at 70% of the column), max = 2x min - a wider dock
+        // would just stretch empty space.
+        dockWidget->setMinimumWidth(320);
+        dockWidget->setMaximumWidth(640);
+
 #if 0
         mProperty = new PropertyWidget(mViaPoint, splitter, &mGUIResources);
         dockWidget->setWidget(mProperty);
 #else
-        auto splitter = new QSplitter(Qt::Vertical, dockWidget);
+        auto splitter = new gui::ThinSplitter(Qt::Vertical, dockWidget);
         splitter->setObjectName("propertysplitter");
         dockWidget->setWidget(splitter);
 
@@ -177,9 +186,10 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         mViaPoint.setLogView(textEdit);
 
         splitter->addWidget(textEdit);
-
         splitter->setCollapsible(0, false);
         splitter->setCollapsible(1, false);
+
+
         QList<int> list;
         list.append(9000);
         list.append(1000);
@@ -190,13 +200,14 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
     // create tool widget
     {
         auto* dockWidget = new QDockWidget(this);
-        dockWidget->setWindowTitle(tr("Tool Dock"));
+        dockWidget->setObjectName("toolsDock");
+        dockWidget->setWindowTitle(tr("Tools"));
         dockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
         this->addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
 
         mDockToolWidget = dockWidget;
 
-        mTool = new ToolWidget(mViaPoint, mGUIResources, *mKeyCommandMap, QSize(192, 136), dockWidget);
+        mTool = new ToolWidget(mViaPoint, mGUIResources, *mKeyCommandMap, QSize(172, 136), dockWidget);
         dockWidget->setWidget(mTool);
     }
 
@@ -205,6 +216,11 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         mResourceDialog = new ResourceDialog(mViaPoint, false, this);
         mViaPoint.setResourceDialog(mResourceDialog);
     }
+
+    // dock-edge sashes: 12px invisible hitboxes + 1px hairlines over the
+    // zero-width native separators (see standard.ssa); resizes docks through
+    // QMainWindow::resizeDocks
+    new gui::DockSash(this);
 
     // create driver holder
     { mDriverHolder.reset(new DriverHolder(mViaPoint)); }
