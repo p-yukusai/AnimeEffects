@@ -2984,7 +2984,7 @@ The log is available below.</source>
     <name>gui::prop::ConstantPanel</name>
     <message>
         <location filename="../../src/gui/prop/prop_ConstantPanel.cpp" line="36"/>
-        <source>MaxTextWidth :</source>
+        <source>MaxTextWidth</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2999,12 +2999,12 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_ConstantPanel.cpp" line="73"/>
-        <source>Blend :</source>
+        <source>Blend</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_ConstantPanel.cpp" line="78"/>
-        <source>Clipped :</source>
+        <source>Clipped</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3012,7 +3012,7 @@ The log is available below.</source>
     <name>gui::prop::CurrentKeyPanel</name>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="563"/>
-        <source>Max text width :</source>
+        <source>Max text width</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3030,7 +3030,7 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="24"/>
-        <source>Position :</source>
+        <source>Position</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3043,17 +3043,17 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="81"/>
-        <source>Resource :</source>
+        <source>Resource</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="89"/>
-        <source>Center :</source>
+        <source>Center</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="95"/>
-        <source>Cell size :</source>
+        <source>Cell size</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3061,7 +3061,7 @@ The log is available below.</source>
     <name>gui::prop::DefaultKeyPanel</name>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="126"/>
-        <source>Max text width :</source>
+        <source>Max text width</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3079,7 +3079,7 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="48"/>
-        <source>Rate :</source>
+        <source>Rate</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3093,12 +3093,12 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="210"/>
-        <source>Easing :</source>
+        <source>Easing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="219"/>
-        <source>Position :</source>
+        <source>Position</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3112,7 +3112,7 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="440"/>
-        <source>Easing :</source>
+        <source>Easing</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3126,27 +3126,27 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="323"/>
-        <source>Easing :</source>
+        <source>Easing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="350"/>
-        <source>Hue :</source>
+        <source>Hue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="351"/>
-        <source>Saturation :</source>
+        <source>Saturation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="352"/>
-        <source>Value : </source>
+        <source>Value</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="353"/>
-        <source>Absolute color: </source>
+        <source>Absolute color</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3160,17 +3160,17 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="497"/>
-        <source>Resource :</source>
+        <source>Resource</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="503"/>
-        <source>Center :</source>
+        <source>Center</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="509"/>
-        <source>Cell size :</source>
+        <source>Cell size</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3184,22 +3184,22 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="36"/>
-        <source>Easing :</source>
+        <source>Easing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="49"/>
-        <source>Spline :</source>
+        <source>Spline</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="55"/>
-        <source>Position :</source>
+        <source>Position</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="61"/>
-        <source>Centroid :</source>
+        <source>Centroid</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3213,12 +3213,12 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="265"/>
-        <source>Easing :</source>
+        <source>Easing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="275"/>
-        <source>Rate :</source>
+        <source>Rate</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3232,7 +3232,7 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="397"/>
-        <source>Easing :</source>
+        <source>Easing</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3246,12 +3246,12 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="105"/>
-        <source>Easing :</source>
+        <source>Easing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="119"/>
-        <source>Angle :</source>
+        <source>Angle</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3265,12 +3265,12 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="160"/>
-        <source>Easing :</source>
+        <source>Easing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="169"/>
-        <source>Rate :</source>
+        <source>Rate</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
