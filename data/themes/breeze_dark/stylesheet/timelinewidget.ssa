@@ -1,12 +1,18 @@
 gui--TimeLineEditorWidget {
     qproperty-headerContentColor: rgba(200, 200, 200, 255);
-    qproperty-headerBackgroundColor: rgba(45, 45, 45, 255);
+    qproperty-headerBackgroundColor: rgba(38, 38, 38, 255);
+    qproperty-rulerLineColor: rgba(52, 52, 52, 255);
 
-    qproperty-trackColor: rgba(64, 64, 64, 255);
-    qproperty-trackEdgeColor: rgba(190, 190, 190, 255);
+
+    qproperty-trackColor: rgba(38, 38, 38, 255);
+    /* the row seams are hairlines like every other separator in the theme;
+       the dotted lane separators sit one step above so they stay legible */
+    qproperty-trackEdgeColor: rgba(52, 52, 52, 255);
     qproperty-trackTextColor: rgba(195, 195, 195, 255);
-    qproperty-trackSelectColor: rgba(35, 46, 52, 255);
-    qproperty-trackSeperatorColor: rgba(200, 200, 205, 255);
+    /* the selected track is a 40% tint of the selection color — a full-width
+       solid fill would dominate the timeline (unlike the small tree row) */
+    qproperty-trackSelectColor: rgba(54, 56, 109, 102);
+    qproperty-trackSeperatorColor: rgba(74, 75, 76, 255);
 }
 
 gui--TimeCursor {

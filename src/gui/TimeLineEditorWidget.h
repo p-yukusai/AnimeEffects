@@ -46,6 +46,8 @@ class TimeLineEditorWidget: public QWidget {
     // Qt's stylesheet support for custom rendering is applied per widget via properties.
     Q_PROPERTY(QColor headerContentColor READ headerContentColor WRITE setHeaderContentColor DESIGNABLE true)
     Q_PROPERTY(QColor headerBackgroundColor READ headerBackgroundColor WRITE setHeaderBackgroundColor DESIGNABLE true)
+    Q_PROPERTY(QColor rulerLineColor READ rulerLineColor WRITE setRulerLineColor DESIGNABLE true)
+
 
     Q_PROPERTY(QColor trackColor READ trackColor WRITE setTrackColor DESIGNABLE true)
     Q_PROPERTY(QColor trackEdgeColor READ trackEdgeColor WRITE setTrackEdgeColor DESIGNABLE true)
@@ -80,6 +82,10 @@ public:
 
     QColor headerBackgroundColor() const;
     void setHeaderBackgroundColor(const QColor& headerBackgroundColor);
+
+    QColor rulerLineColor() const;
+    void setRulerLineColor(const QColor& rulerLineColor);
+
 
     QColor trackColor() const;
     void setTrackColor(const QColor& trackColor);

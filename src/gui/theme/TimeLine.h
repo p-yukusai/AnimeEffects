@@ -19,6 +19,9 @@ public:
     QColor headerContentColor() const;
     void setHeaderContentColor(const QColor& headerContentColor);
 
+    QColor rulerLineColor() const;
+    void setRulerLineColor(const QColor& rulerLineColor);
+
     QColor headerBackgroundColor() const;
     void setHeaderBackgroundColor(const QColor& headerBackgroundColor);
 
@@ -42,6 +45,7 @@ private:
 
     QColor mHeaderContentColor;
     QColor mHeaderBackgroundColor;
+    QColor mRulerLineColor;
 
     QColor mTrackColor;
     QColor mTrackEdgeColor;

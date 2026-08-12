@@ -921,6 +921,13 @@ void TimeLineEditorWidget::setHeaderBackgroundColor(const QColor& headerBackgrou
     mTimelineTheme.setHeaderBackgroundColor(headerBackgroundColor);
 }
 
+QColor TimeLineEditorWidget::rulerLineColor() const { return mTimelineTheme.rulerLineColor(); }
+
+void TimeLineEditorWidget::setRulerLineColor(const QColor& rulerLineColor) {
+    mTimelineTheme.setRulerLineColor(rulerLineColor);
+}
+
+
 QColor TimeLineEditorWidget::trackColor() const { return mTimelineTheme.trackColor(); }
 
 void TimeLineEditorWidget::setTrackColor(const QColor& trackColor) { mTimelineTheme.setTrackColor(trackColor); }
