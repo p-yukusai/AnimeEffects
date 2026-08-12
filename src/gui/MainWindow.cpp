@@ -238,6 +238,8 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
 
         objTree.onTreeViewUpdated.connect(&timeLine, &TimeLineWidget::onTreeViewUpdated);
         objTree.onScrollUpdated.connect(&timeLine, &TimeLineWidget::onScrollUpdated);
+        timeLine.onVerticalScrollRequested.connect(
+            [&objTree](int aValue) { objTree.verticalScrollBar()->setValue(aValue); });
 
         timeLine.onFrameUpdated.connect(&driver, &DriverHolder::onFrameUpdated);
         timeLine.onFrameUpdated.connect(&prop, &PropertyWidget::onFrameUpdated);

@@ -17,6 +17,9 @@ TimeLineWidget::TimeLineWidget(
     mAbstractCursor(),
     mVerticalScrollValue(0),
     mHorizontalScrollValue(0),
+    mIsPanning(false),
+    mPanGrabPos(),
+    mPanStartTransform(),
     mTimer(),
     mElapsed(),
     mBeginFrame(),
@@ -31,6 +34,9 @@ TimeLineWidget::TimeLineWidget(
     this->connect(&mTimer, &QTimer::timeout, this, &TimeLineWidget::onPlayBackUpdated);
 
     mGUIResources.onThemeChanged.connect(this, &TimeLineWidget::onThemeUpdated);
+
+    // Audio follows the playhead on the playback clock
+    onFrameUpdated.connect(this, &TimeLineWidget::syncAudioTracks);
 
     updateCamera();
 }
@@ -53,8 +59,7 @@ void TimeLineWidget::setPlayBackActivity(bool aIsActive, std::vector<audioConfig
         mBeginFrame = currentFrame();
         mLastFrame = mBeginFrame;
         // Play audio
-        AudioPlaybackWidget::aPlayer(pConf, true, mediaPlayer, getFps(), currentFrame().get(),
-                                     mProject->attribute().maxFrame());
+        AudioPlaybackWidget::aPlayer(pConf, true, mediaPlayer, getFps(), currentFrame().get());
         mediaPlayer->playing = true;
     }
     else {
@@ -63,9 +68,7 @@ void TimeLineWidget::setPlayBackActivity(bool aIsActive, std::vector<audioConfig
         mLastFrame.set(0);
         // Stop audio
         if(mediaPlayer->playing) {
-            AudioPlaybackWidget::aPlayer(pConf, false, mediaPlayer, getFps(), currentFrame().get(),
-                                         mProject->attribute().maxFrame()
-            );
+            AudioPlaybackWidget::aPlayer(pConf, false, mediaPlayer, getFps(), currentFrame().get());
             mediaPlayer->playing = false;
         }
     }
@@ -179,8 +182,19 @@ void TimeLineWidget::triggerOnTimeFormatChanged() {
     updateCamera();
 }
 
+void TimeLineWidget::syncAudioTracks() {
+    if (!mProject)
+        return;
+    AudioPlaybackWidget::syncTracks(mProject.get(), currentFrame().get(), mLastFrame.get(), getFps());
+}
+
 //-------------------------------------------------------------------------------------------------
 void TimeLineWidget::mouseMoveEvent(QMouseEvent* aEvent) {
+    if (mIsPanning) {
+        panTo(mPanStartTransform + (aEvent->position().toPoint() - mPanGrabPos));
+        aEvent->accept();
+        return;
+    }
     QScrollArea::mouseMoveEvent(aEvent);
     if (mAbstractCursor.setMouseMove(aEvent, mCameraInfo)) {
         updateCursor(mAbstractCursor, aEvent->modifiers());
@@ -188,6 +202,14 @@ void TimeLineWidget::mouseMoveEvent(QMouseEvent* aEvent) {
 }
 
 void TimeLineWidget::mousePressEvent(QMouseEvent* aEvent) {
+    if (aEvent->button() == Qt::MiddleButton) {
+        mPanGrabPos = aEvent->position().toPoint();
+        mPanStartTransform = viewportTransform();
+        mIsPanning = true;
+        setCursor(Qt::ClosedHandCursor);
+        aEvent->accept();
+        return;
+    }
     QScrollArea::mousePressEvent(aEvent);
     if (mAbstractCursor.setMousePress(aEvent, mCameraInfo)) {
         updateCursor(mAbstractCursor, aEvent->modifiers());
@@ -195,6 +217,12 @@ void TimeLineWidget::mousePressEvent(QMouseEvent* aEvent) {
 }
 
 void TimeLineWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
+    if (mIsPanning && aEvent->button() == Qt::MiddleButton) {
+        mIsPanning = false;
+        unsetCursor();
+        aEvent->accept();
+        return;
+    }
     QScrollArea::mouseReleaseEvent(aEvent);
     if (mAbstractCursor.setMouseRelease(aEvent, mCameraInfo)) {
         updateCursor(mAbstractCursor, aEvent->modifiers());
@@ -254,6 +282,52 @@ void TimeLineWidget::resizeEvent(QResizeEvent* aEvent) {
 void TimeLineWidget::scrollContentsBy(int aDx, int aDy) {
     QScrollArea::scrollContentsBy(aDx, aDy);
     updateCamera();
+}
+
+// MMB pan: translate the viewport in both axes. Horizontal is the timeline's
+// own scrollbar; vertical goes through the object tree so the two views stay
+// aligned. The tree is the binding constraint: it clamps to its own range and
+// syncs the actual value back, so the timeline can never scroll further than
+// the tree allows (its own content can be taller than the tree's range).
+void TimeLineWidget::panTo(const QPoint& aTransform) {
+    const int maxX = qMax(0, mInner->width() - viewport()->width());
+    const int newX = qBound(-maxX, aTransform.x(), 0);
+    if (newX != viewportTransform().x()) {
+        this->horizontalScrollBar()->setValue(-newX);
+        mHorizontalScrollValue = -newX;
+        updateCamera();
+    }
+    // Vertical pan never writes the timeline's own state: the request goes to
+    // the tree, which clamps and syncs the actual value back via onScrollUpdated.
+    const int maxY = qMax(0, mInner->height() - viewport()->height());
+    const int newY = qBound(-maxY, aTransform.y(), 0);
+    if (newY != -mVerticalScrollValue) {
+        onVerticalScrollRequested(-newY);
+    }
+}
+
+// Vertical keyboard scrolling must stay in lock-step with the object tree:
+// the timeline's own (hidden) scrollbar spans the full content height, which
+// can exceed the tree's scroll range. Route vertical keys through the tree so
+// both views clamp to the same bounds; horizontal keys keep the default
+// QScrollArea behavior.
+void TimeLineWidget::keyPressEvent(QKeyEvent* aEvent) {
+    const int current = mVerticalScrollValue;
+    int target = current;
+    bool isVertical = false;
+    switch (aEvent->key()) {
+    case Qt::Key_Up:       target = current - kVerticalStep; isVertical = true; break;
+    case Qt::Key_Down:     target = current + kVerticalStep; isVertical = true; break;
+    case Qt::Key_PageUp:   target = current - verticalScrollBar()->pageStep(); isVertical = true; break;
+    case Qt::Key_PageDown: target = current + verticalScrollBar()->pageStep(); isVertical = true; break;
+    default: break;
+    }
+    if (isVertical) {
+        onVerticalScrollRequested(target);
+        aEvent->accept();
+        return;
+    }
+    QScrollArea::keyPressEvent(aEvent);
 }
 
 } // namespace gui

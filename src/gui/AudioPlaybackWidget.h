@@ -21,6 +21,8 @@
 #include <QtMultimedia/QAudioOutput>
 #include <utility>
 
+namespace core { class Project; }
+
 struct audioConfig{
     QString audioName = "Placeholder";
     QFileInfo audioPath = QFileInfo();
@@ -72,7 +74,7 @@ public:
     static void addTrack(mediaState *state, const QUrl& source);
     static void modifyTrack(mediaState *state, std::vector<audioConfig>* config, int index);
     static void removeTrack(mediaState *state, int index);
-    static void aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps, int curFrame, int frameCount);
+    static void aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps, int curFrame);
     static bool serialize(std::vector<audioConfig>* pConf, const QString& outPath);
     static bool deserialize(const QJsonObject& pConf, std::vector<audioConfig>* playbackConfig) ;
     static float getVol(int volume){ return static_cast<float>(volume / 100.0); }
@@ -87,7 +89,12 @@ public:
         }
         return conf;
     }
-    static void correctTrackPos(QMediaPlayer* player, int curFrame, int frameCount, int fps, audioConfig& config);
+    static void correctTrackPos(QMediaPlayer* player, int curFrame, int fps, audioConfig& config);
+    // Keep every track's position aligned with the playhead; call on each frame
+    // change while playing. prevFrame is the previously played frame — a jump
+    // of more than one frame repositions the track, normal stepping leaves it
+    // to its own clock.
+    static void syncTracks(core::Project* aProject, int curFrame, int prevFrame, int fps);
     void setupUi(QWidget *audioWidget, mediaState *mediaPlayer, std::vector<audioConfig>* config){
         if (audioWidget->objectName().isEmpty()) {audioWidget->setObjectName(QString::fromUtf8("audioWidget")); }
         mainWidget = audioWidget;

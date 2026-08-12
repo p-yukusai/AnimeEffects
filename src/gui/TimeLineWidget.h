@@ -21,6 +21,10 @@
 
 namespace gui {
 
+// Vertical scroll step for keyboard panning; matches ObjectTreeWidget's
+// scrollbar singleStep so arrows behave identically on both views.
+constexpr int kVerticalStep = 24;
+
 class TimeLineWidget: public QScrollArea {
     Q_OBJECT
 
@@ -40,6 +44,9 @@ public:
     util::Signaler<void()> onFrameUpdated;
     util::Signaler<void()> onTimeFormatChanged;
     util::Signaler<void(bool)> onPlayBackStateChanged;
+    // Vertical scroll request (MMB pan or keyboard); the object tree applies
+    // it, clamps to its own range, and syncs the actual value back
+    util::Signaler<void(int)> onVerticalScrollRequested;
 
 
 public:
@@ -55,6 +62,7 @@ private:
     virtual void mouseReleaseEvent(QMouseEvent* aEvent);
     virtual void mouseDoubleClickEvent(QMouseEvent* aEvent);
     virtual void wheelEvent(QWheelEvent* aEvent);
+    virtual void keyPressEvent(QKeyEvent* aEvent);
     virtual void resizeEvent(QResizeEvent* aEvent);
     virtual void scrollContentsBy(int aDx, int aDy);
 
@@ -64,7 +72,9 @@ private:
     void setScrollBarValue(const QPoint& aViewportTransform);
     void updateCamera();
     void updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
+    void panTo(const QPoint& aTransform);
     void onPlayBackUpdated();
+    void syncAudioTracks();
     void onThemeUpdated(theme::Theme&);
 
     GUIResources& mGUIResources;
@@ -75,6 +85,9 @@ private:
     core::AbstractCursor mAbstractCursor;
     int mVerticalScrollValue;
     int mHorizontalScrollValue;
+    bool mIsPanning;
+    QPoint mPanGrabPos;
+    QPoint mPanStartTransform;
 
     // for animation
     QTimer mTimer;

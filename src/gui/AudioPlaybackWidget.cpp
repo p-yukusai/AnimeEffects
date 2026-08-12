@@ -1,4 +1,5 @@
 #include "AudioPlaybackWidget.h"
+#include "core/Project.h"
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QStringRef>
@@ -7,6 +8,50 @@
 void checkConnection(const bool connection){
     if(!connection){
         QMessageBox::warning(nullptr, "Qt connection error", "Unable to connect UI component");
+    }
+}
+
+namespace {
+
+// Target playback position of a track (in ms) while the playhead is at curFrame.
+qint64 trackPositionMs(const audioConfig& config, int curFrame, int fps) {
+    constexpr float toMillis = 1000.0f;
+    return static_cast<qint64>(static_cast<float>(config.startFrame + curFrame) / static_cast<float>(fps) * toMillis);
+}
+
+} // namespace
+
+void AudioPlaybackWidget::syncTracks(core::Project* aProject, int curFrame, int prevFrame, int fps) {
+    if (aProject->pConf == nullptr || aProject->mediaPlayer == nullptr || !aProject->mediaPlayer->playing)
+        return;
+    int currentPlayer = 0;
+    for (auto& file : *aProject->pConf) {
+        if (currentPlayer >= aProject->mediaPlayer->players.size())
+            break; // a track without a backing player (config changed mid-playback)
+        auto* player = aProject->mediaPlayer->players.at(currentPlayer);
+        if (player->playbackState() == QMediaPlayer::PlayingState) {
+            // Reposition on playhead jumps; during normal one-frame stepping the
+            // track keeps its own clock.
+            if (curFrame - 1 != prevFrame && curFrame + 1 != prevFrame && curFrame != prevFrame) {
+                correctTrackPos(player, curFrame, fps, file);
+            }
+            if (aProject->animator().isSuspended() || file.endFrame <= curFrame || !file.playbackEnable) {
+                player->stop();
+            }
+        } else {
+            if (file.startFrame <= curFrame && file.endFrame > curFrame && file.playbackEnable) {
+                const qint64 duration = player->duration();
+                // The media may end before the playhead leaves the frame range.
+                // Once the target position is past the end of the file, do not
+                // restart — replaying would just loop the tail until the range
+                // is left.
+                if (duration <= 0 || trackPositionMs(file, curFrame, fps) < duration) {
+                    correctTrackPos(player, curFrame, fps, file);
+                    player->play();
+                }
+            }
+        }
+        currentPlayer++;
     }
 }
 
@@ -58,7 +103,7 @@ bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf, std::vector<audi
     return true;
 }
 
-void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps, int curFrame, int frameCount){
+void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, mediaState* state, int fps, int curFrame){
     //qDebug("Media player requested");
     int x = 0;
     for(auto conf: *pConf){
@@ -77,7 +122,7 @@ void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, me
             player->setSource(config.audioPath.absoluteFilePath());
         }
         if(output->volume() != getVol(config.volume)){ output->setVolume(getVol(config.volume)); }
-        correctTrackPos(player, curFrame, frameCount, fps, const_cast<audioConfig&>(config));
+        correctTrackPos(player, curFrame, fps, const_cast<audioConfig&>(config));
         if (state->playing || play && player->playbackState() == QMediaPlayer::PlayingState) {
             if (!state->playing) {state->playing = true;}
             // Do nothing
@@ -415,11 +460,13 @@ void AudioPlaybackWidget::modifyTrack(mediaState* state, std::vector<audioConfig
     }
 }
 
-void AudioPlaybackWidget::correctTrackPos(QMediaPlayer* player, int curFrame,  int frameCount, int fps, audioConfig& config) {
-    // Calculate times in milliseconds
-    constexpr float toMillis = 1000.0;
-    const int frame = frameCount - (frameCount - config.startFrame - curFrame);
-    auto positionMs = static_cast<qint64>(static_cast<float>(frame) / static_cast<float>(fps) * toMillis);
-    if (player->position() == positionMs || player->position() + 1 == positionMs || player->position() -1 == positionMs) { return; }
+void AudioPlaybackWidget::correctTrackPos(QMediaPlayer* player, int curFrame, int fps, audioConfig& config) {
+    const qint64 positionMs = trackPositionMs(config, curFrame, fps);
+    // Tolerate sub-frame drift: when a playback tick lands late the timeline
+    // catches the playhead up by a frame or two, while the track is already at
+    // wall-clock. Seeking by that sub-frame offset mid-playback is audible as a
+    // stutter, so only reposition on real drift of at least one frame.
+    const qint64 oneFrameMs = qMax<qint64>(1, static_cast<qint64>(1000.0 / fps));
+    if (qAbs(player->position() - positionMs) < oneFrameMs) { return; }
     if (player->hasAudio() && positionMs >= 0) { player->setPosition(positionMs); }
 }
