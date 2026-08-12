@@ -13,11 +13,11 @@ QGroupBox {
     background-color: #fcfcfc;
     border: none;
     border-radius: 8px;
-    margin-top: 6px;
+    margin-top: 2px;
     padding-left: 6px;
     padding-right: 6px;
-    padding-top: 12px;
-    padding-bottom: 24px;
+    padding-top: 26px;
+    padding-bottom: 3px;
 }
 
 QGroupBox::title {
@@ -25,6 +25,8 @@ QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
     color: #3c3c3c;
+    padding-top: 10px;
+    padding-left: 6px;
 }
 
 QPushButton {
