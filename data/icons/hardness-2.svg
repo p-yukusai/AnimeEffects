@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+  <defs>
+    <radialGradient id="dab" gradientUnits="userSpaceOnUse" cx="12" cy="12" r="9.7">
+      <stop offset="0" stop-color="currentColor" stop-opacity="1"/>
+      <stop offset="0.66" stop-color="currentColor" stop-opacity="1"/>
+      <stop offset="1" stop-color="currentColor" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="12" cy="12" r="9.7" fill="url(#dab)"/>
+</svg>

@@ -125,13 +125,27 @@ void GUIResources::loadIcons() {
     const QString iconDirPath(mResourceDir + "/themes/" + mTheme.id() + "/icon");
 
     // Legacy icons are raster, the phosphor/at-icons ones are per-theme SVG
-    // (both generated at build time by tools/icon_tint).
-    QStringList filters;
-    filters << "*.png" << "*.svg";
-    QDirIterator itr(iconDirPath, filters, QDir::Files, QDirIterator::NoIteratorFlags);
-
-    while (itr.hasNext()) {
-        loadIcon(itr.next());
+    // (both generated at build time by tools/icon_tint). When both a .png and
+    // a .svg exist for the same glyph name (png -> svg migrations), the SVG
+    // must win: it is the canonical monochrome source, tinted per theme.
+    QStringList files;
+    {
+        QStringList filters;
+        filters << "*.png" << "*.svg";
+        QDirIterator itr(iconDirPath, filters, QDir::Files, QDirIterator::NoIteratorFlags);
+        while (itr.hasNext()) {
+            files.append(itr.next());
+        }
+        // stable order: PNGs first, then SVGs (loadIcon overwrites by base
+        // name, so the later SVG replaces the legacy raster)
+        std::sort(files.begin(), files.end(), [](const QString& a, const QString& b) {
+            const bool aPng = a.endsWith(".png");
+            const bool bPng = b.endsWith(".png");
+            return (aPng != bPng) ? aPng : (a < b);
+        });
+    }
+    for (const QString& path : files) {
+        loadIcon(path);
     }
 }
 
