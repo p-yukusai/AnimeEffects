@@ -90,9 +90,15 @@ public:
     bool isLinking() const { return !mList.empty(); }
 
     void clear() {
-        for (NodeList::iterator itr = mList.begin(); itr != mList.end(); ++itr) {
-            (*itr)->mLink = nullptr;
+        // Null each node's back-pointer AND drop it from the list. Leaving
+        // nodes in the list after their mLink is cleared lets a reused
+        // LifeLink accumulate raw pointers to nodes that were later destroyed
+        // (deselected key deleted / undo), so the next clear() dereferences
+        // freed memory.
+        for (Node* node : mList) {
+            node->mLink = nullptr;
         }
+        mList.clear();
     }
 
     template<typename tObject>

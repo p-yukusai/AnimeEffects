@@ -187,7 +187,7 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
         if (key)
             key->invoker = [=]() {
                 mTargets = core::TimeLineEvent();
-                mEditor->retrieveFocusTargets(mTargets);
+                mEditor->retrieveSelectionTargets(mTargets);
                 mCopyKey->trigger();
             };
     }
@@ -206,7 +206,7 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
         if (key)
             key->invoker = [=]() {
                 mTargets = core::TimeLineEvent();
-                if (mEditor->retrieveFocusTargets(mTargets)) {
+                if (mEditor->retrieveSelectionTargets(mTargets)) {
                     mDeleteKey->trigger();
                 }
             };
@@ -250,7 +250,7 @@ int TimeLineEditorWidget::maxFrame() const { return mEditor->maxFrame(); }
 void TimeLineEditorWidget::updateTimeCursorPos() {
     if (mCamera) {
         auto pos = mEditor->currentTimeCursorPos();
-        const core::TimeFormat format(util::Range(0, mEditor->maxFrame()), ctrl::TimeLineEditor::kRulerFps);
+        const core::TimeFormat format(util::Range(0, mEditor->maxFrame()), mEditor->fps());
         const QString frameText = format.frameToString(mEditor->currentFrame().get(), mEditor->timeFormatType());
         mTimeCursor.setHeaderInfo(frameText, mTimelineTheme.headerBackgroundColor());
         // The ruler header starts at the camera's top; anchor the cursor widget
@@ -308,8 +308,8 @@ void TimeLineEditorWidget::updateLineSelection(core::ObjectNode* aRepresent) {
     this->update();
 }
 
-bool TimeLineEditorWidget::updateCursor(const core::AbstractCursor& aCursor) {
-    ctrl::TimeLineEditor::UpdateFlags flags = mEditor->updateCursor(aCursor);
+bool TimeLineEditorWidget::updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers) {
+    ctrl::TimeLineEditor::UpdateFlags flags = mEditor->updateCursor(aCursor, aModifiers);
 
     if (flags & ctrl::TimeLineEditor::UpdateFlag_ModView) {
         updateTimeCursorPos();
@@ -391,7 +391,7 @@ void TimeLineEditorWidget::onContextMenuRequested(const QPoint& aPos) {
     QMenu menu(this);
 
     mTargets = core::TimeLineEvent();
-    if (mEditor->checkContactWithKeyFocus(mTargets, aPos)) {
+    if (mEditor->selectKeysAt(mTargets, aPos)) {
         menu.addAction(mCopyKey);
         menu.addAction(mCopyToClipboard);
         menu.addSeparator();

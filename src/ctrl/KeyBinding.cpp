@@ -18,6 +18,7 @@ bool KeyBinding::getKeyValidity(int aKeyCode) {
     case Qt::Key_Up:
     case Qt::Key_Right:
     case Qt::Key_Down:
+    case Qt::Key_Delete:
         return true;
     default:
         return false;

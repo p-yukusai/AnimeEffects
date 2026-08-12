@@ -493,14 +493,6 @@ namespace TimeLineUtil {
         pushNewKey<ImageKey, TimeKeyType_Image>(aProject, aTarget, aFrame, aKey, CmndName::tr("Add new image key"));
     }
 
-    //-------------------------------------------------------------------------------------------------
-    Notifier* createMoveNotifier(Project& aProject, ObjectNode& aTarget, const TimeKeyPos& aPos) {
-        auto notifier = new Notifier(aProject);
-        notifier->event().setType(TimeLineEvent::Type_MoveKey);
-        notifier->event().pushTarget(aTarget, aPos);
-        return notifier;
-    }
-
 } // namespace TimeLineUtil
 
 } // namespace ctrl

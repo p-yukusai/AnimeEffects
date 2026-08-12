@@ -152,9 +152,6 @@ namespace TimeLineUtil {
 
     void pushNewImageKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::ImageKey* aKey);
 
-    //-------------------------------------------------------------------------------------------------
-    Notifier* createMoveNotifier(core::Project& aProject, core::ObjectNode& aTarget, const core::TimeKeyPos& aPos);
-
 } // namespace TimeLineUtil
 
 } // namespace ctrl

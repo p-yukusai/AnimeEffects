@@ -106,9 +106,9 @@ void TimeLineWidget::updateCamera() {
     mInner->updateCamera(mCameraInfo);
 }
 
-void TimeLineWidget::updateCursor(const core::AbstractCursor& aCursor) {
+void TimeLineWidget::updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers) {
     onCursorUpdated();
-    if (mInner->updateCursor(aCursor)) {
+    if (mInner->updateCursor(aCursor, aModifiers)) {
         onFrameUpdated();
     }
 }
@@ -183,28 +183,28 @@ void TimeLineWidget::triggerOnTimeFormatChanged() {
 void TimeLineWidget::mouseMoveEvent(QMouseEvent* aEvent) {
     QScrollArea::mouseMoveEvent(aEvent);
     if (mAbstractCursor.setMouseMove(aEvent, mCameraInfo)) {
-        updateCursor(mAbstractCursor);
+        updateCursor(mAbstractCursor, aEvent->modifiers());
     }
 }
 
 void TimeLineWidget::mousePressEvent(QMouseEvent* aEvent) {
     QScrollArea::mousePressEvent(aEvent);
     if (mAbstractCursor.setMousePress(aEvent, mCameraInfo)) {
-        updateCursor(mAbstractCursor);
+        updateCursor(mAbstractCursor, aEvent->modifiers());
     }
 }
 
 void TimeLineWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
     QScrollArea::mouseReleaseEvent(aEvent);
     if (mAbstractCursor.setMouseRelease(aEvent, mCameraInfo)) {
-        updateCursor(mAbstractCursor);
+        updateCursor(mAbstractCursor, aEvent->modifiers());
     }
 }
 
 void TimeLineWidget::mouseDoubleClickEvent(QMouseEvent* aEvent) {
     QScrollArea::mouseDoubleClickEvent(aEvent);
     if (mAbstractCursor.setMouseDoubleClick(aEvent, mCameraInfo)) {
-        updateCursor(mAbstractCursor);
+        updateCursor(mAbstractCursor, aEvent->modifiers());
     }
 }
 

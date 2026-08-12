@@ -63,7 +63,7 @@ private:
     QPoint viewportTransform() const;
     void setScrollBarValue(const QPoint& aViewportTransform);
     void updateCamera();
-    void updateCursor(const core::AbstractCursor& aCursor);
+    void updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
     void onPlayBackUpdated();
     void onThemeUpdated(theme::Theme&);
 

@@ -95,7 +95,8 @@ add_library(${PROJECT_NAME}
     srt/srt_MoveMode.cpp srt/srt_MoveMode.h
     srt/srt_Symbol.cpp srt/srt_Symbol.h
     time/time_Current.cpp time/time_Current.h
-    time/time_Focuser.cpp time/time_Focuser.h
+    time/time_Marquee.cpp time/time_Marquee.h
+    time/time_Selection.cpp time/time_Selection.h
     time/time_Renderer.cpp time/time_Renderer.h
     time/time_Scaler.cpp time/time_Scaler.h
         ExportParams.h

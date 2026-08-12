@@ -62,7 +62,7 @@ public:
     void updateCamera(const core::CameraInfo& aCamera);
     void updateLines(QTreeWidgetItem* aTopNode);
     void updateLineSelection(core::ObjectNode* aRepresent);
-    bool updateCursor(const core::AbstractCursor& aCursor);
+    bool updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
     void updateWheel(QWheelEvent* aEvent, int aMouseX, int& aFrameBefore, int& aPixelAfter);
     void updateProjectAttribute();
     void updateTheme(theme::Theme&);
