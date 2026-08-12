@@ -1,7 +1,7 @@
 #include "gui/tool/tool_SRTPanel.h"
 
 namespace {
-int kButtonSize = 20;
+int kButtonSize = 24;
 int kButtonSpace = kButtonSize;
 } // namespace
 
@@ -25,7 +25,7 @@ namespace tool {
 
     void SRTPanel::applyIcons() {
         mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("move") << mResources.icon("move-centroid"), QSize(16, 16));
+            QVector<QIcon>() << mResources.icon("move") << mResources.icon("move-centroid"), QSize(18, 18));
     }
 
     void SRTPanel::onThemeUpdated(theme::Theme&) {
@@ -90,7 +90,8 @@ namespace tool {
 
     int SRTPanel::updateGeometry(const QPoint& aPos, int aWidth) {
         static const int kItemLeft = 8;
-        static const int kItemTop = 26;
+        // content starts at the stylesheet's content top
+        const int kItemTop = this->contentsMargins().top();
 
         const int itemWidth = aWidth - kItemLeft * 2;
         QPoint curPos(kItemLeft, kItemTop);
@@ -108,10 +109,11 @@ namespace tool {
             curPos.setY(curPos.y() + 5);
         }
 
-        // myself
-        this->setGeometry(aPos.x(), aPos.y(), aWidth, curPos.y());
+        // myself: card height = content extent + bottom padding (see ViewPanel)
+        const int b = this->contentsMargins().bottom();
+        this->setGeometry(aPos.x(), aPos.y(), aWidth, curPos.y() + b);
 
-        return aPos.y() + curPos.y();
+        return aPos.y() + curPos.y() + b;
     }
 
 } // namespace tool

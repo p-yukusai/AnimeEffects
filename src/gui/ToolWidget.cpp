@@ -29,6 +29,11 @@ ToolWidget::ToolWidget(
     createModePanel();
     setPanelActivity(false);
 
+    // the dock width is the default and the max: narrower would cramp the
+    // buttons, wider adds no value (the sizeHint width is the panel's design
+    // width, divisible by 4)
+    setMaximumWidth(mSizeHint.width());
+
     mSRTPanel = new tool::SRTPanel(this, mResources);
     mSRTPanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
     mSRTPanel->hide();

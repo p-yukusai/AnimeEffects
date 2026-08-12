@@ -21,6 +21,7 @@ QGroupBox {
 }
 
 QGroupBox::title {
+    font-weight: bold;
     subcontrol-origin: margin;
     subcontrol-position: top left;
     color: #3c3c3c;

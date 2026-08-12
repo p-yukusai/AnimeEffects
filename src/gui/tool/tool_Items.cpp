@@ -147,12 +147,11 @@ namespace tool {
     }
 
     int CheckBoxItem::updateGeometry(const QPoint& aPos, int aWidth) {
-        // qDebug() << mCheckBox->width() << mCheckBox->height() << mCheckBox->sizeHint();
-        // const int height = mCheckBox->height();
         const int height = mCheckBox->sizeHint().height();
-        // const int height = 16;
         mCheckBox->setGeometry(aPos.x(), aPos.y(), aWidth, height);
-        return height;
+        // +1px so stacked rows keep a 2px gap (the 15px indicator already
+        // leaves 1px slack inside the 16px sizeHint rect)
+        return height + 1;
     }
 
 } // namespace tool
