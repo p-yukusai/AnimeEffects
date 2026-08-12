@@ -12,8 +12,8 @@ namespace gui {
 namespace prop {
 
     //-------------------------------------------------------------------------------------------------
-    DefaultDepthGroup::DefaultDepthGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth):
-        KeyGroup(tr("Depth"), aLabelWidth), mAccessor(aAccessor), mDepth() {
+    DefaultDepthGroup::DefaultDepthGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* aGUIResources):
+        KeyGroup(tr("Depth"), aLabelWidth, aGUIResources), mAccessor(aAccessor), mDepth() {
         {
             aPanel.addGroup(this);
 
@@ -21,7 +21,7 @@ namespace prop {
             mDepth = new DecimalItem(this);
             mDepth->setRange(core::Constant::transMin(), core::Constant::transMax());
             mDepth->onValueUpdated = [=](double, double aNext) { this->mAccessor.assignDefaultDepth(aNext); };
-            this->addItem(tr("Position :"), mDepth);
+            this->addItem(tr("Position"), mDepth);
         }
         this->setEnabled(false);
     }
@@ -35,8 +35,8 @@ namespace prop {
     }
 
     //-------------------------------------------------------------------------------------------------
-    DefaultOpaGroup::DefaultOpaGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth):
-        KeyGroup(tr("Opacity"), aLabelWidth), mAccessor(aAccessor), mOpacity() {
+    DefaultOpaGroup::DefaultOpaGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* aGUIResources):
+        KeyGroup(tr("Opacity"), aLabelWidth, aGUIResources), mAccessor(aAccessor), mOpacity() {
         {
             aPanel.addGroup(this);
 
@@ -45,7 +45,7 @@ namespace prop {
             mOpacity->setRange(0.0f, 1.0f);
             mOpacity->box().setSingleStep(0.1);
             mOpacity->onValueUpdated = [=](double, double aNext) { this->mAccessor.assignDefaultOpacity(aNext); };
-            this->addItem(tr("Rate :"), mOpacity);
+            this->addItem(tr("Rate"), mOpacity);
         }
         this->setEnabled(false);
     }
@@ -59,8 +59,8 @@ namespace prop {
     }
 
     //-------------------------------------------------------------------------------------------------
-    DefaultImageGroup::DefaultImageGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, ViaPoint& aViaPoint):
-        KeyGroup(tr("Image"), aLabelWidth),
+    DefaultImageGroup::DefaultImageGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, ViaPoint& aViaPoint, GUIResources* aGUIResources):
+        KeyGroup(tr("Image"), aLabelWidth, aGUIResources),
         mAccessor(aAccessor),
         mBrowse(),
         mOffset(),
@@ -78,7 +78,7 @@ namespace prop {
                     this->mAccessor.assignDefaultImageResource(*resNode);
                 }
             };
-            this->addItem(tr("Resource :"), mBrowse);
+            this->addItem(tr("Resource"), mBrowse);
 
             // offset
             mOffset = new Vector2DItem(this);
@@ -86,13 +86,13 @@ namespace prop {
             mOffset->onValueUpdated = [=](QVector2D, QVector2D aNext) {
                 this->mAccessor.assignDefaultImageOffset(-aNext);
             };
-            this->addItem(tr("Center :"), mOffset);
+            this->addItem(tr("Center"), mOffset);
 
             // cell size
             mCellSize = new IntegerItem(this);
             mCellSize->setRange(core::Constant::imageCellSizeMin(), core::Constant::imageCellSizeMax());
             mCellSize->onValueUpdated = [=](int, int aNext) { this->mAccessor.assignDefaultImageCellSize(aNext); };
-            this->addItem(tr("Cell size :"), mCellSize);
+            this->addItem(tr("Cell size"), mCellSize);
         }
         setEnabled(false);
     }
@@ -110,12 +110,11 @@ namespace prop {
     }
 
     //-------------------------------------------------------------------------------------------------
-    DefaultKeyPanel::DefaultKeyPanel(
-        ViaPoint& aViaPoint, core::Project& aProject, const QString& aTitle, QWidget* aParent
-    ):
-        Panel(aTitle, aParent),
+    DefaultKeyPanel::DefaultKeyPanel(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent, GUIResources* aGUIResources):
+        Panel(tr("Default Keys"), aParent, aGUIResources),
         mViaPoint(aViaPoint),
         mProject(aProject),
+        mGUIResources(aGUIResources),
         mTarget(),
         mKeyAccessor(),
         mLabelWidth(),
@@ -123,7 +122,7 @@ namespace prop {
         mOpaPanel(),
         mImagePanel() {
         mKeyAccessor.setProject(&aProject);
-        mLabelWidth = this->fontMetrics().boundingRect(tr("Max text width :")).width();
+        mLabelWidth = this->fontMetrics().boundingRect(tr("Max text width")).width();
 
         build();
         this->hide();
@@ -134,7 +133,6 @@ namespace prop {
         mKeyAccessor.setTarget(aTarget);
 
         if (mTarget) {
-            this->setTitle(mTarget->name() + " : " + tr("Default Keys"));
             this->show();
         } else {
             this->hide();
@@ -157,9 +155,9 @@ namespace prop {
     void DefaultKeyPanel::build() {
         using core::Constant;
 
-        mDepthPanel.reset(new DefaultDepthGroup(*this, mKeyAccessor, mLabelWidth));
-        mOpaPanel.reset(new DefaultOpaGroup(*this, mKeyAccessor, mLabelWidth));
-        mImagePanel.reset(new DefaultImageGroup(*this, mKeyAccessor, mLabelWidth, mViaPoint));
+        mDepthPanel.reset(new DefaultDepthGroup(*this, mKeyAccessor, mLabelWidth, mGUIResources));
+        mOpaPanel.reset(new DefaultOpaGroup(*this, mKeyAccessor, mLabelWidth, mGUIResources));
+        mImagePanel.reset(new DefaultImageGroup(*this, mKeyAccessor, mLabelWidth, mViaPoint, mGUIResources));
 
         this->addStretch();
     }

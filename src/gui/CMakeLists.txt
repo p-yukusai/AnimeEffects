@@ -74,6 +74,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     prop/prop_ConstantPanel.cpp prop/prop_ConstantPanel.h
     prop/prop_CurrentKeyPanel.cpp prop/prop_CurrentKeyPanel.h
     prop/prop_DefaultKeyPanel.cpp prop/prop_DefaultKeyPanel.h
+    prop/prop_HeaderButton.cpp prop/prop_HeaderButton.h
     prop/prop_ItemBase.h
     prop/prop_Items.cpp prop/prop_Items.h
     prop/prop_KeyAccessor.cpp prop/prop_KeyAccessor.h

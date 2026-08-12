@@ -1,4 +1,5 @@
 #include <QDebug>
+#include <QCursor>
 #include <QHeaderView>
 #include <QStandardItem>
 #include <QApplication>
@@ -24,16 +25,47 @@ namespace prop {
         spinBox->mTriggeredByArrows = false;
     }
 
-    SpinBox::SpinBox(QWidget* parent): QSpinBox(parent), mTriggeredByArrows(false) { setAccelerated(true); }
+    SpinBox::SpinBox(QWidget* parent): QSpinBox(parent), mTriggeredByArrows(false) {
+        setAccelerated(true);
+        // fill the shared form field column (ExpandingFieldsGrow)
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
 
     void SpinBox::stepBy(int steps) { stepByHelper(this, steps); }
 
     //-------------------------------------------------------------------------------------------------
     DoubleSpinBox::DoubleSpinBox(QWidget* parent): QDoubleSpinBox(parent), mTriggeredByArrows(false) {
         setAccelerated(true);
+        // Always a dot separator: the project data (.anie/JSON) uses '.', so
+        // the display must round-trip what you type/save regardless of the
+        // system locale (a comma-locale would show "0,5" and reject the dot).
+        setLocale(QLocale::c());
+        // fill the shared form field column (ExpandingFieldsGrow)
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 
     void DoubleSpinBox::stepBy(int steps) { stepByHelper(this, steps); }
+
+    QString DoubleSpinBox::textFromValue(double aValue) const {
+        QString text = QDoubleSpinBox::textFromValue(aValue);
+        const QString sep = locale().decimalPoint();
+        const int sepIdx = text.lastIndexOf(sep);
+        if (sepIdx >= 0) {
+            int end = text.size();
+            while (end > sepIdx + sep.size() && text.at(end - 1) == '0') {
+                --end;
+            }
+            text = text.left(end);
+            if (text.endsWith(sep)) {
+                text.chop(sep.size());
+            }
+        }
+        // "-0" (from e.g. -0.000 at higher caps) reads as zero
+        if (text == "-0") {
+            text = "0";
+        }
+        return text;
+    }
 
     //-------------------------------------------------------------------------------------------------
     CheckItem::CheckItem(QWidget* aParent): mBox(), mStamp(), mSignal(true), mIsEnable(true) {
@@ -73,6 +105,8 @@ namespace prop {
     //-------------------------------------------------------------------------------------------------
     ComboItem::ComboItem(QWidget* aParent): mBox(), mStamp(), mSignal(true) {
         mBox = new QComboBox(aParent);
+        // fill the shared form field column (ExpandingFieldsGrow)
+        mBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         mStamp = mBox->currentIndex();
 
         mBox->connect(mBox, util::SelectArgs<int>::from(&QComboBox::currentIndexChanged), [=]() {
@@ -107,8 +141,10 @@ namespace prop {
 
         for (int i = 0; i < 2; ++i) {
             mBox[i] = new QComboBox(aParent);
+            // expand with the shared field column; stretch 1 splits it 50/50
+            mBox[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-            mLayout->addWidget(mBox[i]);
+            mLayout->addWidget(mBox[i], 1);
             mBox[i]->connect(mBox[i], util::SelectArgs<int>::from(&QComboBox::currentIndexChanged), [=]() {
                 this->onEditingFinished();
                 mBox[i]->clearFocus();
@@ -151,9 +187,18 @@ namespace prop {
     //-------------------------------------------------------------------------------------------------
     EasingItem::EasingItem(QWidget* aParent, const GUIResources* mGUIResources): mLayout(), mBox(), mDBox(), mStamp(), mSignal(true) {
         mLayout = new QGridLayout();
+        // The stylesheet makes the default grid spacing collapse to 0; keep
+        // the 2px gap the other multi-field rows use (Combo2DItem).
+        mLayout->setSpacing(2);
+
+        // The two logical columns split the shared field column 50/50; the
+        // Custom button spans columns 1-3 and fills its half.
+        mLayout->setColumnStretch(0, 1);
+        mLayout->setColumnStretch(1, 1);
 
         for (int i = 0; i < 2; ++i) {
             mBox[i] = new QComboBox(aParent);
+            mBox[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             mLayout->addWidget(mBox[i], 0, i);
             mBox[i]->connect(mBox[i], util::SelectArgs<int>::from(&QComboBox::currentIndexChanged), [=]() {
                 this->onEditingFinished();
@@ -181,7 +226,12 @@ namespace prop {
 
         // Custom spline
         mCustomEasing = new QPushButton;
-        mLayout->addWidget(mCustomEasing, 1, 1, 1, 3);
+        // objectName lets propertywidget.ssa style its height to match the fields
+        mCustomEasing->setObjectName("customEasing");
+        mCustomEasing->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        // col 1 only (no span): a span across cols 1-3 left two empty columns
+        // whose 2px gaps trailed 4px of space after the row-0 combos
+        mLayout->addWidget(mCustomEasing, 1, 1);
         mCustomEasing->setIcon(mGUIResources->icon("ease"));
         mCustomEasing->setText(QCoreApplication::tr("Custom"));
         mCustomEasing->setToolTip(QCoreApplication::tr("Bezier editor"));
@@ -215,6 +265,7 @@ namespace prop {
             mBox[i]->setEnabled(aEnable);
         }
         mDBox->setEnabled(aEnable);
+        mCustomEasing->setEnabled(aEnable);
     }
 
     void EasingItem::setItemVisible(bool aVisible) {
@@ -222,6 +273,7 @@ namespace prop {
             mBox[i]->setVisible(aVisible);
         }
         mDBox->setVisible(aVisible);
+        mCustomEasing->setVisible(aVisible);
     }
 
     util::Easing::Param EasingItem::value() const {
@@ -281,7 +333,9 @@ namespace prop {
         mBox = new DoubleSpinBox(aParent);
 
         mStamp = mBox->value();
-        mBox->setDecimals(3);
+        // 2-decimal cap: sub-unit precision is plenty for float data and the
+        // display trims trailing zeros anyway
+        mBox->setDecimals(2);
 
         mBox->connect(mBox, &QAbstractSpinBox::editingFinished, [=]() {
             this->onEditingFinished();
@@ -321,8 +375,11 @@ namespace prop {
 
         for (int i = 0; i < 2; ++i) {
             mBox[i] = new DoubleSpinBox(aParent);
-            mBox[i]->setDecimals(3);
-            mLayout->addWidget(mBox[i]);
+            // 2-decimal cap: sub-unit precision is plenty for float data and
+            // the display trims trailing zeros anyway
+            mBox[i]->setDecimals(2);
+            // stretch 1 splits the shared field column 50/50
+            mLayout->addWidget(mBox[i], 1);
 
             mBox[i]->connect(mBox[i], &QAbstractSpinBox::editingFinished, [=]() {
                 this->onEditingFinished();
@@ -379,11 +436,13 @@ namespace prop {
         // mLine->setEnabled(false);
         mLine->setReadOnly(true);
         mLine->setFocusPolicy(Qt::NoFocus);
-        mLayout->addWidget(mLine);
+        // the line fills the shared field column, the browser button stays fixed
+        mLayout->addWidget(mLine, 1);
         mButton = new QPushButton(aParent);
         mButton->connect(mButton, &QPushButton::clicked, [=]() { this->onButtonPushed(); });
         mButton->setObjectName("browser");
         mButton->setFocusPolicy(Qt::NoFocus);
+        mButton->setCursor(Qt::PointingHandCursor);
         mLayout->addWidget(mButton);
     }
 

@@ -44,6 +44,9 @@ namespace prop {
         DoubleSpinBox(QWidget* parent = nullptr);
 
         virtual void stepBy(int steps) override;
+        // display "12.5" / "120" instead of "12.500" / "120.00" (decimals
+        // remains the precision cap)
+        virtual QString textFromValue(double aValue) const override;
 
         bool mTriggeredByArrows;
     };
@@ -244,7 +247,7 @@ namespace prop {
     private:
         void onEditingFinished();
 
-        QLayout* mLayout;
+        QHBoxLayout* mLayout;
         DoubleSpinBox* mBox[2];
         QVector2D mStamp;
         bool mSignal;
@@ -267,7 +270,7 @@ namespace prop {
         UpdateType onButtonPushed;
 
     private:
-        QLayout* mLayout;
+        QHBoxLayout* mLayout;
         QLineEdit* mLine;
         QPushButton* mButton;
     };

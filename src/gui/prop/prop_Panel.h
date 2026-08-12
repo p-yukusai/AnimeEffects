@@ -2,33 +2,33 @@
 #define GUI_PROP_PANEL_H
 
 #include <functional>
-#include <QPalette>
-#include <QSize>
+#include <QFrame>
 #include <QVBoxLayout>
-#include "gui/prop/prop_KeyGroup.h"
-#include "gui/prop/prop_ItemBase.h"
+#include "gui/prop/prop_HeaderButton.h"
 
 namespace gui {
+
+class GUIResources;
+
 namespace prop {
 
-    class Panel: public QGroupBox {
+    // Collapsible panel: a full-row header button (see HeaderButton) above
+    // a content widget holding the groups. Collapsing hides the content, so
+    // the panel height tracks the layout instead of fixed-height hacks.
+    class Panel: public QFrame {
         Q_OBJECT
     public:
-        Panel(const QString& aTitle, QWidget* aParent);
+        Panel(const QString& aTitle, QWidget* aParent, GUIResources* aGUIResources);
         virtual ~Panel() {}
-        void addGroup(QGroupBox* aGroup);
+        void addGroup(QWidget* aGroup);
         void addStretch();
 
         std::function<void()> onCollapsed;
 
-    private slots:
-        void onClicked(bool aChecked);
-        void onChildrenClicked(bool aChecked);
-
     private:
+        HeaderButton* mHeader;
+        QWidget* mContent;
         QVBoxLayout* mLayout;
-        QVector<QGroupBox*> mGroups;
-        bool mChecked;
     };
 
 } // namespace prop

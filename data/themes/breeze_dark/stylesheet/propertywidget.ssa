@@ -1,3 +1,46 @@
+/* One shared field box for the three field types so every property row
+   is the same height: same vertical padding, same border, and per-type
+   content min-heights that land on the same total.
+   min-height measures the content box and the spin's box carries 3px of
+   structural overhead, so: combo/line 20 + 2*1 padding + 2*1 border ==
+   spin 17 + 3 overhead + 2 + 2 == 24px.
+   The border is geometry-reserving: at rest it takes the field color
+   (an explicit color also stops the non-editable combo's button-frame
+   fallback from painting the QPushButton border), on hover/focus it
+   only changes color, never width. */
+QComboBox,
+QAbstractSpinBox,
+QLineEdit {
+    background-color: #3a3a3a;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    border: 1px solid #3a3a3a;
+}
+
+QComboBox,
+QLineEdit {
+    min-height: 20px;
+}
+
+QAbstractSpinBox {
+    min-height: 17px;
+}
+
+QComboBox:hover,
+QComboBox:focus,
+QAbstractSpinBox:hover,
+QAbstractSpinBox:focus,
+QLineEdit:hover,
+QLineEdit:focus {
+    border: 1px solid #7e7e7e;
+}
+
+QComboBox:disabled,
+QAbstractSpinBox:disabled,
+QLineEdit:disabled {
+    background-color: #1f1f1f;
+}
+
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: right;
@@ -15,11 +58,25 @@ QComboBox::down-arrow:disabled {
 }
 
 QSplitter#propertysplitter {
-    width: 380px;
+    /* default width; the dock clamps to [320, 640] (MainWindow) */
+    width: 320px;
+}
+
+/* the dock's single flat surface (== the #262626 window floor) */
+QWidget#backboard {
+    background-color: #262626;
+}
+
+/* 1px hairline between the major panels (inserted by Backboard) */
+QFrame#separator {
+    border: none;
+    background-color: #343434;
+    min-height: 1px;
+    max-height: 1px;
 }
 
 QFrame#holder {
-    background-color: #323232;
+    background-color: #262626;
     border-radius:8px;
 }
 
@@ -38,140 +95,162 @@ QCheckBox#keyIcon::indicator:checked {
     image: url(data/themes/breeze_dark/icon/caret-down.svg);
 }
 
-QGroupBox#keyGroup {
-    background-color: #323232;
+QFrame#keyGroup {
+    /* sections are flat on the backboard; the collapsible header
+       marks the section, a hairline sits between major panels only */
+    background-color: transparent;
     border:0px solid transparent;
-    border-radius:8px;
-    margin: 2px;
-    padding-top: 16px;
-    padding-bottom: 4px;
-}
-
-QGroupBox#keyGroup::title {
-    subcontrol-origin: margin;
-    subcontrol-position:top left;
+    border-radius:0px;
     margin: 0px;
-    padding-left: 0px;
-    padding-top: 4px;
+    padding-bottom: 0px;
 }
-
-QGroupBox#keyGroup::indicator {
-    width: 14px;
-    height: 14px;
-    padding-left: 7px;
-    padding-top: 2px;
-    margin: 0px;
+QAbstractButton#keyGroupHeader QLabel {
+    background-color: transparent;
+    font-weight: 600;
+    color: #d8d8d8;
 }
-
-QGroupBox#keyGroup::indicator:unchecked {
-    image: url(data/themes/breeze_dark/icon/caret-right.svg);
+QAbstractButton#keyGroupHeader QLabel[hover="true"] {
+    color: #f0f0f0;
 }
-
-QGroupBox#keyGroup::indicator:checked {
-    image: url(data/themes/breeze_dark/icon/caret-down.svg);
-}
-
-QGroupBox#attrGroup {
-    border-radius:8px;
-    margin: 2px;
-    padding-top: 18px;
-    padding-bottom: 4px;
-}
-
-QGroupBox#attrGroup::title {
-    subcontrol-origin: margin;
-    subcontrol-position:top left;
-    margin: 0px;
-    padding-left: 0px;
-    padding-top: 4px;
-}
-
-QGroupBox#attrGroup::indicator {
-    width: 14px;
-    height: 14px;
-    padding-left: 7px;
-    padding-top: 2px;
-    margin: 0px;
-}
-
-QGroupBox#attrGroup::indicator:unchecked {
-    image: url(data/themes/breeze_dark/icon/caret-right.svg);
-}
-
-QGroupBox#attrGroup::indicator:checked {
-    image: url(data/themes/breeze_dark/icon/caret-down.svg);
-}
-
-QGroupBox#keyKnocker {
-    background-color: #323232;
-    border:0px solid transparent;
-    border-radius:8px;
-    margin: 2px;
-    padding-left: 4px;
-    padding-right: 4px;
-    padding-top: 1px;
-    padding-bottom: 1px;
-}
-
-QPushButton#keyKnocker {
-    border: 1px solid #76797c;
-    border-radius: 4px;
+QAbstractButton#keyGroupHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
     padding: 0px;
+    min-height: 24px;
+}
+
+
+
+
+/* field labels sit a step below the values they describe */
+QLabel#attrLabel {
+    /* transparent: same rationale as the knocker label */
+    background-color: transparent;
+    color: #e0e0e0;
+}
+QFrame#attrGroup {
+    border-radius:0px;
     margin: 0px;
-    width: 14px;
-    height: 14px;
+    padding-bottom: 0px;
 }
-QPushButton#keyKnocker::enabled {
-    image: url(data/themes/breeze_dark/icon/plus.svg);
+QAbstractButton#attrGroupHeader QLabel {
+    background-color: transparent;
+    font-weight: 600;
+    color: #d8d8d8;
 }
-QPushButton#keyKnocker::disabled {
-    image: url(data/themes/breeze_dark/icon/minus.svg);
+QAbstractButton#attrGroupHeader QLabel[hover="true"] {
+    color: #f0f0f0;
 }
+QAbstractButton#attrGroupHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    min-height: 24px;
+}
+
+
+
+QWidget#keyKnocker QLabel {
+    background-color: transparent;
+    font-weight: 600;
+    color: #d8d8d8;
+}
+QWidget#keyKnocker QLabel[hover="true"] {
+    color: #f0f0f0;
+}
+QWidget#keyKnocker {
+    /* the add-key row is the section header's stand-in: same
+       geometry and states, plus icon instead of the caret; the
+       whole row knocks the key. */
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    min-height: 24px;
+}
+QToolButton#keyKnockerPlus {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
+}
+
 
 QPushButton#browser {
-    border: 1px solid #76797c;
+    background-color: transparent;
+    border: none;
     border-radius: 4px;
-    padding: 2px;
-    width: 18px;
-    height: 15px;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
+    width: 16px;
+    height: 16px;
 }
 QPushButton#browser::enabled {
     image: url(data/themes/breeze_dark/icon/file.svg);
 }
-QPushButton#browser::disabled {
-    image: url(data/themes/breeze_dark/icon/file.svg);
+QPushButton#browser:hover {
+    background-color: #24e0e0e0;
+}
+QPushButton#browser:pressed {
+    background-color: #40e0e0e0;
+}
+QPushButton#browser:disabled {
+    background-color: transparent;
+    image: url(data/themes/breeze_dark/icon/file-dim.svg);
 }
 
-QGroupBox#propertyPanel {
-    background-color: #2d2d2d;
+QFrame#propertyPanel {
+    /* the panels sit flat on the #backboard surface; hierarchy comes
+       from typography and the hairlines, not side padding */
+    background-color: transparent;
     border:0px solid transparent;
-    border-radius:8px;
-    margin-top: 2px;
-    margin-bottom: 2px;
-    margin-left: 2px;
-    margin-right: 2px;
-    padding-top: 16px;
-    padding-left: 8px;
-    padding-right: 8px;
+    border-radius:0px;
+    margin: 0px;
+    padding-top: 3px;
     padding-bottom: 10px;
 }
-
-QGroupBox#propertyPanel::title {
-    subcontrol-origin: margin;
-    subcontrol-position:top left;
-    padding-left: 8px;
+QAbstractButton#propertyPanelHeader QLabel {
+    background-color: transparent;
+    font-weight: 600;
+}
+QAbstractButton#propertyPanelHeader QLabel[hover="true"] {
+    color: #ffffff;
+}
+QAbstractButton#propertyPanelHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    min-height: 32px;
+}
+QAbstractButton#propertyPanelHeader QLabel {
+    background-color: transparent;
+    font-weight: 600;
 }
 
-QGroupBox#propertyPanel::indicator {
-    width: 15px;
-    height: 15px;
-    padding: 2px;
+
+
+QPushButton#customEasing {
+    /* Match the spinbox height: the standard QPushButton padding (4px 12px)
+       makes buttons ~29px at an 11pt font, taller than the fields. 1.36em
+       content + 0.04em border tracks the QAbstractSpinBox height at every
+       font (21px at the bundled 8pt, 28px at 11pt). */
+    height: 1.36em;
+    padding: 0em 0.75em;
+    border: 0.04em solid transparent;
+    border-radius: 4px;
+    background-color: transparent;
+    color: #f0f0f0;
 }
 
-QGroupBox#propertyPanel::indicator:unchecked {
-    image: url(data/themes/breeze_dark/icon/caret-right.svg);
+QPushButton#customEasing:hover {
+    background-color: #343434;
 }
 
-QGroupBox#propertyPanel::indicator:checked {
-    image: url(data/themes/breeze_dark/icon/caret-down.svg);
+QPushButton#customEasing:pressed {
+    background-color: #1f1f1f;
 }

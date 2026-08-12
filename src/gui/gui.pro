@@ -75,6 +75,7 @@ SOURCES += \
     prop/prop_KeyGroup.cpp \
     prop/prop_Items.cpp \
     prop/prop_Backboard.cpp \
+    prop/prop_HeaderButton.cpp \
     obj/obj_MoveItem.cpp \
     obj/obj_InsertItem.cpp \
     obj/obj_Item.cpp \
@@ -146,6 +147,7 @@ HEADERS += \
     prop/prop_Items.h \
     prop/prop_ItemBase.h \
     prop/prop_Backboard.h \
+    prop/prop_HeaderButton.h \
     obj/obj_MoveItem.h \
     obj/obj_InsertItem.h \
     obj/obj_Item.h \

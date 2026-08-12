@@ -108,6 +108,8 @@ public:
         spins = {x1_spin, y1_spin, x2_spin, y2_spin};
         m_editor = new BezierCurveEditor(splineWidget, guiRes->mTheme.isDark(), cubicBezier, spins, &progress);
         for (auto spin : spins) {
+            // dot separator, matching the property fields (see prop_Items)
+            spin->setLocale(QLocale::c());
             spin->setSingleStep(0.01);
             spin->setMaximum(2);
             spin->setMinimum(-2);

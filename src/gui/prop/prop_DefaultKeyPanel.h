@@ -17,7 +17,7 @@ namespace prop {
     class DefaultDepthGroup: public KeyGroup {
         Q_OBJECT
     public:
-        DefaultDepthGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth);
+        DefaultDepthGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* aGUIResources);
         void setKeyValue(const core::TimeLine& aLine);
 
     private:
@@ -29,7 +29,7 @@ namespace prop {
     class DefaultOpaGroup: public KeyGroup {
         Q_OBJECT
     public:
-        DefaultOpaGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth);
+        DefaultOpaGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* aGUIResources);
         void setKeyValue(const core::TimeLine& aLine);
 
     private:
@@ -41,7 +41,7 @@ namespace prop {
     class DefaultImageGroup: public KeyGroup {
         Q_OBJECT
     public:
-        DefaultImageGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, ViaPoint& aViaPoint);
+        DefaultImageGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, ViaPoint& aViaPoint, GUIResources* aGUIResources);
         void setKeyValue(const core::TimeLine& aLine);
 
     private:
@@ -56,7 +56,7 @@ namespace prop {
     class DefaultKeyPanel: public Panel {
         Q_OBJECT
     public:
-        DefaultKeyPanel(ViaPoint& aViaPoint, core::Project& aProject, const QString& aTitle, QWidget* aParent);
+        DefaultKeyPanel(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent, GUIResources* aGUIResources);
         void setTarget(core::ObjectNode* aTarget);
         void setPlayBackActivity(bool aIsActive);
         void updateKey();
@@ -68,6 +68,7 @@ namespace prop {
 
         ViaPoint& mViaPoint;
         core::Project& mProject;
+        GUIResources* mGUIResources;
         core::ObjectNode* mTarget;
         KeyAccessor mKeyAccessor;
         int mLabelWidth;

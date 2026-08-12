@@ -22,7 +22,12 @@ PropertyWidget::PropertyWidget(ViaPoint& aViaPoint, QWidget* aParent, GUIResourc
 
     // this->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
     this->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-    this->setWidgetResizable(true);
+    // The board's height is managed manually (see resizeEvent): with
+    // widgetResizable the scroll area pins the widget to the size it had at
+    // startup and ignores later growth, which compresses the field rows
+    // when groups expand. Manual sizing keeps the board at its natural
+    // height so rows never lose their sizeHint.
+    this->setWidgetResizable(false);
 
     mBoard = new prop::Backboard(aViaPoint, this, mGUIResources);
     this->setWidget(mBoard);
@@ -86,7 +91,10 @@ void PropertyWidget::onPlayBackStateChanged(bool aIsActive) { mBoard->setPlayBac
 
 void PropertyWidget::resizeEvent(QResizeEvent* aEvent) {
     QScrollArea::resizeEvent(aEvent);
-    mBoard->resize(aEvent->size().width(), mBoard->height());
+    // Manual board sizing (widgetResizable is off): the board always keeps
+    // its natural (sizeHint) height so the rows are never compressed, and
+    // still fills the viewport when the content is shorter than it.
+    mBoard->resize(viewport()->width(), qMax(mBoard->sizeHint().height(), viewport()->height()));
 }
 
 } // namespace gui

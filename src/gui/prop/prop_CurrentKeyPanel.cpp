@@ -13,8 +13,8 @@ namespace gui {
 namespace prop {
 
     //-------------------------------------------------------------------------------------------------
-    MoveKeyGroup::MoveKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Move"), aLabelWidth),
+    MoveKeyGroup::MoveKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+        KeyGroup(tr("Move"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
         mEasing(),
@@ -22,7 +22,7 @@ namespace prop {
         mPosition(),
         mCentroid(),
         mKeyExists(false) {
-        mKnocker = new KeyKnocker(tr("Move"));
+        mKnocker = new KeyKnocker(tr("Move"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewMove();
             this->makeSureExpand();
@@ -34,7 +34,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignMoveEasing(aNext);
             };
@@ -47,19 +47,19 @@ namespace prop {
             );
             mSpline->setValue(core::MoveKey::kDefaultSplineType, false);
             mSpline->onValueUpdated = [=](int, int aNext) { this->mAccessor.assignMoveSpline(aNext); };
-            this->addItem(tr("Spline :"), mSpline);
+            this->addItem(tr("Spline"), mSpline);
 
             // position
             mPosition = new Vector2DItem(this);
             mPosition->setRange(core::Constant::transMin(), core::Constant::transMax());
             mPosition->onValueUpdated = [=](QVector2D, QVector2D aNext) { this->mAccessor.assignMovePosition(aNext); };
-            this->addItem(tr("Position :"), mPosition);
+            this->addItem(tr("Position"), mPosition);
 
             // centroid
             mCentroid = new Vector2DItem(this);
             mCentroid->setRange(core::Constant::transMin(), core::Constant::transMax());
             mCentroid->onValueUpdated = [=](QVector2D, QVector2D aNext) { this->mAccessor.assignMoveCentroid(aNext); };
-            this->addItem(tr("Centroid :"), mCentroid);
+            this->addItem(tr("Centroid"), mCentroid);
         }
         setKeyEnabled(false);
         setKeyExists(false);
@@ -88,10 +88,10 @@ namespace prop {
     bool MoveKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
-    RotateKeyGroup::RotateKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Rotate"), aLabelWidth), mAccessor(aAccessor), mKnocker(), mEasing(), mRotate(), mKeyExists(false) {
+    RotateKeyGroup::RotateKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+        KeyGroup(tr("Rotate"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mRotate(), mKeyExists(false) {
         using util::MathUtil;
-        mKnocker = new KeyKnocker(tr("Rotate"));
+        mKnocker = new KeyKnocker(tr("Rotate"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewRotate();
             this->makeSureExpand();
@@ -103,7 +103,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignRotateEasing(aNext);
             };
@@ -117,7 +117,7 @@ namespace prop {
             mRotate->onValueUpdated = [=](double, double aNext) {
                 this->mAccessor.assignRotateAngle(MathUtil::getRadianFromDegree(aNext));
             };
-            this->addItem(tr("Angle :"), mRotate);
+            this->addItem(tr("Angle"), mRotate);
         }
         setKeyEnabled(false);
         setKeyExists(false);
@@ -144,9 +144,9 @@ namespace prop {
     bool RotateKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
-    ScaleKeyGroup::ScaleKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Scale"), aLabelWidth), mAccessor(aAccessor), mKnocker(), mEasing(), mScale(), mKeyExists(false) {
-        mKnocker = new KeyKnocker(tr("Scale"));
+    ScaleKeyGroup::ScaleKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+        KeyGroup(tr("Scale"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mScale(), mKeyExists(false) {
+        mKnocker = new KeyKnocker(tr("Scale"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewScale();
             this->makeSureExpand();
@@ -158,7 +158,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignScaleEasing(aNext);
             };
@@ -167,7 +167,7 @@ namespace prop {
             mScale = new Vector2DItem(this);
             mScale->setRange(core::Constant::scaleMin(), core::Constant::scaleMax());
             mScale->onValueUpdated = [=](QVector2D, QVector2D aNext) { this->mAccessor.assignScaleRate(aNext); };
-            this->addItem(tr("Rate :"), mScale);
+            this->addItem(tr("Rate"), mScale);
         }
         setKeyEnabled(false);
         setKeyExists(false);
@@ -194,9 +194,9 @@ namespace prop {
     bool ScaleKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
-    DepthKeyGroup::DepthKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Depth"), aLabelWidth), mAccessor(aAccessor), mKnocker(), mEasing(), mDepth(), mKeyExists(false) {
-        mKnocker = new KeyKnocker(tr("Depth"));
+    DepthKeyGroup::DepthKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+        KeyGroup(tr("Depth"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mDepth(), mKeyExists(false) {
+        mKnocker = new KeyKnocker(tr("Depth"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewDepth();
             this->makeSureExpand();
@@ -208,7 +208,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignDepthEasing(aNext);
             };
@@ -217,7 +217,7 @@ namespace prop {
             mDepth = new DecimalItem(this);
             mDepth->setRange(core::Constant::transMin(), core::Constant::transMax());
             mDepth->onValueUpdated = [=](double, double aNext) { this->mAccessor.assignDepthPosition(aNext); };
-            this->addItem(tr("Position :"), mDepth);
+            this->addItem(tr("Position"), mDepth);
         }
         setKeyEnabled(false);
         setKeyExists(false);
@@ -244,14 +244,14 @@ namespace prop {
     bool DepthKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
-    OpaKeyGroup::OpaKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Opacity"), aLabelWidth),
+    OpaKeyGroup::OpaKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+        KeyGroup(tr("Opacity"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
         mEasing(),
         mOpacity(),
         mKeyExists(false) {
-        mKnocker = new KeyKnocker(tr("Opacity"));
+        mKnocker = new KeyKnocker(tr("Opacity"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewOpacity();
             this->makeSureExpand();
@@ -263,7 +263,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignOpaEasing(aNext);
             };
@@ -273,7 +273,7 @@ namespace prop {
             mOpacity->setRange(0.0f, 1.0f);
             mOpacity->box().setSingleStep(0.1);
             mOpacity->onValueUpdated = [=](double, double aNext) { this->mAccessor.assignOpacity(aNext); };
-            this->addItem(tr("Rate :"), mOpacity);
+            this->addItem(tr("Rate"), mOpacity);
         }
         setKeyEnabled(false);
         setKeyExists(false);
@@ -301,7 +301,7 @@ namespace prop {
 
     //-------------------------------------------------------------------------------------------------
     BlurKeyGroup::BlurKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Blur"), aLabelWidth),
+        KeyGroup(tr("Blur"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
         mEasing(),
@@ -311,7 +311,7 @@ namespace prop {
         mAngle(),
         mDirectional(),
         mKeyExists(false) {
-        mKnocker = new KeyKnocker(tr("Blur"));
+        mKnocker = new KeyKnocker(tr("Blur"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewBlur();
             this->makeSureExpand();
@@ -425,7 +425,7 @@ namespace prop {
 
     //-------------------------------------------------------------------------------------------------
     HSVKeyGroup::HSVKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("HSV"), aLabelWidth),
+        KeyGroup(tr("HSV"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
         mEasing(),
@@ -433,7 +433,7 @@ namespace prop {
         mSaturation(),
         mValue(),
         mKeyExists(false) {
-        mKnocker = new KeyKnocker(tr("HSV"));
+        mKnocker = new KeyKnocker(tr("HSV"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewHSV();
             this->makeSureExpand();
@@ -445,7 +445,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignHSVEasing(aNext);
             };
@@ -472,10 +472,10 @@ namespace prop {
             mAbsolute = new CheckItem(this);
             mAbsolute->onValueUpdated = [=](bool aNext) { this->mAccessor.assignHSV(int(aNext), "abs"); };
 
-            this->addItem(tr("Hue :"), mHue);
-            this->addItem(tr("Saturation :"), mSaturation);
-            this->addItem(tr("Value : "), mValue);
-            this->addItem(tr("Absolute color: "), mAbsolute);
+            this->addItem(tr("Hue"), mHue);
+            this->addItem(tr("Saturation"), mSaturation);
+            this->addItem(tr("Value"), mValue);
+            this->addItem(tr("Absolute color"), mAbsolute);
         }
         setKeyEnabled(false);
         setKeyExists(false);
@@ -505,9 +505,9 @@ namespace prop {
     bool HSVKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
-    PoseKeyGroup::PoseKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Pose"), aLabelWidth), mAccessor(aAccessor), mKnocker(), mEasing(), mKeyExists(false) {
-        mKnocker = new KeyKnocker(tr("Pose"));
+    PoseKeyGroup::PoseKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+        KeyGroup(tr("Pose"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mKeyExists(false) {
+        mKnocker = new KeyKnocker(tr("Pose"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewPose();
             this->makeSureExpand();
@@ -519,7 +519,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignPoseEasing(aNext);
             };
@@ -548,9 +548,9 @@ namespace prop {
     bool PoseKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
-    FFDKeyGroup::FFDKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("FFD"), aLabelWidth), mAccessor(aAccessor), mKnocker(), mEasing(), mKeyExists(false) {
-        mKnocker = new KeyKnocker(tr("FFD"));
+    FFDKeyGroup::FFDKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+        KeyGroup(tr("FFD"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mKeyExists(false) {
+        mKnocker = new KeyKnocker(tr("FFD"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewFFD();
             this->makeSureExpand();
@@ -562,7 +562,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignFFDEasing(aNext);
             };
@@ -591,8 +591,8 @@ namespace prop {
     bool FFDKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
-    ImageKeyGroup::ImageKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, ViaPoint& aViaPoint, GUIResources* mGUIResources):
-        KeyGroup(tr("Image"), aLabelWidth),
+    ImageKeyGroup::ImageKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, ViaPoint& aViaPoint, GUIResources* mGUIResources):
+        KeyGroup(tr("Image"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
         mBrowse(),
@@ -600,7 +600,7 @@ namespace prop {
         mCellSize(),
         mKeyExists(false),
         mViaPoint(aViaPoint) {
-        mKnocker = new KeyKnocker(tr("Image"));
+        mKnocker = new KeyKnocker(tr("Image"), mGUIResources);
         mKnocker->set([=]() {
             this->knockNewKey();
             this->makeSureExpand();
@@ -619,19 +619,19 @@ namespace prop {
                     this->mAccessor.assignImageResource(*resNode);
                 }
             };
-            this->addItem(tr("Resource :"), mBrowse);
+            this->addItem(tr("Resource"), mBrowse);
 
             // offset
             mOffset = new Vector2DItem(this);
             mOffset->setRange(core::Constant::transMin(), core::Constant::transMax());
             mOffset->onValueUpdated = [=](QVector2D, QVector2D aNext) { this->mAccessor.assignImageOffset(-aNext); };
-            this->addItem(tr("Center :"), mOffset);
+            this->addItem(tr("Center"), mOffset);
 
             // cell size
             mCellSize = new IntegerItem(this);
             mCellSize->setRange(core::Constant::imageCellSizeMin(), core::Constant::imageCellSizeMax());
             mCellSize->onValueUpdated = [=](int, int aNext) { this->mAccessor.assignImageCellSize(aNext); };
-            this->addItem(tr("Cell size :"), mCellSize);
+            this->addItem(tr("Cell size"), mCellSize);
         }
         setKeyEnabled(false);
         setKeyExists(false, false);
@@ -667,9 +667,9 @@ namespace prop {
 
     //-------------------------------------------------------------------------------------------------
     CurrentKeyPanel::CurrentKeyPanel(
-        ViaPoint& aViaPoint, core::Project& aProject, const QString& aTitle, QWidget* aParent, GUIResources* mGUIResources
+        ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent, GUIResources* mGUIResources
     ):
-        Panel(aTitle, aParent),
+        Panel(tr("Current Keys"), aParent, mGUIResources),
         mViaPoint(aViaPoint),
         mGUIResources(mGUIResources),
         mProject(aProject),
@@ -687,7 +687,7 @@ namespace prop {
         mFFDPanel(),
         mImagePanel() {
         mKeyAccessor.setProject(&aProject);
-        mLabelWidth = this->fontMetrics().boundingRect(tr("Max text width :")).width();
+        mLabelWidth = this->fontMetrics().boundingRect(tr("Max text width")).width();
 
         build();
         this->hide();
@@ -698,7 +698,6 @@ namespace prop {
         mKeyAccessor.setTarget(aTarget);
 
         if (mTarget) {
-            this->setTitle(mTarget->name() + " : " + tr("Current Keys"));
             this->show();
         } else {
             this->hide();

@@ -13,19 +13,15 @@ QComboBox {
     padding-top: 1px;
     padding-left: 8px;
     padding-bottom: 1px;
-    padding-right: 8px;
 }
 
 QComboBox::enabled {
-    background-color: #fefefe;
-    border: 1px solid #d8d8d8;
-    color: #3C3C3C;
+    color: #101010;
 }
 
 QComboBox::disabled {
     background-color: #ececec;
-    border: 1px solid #d0d0d0;
-    color: #909090;
+    color: #808080;
 }
 
 QComboBox::drop-down {
@@ -60,113 +56,115 @@ QCheckBox#keyIcon::indicator:checked {
     image: url(data/themes/classic/icon/caret-down.svg);
 }
 
-QGroupBox#keyGroup {
+QFrame#keyGroup {
     background-color: #f8f8f8;
     border:0px solid transparent;
     border-radius:8px;
-    margin: 2px;
-    padding-top: 16px;
-    padding-bottom: 4px;
-}
-
-QGroupBox#keyGroup::title {
-    subcontrol-origin: margin;
-    subcontrol-position:top left;
     margin: 0px;
-    padding-left: 0px;
-    padding-top: 4px;
+    padding-bottom: 0px;
 }
-
-QGroupBox#keyGroup::indicator {
-    width: 14px;
-    height: 14px;
-    padding-left: 7px;
-    padding-top: 2px;
-    margin: 0px;
+QAbstractButton#keyGroupHeader QLabel {
+    background-color: transparent;
+    font-weight: bold;
+    color: #333333;
 }
-
-QGroupBox#keyGroup::indicator:unchecked {
-    image: url(data/themes/classic/icon/caret-right.svg);
+QAbstractButton#keyGroupHeader QLabel[hover="true"] {
+    color: #101010;
 }
-
-QGroupBox#keyGroup::indicator:checked {
-    image: url(data/themes/classic/icon/caret-down.svg);
-}
-
-QGroupBox#attrGroup {
-    background-color: #f8f8f8;
-    border:0px solid transparent;
-    border-radius:8px;
-    margin: 2px;
-    padding-top: 8px;
-    padding-bottom: 4px;
-}
-
-QGroupBox#attrGroup::title {
-    subcontrol-origin: margin;
-    subcontrol-position:top left;
-    margin: 0px;
-    padding-left: 0px;
-    padding-top: 4px;
-}
-
-QGroupBox#attrGroup::indicator {
-    width: 14px;
-    height: 14px;
-    padding-left: 7px;
-    padding-top: 2px;
-    margin: 0px;
-}
-
-QGroupBox#attrGroup::indicator:unchecked {
-    image: url(data/themes/classic/icon/caret-right.svg);
-}
-
-QGroupBox#attrGroup::indicator:checked {
-    image: url(data/themes/classic/icon/caret-down.svg);
-}
-
-QGroupBox#keyKnocker {
-    background-color: #f8f8f8;
-    border:0px solid transparent;
-    border-radius:8px;
-    margin: 2px;
-    padding-left: 4px;
-    padding-right: 4px;
-    padding-top: 1px;
-    padding-bottom: 1px;
-}
-
-QPushButton#keyKnocker {
-    border: 1px solid #a0a0a0;
-    border-radius: 4px;
+QAbstractButton#keyGroupHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
     padding: 0px;
+    min-height: 24px;
+}
+
+
+
+
+/* field labels sit a step below the values they describe */
+QLabel#attrLabel {
+    /* transparent: same rationale as the knocker label */
+    background-color: transparent;
+    color: #2b2b2b;
+}
+QFrame#attrGroup {
+    background-color: #f8f8f8;
+    border:0px solid transparent;
+    border-radius:8px;
     margin: 0px;
-    width: 14px;
-    height: 14px;
+    padding-bottom: 0px;
 }
-QPushButton#keyKnocker::enabled {
-    image: url(data/themes/classic/icon/plus.svg);
+QAbstractButton#attrGroupHeader QLabel {
+    background-color: transparent;
+    font-weight: bold;
+    color: #333333;
 }
-QPushButton#keyKnocker::disabled {
-    image: url(data/themes/classic/icon/minus.svg);
+QAbstractButton#attrGroupHeader QLabel[hover="true"] {
+    color: #101010;
 }
+QAbstractButton#attrGroupHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    min-height: 24px;
+}
+
+
+
+QWidget#keyKnocker QLabel {
+    background-color: transparent;
+    font-weight: bold;
+    color: #333333;
+}
+QWidget#keyKnocker QLabel[hover="true"] {
+    color: #101010;
+}
+QWidget#keyKnocker {
+    /* the add-key row is the section header's stand-in: same
+       geometry and states, plus icon instead of the caret; the
+       whole row knocks the key. */
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    min-height: 24px;
+}
+QToolButton#keyKnockerPlus {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
+}
+
 
 QPushButton#browser {
-    border: 1px solid #a0a0a0;
+    background-color: transparent;
+    border: none;
     border-radius: 4px;
-    padding: 2px;
-    width: 18px;
-    height: 15px;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
+    width: 16px;
+    height: 16px;
 }
 QPushButton#browser::enabled {
     image: url(data/themes/classic/icon/file.svg);
 }
-QPushButton#browser::disabled {
-    image: url(data/themes/classic/icon/file.svg);
+QPushButton#browser:hover {
+    background-color: #243c3c3c;
+}
+QPushButton#browser:pressed {
+    background-color: #403c3c3c;
+}
+QPushButton#browser:disabled {
+    background-color: transparent;
+    image: url(data/themes/classic/icon/file-dim.svg);
 }
 
-QGroupBox#propertyPanel {
+QFrame#propertyPanel {
     background-color: #f4f4f4;
     border:0px solid transparent;
     border-radius:8px;
@@ -174,28 +172,25 @@ QGroupBox#propertyPanel {
     margin-bottom: 4px;
     margin-left: 2px;
     margin-right: 2px;
-    padding-top: 16px;
-    padding-left: 8px;
-    padding-right: 8px;
     padding-bottom: 4px;
 }
-
-QGroupBox#propertyPanel::title {
-    subcontrol-origin: margin;
-    subcontrol-position:top left;
-    padding-left: 8px;
+QAbstractButton#propertyPanelHeader QLabel {
+    background-color: transparent;
+    font-weight: bold;
+}
+QAbstractButton#propertyPanelHeader QLabel[hover="true"] {
+    color: #000000;
+}
+QAbstractButton#propertyPanelHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    min-height: 32px;
+}
+QAbstractButton#propertyPanelHeader QLabel {
+    background-color: transparent;
+    font-weight: bold;
 }
 
-QGroupBox#propertyPanel::indicator {
-    width: 15px;
-    height: 15px;
-    padding: 2px;
-}
 
-QGroupBox#propertyPanel::indicator:unchecked {
-    image: url(data/themes/classic/icon/caret-right.svg);
-}
-
-QGroupBox#propertyPanel::indicator:checked {
-    image: url(data/themes/classic/icon/caret-down.svg);
-}
