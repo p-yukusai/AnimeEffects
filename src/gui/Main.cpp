@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QDir>
 #include <QFile>
+#include <QFontDatabase>
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QScopedPointer>
@@ -168,6 +169,19 @@ int entryPoint(int argc, char* argv[]) {
             settings.setValue("customDataFolder", newResDir);
         }
         resourceDir = newResDir;
+    }
+
+    // Register the bundled font so the Geist family resolves on every
+    // platform instead of falling back to a system font (the digit glyphs
+    // have tabular widths baked in, so number fields never shift layout).
+    {
+        const QDir fontsDir(resourceDir + "/fonts");
+        for (const QString& file : fontsDir.entryList(QStringList() << "*.ttf", QDir::Files)) {
+            QFontDatabase::addApplicationFont(fontsDir.absoluteFilePath(file));
+        }
+        QFont appFont(QApplication::font());
+        appFont.setFamily("Geist");
+        QApplication::setFont(appFont);
     }
 
     const QString stdCacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
