@@ -45,6 +45,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     MainWindow.cpp MainWindow.h
     MouseSetting.cpp MouseSetting.h
     MouseSettingDialog.cpp MouseSettingDialog.h
+    AnimationSettingDialog.cpp AnimationSettingDialog.h
     NewProjectDialog.cpp NewProjectDialog.h
     ObjectTreeWidget.cpp ObjectTreeWidget.h
     PlayBackWidget.cpp PlayBackWidget.h

@@ -1,10 +1,20 @@
 #include "gui/TargetWidget.h"
+#include "gui/AnimationSettingDialog.h"
+#include "gui/MainMenuBar.h"
+#include "cmnd/BasicCommands.h"
+#include "cmnd/ScopedMacro.h"
+#include "ctrl/CmndName.h"
+#include "core/ProjectEvent.h"
+#include <QDialog>
+#include <QScopedPointer>
+
 
 namespace gui {
 
 TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidget* aParent, const QSize& aSizeHint):
     QSplitter(Qt::Vertical, aParent),
     mProject(),
+    mViaPoint(aViaPoint),
     mResources(aResources),
     mSizeHint(aSizeHint),
     mIsFirstTime(true),
@@ -89,11 +99,73 @@ void TargetWidget::onPlayBackButtonPushed(PlayBackWidget::PushType aType) {
         mTimeLine->setFrame(core::Frame(0));
     } else if (aType == PlayBackWidget::PushType_Fast) {
         mTimeLine->setFrame(core::Frame(mProject->attribute().maxFrame()));
+    } else if (aType == PlayBackWidget::PushType_Options) {
+        openAnimationSettings();
     } else if (aType == PlayBackWidget::PushType_Loop) {
-        mTimeLine->setPlayBackLoop(true);
-    } else if (aType == PlayBackWidget::PushType_NoLoop) {
-        mTimeLine->setPlayBackLoop(false);
+        mTimeLine->setPlayBackLoop(mPlayBack->isLoopChecked());
     }
 }
+
+void TargetWidget::openAnimationSettings() {
+    if (!mProject)
+        return;
+
+    const int curFPS = mProject->attribute().fps();
+    const int curMaxFrame = mProject->attribute().maxFrame();
+    const bool curLoop = mPlayBack->isLoopChecked();
+
+    QScopedPointer<AnimationSettingDialog> dialog(new AnimationSettingDialog(*mProject, curLoop, this));
+    dialog->exec();
+    if (dialog->result() != QDialog::Accepted)
+        return;
+
+    const int newFPS = dialog->fps();
+    const int newMaxFrame = dialog->maxFrame();
+    const bool newLoop = dialog->isLoopChecked();
+    if (curFPS == newFPS && curMaxFrame == newMaxFrame && curLoop == newLoop)
+        return;
+
+    // One undo step covers every change made in the dialog, matching the
+    // project attribute dialogs. Loop is the live playback flag, not a project
+    // attribute, so it rides along in the same command.
+    {
+        cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change animation settings"));
+
+        core::Project* projectPtr = mProject;
+        auto command = new cmnd::Delegatable(
+            [=]() {
+                projectPtr->attribute().setFps(newFPS);
+                projectPtr->attribute().setMaxFrame(newMaxFrame);
+                mPlayBack->checkLoop(newLoop);
+                mTimeLine->setPlayBackLoop(newLoop);
+                auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
+                projectPtr->onProjectAttributeModified(event, false);
+                this->refreshAnimationSettings();
+            },
+            [=]() {
+                projectPtr->attribute().setFps(curFPS);
+                projectPtr->attribute().setMaxFrame(curMaxFrame);
+                mPlayBack->checkLoop(curLoop);
+                mTimeLine->setPlayBackLoop(curLoop);
+                auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
+                projectPtr->onProjectAttributeModified(event, true);
+                this->refreshAnimationSettings();
+            }
+        );
+        mProject->commandStack().push(command);
+    }
+}
+
+void TargetWidget::refreshAnimationSettings() {
+    if (auto* menu = mViaPoint.mainMenuBar()) {
+        // Same fan-out as the project attribute dialogs: display, timeline
+        // editor and playback driver all re-read the attributes.
+        menu->onProjectAttributeUpdated();
+        menu->onVisualUpdated();
+    }
+    // FPS changes the ruler strings (relative-to-FPS / timecode formats).
+    mTimeLine->triggerOnTimeFormatChanged();
+}
+
 
 } // namespace gui

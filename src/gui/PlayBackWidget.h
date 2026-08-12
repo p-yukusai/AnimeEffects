@@ -20,9 +20,9 @@ public:
         PushType_Step,
         PushType_StepBack,
         PushType_Rewind,
-        PushType_Loop,
-        PushType_NoLoop,
-        PushType_Fast
+        PushType_Options,
+        PushType_Fast,
+        PushType_Loop
     };
     typedef std::function<void(PushType)> PushDelegate;
 
@@ -33,8 +33,10 @@ public:
     void checkLoop(bool checkStatus);
     void PlayPause();
     bool isPlaying();
-    static int constantWidth() ;
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
     void pushPauseButton();
+    void paintEvent(QPaintEvent* aEvent) override;
     core::Project* aProject;
     QWidget* audioUI = new QWidget(this, Qt::Window);
     std::vector<audioConfig>* aConf = new std::vector<audioConfig>;
@@ -47,6 +49,7 @@ private:
     GUIResources& mGUIResources;
     std::vector<QPushButton*> mButtons;
     PushDelegate mPushDelegate;
+    bool mDoesLoop;
     void onThemeUpdated(theme::Theme&);
 };
 

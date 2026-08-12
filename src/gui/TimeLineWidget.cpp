@@ -24,7 +24,7 @@ TimeLineWidget::TimeLineWidget(
     mElapsed(),
     mBeginFrame(),
     mLastFrame(),
-    mDoesLoop(false) {
+    mDoesLoop(true) {
     mInner = new TimeLineEditorWidget(aViaPoint, this);
 
     this->setWidget(mInner);

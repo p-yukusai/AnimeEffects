@@ -58,6 +58,7 @@ INCLUDEPATH += ..
 DEPENDPATH  += ..
 
 SOURCES += \
+    AnimationSettingDialog.cpp \
     Main.cpp \
     MainDisplayWidget.cpp \
     MainWindow.cpp \
@@ -127,6 +128,7 @@ SOURCES += \
     MouseSetting.cpp
 
 HEADERS += \
+    AnimationSettingDialog.h \
     MainDisplayMode.h \
     MainDisplayWidget.h \
     MainWindow.h \

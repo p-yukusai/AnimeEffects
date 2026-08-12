@@ -42,8 +42,12 @@ private:
     virtual QSize sizeHint() const { return mSizeHint; }
 
     void onPlayBackButtonPushed(PlayBackWidget::PushType aType);
+    void openAnimationSettings();
+    void refreshAnimationSettings();
+
 
     core::Project* mProject;
+    ViaPoint& mViaPoint;
     GUIResources& mResources;
     const QSize mSizeHint;
     QSplitter* mHorizontalSplitter;
