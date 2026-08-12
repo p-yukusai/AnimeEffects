@@ -1,6 +1,8 @@
 #include "gui/GUIResources.h"
+#include "gui/ScrollBarStyle.h"
 #include <QApplication>
 #include <QStyleFactory>
+#include <algorithm>
 
 namespace gui {
 
@@ -42,7 +44,7 @@ QColor GUIResources::viewportBackground() const {
     if (mTheme.isDefault()) {
         return QColor(216, 216, 216); // light theme
     }
-    return QColor(64, 64, 64); // dark themes
+    return QColor(31, 31, 31); // dark themes: the viewport sinks below the #262626 floor
 }
 
 QString GUIResources::dialogButtonStyleSheet() const {
@@ -52,7 +54,7 @@ QString GUIResources::dialogButtonStyleSheet() const {
     if (mTheme.id().contains("dark")) {
         return QStringLiteral(
             "QPushButton {"
-            "    color: #eff0f1;"
+            "    color: #f0f0f0;"
             "    background-color: #3d3d3d;"
             "    border: 1px solid #565656;"
             "    border-radius: 4px;"
@@ -175,6 +177,13 @@ void GUIResources::setTheme(const QString& aThemeId) {
     }
     QApplication::setPalette(palette);
     qApp->setStyleSheet(dialogButtonStyleSheet());
+    if (mTheme.id().contains("dark")) {
+        // Scrollbar handles are drawn by the proxy style (a deterministic
+        // 4px pill) instead of the QSS border-image path, which distorts
+        // small pills. Wrap the current style (QStyleSheetStyle) so the QSS
+        // still drives everything else; light themes keep their own styling.
+        qApp->setStyle(new ScrollBarStyle(qApp->style()));
+    }
     // Notify after the new palette is live so palette-reading handlers
     // (timeline theme, object-tree item colors) observe the new theme.
     if (themeChanged) {

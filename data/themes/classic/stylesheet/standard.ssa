@@ -105,6 +105,36 @@ QLineEdit::disabled {
     border: 1px solid #d8d8d8;
 }
 
+QCheckBox::indicator {
+    /* Elevated field-style box, matching the text fields: white on the
+       panel background with the same 1px field border and focus-ring
+       color. The check is the geometric phosphor glyph from the
+       tinted set. */
+    width: 16px;
+    height: 16px;
+    background-color: #fefefe;
+    border: 1px solid #c8c8c8;
+    border-radius: 4px;
+}
+
+QCheckBox::indicator:hover,
+QCheckBox::indicator:focus {
+    border: 1px solid #8ab4f8;
+}
+
+QCheckBox::indicator:checked {
+    image: url(data/themes/classic/icon/check.svg);
+}
+
+QCheckBox::indicator:indeterminate {
+    image: url(data/themes/classic/icon/minus.svg);
+}
+
+QCheckBox::indicator:disabled {
+    background-color: #ececec;
+    border: 1px solid #d8d8d8;
+}
+
 QLabel {
     color: #101010;
     background-color: transparent;
@@ -146,6 +176,19 @@ QDockWidget {
     background: #ececec;
     /* title deliberately unstyled: a styled title bar renders a hard border
        around the dock (mirrors the dark theme's approach). */
+}
+
+/* the dock title text sits off the left edge */
+QDockWidget::title {
+    /* the margin insets the title text; a matching background
+       is required for the QSS to apply the subcontrol box, and
+       border: none avoids the styled-title hard-border artifact */
+    background-color: #ececec;
+    margin-left: 6px;
+    border: none;
+}
+QDockWidget#propertiesDock::title {
+    margin-left: 8px;
 }
 
 QDockWidget::close-button, QDockWidget::float-button {
@@ -204,20 +247,6 @@ QPushButton#standardButton:hover {
 
 QPushButton#standardButton:pressed {
     padding-top: 2px;
-}
-
-QPushButton#browser {
-    border: 1px solid #a0a0a0;
-    border-radius: 4px;
-    padding: 2px;
-    width: 18px;
-    height: 15px;
-}
-QPushButton#browser::enabled {
-    image: url(data/themes/classic/icon/file.svg);
-}
-QPushButton#browser::disabled {
-    image: url(data/themes/classic/icon/file.svg);
 }
 
 QTreeView#objectTree {

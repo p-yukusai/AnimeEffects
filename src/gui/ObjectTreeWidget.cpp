@@ -257,16 +257,17 @@ void ObjectTreeWidget::updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bo
 
     const bool isFolder = (aItem->flags() & Qt::ItemIsDropEnabled) != 0;
     QIcon icon = mGUIResources.icon(isFolder ? "folder" : "file");
-    if (!aVisible) {
-        const QPixmap pm = icon.pixmap(kItemSize, kItemSize);
-        QPixmap faded(pm.size());
-        faded.fill(Qt::transparent);
-        QPainter painter(&faded);
-        painter.setOpacity(0.45);
-        painter.drawPixmap(0, 0, pm);
-        painter.end();
-        icon = QIcon(faded);
-    }
+    // file/folder icons rest at 2/3 of the text's presence, so the labels
+    // carry the hierarchy; hidden items fade further on top of that
+    const qreal baseOpacity = 0.66;
+    const QPixmap pm = icon.pixmap(kItemSize, kItemSize);
+    QPixmap faded(pm.size());
+    faded.fill(Qt::transparent);
+    QPainter painter(&faded);
+    painter.setOpacity(baseOpacity * (aVisible ? 1.0 : 0.45));
+    painter.drawPixmap(0, 0, pm);
+    painter.end();
+    icon = QIcon(faded);
     aItem->setIcon(kItemColumn, icon);
 }
 

@@ -467,6 +467,21 @@ void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
             auto hasSize = !mLocaleParam.fontSize.isEmpty();
             fontOption = "QWidget {" + (hasFamily ? ("font-family: " + mLocaleParam.fontFamily + ";") : "") +
                 (hasSize ? ("font-size: " + mLocaleParam.fontSize + ";") : "") + " }\n";
+            // top-level section headers step up one point from the base
+            // font (QSS cannot express a relative size, so derive it from
+            // the locale's pt value; the rule lives here so it tracks the
+            // base font across locale/settings changes)
+            if (hasSize) {
+                const QString size = mLocaleParam.fontSize.trimmed();
+                if (size.endsWith("pt", Qt::CaseInsensitive)) {
+                    bool ok = false;
+                    const qreal pt = size.left(size.size() - 2).toDouble(&ok);
+                    if (ok) {
+                        fontOption += QString("QAbstractButton#propertyPanelHeader { font-size: %1pt; }\n")
+                                          .arg(QString::number(pt + 1.0, 'f', 0));
+                    }
+                }
+            }
         }
 
         this->setStyleSheet(fontOption + QTextStream(&stylesheet).readAll());

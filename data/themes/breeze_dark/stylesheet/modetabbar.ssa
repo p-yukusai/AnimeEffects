@@ -1,5 +1,5 @@
 QTabBar {
-    background-color: #2b2b2b;
+    background-color: #262626;
     left: 0px;
     border-radius: 0px;
 }
@@ -7,8 +7,8 @@ QTabBar {
 QTabBar::tab:top,
 QTabBar::tab:top:last,
 QTabBar::tab:top:only-one {
-    color: #8f8f8f;
-    background-color: #333333;
+    color: #707070;
+    background-color: #262626;
     border: none;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
@@ -21,8 +21,8 @@ QTabBar::tab:top:only-one {
 }
 
 QTabBar::tab:top:selected {
-    color: #f2f2f2;
-    background-color: #404040;
+    color: #f0f0f0;
+    background-color: #3a3a3a;
     border: none;
 }
 
@@ -36,11 +36,11 @@ QTabBar::tab:top:next-selected {
 
 QTabBar::tab:top:!selected:hover,
 QTabBar::tab:top:!selected:first:hover {
-    background-color: #3d3d3d;
+    background-color: #343434;
     border: none;
 }
 
 QTabBar::tab:top:selected:hover {
-    background-color: #484848;
+    background-color: #404040;
     border: none;
 }

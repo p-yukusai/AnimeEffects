@@ -61,6 +61,7 @@ SOURCES += \
     AnimationSettingDialog.cpp \
     DockSash.cpp \
     Main.cpp \
+    ScrollBarStyle.cpp \
     MainDisplayWidget.cpp \
     MainWindow.cpp \
     ObjectTreeWidget.cpp \
@@ -132,6 +133,7 @@ SOURCES += \
 HEADERS += \
     AnimationSettingDialog.h \
     DockSash.h \
+    ScrollBarStyle.h \
     MainDisplayMode.h \
     MainDisplayWidget.h \
     MainWindow.h \

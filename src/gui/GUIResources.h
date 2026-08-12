@@ -49,8 +49,10 @@ public:
         palette.setColor(QPalette::ButtonText, Qt::white);
         palette.setColor(QPalette::BrightText, Qt::red);
         palette.setColor(QPalette::Link, QColor(42, 130, 218));
-        palette.setColor(QPalette::Highlight, QColor(42, 130, 218));
-        palette.setColor(QPalette::HighlightedText, Qt::black);
+        // selection token: #36386d = Oklch(0.37, 0.09, 279.3) — brand hue at
+        // low elevation (just above the raised token, well under hover)
+        palette.setColor(QPalette::Highlight, QColor(54, 56, 109));
+        palette.setColor(QPalette::HighlightedText, QColor(0xf0, 0xf0, 0xf0));
     }
     void setPaletteDefault(){
         palette = QPalette();

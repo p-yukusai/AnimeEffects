@@ -21,8 +21,8 @@ QTabBar::tab:top:only-one {
 }
 
 QTabBar::tab:top:selected {
-    color: #f2f2f2;
-    background-color: #404040;
+    color: #f0f0f0;
+    background-color: #3a3a3a;
     border: none;
 }
 
@@ -41,6 +41,6 @@ QTabBar::tab:top:!selected:first:hover {
 }
 
 QTabBar::tab:top:selected:hover {
-    background-color: #484848;
+    background-color: #404040;
     border: none;
 }
