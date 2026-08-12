@@ -48,7 +48,7 @@ jobs:
           mv ffmpeg tools
           mkdir -p appdir
           cp AnimeEffects appdir
-          cp -R ../data appdir/data
+          cp -R data appdir/data
           cp -R ../../../../dist appdir/dist
           cp ../../../../dist/AnimeEffects.png appdir
           cp -R tools appdir/tools
