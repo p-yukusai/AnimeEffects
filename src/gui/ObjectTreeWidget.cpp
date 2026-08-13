@@ -3,6 +3,8 @@
 #include <QTreeWidgetItemIterator>
 #include <memory>
 #include <QScrollBar>
+#include <QStyle>
+#include <QFontMetrics>
 #include "ctrl/TimeLineEditor.h"
 #include "qmessagebox.h"
 #include "util/TreeUtil.h"
@@ -40,6 +42,13 @@ namespace {
 static const int kTopItemSize = 22;
 static const int kItemSize = ctrl::TimeLineRow::kHeight;
 static const int kItemSizeInc = ctrl::TimeLineRow::kIncrease;
+// Horizontal padding the item delegate reserves around the label, plus a small
+// tail so the last glyph of the widest name is never clipped.
+static const int kColumnPadding = 30;
+static const int kColumnDecorationGap = 4;
+// Scrollable space kept after the last row so collapsing a branch near the
+// bottom doesn't make the view jump when the content height shrinks.
+static const int kBottomPadding = 12;
 } // namespace
 
 namespace gui {
@@ -75,11 +84,18 @@ ObjectTreeWidget::ObjectTreeWidget(ViaPoint& aViaPoint, GUIResources& aResources
     this->setDefaultDropAction(Qt::TargetMoveAction);
     // this->setAlternatingRowColors(true);
     this->setVerticalScrollMode(ScrollPerItem);
-    this->setHorizontalScrollMode(ScrollPerItem);
-    // this->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-    // this->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
-    this->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    // A single column scrolls in pixels, not items: ScrollPerItem computes the
+    // horizontal range from the column count (always 1 here), pinning it to 0
+    // and disabling horizontal scrolling entirely.
+    this->setHorizontalScrollMode(ScrollPerPixel);
+    this->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     this->setColumnCount(kColumnCount);
+    // The single column must be allowed to exceed the viewport for horizontal
+    // scrolling; stretch would pin it to the viewport width and elide long
+    // names. A fixed section size drives the scrollbar directly via
+    // updateColumnWidth().
+    this->header()->setStretchLastSection(false);
+    this->header()->setSectionResizeMode(kItemColumn, QHeaderView::Fixed);
 
     if (this->invisibleRootItem()) {
         this->invisibleRootItem()->setFlags(Qt::NoItemFlags);
@@ -194,11 +210,13 @@ core::ObjectNode* ObjectTreeWidget::findSelectingRepresentNode() {
 void ObjectTreeWidget::notifyViewUpdated() {
     onTreeViewUpdated(this->topLevelItem(0));
     onScrollUpdated(scrollHeight());
+    updateColumnWidth();
 }
 
 void ObjectTreeWidget::notifyRestructure() {
     onTreeViewUpdated(this->topLevelItem(0));
     onScrollUpdated(scrollHeight());
+    updateColumnWidth();
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -386,6 +404,50 @@ bool ObjectTreeWidget::updateItemHeights(QTreeWidgetItem* aItem) {
     return changed;
 }
 
+int ObjectTreeWidget::contentWidth() const {
+    const QFontMetrics metrics = fontMetrics();
+    int width = 0;
+
+    QTreeWidgetItemIterator it(const_cast<ObjectTreeWidget*>(this));
+    for (; *it; ++it) {
+        const QTreeWidgetItem* item = *it;
+
+        int depth = 0;
+        for (const QTreeWidgetItem* parent = item->parent(); parent; parent = parent->parent()) {
+            ++depth;
+        }
+
+        int itemWidth = depth * indentation();
+
+        // Decorations drawn to the left of the label reserve horizontal space
+        // that the item's stored size hint does not report, so account for them
+        // explicitly. Without this the single column never grows past the
+        // viewport, the horizontal scrollbar has no range, and long names get
+        // elided by the default delegate.
+        if (!item->icon(kItemColumn).isNull()) {
+            itemWidth += kItemSize + kColumnDecorationGap;
+        }
+        if (item->flags() & Qt::ItemIsUserCheckable) {
+            itemWidth += style()->pixelMetric(QStyle::PM_IndicatorWidth) + kColumnDecorationGap;
+        }
+        itemWidth += metrics.horizontalAdvance(item->text(kItemColumn));
+        itemWidth += kColumnPadding;
+
+        width = qMax(width, itemWidth);
+    }
+    return width;
+}
+
+void ObjectTreeWidget::updateColumnWidth() {
+    // Fill the viewport when the content is shorter (full-width selection),
+    // otherwise size the column to the widest item so the horizontal scrollbar
+    // gains a real range and long names are no longer elided.
+    const int width = qMax(viewport()->width(), contentWidth());
+    if (columnWidth(kItemColumn) != width) {
+        setColumnWidth(kItemColumn, width);
+    }
+}
+
 void ObjectTreeWidget::onThemeUpdated(theme::Theme& aTheme) {
     QFile stylesheet(aTheme.path() + "/stylesheet/standard.ssa");
     if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -427,9 +489,12 @@ void ObjectTreeWidget::onItemChanged(QTreeWidgetItem* aItem, int aColumn) {
         this->closePersistentEditor(aItem, aColumn);
     }
 #else
-    // is this ok?
     (void)aItem;
     (void)aColumn;
+    // A rename changes the label width, so refresh the column width.
+    // Icon/check-state edits leave the width unchanged, but recomputing here
+    // keeps a single choke point correct for every text mutation.
+    updateColumnWidth();
     endRenameEditor();
 #endif
 }
@@ -1466,14 +1531,6 @@ void ObjectTreeWidget::paintEvent(QPaintEvent* aEvent) {
     }
 }
 
-void ObjectTreeWidget::showEvent(QShowEvent* aEvent) {
-    QTreeWidget::showEvent(aEvent);
-
-    if (this->horizontalScrollBar()) {
-        this->setViewportMargins(0, 0, 0, this->horizontalScrollBar()->sizeHint().height());
-    }
-}
-
 void ObjectTreeWidget::dragMoveEvent(QDragMoveEvent* aEvent) {
     QPoint cheatPos = aEvent->position().toPoint();
     mDragIndex = cheatDragDropPos(cheatPos);
@@ -1589,6 +1646,7 @@ void ObjectTreeWidget::scrollContentsBy(int aDx, int aDy) {
 
 void ObjectTreeWidget::resizeEvent(QResizeEvent* aEvent) {
     QTreeWidget::resizeEvent(aEvent);
+    updateColumnWidth();
     onScrollUpdated(scrollHeight());
 }
 
@@ -1602,6 +1660,27 @@ void ObjectTreeWidget::scrollTo(const QModelIndex& aIndex, ScrollHint aHint) {
         }
     }
     QTreeWidget::scrollTo(aIndex, aHint);
+}
+
+void ObjectTreeWidget::updateGeometries() {
+    // Remember whether the view is resting at the bottom so a relayout
+    // (splitter resize, horizontal-scrollbar toggling) doesn't clamp the value
+    // to the unpadded bottom and drop the slack below the last row.
+    QScrollBar* bar = verticalScrollBar();
+    const bool atBottom = bar && bar->maximum() > 0 && bar->value() >= bar->maximum();
+
+    QTreeWidget::updateGeometries();
+
+    if (!bar || bar->maximum() <= 0)
+        return;
+
+    // Extend the vertical range past the last row so there is a little slack
+    // below the content. Only pad when the content already overflows, so a
+    // short tree stays fit without a spurious scrollbar.
+    const int paddedMax = bar->maximum() + kBottomPadding;
+    bar->setRange(bar->minimum(), paddedMax);
+    if (atBottom)
+        bar->setValue(paddedMax);
 }
 
 } // namespace gui

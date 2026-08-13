@@ -68,7 +68,6 @@ private:
 
     // from QTreeWidget
     virtual void paintEvent(QPaintEvent* aEvent);
-    virtual void showEvent(QShowEvent* aEvent);
     virtual void dragMoveEvent(QDragMoveEvent* aEvent);
     virtual void dropEvent(QDropEvent* aEvent);
     virtual void rowsAboutToBeRemoved(const QModelIndex& aParent, int aStart, int aEnd);
@@ -76,6 +75,7 @@ private:
     virtual void scrollContentsBy(int aDx, int aDy);
     virtual void resizeEvent(QResizeEvent* aEvent);
     virtual void scrollTo(const QModelIndex& aIndex, ScrollHint aHint);
+    virtual void updateGeometries();
 
     void createTree(core::ObjectTree* aTree);
     void addItemRecursive(QTreeWidgetItem* aItem, core::ObjectNode* aNode);
@@ -86,6 +86,8 @@ private:
     void endRenameEditor();
     int itemHeight(const core::ObjectNode& aNode) const;
     bool updateItemHeights(QTreeWidgetItem* aItem);
+    int contentWidth() const;
+    void updateColumnWidth();
 
     void onTimeLineModified(core::TimeLineEvent&, bool);
     void onItemChanged(QTreeWidgetItem* aItem, int aColumn);
