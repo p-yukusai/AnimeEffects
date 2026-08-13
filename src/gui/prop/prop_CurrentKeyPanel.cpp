@@ -300,7 +300,7 @@ namespace prop {
     bool OpaKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
-    BlurKeyGroup::BlurKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+    BlurKeyGroup::BlurKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
         KeyGroup(tr("Blur"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
@@ -424,7 +424,7 @@ namespace prop {
     }
 
     //-------------------------------------------------------------------------------------------------
-    HSVKeyGroup::HSVKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
+    HSVKeyGroup::HSVKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
         KeyGroup(tr("HSV"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),

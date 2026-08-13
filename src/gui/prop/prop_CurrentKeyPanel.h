@@ -109,7 +109,7 @@ namespace prop {
     //-------------------------------------------------------------------------------------------------
     class BlurKeyGroup: public KeyGroup {
     public:
-        BlurKeyGroup(Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources);
+        BlurKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources);
 
         void setKeyEnabled(bool aEnabled);
         void setKeyExists(bool aIsExists);
