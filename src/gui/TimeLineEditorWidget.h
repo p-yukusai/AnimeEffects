@@ -15,22 +15,28 @@ namespace gui {
 class TimeCursor: public QWidget {
     Q_OBJECT
 
-    Q_PROPERTY(QColor bodyColor READ bodyColor WRITE setBodyColor DESIGNABLE true)
+    Q_PROPERTY(QColor numberColor READ numberColor WRITE setNumberColor DESIGNABLE true)
     Q_PROPERTY(QColor edgeColor READ edgeColor WRITE setEdgeColor DESIGNABLE true)
 public:
     TimeCursor(QWidget* aParent);
     void setCursorPos(const QPoint& aPos, int aHeight);
+    void setHeaderInfo(const QString& aFrameText, const QColor& aBadgeColor);
     virtual void paintEvent(QPaintEvent* aEvent);
 
-    QColor bodyColor() const;
-    void setBodyColor(const QColor& bodyColor);
+    QColor numberColor() const;
+    void setNumberColor(const QColor& numberColor);
 
     QColor edgeColor() const;
     void setEdgeColor(const QColor& edgeColor);
 
 private:
-    QColor mBodyColor;
+    static constexpr int kBadgePadding = 3;
+
+    QColor mNumberColor;
     QColor mEdgeColor;
+    QString mFrameText;
+    QColor mBadgeColor;
+    int mLineX;
 };
 
 class TimeLineEditorWidget: public QWidget {
@@ -40,6 +46,8 @@ class TimeLineEditorWidget: public QWidget {
     // Qt's stylesheet support for custom rendering is applied per widget via properties.
     Q_PROPERTY(QColor headerContentColor READ headerContentColor WRITE setHeaderContentColor DESIGNABLE true)
     Q_PROPERTY(QColor headerBackgroundColor READ headerBackgroundColor WRITE setHeaderBackgroundColor DESIGNABLE true)
+    Q_PROPERTY(QColor rulerLineColor READ rulerLineColor WRITE setRulerLineColor DESIGNABLE true)
+
 
     Q_PROPERTY(QColor trackColor READ trackColor WRITE setTrackColor DESIGNABLE true)
     Q_PROPERTY(QColor trackEdgeColor READ trackEdgeColor WRITE setTrackEdgeColor DESIGNABLE true)
@@ -56,7 +64,7 @@ public:
     void updateCamera(const core::CameraInfo& aCamera);
     void updateLines(QTreeWidgetItem* aTopNode);
     void updateLineSelection(core::ObjectNode* aRepresent);
-    bool updateCursor(const core::AbstractCursor& aCursor);
+    bool updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
     void updateWheel(QWheelEvent* aEvent, int aMouseX, int& aFrameBefore, int& aPixelAfter);
     void updateProjectAttribute();
     void updateTheme(theme::Theme&);
@@ -74,6 +82,10 @@ public:
 
     QColor headerBackgroundColor() const;
     void setHeaderBackgroundColor(const QColor& headerBackgroundColor);
+
+    QColor rulerLineColor() const;
+    void setRulerLineColor(const QColor& rulerLineColor);
+
 
     QColor trackColor() const;
     void setTrackColor(const QColor& trackColor);

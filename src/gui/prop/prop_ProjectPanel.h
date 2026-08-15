@@ -13,7 +13,7 @@ namespace prop {
 
     class ProjectPanel: public Panel {
     public:
-        ProjectPanel(core::Project& aProject, QWidget* aParent);
+        ProjectPanel(core::Project& aProject, QWidget* aParent, GUIResources* aGUIResources);
 
     private:
         void build();

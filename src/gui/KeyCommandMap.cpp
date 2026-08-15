@@ -30,7 +30,7 @@ KeyCommandMap::KeyCommandMap(QWidget& aParent):
 
     addNewKey("Paste", timeline, tr("Paste selected key(s)"), ctrl::KeyBinding(Qt::Key_V, Qt::ControlModifier));
 
-    addNewKey("Delete", timeline, tr("Delete selected key(s)"), ctrl::KeyBinding(Qt::Key_X, Qt::ControlModifier));
+    addNewKey("Delete", timeline, tr("Delete selected key(s)"), ctrl::KeyBinding(Qt::Key_Delete));
 
     addNewKey("SaveProject", general, tr("Save project"), ctrl::KeyBinding(Qt::Key_S, Qt::ControlModifier));
 

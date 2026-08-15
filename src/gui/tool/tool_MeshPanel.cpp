@@ -2,8 +2,8 @@
 #include "gui/tool/tool_ItemTable.h"
 
 namespace {
-int kButtonSize = 23;
-int kButtonSpace = kButtonSize;
+const int kButtonSize = 24;
+const int kButtonSpace = kButtonSize;
 } // namespace
 
 namespace gui {
@@ -12,21 +12,26 @@ namespace tool {
     MeshPanel::MeshPanel(QWidget* aParent, GUIResources& aResources):
         QGroupBox(aParent), mResources(aResources), mParam(), mTypeGroup() {
         this->setTitle(tr("Mesh editor"));
+        mResources.onThemeChanged.connect(this, &MeshPanel::onThemeUpdated);
         createMode();
     }
 
+    void MeshPanel::applyIcons() {
+        mTypeGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("plus") << mResources.icon("minus") << mResources.icon("pencil")
+        , QSize(18, 18));
+    }
+
+    void MeshPanel::onThemeUpdated(theme::Theme&) {
+        applyIcons();
+    }
+
     void MeshPanel::createMode() {
-        if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 36;
-            kButtonSpace = kButtonSize;
-        }
         // type
         mTypeGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
         mTypeGroup->setChoice(mParam.mode);
         mTypeGroup->setToolTips(QStringList() << tr("Add vertex") << tr("Delete vertex") << tr("Split polygon"));
-        mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("plus") << mResources.icon("minus") << mResources.icon("pencil")
-        );
+        applyIcons();
         mTypeGroup->connect([=](int aIndex) {
             this->mParam.mode = aIndex;
             this->onParamUpdated(true);
@@ -35,7 +40,8 @@ namespace tool {
 
     int MeshPanel::updateGeometry(const QPoint& aPos, int aWidth) {
         static const int kItemLeft = 8;
-        static const int kItemTop = 26;
+        // content starts at the stylesheet's content top
+        const int kItemTop = this->contentsMargins().top();
 
         const int itemWidth = aWidth - kItemLeft * 2;
         QPoint curPos(kItemLeft, kItemTop);
@@ -43,10 +49,11 @@ namespace tool {
         // type
         curPos.setY(mTypeGroup->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
 
-        // myself
-        this->setGeometry(aPos.x(), aPos.y(), aWidth, curPos.y());
+        // myself: card height = content extent + bottom padding (see ViewPanel)
+        const int b = this->contentsMargins().bottom();
+        this->setGeometry(aPos.x(), aPos.y(), aWidth, curPos.y() + b);
 
-        return aPos.y() + curPos.y();
+        return aPos.y() + curPos.y() + b;
     }
 
 } // namespace tool

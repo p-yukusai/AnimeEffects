@@ -36,6 +36,7 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
     mAbstractCursor(),
     mDriver(),
     mProjectTabBar(),
+    mViewportBackground(),
     mUsingTablet(false),
     mViewSetting(),
     mCanvasMover(),
@@ -171,6 +172,13 @@ void MainDisplayWidget::resetCamera() {
 
 void MainDisplayWidget::setProjectTabBar(ProjectTabBar* aTabBar) { mProjectTabBar = aTabBar; }
 
+void MainDisplayWidget::setViewportBackground(const QColor& aColor) {
+    if (mViewportBackground != aColor) {
+        mViewportBackground = aColor;
+        this->updateRender();
+    }
+}
+
 void MainDisplayWidget::updateRender() { this->update(); }
 
 void MainDisplayWidget::initializeGL() {
@@ -284,7 +292,7 @@ void MainDisplayWidget::paintGL() {
 
     // setup
     gl::Util::setViewportAsActualPixels(deviceSize());
-    gl::Util::clearColorBuffer(0.25f, 0.25f, 0.25f, 1.0f);
+    gl::Util::clearColorBuffer(mViewportBackground.redF(), mViewportBackground.greenF(), mViewportBackground.blueF(), 1.0f);
     gl::Util::resetRenderState();
     GL_CHECK_ERROR();
 
@@ -321,7 +329,7 @@ void MainDisplayWidget::paintGL() {
 
     if (mViewSetting.cutImagesByTheFrame && mProject) {
         XC_PTR_ASSERT(mRenderInfo);
-        gl::Util::clearColorBuffer(0.25f, 0.25f, 0.25f, 1.0f);
+        gl::Util::clearColorBuffer(mViewportBackground.redF(), mViewportBackground.greenF(), mViewportBackground.blueF(), 1.0f);
 
         auto imageQuad = mRenderInfo->camera.screenImageQuadangle();
         const QSize screenSize = mRenderInfo->camera.screenSize();
@@ -414,6 +422,14 @@ void MainDisplayWidget::mousePressEvent(QMouseEvent* aEvent) {
                     mMovingCanvasByKey || mMovingCanvasByTool || mMovingCanvasByMiddleMouseButton
                 );
             }
+
+            // A canvas grab shows the closed hand; the resting pan cursor
+            // (open hand) only shows before the button goes down.
+            if ((mMovingCanvasByTool || mMovingCanvasByKey || mMovingCanvasByMiddleMouseButton) &&
+                (aEvent->button() == Qt::MouseButton::LeftButton ||
+                 aEvent->button() == Qt::MouseButton::MiddleButton)) {
+                this->setCursor(Qt::ClosedHandCursor);
+            }
         }
     }
 }
@@ -429,6 +445,12 @@ void MainDisplayWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
                 mCanvasMover.setDragAndMove(
                     mMovingCanvasByKey || mMovingCanvasByTool || mMovingCanvasByMiddleMouseButton
                 );
+            }
+
+            // back to the resting cursor once every button is up (a
+            // right-button release mid-drag must not clear the closed hand)
+            if (aEvent->buttons() == Qt::NoButton) {
+                this->setCursor(mMovingCanvasByTool ? Qt::OpenHandCursor : Qt::ArrowCursor);
             }
         }
     }

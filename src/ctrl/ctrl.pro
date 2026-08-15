@@ -97,7 +97,8 @@ SOURCES += \
     DriverResources.cpp \
     Painter.cpp \
     KeyBinding.cpp \
-    time/time_Focuser.cpp \
+    time/time_Marquee.cpp \
+    time/time_Selection.cpp \
     time/time_Renderer.cpp \
     time/time_Scaler.cpp \
     TimeLineRow.cpp \
@@ -187,7 +188,8 @@ HEADERS += \
     DriverResources.h \
     Painter.h \
     KeyBinding.h \
-    time/time_Focuser.h \
+    time/time_Marquee.h \
+    time/time_Selection.h \
     time/time_Renderer.h \
     time/time_Scaler.h \
     time/time_Current.h \

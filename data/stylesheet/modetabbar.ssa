@@ -1,0 +1,46 @@
+QTabBar {
+    background-color: @base@;
+    left: 0;
+    border-radius: 0;
+}
+
+QTabBar::tab:top,
+QTabBar::tab:top:last,
+QTabBar::tab:top:only-one {
+    color: @textDisabled@;
+    background-color: @base@;
+    border: none;
+    border-top-left-radius: 0.25em;
+    border-top-right-radius: 0.25em;
+    width: 8em;
+    min-height: 1.125em;
+    max-height: 1.125em;
+    min-width: 8ex;
+    padding: 0;
+    margin: 0;
+}
+
+QTabBar::tab:top:selected {
+    color: @text@;
+    background-color: @raised@;
+    border: none;
+}
+
+QTabBar::tab:top:!selected {
+    border: none;
+}
+
+QTabBar::tab:top:next-selected {
+    border: none;
+}
+
+QTabBar::tab:top:!selected:hover,
+QTabBar::tab:top:!selected:first:hover {
+    background-color: @hairline@;
+    border: none;
+}
+
+QTabBar::tab:top:selected:hover {
+    background-color: @raisedHover@;
+    border: none;
+}

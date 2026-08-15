@@ -2,6 +2,7 @@
 #define CTRL_TIME_SCALER_H
 
 #include <array>
+#include <vector>
 #include <QPoint>
 
 namespace ctrl {
@@ -9,6 +10,10 @@ namespace time {
 
     class Scaler {
     public:
+        // Minimum on-screen distance (px) between consecutive numbers of a
+        // tier before the scale labels it.
+        static constexpr int kNumberSpacing = 64;
+
         struct Attribute {
             bool showNumber;
             QPoint grid;
@@ -17,7 +22,7 @@ namespace time {
         Scaler();
 
         void setMaxFrame(int aMaxFrame);
-        void setFrameList(const std::array<int, 3>& aFrameList);
+        void setFps(int aFps);
         void update(int aWheelDelta);
         int pixelWidth(int aFrame) const;
         int maxPixelWidth() const;
@@ -26,10 +31,13 @@ namespace time {
         Attribute attribute(int aFrame) const;
 
     private:
+        int majorStep(int aSpacing) const;
+
         int mMaxFrame;
+        int mFps;
+        std::vector<int> mLadder;
         int mWheel;
         int mIndex;
-        std::array<int, 3> mFrameList;
     };
 
 } // namespace time

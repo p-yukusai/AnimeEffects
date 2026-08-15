@@ -2,8 +2,8 @@
 #include "gui/tool/tool_ItemTable.h"
 
 namespace {
-int kButtonSize = 23;
-int kButtonSpace = kButtonSize;
+const int kButtonSize = 24;
+const int kButtonSpace = kButtonSize;
 } // namespace
 
 namespace gui {
@@ -22,22 +22,36 @@ namespace tool {
         mEraseRadius(),
         mErasePressure() {
         this->setTitle(tr("FFD"));
+        mResources.onThemeChanged.connect(this, &FFDPanel::onThemeUpdated);
         createBrush();
         updateTypeParam(mParam.type);
     }
 
+    void FFDPanel::applyIcons() {
+        mTypeGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
+        , QSize(18, 18));
+        mHardnessGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("hardness-1") << mResources.icon("hardness-2")
+                             << mResources.icon("hardness-3"),
+            QSize(18, 18)
+        );
+        mEraseHardnessGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("hardness-1") << mResources.icon("hardness-2")
+                             << mResources.icon("hardness-3"),
+            QSize(18, 18)
+        );
+    }
+
+    void FFDPanel::onThemeUpdated(theme::Theme&) {
+        applyIcons();
+    }
+
     void FFDPanel::createBrush() {
-        if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 36;
-            kButtonSpace = kButtonSize;
-        }
         // type
         mTypeGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
         mTypeGroup->setChoice(mParam.type);
         mTypeGroup->setToolTips(QStringList() << tr("Move vertex") << tr("Deform mesh") << tr("Erase deformations"));
-        mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
-        );
         mTypeGroup->connect([=](int aIndex) {
             this->mParam.type = (ctrl::FFDParam::Type)aIndex;
             this->updateTypeParam(this->mParam.type);
@@ -48,10 +62,6 @@ namespace tool {
         mHardnessGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
         mHardnessGroup->setChoice(mParam.hardness);
         mHardnessGroup->setToolTips(QStringList() << tr("Soft") << tr("Normal") << tr("Hard"));
-        mHardnessGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("hardness1") << mResources.icon("hardness2")
-                             << mResources.icon("hardness3")
-        );
         mHardnessGroup->connect([=](int aIndex) {
             this->mParam.hardness = aIndex;
             this->onParamUpdated(false);
@@ -87,10 +97,6 @@ namespace tool {
         mEraseHardnessGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
         mEraseHardnessGroup->setChoice(mParam.eraseHardness);
         mEraseHardnessGroup->setToolTips(QStringList() << tr("Soft") << tr("Normal") << tr("Hard"));
-        mEraseHardnessGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("hardness1") << mResources.icon("hardness2")
-                             << mResources.icon("hardness3")
-        );
         mEraseHardnessGroup->connect([=](int aIndex) {
             this->mParam.eraseHardness = aIndex;
             this->onParamUpdated(false);
@@ -129,7 +135,8 @@ namespace tool {
 
     int FFDPanel::updateGeometry(const QPoint& aPos, int aWidth) {
         static const int kItemLeft = 8;
-        static const int kItemTop = 26;
+        // content starts at the stylesheet's content top
+        const int kItemTop = this->contentsMargins().top();
 
         const int itemWidth = aWidth - kItemLeft * 2;
         QPoint curPos(kItemLeft, kItemTop);
@@ -155,9 +162,11 @@ namespace tool {
             curPos.setY(mErasePressure->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
         }
 
-        this->setGeometry(aPos.x(), aPos.y(), aWidth, curPos.y());
+        // myself: card height = content extent + bottom padding (see ViewPanel)
+        const int b = this->contentsMargins().bottom();
+        this->setGeometry(aPos.x(), aPos.y(), aWidth, curPos.y() + b);
 
-        return aPos.y() + curPos.y();
+        return aPos.y() + curPos.y() + b;
     }
 
 } // namespace tool

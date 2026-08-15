@@ -2,8 +2,8 @@
 #include "gui/tool/tool_ItemTable.h"
 
 namespace {
-int kButtonSize = 23;
-int kButtonSpace = kButtonSize;
+const int kButtonSize = 24;
+const int kButtonSpace = kButtonSize;
 } // namespace
 
 namespace gui {
@@ -12,22 +12,27 @@ namespace tool {
     PosePanel::PosePanel(QWidget* aParent, GUIResources& aResources):
         QGroupBox(aParent), mResources(aResources), mParam(), mTypeGroup(), mDIWeight(), mEIRadius(), mEIPressure() {
         this->setTitle(tr("Pose editor"));
+        mResources.onThemeChanged.connect(this, &PosePanel::onThemeUpdated);
         createMode();
         updateTypeParam(mParam.mode);
     }
 
+    void PosePanel::applyIcons() {
+        mTypeGroup->setIcons(
+            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
+        , QSize(18, 18));
+    }
+
+    void PosePanel::onThemeUpdated(theme::Theme&) {
+        applyIcons();
+    }
+
     void PosePanel::createMode() {
-        if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 36;
-            kButtonSpace = kButtonSize;
-        }
         // type
         mTypeGroup.reset(new SingleOutItem(ctrl::PoseEditMode_TERM, QSize(kButtonSpace, kButtonSpace), this));
         mTypeGroup->setChoice(mParam.mode);
         mTypeGroup->setToolTips(QStringList() << tr("Move bone") << tr("Pull bones") << tr("Erase bone pose"));
-        mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
-        );
+        applyIcons();
 
         mTypeGroup->connect([=](int aIndex) {
             this->mParam.mode = (ctrl::PoseEditMode)aIndex;
@@ -71,7 +76,8 @@ namespace tool {
 
     int PosePanel::updateGeometry(const QPoint& aPos, int aWidth) {
         static const int kItemLeft = 8;
-        static const int kItemTop = 26;
+        // content starts at the stylesheet's content top
+        const int kItemTop = this->contentsMargins().top();
 
         const int itemWidth = aWidth - kItemLeft * 2;
         QPoint curPos(kItemLeft, kItemTop);
@@ -89,10 +95,11 @@ namespace tool {
             curPos.setY(mEIPressure->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
         }
 
-        // myself
-        this->setGeometry(aPos.x(), aPos.y(), aWidth, curPos.y());
+        // myself: card height = content extent + bottom padding (see ViewPanel)
+        const int b = this->contentsMargins().bottom();
+        this->setGeometry(aPos.x(), aPos.y(), aWidth, curPos.y() + b);
 
-        return aPos.y() + curPos.y();
+        return aPos.y() + curPos.y() + b;
     }
 
 } // namespace tool

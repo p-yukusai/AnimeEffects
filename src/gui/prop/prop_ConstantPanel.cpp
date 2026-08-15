@@ -52,16 +52,17 @@ namespace gui {
 namespace prop {
 
     //-------------------------------------------------------------------------------------------------
-    ConstantPanel::ConstantPanel(ViaPoint& aViaPoint, core::Project& aProject, const QString& aTitle, QWidget* aParent):
-        Panel(aTitle, aParent),
+    ConstantPanel::ConstantPanel(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent, GUIResources* aGUIResources):
+        Panel(tr("Constants"), aParent, aGUIResources),
         mViaPoint(aViaPoint),
         mProject(aProject),
+        mGUIResources(aGUIResources),
         mTarget(),
         mLabelWidth(),
         mRenderingAttributes(),
         mBlendMode(),
         mClipped() {
-        mLabelWidth = this->fontMetrics().boundingRect(tr("MaxTextWidth :")).width();
+        mLabelWidth = this->fontMetrics().boundingRect(tr("MaxTextWidth")).width();
 
         build();
         this->hide();
@@ -71,7 +72,6 @@ namespace prop {
         mTarget = aTarget;
 
         if (mTarget) {
-            this->setTitle(mTarget->name() + " : " + tr("Constants"));
             this->show();
         } else {
             this->hide();
@@ -85,7 +85,7 @@ namespace prop {
     void ConstantPanel::build() {
         using core::Constant;
 
-        mRenderingAttributes = new AttrGroup(tr("Rendering"), mLabelWidth);
+        mRenderingAttributes = new AttrGroup(tr("Rendering"), mLabelWidth, mGUIResources);
         {
             this->addGroup(mRenderingAttributes);
 
@@ -145,12 +145,12 @@ namespace prop {
                     assignBlendMode(this->mProject, this->mTarget, mode);
                 };
             }
-            mRenderingAttributes->addItem(tr("Blend :"), mBlendMode);
+            mRenderingAttributes->addItem(tr("Blend"), mBlendMode);
 
             // clipped
             mClipped = new CheckItem(mRenderingAttributes);
             mClipped->onValueUpdated = [=](bool aNext) { assignClipped(this->mProject, this->mTarget, aNext); };
-            mRenderingAttributes->addItem(tr("Clipped :"), mClipped);
+            mRenderingAttributes->addItem(tr("Clipped"), mClipped);
         }
 
         this->addStretch();
@@ -200,7 +200,7 @@ namespace prop {
             return; // fail-safe code
 
         const bool prev = aTarget->renderer()->isClipped();
-        cmnd::ScopedMacro macro(aProject.commandStack(), CmndName::tr("update a clippping flag"));
+        cmnd::ScopedMacro macro(aProject.commandStack(), CmndName::tr("update a clipping flag"));
         macro.grabListener(new ObjectNodeAttrNotifier(aProject, *aTarget));
 
         auto exec = [=]() { aTarget->renderer()->setClipped(aValue); };

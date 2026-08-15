@@ -1,5 +1,12 @@
 #include "gui/tool/tool_ViewPanel.h"
 
+namespace {
+// Same button family as the toolbox: 24x24 with explicit 18px glyphs.
+// Sizes are logical pixels; Qt6 scales the whole window on high-DPI screens.
+const int kButtonSize = 24;
+const int kIconSize = 18;
+} // namespace
+
 namespace gui {
 namespace tool {
 
@@ -17,6 +24,8 @@ namespace tool {
         QPushButton* button = new QPushButton();
         button->setObjectName(aIconName);
         button->setIcon(mGUIResources.icon(aIconName));
+        button->setIconSize(QSize(kIconSize, kIconSize));
+        button->setFixedSize(kButtonSize, kButtonSize);
         button->setCheckable(aCheckable);
         button->setToolTip(aToolTip);
         button->setFocusPolicy(Qt::NoFocus);
@@ -31,12 +40,16 @@ namespace tool {
         QMargins margins = this->contentsMargins();
         int l = margins.left();
         int r = margins.right();
+        int t = margins.top();
         int b = margins.bottom();
 
+        // card height = top padding + content + bottom padding; the layout's
+        // heightForWidth only measures the content, so without t the buttons
+        // overflow the card bottom and get clipped
         auto height = mLayout.heightForWidth(aWidth - l - r);
-        this->setGeometry(aPos.x(), aPos.y(), aWidth, height + b);
+        this->setGeometry(aPos.x(), aPos.y(), aWidth, height + t + b);
 
-        return aPos.y() + height + b;
+        return aPos.y() + height + t + b;
     }
 
     void ViewPanel::onThemeUpdated(theme::Theme&) {

@@ -2,6 +2,15 @@
 #include "XC.h"
 #include "gui/tool/tool_ModePanel.h"
 
+namespace {
+// The toolbox is the dock's primary control: 24x24 buttons (matching the
+// playback column) with explicit 18px glyphs. Fixed size keeps the buttons
+// exactly square — the QSS padding/sizeHint math otherwise yields 24x20.
+// Sizes are logical pixels; Qt6 scales the whole window on high-DPI screens.
+const int kButtonSize = 24;
+const int kIconSize = 18;
+} // namespace
+
 namespace gui {
 namespace tool {
 
@@ -13,6 +22,7 @@ namespace tool {
         mLayout(this, 0, 2, 2),
         mOnPushed(aOnPushed) {
         this->setTitle(tr("Toolbox"));
+        this->setObjectName("modePanel"); // QSS id for the toolbox row's active-tool accent
         mGroup->setExclusive(true);
         this->setLayout(&mLayout);
 
@@ -30,6 +40,8 @@ namespace tool {
         QPushButton* button = new QPushButton(this);
         button->setObjectName(aIconName);
         button->setIcon(mGUIResources.icon(aIconName));
+        button->setIconSize(QSize(kIconSize, kIconSize));
+        button->setFixedSize(kButtonSize, kButtonSize);
         button->setCheckable(true);
         button->setToolTip(aToolTip);
 
@@ -56,12 +68,14 @@ namespace tool {
         QMargins margins = this->contentsMargins();
         int l = margins.left();
         int r = margins.right();
+        int t = margins.top();
         int b = margins.bottom();
 
+        // card height = top padding + content + bottom padding (see ViewPanel)
         auto height = mLayout.heightForWidth(aWidth - l - r);
-        this->setGeometry(aPos.x(), aPos.y(), aWidth, height + b);
+        this->setGeometry(aPos.x(), aPos.y(), aWidth, height + t + b);
 
-        return aPos.y() + height + b;
+        return aPos.y() + height + t + b;
     }
 
 } // namespace tool

@@ -1,4 +1,5 @@
 #include "gui/ViaPoint.h"
+#include "gui/theme/Colors.h"
 
 #include "gl/Global.h"
 #include "gui/ResourceDialog.h"
@@ -46,13 +47,13 @@ void ViaPoint::pushLog(const QString& aText, ctrl::UILogType aType) {
 
 void ViaPoint::pushUndoneLog(const QString& aText) {
     if (mLogView) {
-        mLogView->appendHtml("<font color=\"#606060\">" + aText + "</font>");
+        mLogView->appendHtml("<font color=\"" + theme::Colors::current().textMuted.name() + "\">" + aText + "</font>");
     }
 }
 
 void ViaPoint::pushRedoneLog(const QString& aText) {
     if (mLogView) {
-        mLogView->appendHtml("<font color=\"#000030\">" + aText + "</font>");
+        mLogView->appendHtml("<font color=\"" + theme::Colors::current().accentBright.name() + "\">" + aText + "</font>");
     }
 }
 

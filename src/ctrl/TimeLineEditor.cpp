@@ -18,11 +18,7 @@
 using namespace core;
 
 namespace {
-    constexpr int kTimeLineFpsA = 60;
-    constexpr int kTimeLineFpsB = 30;
-    constexpr int kTimeLineFpsC = 10;
     constexpr int kTimeLineMargin = 14;
-    constexpr int kHeaderHeight = 22;
     constexpr int kDefaultMaxFrame = 600;
 
 } // namespace
@@ -36,17 +32,22 @@ TimeLineEditor::TimeLineEditor():
     mSelectingRow(),
     mTimeMax(),
     mState(State_Standby),
+    mFps(60),
     mTimeCurrent(kTimeLineMargin),
     mTimeScale(),
-    mFocus(mRows, mTimeScale, kTimeLineMargin),
+    mMarquee(mRows, mTimeScale, kTimeLineMargin),
+    mSelection(),
     mMoveRef(),
     mMoveFrame(),
+    mPressFrame(),
     mOnUpdatingKey(false),
-    mShowSelectionRange(false) {
+    mMarqueeMode(Marquee_Replace),
+    mPreGestureSelection(),
+    mPressedTarget(),
+    mPressedTargetValid(false) {
     mRows.reserve(64);
 
-    constexpr std::array<int, 3> kFrameList = {kTimeLineFpsA, kTimeLineFpsB, kTimeLineFpsC};
-    mTimeScale.setFrameList(kFrameList);
+    mTimeScale.setFps(mFps);
 
     // reset max frame
     setMaxFrame(kDefaultMaxFrame);
@@ -66,6 +67,8 @@ void TimeLineEditor::setProject(Project* aProject) {
     if (aProject) {
         mProject = aProject->pointee();
         setMaxFrame(mProject->attribute().maxFrame());
+        mFps = mProject->attribute().fps();
+        mTimeScale.setFps(mFps);
     } else {
         setMaxFrame(kDefaultMaxFrame);
     }
@@ -73,15 +76,26 @@ void TimeLineEditor::setProject(Project* aProject) {
 
 void TimeLineEditor::clearRows() {
     mRows.clear();
-    clearState();
+    clearSelection();
 }
 
+// Gesture state only — the selection survives (it is the visual anchor of
+// what is selected; the marquee box is transient).
 void TimeLineEditor::clearState() {
-    mFocus.clear();
     mState = State_Standby;
     mMoveRef = nullptr;
     mMoveFrame = 0;
-    mShowSelectionRange = false;
+    mPressFrame = 0;
+    mMarquee.clear();
+    mMarqueeMode = Marquee_Replace;
+    mPreGestureSelection = core::TimeLineEvent();
+    mPressedTarget = core::TimeLineEvent::Target();
+    mPressedTargetValid = false;
+}
+
+void TimeLineEditor::clearSelection() {
+    mSelection.clear();
+    clearState();
 }
 
 void TimeLineEditor::pushRow(ObjectNode* aNode, util::Range aWorldTB, bool aClosedFolder) {
@@ -99,13 +113,15 @@ void TimeLineEditor::updateRowSelection(const ObjectNode* aRepresent) {
 }
 
 void TimeLineEditor::updateKey() {
+    // any timeline modification can invalidate the stored targets (keys
+    // moved, removed or recreated), so the selection follows the change
     if (!mOnUpdatingKey) {
-        clearState();
+        clearSelection();
     }
 }
 
 void TimeLineEditor::updateProjectAttribute() {
-    clearState();
+    clearState(); // fps/maxFrame changes keep the targets valid
     if (mProject) {
         const int newMaxFrame = mProject->attribute().maxFrame();
         if (mTimeMax != newMaxFrame) {
@@ -116,10 +132,16 @@ void TimeLineEditor::updateProjectAttribute() {
                 row.rect.setRight(newRowRight);
             }
         }
+
+        const int newFps = mProject->attribute().fps();
+        if (mFps != newFps) {
+            mFps = newFps;
+            mTimeScale.setFps(mFps);
+        }
     }
 }
 
-TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& aCursor) {
+TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers) {
     UpdateFlags flags = 0;
 
     if (!mProject) {
@@ -127,42 +149,63 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
     }
 
     const QPoint worldPoint = aCursor.worldPoint();
+    const bool ctrl = aModifiers.testFlag(Qt::ControlModifier);
+    const bool shift = aModifiers.testFlag(Qt::ShiftModifier);
 
     if (aCursor.emitsLeftPressedEvent()) {
-        // a selection range is exists.
-        if (mState == State_EncloseKeys) {
-            if (mFocus.isInRange(worldPoint) && beginMoveKeys(worldPoint)) {
-                mState = State_MoveKeys;
-                flags |= UpdateFlag_ModView;
+        const QVector2D handlePos(mTimeCurrent.handlePos());
+
+        // playhead: handle or header click moves the current frame
+        if ((aCursor.screenPos() - handlePos).length() < mTimeCurrent.handleRange()) {
+            mState = State_MoveCurrent;
+            flags |= UpdateFlag_ModView;
+        } else if (aCursor.screenPos().y() < kHeaderHeight) {
+            mTimeCurrent.setHandlePos(mTimeScale, aCursor.worldPos().toPoint());
+            mState = State_MoveCurrent;
+            flags |= UpdateFlag_ModView;
+            flags |= UpdateFlag_ModFrame;
+        } else {
+            const time::Hit hit = mMarquee.hitTest(worldPoint);
+
+            if (hit.isValid()) {
+                // clicked a key: standard creative-tool selection conventions.
+                // plain click selects only this key (collapse); shift-click
+                // and ctrl-click both toggle membership
+                // a fresh press never inherits a previous gesture's pending
+                // collapse target (an aborted move can leave one behind)
+                mPressedTargetValid = false;
+                const TimeLineEvent::Target target(*hit.node, hit.pos, hit.pos.index());
+                if (shift || ctrl) {
+                    mSelection.toggle(target);
+                    flags |= UpdateFlag_ModView;
+                } else {
+                    // plain click: select this key. If it is already in the
+                    // selection, keep the group for a pending drag-move and
+                    // collapse to just this key on a click (no drag).
+                    mPressedTarget = target;
+                    mPressedTargetValid = true;
+                    if (!mSelection.contains(target)) {
+                        TimeLineEvent single;
+                        single.pushTarget(*hit.node, hit.pos);
+                        mSelection.set(single);
+                        flags |= UpdateFlag_ModView;
+                    }
+                }
+                mPressFrame = mTimeScale.frame(worldPoint.x() - kTimeLineMargin);
+                mState = State_MoveKeys; // move is armed lazily on first drag
             } else {
-                mShowSelectionRange = false;
-                mState = State_Standby;
-                flags |= UpdateFlag_ModView;
-            }
-        }
-
-        // idle state
-        if (mState == State_Standby) {
-            const auto target = mFocus.reset(worldPoint);
-
-            const QVector2D handlePos(mTimeCurrent.handlePos());
-
-            if ((aCursor.screenPos() - handlePos).length() < mTimeCurrent.handleRange()) {
-                mState = State_MoveCurrent;
-                flags |= UpdateFlag_ModView;
-            } else if (aCursor.screenPos().y() < kHeaderHeight) {
-                mTimeCurrent.setHandlePos(mTimeScale, aCursor.worldPos().toPoint());
-                mState = State_MoveCurrent;
-                flags |= UpdateFlag_ModView;
-                flags |= UpdateFlag_ModFrame;
-            } else if (target.isValid()) {
-                beginMoveKey(target);
-                mState = State_MoveKeys;
-                flags |= UpdateFlag_ModView;
-            } else {
-                mShowSelectionRange = true;
+                // empty space: marquee. plain replaces the selection, shift
+                // adds to it, ctrl subtracts from it
+                mMarquee.begin(worldPoint);
+                mMarqueeMode = ctrl ? Marquee_Subtract : (shift ? Marquee_Add : Marquee_Replace);
+                if (mMarqueeMode != Marquee_Replace) {
+                    mPreGestureSelection = core::TimeLineEvent();
+                    mSelection.assign(mPreGestureSelection);
+                } else {
+                    mSelection.clear();
+                    flags |= UpdateFlag_ModView;
+                }
                 mState = State_EncloseKeys;
-                flags |= UpdateFlag_ModView;
             }
         }
     } else if (aCursor.emitsLeftDraggedEvent()) {
@@ -171,68 +214,74 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
             flags |= UpdateFlag_ModView;
             flags |= UpdateFlag_ModFrame;
         } else if (mState == State_MoveKeys) {
-            if (!modifyMoveKeys(aCursor.worldPoint())) {
+            if (!mMoveRef) {
+                if (!beginMoveKeys()) {
+                    mState = State_Standby;
+                }
+            }
+            if (mState == State_MoveKeys && !modifyMoveKeys(aCursor.worldPoint())) {
                 mState = State_Standby;
                 mMoveRef = nullptr;
-                mFocus.clear();
+                flags |= UpdateFlag_ModView;
             }
-            flags |= UpdateFlag_ModView;
-            flags |= UpdateFlag_ModFrame;
         } else if (mState == State_EncloseKeys) {
-            mFocus.update(aCursor.worldPoint());
+            mMarquee.update(aCursor.worldPoint());
+            applyMarquee();
             flags |= UpdateFlag_ModView;
         }
     } else if (aCursor.emitsLeftReleasedEvent()) {
-        if (mState != State_EncloseKeys || !mFocus.hasRange()) {
-            mMoveRef = nullptr;
-            mState = State_Standby;
-            mShowSelectionRange = false;
-            flags |= UpdateFlag_ModView;
+        if (mState == State_MoveKeys) {
+            // keys moved: re-resolve the selection to their new frames so
+            // later copy/delete/move target the right keys
+            if (mMoveRef) {
+                mSelection.reindex();
+                mMoveRef = nullptr;
+            } else if (mPressedTargetValid) {
+                // a plain click (no drag) always leaves exactly the clicked
+                // key selected — idempotent when it was already alone
+                TimeLineEvent single;
+                single.pushTarget(*mPressedTarget.node, mPressedTarget.pos);
+                mSelection.set(single);
+                flags |= UpdateFlag_ModView;
+            }
+            clearState();
+        } else if (mState == State_EncloseKeys) {
+            const QRect box = mMarquee.rect();
+            const bool degenerate = box.width() < 2 && box.height() < 2;
+            // a bare modifier click on empty space: ctrl deselects, shift
+            // keeps the selection; plain already cleared at press
+            if (degenerate && mMarqueeMode == Marquee_Subtract) {
+                mSelection.clear();
+                flags |= UpdateFlag_ModView;
+            }
+            clearState(); // the box is transient; the selection highlights remain
         }
     } else {
-        if (mState != State_EncloseKeys) {
-            mFocus.reset(aCursor.worldPoint());
-        }
-    }
-
-    if (mFocus.viewIsChanged()) {
-        flags |= UpdateFlag_ModView;
+        // hover: nothing to do — selection lives in the Selection object
     }
 
     return flags;
 }
 
-void TimeLineEditor::beginMoveKey(const time::Focuser::SingleFocus& aTarget) {
-    XC_ASSERT(aTarget.isValid());
-
-    mOnUpdatingKey = true;
-    {
-        cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Move key"));
-
-        auto notifier = TimeLineUtil::createMoveNotifier(*mProject, *aTarget.node, aTarget.pos);
-        macro.grabListener(notifier);
-
-        mMoveRef = new TimeLineUtil::MoveFrameOfKey(notifier->event());
-        mProject->commandStack().push(mMoveRef);
-        mMoveFrame = aTarget.pos.index();
-    }
-    mOnUpdatingKey = false;
-}
-
-bool TimeLineEditor::beginMoveKeys(const QPoint& aWorldPos) {
+// Lazy move arming: called on the first drag of a State_MoveKeys gesture. The
+// command is only pushed once the user actually drags, so a bare click leaves
+// no phantom "Move keys" history entry. The delta is measured from the press
+// frame, which was recorded when the gesture began.
+bool TimeLineEditor::beginMoveKeys() {
     bool success = false;
     mOnUpdatingKey = true;
     {
         auto notifier = new TimeLineUtil::Notifier(*mProject);
         notifier->event().setType(TimeLineEvent::Type_MoveKey);
+        mSelection.assign(notifier->event());
 
-        if (mFocus.select(notifier->event())) {
+        if (!notifier->event().targets().isEmpty()) {
             cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Move keys"));
 
             macro.grabListener(notifier);
             mMoveRef = new TimeLineUtil::MoveFrameOfKey(notifier->event());
             mProject->commandStack().push(mMoveRef);
-            mMoveFrame = mTimeScale.frame(aWorldPos.x() - kTimeLineMargin);
+            mMoveFrame = mPressFrame;
             success = true;
         } else {
             delete notifier;
@@ -253,7 +302,6 @@ bool TimeLineEditor::modifyMoveKeys(const QPoint& aWorldPos) {
         int clampedAdd = addFrame;
         if (mMoveRef->modifyMove(modEvent, addFrame, util::Range(0, mTimeMax), &clampedAdd)) {
             mMoveFrame = newFrame;
-            mFocus.moveBoundingRect(clampedAdd);
             mProject->onTimeLineModified(modEvent, false);
         }
         mOnUpdatingKey = false;
@@ -262,18 +310,52 @@ bool TimeLineEditor::modifyMoveKeys(const QPoint& aWorldPos) {
     return false;
 }
 
-bool TimeLineEditor::checkContactWithKeyFocus(TimeLineEvent& aEvent, const QPoint& aPos) {
-    if (mFocus.hasRange() && !mFocus.isInRange(aPos)) {
-        return false;
+// The marquee box is committed into the selection on every drag update, so
+// the highlights stay live while dragging and the box itself is transient.
+void TimeLineEditor::applyMarquee() {
+    if (mState != State_EncloseKeys)
+        return;
+
+    TimeLineEvent box;
+    mMarquee.gather(box);
+
+    if (mMarqueeMode == Marquee_Replace) {
+        mSelection.set(box);
+    } else if (mMarqueeMode == Marquee_Add) {
+        TimeLineEvent merged = mPreGestureSelection;
+        for (const TimeLineEvent::Target& t : box.targets()) {
+            merged.pushTarget(*t.node, t.pos);
+        }
+        mSelection.set(merged);
+    } else {
+        mSelection.subtract(box);
     }
-    return mFocus.select(aEvent);
 }
 
-bool TimeLineEditor::retrieveFocusTargets(TimeLineEvent& aEvent) {
-    if (mFocus.hasRange()) {
-        return mFocus.select(aEvent);
+bool TimeLineEditor::selectKeysAt(TimeLineEvent& aEvent, const QPoint& aPos) {
+    const time::Hit hit = mMarquee.hitTest(aPos);
+    if (!hit.isValid())
+        return false;
+
+    const TimeLineEvent::Target target(*hit.node, hit.pos, hit.pos.index());
+    if (mSelection.contains(target)) {
+        // right-click on a selected key: operate on the whole selection
+        mSelection.assign(aEvent);
+    } else {
+        // right-click on an unselected key: select it and operate on it
+        TimeLineEvent single;
+        single.pushTarget(*hit.node, hit.pos);
+        mSelection.set(single);
+        mSelection.assign(aEvent);
     }
-    return false;
+    return true;
+}
+
+bool TimeLineEditor::retrieveSelectionTargets(TimeLineEvent& aEvent) {
+    if (mSelection.empty())
+        return false;
+    mSelection.assign(aEvent);
+    return true;
 }
 bool isKeyJsonValid(QJsonObject json) {
     if (json.contains("TargetsSize") && json["TargetsSize"] != 0 && json.contains("Keys") &&
@@ -713,7 +795,7 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
     }
     mOnUpdatingKey = false;
 
-    clearState();
+    clearSelection();
     return true;
 }
 
@@ -741,7 +823,7 @@ void TimeLineEditor::deleteCheckedKeys(TimeLineEvent& aEvent) {
     }
     mOnUpdatingKey = false;
 
-    clearState();
+    clearSelection();
 }
 
 void TimeLineEditor::updateWheel(int aDelta, bool aInvertScaling) {
@@ -800,11 +882,11 @@ void TimeLineEditor::render(
     renderer.setTimeScale(mTimeScale);
 
     renderer.renderLines(mRows, camRect, cullRect);
-    renderer.renderHeader(kHeaderHeight, kTimeLineFpsA);
+    renderer.renderHeader(kHeaderHeight, mFps);
     // renderer.renderHandle(mTimeCurrent.handlePos(), mTimeCurrent.handleRange());
 
-    if (mShowSelectionRange) {
-        renderer.renderSelectionRange(mFocus.visualRect());
+    if (mState == State_EncloseKeys && mMarquee.isActive()) {
+        renderer.renderSelectionRange(mMarquee.rect());
     }
 }
 

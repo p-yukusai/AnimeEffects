@@ -14,7 +14,7 @@ namespace prop {
     class ConstantPanel: public Panel {
         Q_OBJECT
     public:
-        ConstantPanel(ViaPoint& aViaPoint, core::Project& aProject, const QString& aTitle, QWidget* aParent);
+        ConstantPanel(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent, GUIResources* aGUIResources);
         void setTarget(core::ObjectNode* aTarget);
         void setPlayBackActivity(bool aIsActive);
         void updateAttribute();
@@ -27,6 +27,7 @@ namespace prop {
 
         ViaPoint& mViaPoint;
         core::Project& mProject;
+        GUIResources* mGUIResources;
         core::ObjectNode* mTarget;
         int mLabelWidth;
 

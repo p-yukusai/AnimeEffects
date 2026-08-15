@@ -1,9 +1,13 @@
 #include <QApplication>
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QRegularExpression>
 #include "GeneralSettingDialog.h"
 #include "util/IProgressReporter.h"
 #include "gl/Global.h"
 #include "ctrl/Exporter.h"
 #include "gui/MainWindow.h"
+#include "gui/DockSash.h"
 #include "gui/ExportDialog.h"
 #include "gui/NewProjectDialog.h"
 #include "gui/ProjectHook.h"
@@ -122,16 +126,24 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         mMainDisplayStyle.reset(new MainDisplayStyle(font, mGUIResources));
         mMainDisplay = new MainDisplayWidget(mViaPoint, this);
         this->setCentralWidget(mMainDisplay);
+        mMainDisplay->setViewportBackground(mGUIResources.viewportBackground());
 
         mProjectTabBar = new ProjectTabBar(mMainDisplay, mGUIResources);
         mMainDisplay->setProjectTabBar(mProjectTabBar);
         mProjectTabBar->onCurrentChanged.connect(this, &MainWindow::onProjectTabChanged);
+        mProjectTabBar->onSaveTab.connect(this, &MainWindow::onTabSaveRequested);
+        mProjectTabBar->onSaveTabAs.connect(this, &MainWindow::onTabSaveAsRequested);
+        mProjectTabBar->onCloseTab.connect(this, &MainWindow::onTabCloseRequested);
+        mProjectTabBar->onCloseOtherTabs.connect(this, &MainWindow::onTabCloseOthersRequested);
+        mProjectTabBar->onCloseAllTabs.connect(this, &MainWindow::onTabCloseAllRequested);
+        mProjectTabBar->onCopyPath.connect(this, &MainWindow::onTabCopyPathRequested);
     }
 
     // create targeting widget
     {
         auto* dockWidget = new QDockWidget(this);
-        dockWidget->setWindowTitle(tr("Animation Dock"));
+        dockWidget->setObjectName("animationDock");
+        dockWidget->setWindowTitle(tr("Animation"));
         dockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
         dockWidget->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
         this->addDockWidget(Qt::BottomDockWidgetArea, dockWidget);
@@ -143,18 +155,25 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
     // create property widget
     {
         auto* dockWidget = new QDockWidget(this);
-        dockWidget->setWindowTitle(tr("Property Dock"));
+        dockWidget->setObjectName("propertiesDock");
+        dockWidget->setWindowTitle(tr("Properties"));
         dockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
         dockWidget->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
         this->addDockWidget(Qt::RightDockWidgetArea, dockWidget);
 
         mDockPropertyWidget = dockWidget;
 
+        // Panel width budget: min = default = 320 (everything fits; the
+        // fields cap at 70% of the column), max = 2x min - a wider dock
+        // would just stretch empty space.
+        dockWidget->setMinimumWidth(320);
+        dockWidget->setMaximumWidth(640);
+
 #if 0
         mProperty = new PropertyWidget(mViaPoint, splitter, &mGUIResources);
         dockWidget->setWidget(mProperty);
 #else
-        auto splitter = new QSplitter(Qt::Vertical, dockWidget);
+        auto splitter = new gui::ThinSplitter(Qt::Vertical, dockWidget);
         splitter->setObjectName("propertysplitter");
         dockWidget->setWidget(splitter);
 
@@ -168,9 +187,10 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         mViaPoint.setLogView(textEdit);
 
         splitter->addWidget(textEdit);
-
         splitter->setCollapsible(0, false);
         splitter->setCollapsible(1, false);
+
+
         QList<int> list;
         list.append(9000);
         list.append(1000);
@@ -181,13 +201,14 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
     // create tool widget
     {
         auto* dockWidget = new QDockWidget(this);
-        dockWidget->setWindowTitle(tr("Tool Dock"));
+        dockWidget->setObjectName("toolsDock");
+        dockWidget->setWindowTitle(tr("Tools"));
         dockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
         this->addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
 
         mDockToolWidget = dockWidget;
 
-        mTool = new ToolWidget(mViaPoint, mGUIResources, *mKeyCommandMap, QSize(192, 136), dockWidget);
+        mTool = new ToolWidget(mViaPoint, mGUIResources, *mKeyCommandMap, QSize(172, 136), dockWidget);
         dockWidget->setWidget(mTool);
     }
 
@@ -196,6 +217,11 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         mResourceDialog = new ResourceDialog(mViaPoint, false, this);
         mViaPoint.setResourceDialog(mResourceDialog);
     }
+
+    // dock-edge sashes: 12px invisible hitboxes + 1px hairlines over the
+    // zero-width native separators (see standard.ssa); resizes docks through
+    // QMainWindow::resizeDocks
+    new gui::DockSash(this);
 
     // create driver holder
     { mDriverHolder.reset(new DriverHolder(mViaPoint)); }
@@ -229,6 +255,8 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
 
         objTree.onTreeViewUpdated.connect(&timeLine, &TimeLineWidget::onTreeViewUpdated);
         objTree.onScrollUpdated.connect(&timeLine, &TimeLineWidget::onScrollUpdated);
+        timeLine.onVerticalScrollRequested.connect(
+            [&objTree](int aValue) { objTree.verticalScrollBar()->setValue(aValue); });
 
         timeLine.onFrameUpdated.connect(&driver, &DriverHolder::onFrameUpdated);
         timeLine.onFrameUpdated.connect(&prop, &PropertyWidget::onFrameUpdated);
@@ -430,33 +458,38 @@ void MainWindow::resetProjectRefs(core::Project* aProject) {
 void MainWindow::onProjectTabChanged(core::Project& aProject) { resetProjectRefs(&aProject); }
 
 void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
-    QFile stylesheet(aTheme.path() + "/stylesheet/standard.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    mMainDisplay->setViewportBackground(mGUIResources.viewportBackground());
+
+    const QString standard = aTheme.loadStylesheet("standard.ssa");
+    if (!standard.isEmpty()) {
         QString fontOption;
         {
             auto hasFamily = !mLocaleParam.fontFamily.isEmpty();
             auto hasSize = !mLocaleParam.fontSize.isEmpty();
             fontOption = "QWidget {" + (hasFamily ? ("font-family: " + mLocaleParam.fontFamily + ";") : "") +
                 (hasSize ? ("font-size: " + mLocaleParam.fontSize + ";") : "") + " }\n";
+            // top-level section headers step up one point from the base
+            // font (QSS cannot express a relative size, so derive it from
+            // the locale's pt value; the rule lives here so it tracks the
+            // base font across locale/settings changes)
+            if (hasSize) {
+                const QString size = mLocaleParam.fontSize.trimmed();
+                if (size.endsWith("pt", Qt::CaseInsensitive)) {
+                    bool ok = false;
+                    const qreal pt = size.left(size.size() - 2).toDouble(&ok);
+                    if (ok) {
+                        fontOption += QString("QAbstractButton#propertyPanelHeader { font-size: %1pt; }\n")
+                                          .arg(QString::number(pt + 1.0, 'f', 0));
+                    }
+                }
+            }
         }
 
-        this->setStyleSheet(fontOption + QTextStream(&stylesheet).readAll());
-
-        stylesheet.close();
+        this->setStyleSheet(fontOption + standard);
     }
 
-    stylesheet.setFileName(aTheme.path() + "/stylesheet/propertywidget.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        mDockPropertyWidget->setStyleSheet(QTextStream(&stylesheet).readAll());
-        stylesheet.close();
-    }
-
-
-    stylesheet.setFileName(aTheme.path() + "/stylesheet/toolwidget.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        mDockToolWidget->setStyleSheet(QTextStream(&stylesheet).readAll());
-        stylesheet.close();
-    }
+    mDockPropertyWidget->setStyleSheet(aTheme.loadStylesheet("propertywidget.ssa"));
+    mDockToolWidget->setStyleSheet(aTheme.loadStylesheet("toolwidget.ssa"));
 
     if (!onStartup && !themeChangeWarned) {
         QMessageBox visualArtifactWarning;
@@ -576,60 +609,115 @@ void MainWindow::keyReleaseEvent(QKeyEvent* aEvent) {
 }
 
 void MainWindow::closeEvent(QCloseEvent* aEvent) {
-    if (mSystem.hasModifiedProject()) {
-        auto result = confirmProjectClosing(false);
-
-        if (result == QMessageBox::Yes) {
-            // save all
-            for (int i = 0; i < mSystem.projectCount(); ++i) {
-                auto project = mSystem.project(i);
-                XC_PTR_ASSERT(project);
-                if (!project->isModified())
-                    continue;
-
-                if (!processProjectSaving(*mSystem.project(i))) { // failed or canceled
-                    aEvent->ignore();
-                    return;
-                }
-            }
-        } else if (result == QMessageBox::Cancel) {
-            aEvent->ignore();
-            return;
+    QVector<core::Project*> projects;
+    for (int i = 0; i < mSystem.projectCount(); ++i) {
+        auto* project = mSystem.project(i);
+        if (project) {
+            projects.push_back(project);
         }
+    }
+    if (!closeProjects(projects)) {
+        aEvent->ignore();
+        return;
     }
     aEvent->accept();
 }
 
-int MainWindow::confirmProjectClosing(bool aCurrentOnly) {
-    QString singleName;
-
-    if (aCurrentOnly) {
-        if (mCurrent) {
-            singleName = mProjectTabBar->getTabName(*mCurrent);
+bool MainWindow::closeProjects(const QVector<core::Project*>& aProjects) {
+    bool anyModified = false;
+    for (auto* project : aProjects) {
+        if (project && project->isModified()) {
+            anyModified = true;
+            break;
         }
-    } else {
-        bool found = false;
-        for (int i = 0; i < mSystem.projectCount(); ++i) {
-            auto project = mSystem.project(i);
-            XC_PTR_ASSERT(project);
-            if (project->isModified()) {
-                if (found) {
-                    singleName.clear();
-                    break;
+    }
+
+    if (anyModified) {
+        const int result = confirmProjectClosing(aProjects);
+        if (result == QMessageBox::Cancel) {
+            return false;
+        }
+        if (result == QMessageBox::Yes) {
+            for (auto* project : aProjects) {
+                if (project && project->isModified() && !processProjectSaving(*project)) {
+                    return false;
                 }
-                singleName = mProjectTabBar->getTabName(*project);
-                found = true;
             }
         }
     }
 
-    QMessageBox msgBox;
+    for (auto* project : aProjects) {
+        if (project) {
+            closeProjectTab(*project);
+        }
+    }
+    return true;
+}
+
+void MainWindow::closeProjectTab(core::Project& aProject) {
+    // Sneaky potential crash
+    if (QFileSystemWatcher* watcher = getWatcher()) {
+        for (int x = 0; x < aProject.resourceHolder().imageTrees().size(); x += 1) {
+            if (watcher->files().contains(aProject.resourceHolder().findAbsoluteFilePath(
+                    *aProject.resourceHolder().imageTree(x).topNode
+                ))) {
+                watcher->removePath(aProject.resourceHolder().findAbsoluteFilePath(
+                    *aProject.resourceHolder().imageTree(x).topNode
+                ));
+            }
+        }
+    }
+
+    // Only a closed ACTIVE project hands its playback state to the next tab
+    // (continuity when closing what you're working on). Closing an inactive tab
+    // must not overwrite the active project's mediaPlayer/config.
+    const bool wasCurrent = (mProjectTabBar->currentProject() == &aProject);
+
+    const auto playerBackup = *aProject.mediaPlayer;
+    const auto configBackup = *aProject.pConf;
+
+    const auto closeProject = &aProject;
+    mProjectTabBar->removeProject(*closeProject);
+    resetProjectRefs(nullptr); ///@note update mCurrent
+    mSystem.closeProject(*closeProject);
+
+    if (mProjectTabBar->currentProject()) {
+        if (wasCurrent) {
+            mProjectTabBar->currentProject()->mediaPlayer = new mediaState(playerBackup);
+            mProjectTabBar->currentProject()->pConf = new std::vector(configBackup);
+        }
+        resetProjectRefs(mProjectTabBar->currentProject());
+    }
+}
+
+int MainWindow::confirmProjectClosing(const QVector<core::Project*>& aProjects) {
+    // Scoped to the close-set: a single modified project is named, several use
+    // the generic message. Matches the save loop in closeProjects, which also
+    // only touches aProjects.
+    QString singleName;
+    bool found = false;
+    for (auto* project : aProjects) {
+        if (!project || !project->isModified()) {
+            continue;
+        }
+        if (found) {
+            singleName.clear();
+            break;
+        }
+        singleName = mProjectTabBar->getTabName(*project);
+        found = true;
+    }
 
     if (!singleName.isEmpty()) {
-        msgBox.setText(singleName + tr(" has been modified. Save changes?"));
-    } else {
-        msgBox.setText(tr("Some projects have been modified. Save changes?"));
+        return confirmProjectClosing(singleName + tr(" has been modified. Save changes?"));
     }
+    return confirmProjectClosing(tr("Some projects have been modified. Save changes?"));
+}
+
+int MainWindow::confirmProjectClosing(const QString& aMessage) {
+    QMessageBox msgBox;
+
+    msgBox.setText(aMessage);
 
     msgBox.addButton(tr("Save Changes"), QMessageBox::YesRole);
     msgBox.addButton(tr("Discard Changes"), QMessageBox::NoRole);
@@ -895,39 +983,48 @@ void MainWindow::onSaveProjectAsTriggered() {
 
 void MainWindow::onCloseProjectTriggered() {
     if (mCurrent) {
-        // Sneaky potential crash
-        if (QFileSystemWatcher* watcher = getWatcher()) {
-            for (int x = 0; x < mCurrent->resourceHolder().imageTrees().size(); x += 1) {
-                if (watcher->files().contains(mCurrent->resourceHolder().findAbsoluteFilePath(
-                        *mCurrent->resourceHolder().imageTree(x).topNode
-                    ))) {
-                    watcher->removePath(mCurrent->resourceHolder().findAbsoluteFilePath(
-                        *mCurrent->resourceHolder().imageTree(x).topNode
-                    ));
-                    }
-            }
+        closeProjects(QVector<core::Project*>(1, mCurrent));
+    }
+}
+
+void MainWindow::onTabSaveRequested(core::Project& aProject) {
+    processProjectSaving(aProject);
+}
+
+void MainWindow::onTabSaveAsRequested(core::Project& aProject) {
+    processProjectSaving(aProject, true);
+}
+
+void MainWindow::onTabCloseRequested(core::Project& aProject) {
+    closeProjects(QVector<core::Project*>(1, &aProject));
+}
+
+void MainWindow::onTabCloseOthersRequested(core::Project& aProject) {
+    QVector<core::Project*> others;
+    for (int i = 0; i < mSystem.projectCount(); ++i) {
+        auto* project = mSystem.project(i);
+        if (project && project != &aProject) {
+            others.push_back(project);
         }
+    }
+    closeProjects(others);
+}
 
-        if (mCurrent->isModified()) {
-            int result = confirmProjectClosing(true);
-            if (result == QMessageBox::Cancel || (result == QMessageBox::Yes && !processProjectSaving(*mCurrent))){
-                return;
-            }
+void MainWindow::onTabCloseAllRequested() {
+    QVector<core::Project*> projects;
+    for (int i = 0; i < mSystem.projectCount(); ++i) {
+        auto* project = mSystem.project(i);
+        if (project) {
+            projects.push_back(project);
         }
+    }
+    closeProjects(projects);
+}
 
-        const auto playerBackup = *mCurrent->mediaPlayer;
-        const auto configBackup = *mCurrent->pConf;
-
-        const auto closeProject = mCurrent;
-        mProjectTabBar->removeProject(*closeProject);
-        resetProjectRefs(nullptr); ///@note update mCurrent
-        mSystem.closeProject(*closeProject);
-
-        if (mProjectTabBar->currentProject()) {
-            mProjectTabBar->currentProject()->mediaPlayer = new mediaState(playerBackup);
-            mProjectTabBar->currentProject()->pConf = new std::vector(configBackup);
-            resetProjectRefs(mProjectTabBar->currentProject());
-        }
+void MainWindow::onTabCopyPathRequested(core::Project& aProject) {
+    const QString path = aProject.fileName();
+    if (!path.isEmpty()) {
+        QGuiApplication::clipboard()->setText(QFileInfo(path).absoluteFilePath());
     }
 }
 
@@ -992,7 +1089,7 @@ void MainWindow::onExportTriggered() {
     exportUI = new ExportWidgetUI;
     // Set up UI
     exportWidget->setParent(this, Qt::Window);
-    exportUI->setupUi(exportWidget, mGUIResources.getThemeLocation(), mCurrent->attribute().maxFrame());
+    exportUI->setupUi(exportWidget, mGUIResources, mCurrent->attribute().maxFrame());
     // Initialize gpDiag
     gpDiag->setAttribute(Qt::WA_DeleteOnClose,true);
     gpDiag->setParent(exportWidget, Qt::Window);

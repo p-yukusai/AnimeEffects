@@ -5,6 +5,7 @@
 #include <QMouseEvent>
 #include <filesystem>
 #include <utility>
+#include "gui/theme/Colors.h"
 
 float normalize(const float val, const int min, const int max) {
     return (val - static_cast<float>(min)) / static_cast<float>(max - min);
@@ -16,23 +17,19 @@ float invert (const int min, const int max, const float value) {
     return static_cast<float>(max) - value + static_cast<float>(min);
 }
 
-BezierCurveEditor::BezierCurveEditor(QWidget *parent, const bool isDark, util::Easing::CubicBezier* cubicBezier, QVector<QDoubleSpinBox*> spins, int* pro
-):
-    QWidget(parent), m_curvePen(isDark ? Qt::white : Qt::black), m_dragging(false), m_selectedPoint(0) {
+BezierCurveEditor::BezierCurveEditor(QWidget *parent, util::Easing::CubicBezier* cubicBezier, QVector<QDoubleSpinBox*> spins, int* pro):
+    QWidget(parent), m_dragging(false), m_selectedPoint(0) {
+    const theme::Colors c = theme::Colors::current();
+    m_curvePen.setColor(c.text);
     m_curvePen.setWidth(2);
     bezier = cubicBezier;
     progress = pro;
 
     spinBoxes = std::move(spins);
-    if (isDark) {
-        m_colors[0] = Qt::white;
-        m_colors[3] = Qt::white;
-    } else {
-        m_colors[0] = Qt::black;
-        m_colors[3] = Qt::black;
-    }
-    m_colors[1] = QColor(82, 87, 208);
-    m_colors[2] = QColor(82, 87, 208);
+    m_colors[0] = c.text;
+    m_colors[1] = c.accentBright;
+    m_colors[2] = c.accentBright;
+    m_colors[3] = c.text;
 
     for (int i = 0; i < NUM_POINTS; i++) {
         m_pens[i] = QPen(m_colors[i]);

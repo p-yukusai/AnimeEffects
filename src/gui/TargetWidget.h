@@ -1,19 +1,19 @@
 #ifndef GUI_CONTROLWIDGET_H
 #define GUI_CONTROLWIDGET_H
 
-#include <QSplitter>
+#include <QWidget>
+#include "gui/ThinSplitter.h"
 #include "gui/ObjectTreeWidget.h"
 #include "gui/TimeLineWidget.h"
 #include "gui/GUIResources.h"
 #include "gui/PlayBackWidget.h"
-#include "gui/TimeLineInfoWidget.h"
 #include "gui/ViaPoint.h"
 #include "core/Project.h"
 #include "core/Animator.h"
 
 namespace gui {
 
-class TargetWidget: public QSplitter, public core::Animator {
+class TargetWidget: public QWidget, public core::Animator {
 public:
     TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidget* aParent, const QSize& aSizeHint);
     void setProject(core::Project* aProject);
@@ -27,9 +27,6 @@ public:
     PlayBackWidget& playBackWidget() { return *mPlayBack; }
     const PlayBackWidget& playBackWidget() const { return *mPlayBack; }
 
-    // InfoLabelWidget& infoLabelWidget() { return *mInfoLabel; }
-    // const InfoLabelWidget& infoLabelWidget() const { return *mInfoLabel; }
-
     // from Animator
     virtual core::Frame currentFrame() const;
     virtual void stop();
@@ -42,15 +39,17 @@ private:
     virtual QSize sizeHint() const { return mSizeHint; }
 
     void onPlayBackButtonPushed(PlayBackWidget::PushType aType);
+    void openAnimationSettings();
+    void refreshAnimationSettings();
 
     core::Project* mProject;
+    ViaPoint& mViaPoint;
     GUIResources& mResources;
     const QSize mSizeHint;
-    QSplitter* mHorizontalSplitter;
+    ThinSplitter* mHorizontalSplitter;
     ObjectTreeWidget* mObjTree;
     TimeLineWidget* mTimeLine;
     PlayBackWidget* mPlayBack;
-    TimeLineInfoWidget* mInfoLabel;
     bool mIsFirstTime;
     int mSuspendCount;
 };

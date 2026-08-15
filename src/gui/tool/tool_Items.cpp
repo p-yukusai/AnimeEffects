@@ -18,6 +18,10 @@ namespace tool {
             mButtons[i] = new QPushButton(aParent);
             mButtons[i]->setCheckable(true);
             mButtons[i]->setFocusPolicy(Qt::NoFocus);
+            // tagged so the QSS highlights these mode/option rows with the
+            // brand accent (like the toolbox) without touching the View
+            // Settings panel, which shares the tool dock stylesheet
+            mButtons[i]->setProperty("modeButton", true);
             mGroup->addButton(mButtons[i]);
         }
     }
@@ -34,12 +38,13 @@ namespace tool {
         }
     }
 
-    void SingleOutItem::setIcons(const QVector<QIcon*>& aIcons) {
+    void SingleOutItem::setIcons(const QVector<QIcon*>& aIcons, const QSize& aIconSize) {
+        const QSize size = aIconSize.isValid() ? aIconSize : mButtonSize;
         int i = 0;
         for (auto icon : aIcons) {
             if (i < mButtons.size()) {
                 mButtons.at(i)->setIcon(*icon);
-                mButtons.at(i)->setIconSize(mButtonSize);
+                mButtons.at(i)->setIconSize(size);
                 ++i;
             } else {
                 break;
@@ -47,18 +52,20 @@ namespace tool {
         }
     }
 
-    void SingleOutItem::setIcons(const QVector<QIcon>& aIcons) {
+    void SingleOutItem::setIcons(const QVector<QIcon>& aIcons, const QSize& aIconSize) {
+        const QSize size = aIconSize.isValid() ? aIconSize : mButtonSize;
         int i = 0;
         for (auto icon : aIcons) {
             if (i < mButtons.size()) {
                 mButtons.at(i)->setIcon(icon);
-                mButtons.at(i)->setIconSize(mButtonSize);
+                mButtons.at(i)->setIconSize(size);
                 ++i;
             } else {
                 break;
             }
         }
     }
+
 
     void SingleOutItem::setChoice(int aButtonIndex) { mButtons.at(aButtonIndex)->setChecked(true); }
 
@@ -70,7 +77,8 @@ namespace tool {
 
     int SingleOutItem::updateGeometry(const QPoint& aPos, int aWidth) {
         // type
-        ItemTable table(aPos, aWidth, mButtonSize);
+        // 2px gap between mode buttons, matching the toolbox FlowLayout spacing
+        ItemTable table(aPos, aWidth, mButtonSize, QSize(2, 2));
         for (auto button : mButtons) {
             table.pushGeometry(*button);
         }
@@ -144,12 +152,11 @@ namespace tool {
     }
 
     int CheckBoxItem::updateGeometry(const QPoint& aPos, int aWidth) {
-        // qDebug() << mCheckBox->width() << mCheckBox->height() << mCheckBox->sizeHint();
-        // const int height = mCheckBox->height();
         const int height = mCheckBox->sizeHint().height();
-        // const int height = 16;
         mCheckBox->setGeometry(aPos.x(), aPos.y(), aWidth, height);
-        return height;
+        // +1px so stacked rows keep a 2px gap (the 15px indicator already
+        // leaves 1px slack inside the 16px sizeHint rect)
+        return height + 1;
     }
 
 } // namespace tool

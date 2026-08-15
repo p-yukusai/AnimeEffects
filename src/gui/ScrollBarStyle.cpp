@@ -1,0 +1,214 @@
+#include "gui/ScrollBarStyle.h"
+#include "gui/theme/Colors.h"
+
+#include <QMenu>
+#include <QPainter>
+#include <QPainterPath>
+#include <QStyleOption>
+#include <QStyleOptionSlider>
+#include <QAbstractItemView>
+#include <QGraphicsDropShadowEffect>
+
+namespace gui {
+
+namespace {
+constexpr int kTrackThickness = 12; // hit area / extent (invisible)
+constexpr int kPillThickness = 4;
+constexpr int kPillRadius = 2;
+// The pill colors come from the theme tokens (outline at rest, hover when
+// hovered/dragged); see theme/Colors.h.
+} // namespace
+
+ScrollBarStyle::ScrollBarStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
+
+void ScrollBarStyle::polish(QWidget* aWidget) {
+    // Menus are opaque OS popup windows by default (their backing is the
+    // palette Window role). For real rounded corners the popup must be an
+    // alpha window, so mark them translucent at polish time — before the
+    // platform window is created. The combo popup (QComboBoxPrivateContainer)
+    // draws the same PE_PanelMenu and needs the same treatment.
+    const bool isFloater = qobject_cast<QMenu*>(aWidget) || aWidget->inherits("QComboBoxPrivateContainer");
+    if (isFloater) {
+        aWidget->setAttribute(Qt::WA_TranslucentBackground);
+        aWidget->setAttribute(Qt::WA_NoSystemBackground);
+        // Light theme floaters are white cards — the sunken body can't
+        // separate them from a white window — so they get a drop shadow.
+        // Dark keeps the sunken look (see floaterBody/floaterEdge tokens)
+        // and needs none. Re-polished on theme changes, so current() is
+        // fresh; drop the effect when going back to dark.
+        if (theme::Colors::current().isDark) {
+            if (aWidget->graphicsEffect())
+                aWidget->setGraphicsEffect(nullptr);
+        } else if (!aWidget->graphicsEffect()) {
+            auto* shadow = new QGraphicsDropShadowEffect(aWidget);
+            shadow->setBlurRadius(12);
+            shadow->setOffset(0, 2);
+            shadow->setColor(QColor(0, 0, 0, 90));
+            aWidget->setGraphicsEffect(shadow);
+        }
+    }
+    // The combo popup paints its items as CE_MenuItem through Qt's
+    // QComboMenuDelegate, which builds the style option from the VIEW's
+    // palette; the QSS selection-background-color never reaches that paint
+    // path. Mark the popup translucent (below) and carry the QMenu-style
+    // grey on the view's palette Highlight without touching the other roles
+    // (the view's Base stays transparent so the recessed panel shows).
+    // The style is re-polished on theme changes, so Colors::current() is
+    // fresh.
+    if (aWidget->inherits("QComboBoxPrivateContainer")) {
+        QPalette pal = aWidget->palette();
+        pal.setColor(QPalette::Highlight, theme::Colors::current().outline);
+        pal.setColor(QPalette::HighlightedText, theme::Colors::current().text);
+        aWidget->setPalette(pal);
+        if (auto* view = aWidget->findChild<QAbstractItemView*>()) {
+            QPalette vpal = view->palette();
+            vpal.setColor(QPalette::Highlight, theme::Colors::current().outline);
+            vpal.setColor(QPalette::HighlightedText, theme::Colors::current().text);
+            view->setPalette(vpal);
+        }
+    }
+    QProxyStyle::polish(aWidget);
+}
+
+int ScrollBarStyle::pixelMetric(PixelMetric aMetric, const QStyleOption* aOption,
+                                const QWidget* aWidget) const {
+    if (aMetric == PM_ScrollBarExtent)
+        return kTrackThickness;
+    return QProxyStyle::pixelMetric(aMetric, aOption, aWidget);
+}
+
+QSize ScrollBarStyle::sizeFromContents(ContentsType aType, const QStyleOption* aOption,
+                                       const QSize& aContentsSize, const QWidget* aWidget) const {
+    if (aType == CT_MenuItem && aOption) {
+        // The combo popup's QComboMenuDelegate sizes its rows via
+        // CT_MenuItem: 24px rows with no inter-row gap, and a 9px separator
+        // row (4px breathing room above and below the centered 1px line).
+        const auto* opt = qstyleoption_cast<const QStyleOptionMenuItem*>(aOption);
+        if (opt) {
+            QSize s = QProxyStyle::sizeFromContents(aType, aOption, aContentsSize, aWidget);
+            s.setHeight(opt->menuItemType == QStyleOptionMenuItem::Separator ? 9 : 24);
+            return s;
+        }
+    }
+    return QProxyStyle::sizeFromContents(aType, aOption, aContentsSize, aWidget);
+}
+
+void ScrollBarStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOption,
+                                   QPainter* aPainter, const QWidget* aWidget) const {
+    if (aElement == PE_PanelMenu && aOption) {
+        // Deterministic menu/combo-popup panel: a sunken surface (recessed)
+        // edged with the base token, drawn as ONE rounded path so body and
+        // border share the same curve. QSS can't do this: the background fill
+        // follows the border's centerline while the widget's square backing
+        // bleeds into the corner cut, leaving a square body under a rounded
+        // border. The QMenu rule must not declare a box
+        // (background/border/radius), or QStyleSheetStyle draws the panel
+        // itself.
+        const theme::Colors c = theme::Colors::current();
+        const qreal kRadius = 8;
+        // the floater tokens: sunken body on dark, white body on light
+        // (the drop shadow from polish() does the separating there)
+        const QColor kBody = c.floaterBody;
+        const QColor kEdge = c.floaterEdge;
+        aPainter->save();
+        aPainter->setRenderHint(QPainter::Antialiasing);
+        // The popup window is translucent (see eventFilter), so the corner
+        // cut shows the backdrop through real alpha instead of any backing
+        // fill.
+        const QRectF rect = QRectF(aOption->rect).adjusted(0.5, 0.5, -0.5, -0.5);
+        QPainterPath path;
+        path.addRoundedRect(rect, kRadius, kRadius);
+        aPainter->fillPath(path, kBody);
+        aPainter->setPen(QPen(kEdge, 1));
+        aPainter->setBrush(Qt::NoBrush);
+        aPainter->drawPath(path);
+        aPainter->restore();
+        return;
+    }
+    QProxyStyle::drawPrimitive(aElement, aOption, aPainter, aWidget);
+}
+
+void ScrollBarStyle::drawControl(ControlElement aElement, const QStyleOption* aOption,
+                                 QPainter* aPainter, const QWidget* aWidget) const {
+    if (aElement == CE_MenuItem && aOption) {
+        // Combo popups draw their items as CE_MenuItem rows; the QSS
+        // QMenu::item rules do not reach them (the popup container is not a
+        // QMenu), so without this the selected row shows Fusion's stock
+        // highlight-with-border. Draw the same treatment QMenu gets from
+        // QSS: flat rounded accent for the selected row, a centered 1px
+        // hairline for separators.
+        const auto* opt = qstyleoption_cast<const QStyleOptionMenuItem*>(aOption);
+        if (!opt)
+            return QProxyStyle::drawControl(aElement, aOption, aPainter, aWidget);
+        if (opt->menuItemType == QStyleOptionMenuItem::Separator) {
+            const QRect r = opt->rect;
+            // Inset to the item content extent so the line's ends align
+            // with the item text (8px each side, like the text offset).
+            const int inset = 8;
+            aPainter->save();
+            aPainter->setPen(Qt::NoPen);
+            aPainter->setBrush(theme::Colors::current().hairline);
+            aPainter->drawRect(QRect(r.left() + inset, r.center().y(), r.width() - inset * 2, 1));
+            aPainter->restore();
+            return;
+        }
+        if (opt->state & QStyle::State_Selected) {
+            const theme::Colors c = theme::Colors::current();
+            // 4px off the popup edge, matching the QMenu item inset (the
+            // row rect itself sits ~3px in, so the pill inset is 1px)
+            QRect pill = opt->rect.adjusted(1, 2, -1, -2);
+            aPainter->save();
+            aPainter->setRenderHint(QPainter::Antialiasing);
+            aPainter->setPen(Qt::NoPen);
+            aPainter->setBrush(c.accentHover);
+            aPainter->drawRoundedRect(pill, 4, 4);
+            // Text at the same x the base style uses for the unselected
+            // rows (rect + 8px) so nothing jumps when the row is hovered.
+            // accentText (not `text`): the row is on the accent fill, and
+            // the 0.93/1.0 content tokens exist for exactly this contrast.
+            aPainter->setPen(c.accentText);
+            aPainter->setFont(opt->font);
+            aPainter->drawText(QRect(opt->rect.left() + 7, pill.top(), opt->rect.width() - 14, pill.height()),
+                               Qt::AlignVCenter | Qt::AlignLeft, opt->text);
+            aPainter->restore();
+            return;
+        }
+    }
+    QProxyStyle::drawControl(aElement, aOption, aPainter, aWidget);
+}
+
+void ScrollBarStyle::drawComplexControl(ComplexControl aControl, const QStyleOptionComplex* aOption,
+                                        QPainter* aPainter, const QWidget* aWidget) const {
+    if (aControl == CC_ScrollBar) {
+        // Invisible track (the dock surface shows through); only the pill.
+        const auto* opt = qstyleoption_cast<const QStyleOptionSlider*>(aOption);
+        if (!opt)
+            return;
+        const QRect slider = subControlRect(CC_ScrollBar, opt, SC_ScrollBarSlider, aWidget);
+        if (slider.isEmpty())
+            return;
+
+        // A 4px pill centered in the 12px track, spanning the slider's run.
+        QRect pill;
+        if (opt->orientation == Qt::Vertical) {
+            const int x = (opt->rect.width() - kPillThickness) / 2;
+            pill = QRect(x, slider.y(), kPillThickness, slider.height());
+        } else {
+            const int y = (opt->rect.height() - kPillThickness) / 2;
+            pill = QRect(slider.x(), y, slider.width(), kPillThickness);
+        }
+
+        const bool hot =
+            (opt->activeSubControls & SC_ScrollBarSlider) || (opt->state & QStyle::State_Sunken);
+        aPainter->save();
+        aPainter->setRenderHint(QPainter::Antialiasing);
+        aPainter->setPen(Qt::NoPen);
+        aPainter->setBrush(hot ? theme::Colors::current().hover : theme::Colors::current().outline);
+        aPainter->drawRoundedRect(pill, kPillRadius, kPillRadius);
+        aPainter->restore();
+        return;
+    }
+    QProxyStyle::drawComplexControl(aControl, aOption, aPainter, aWidget);
+}
+
+} // namespace gui

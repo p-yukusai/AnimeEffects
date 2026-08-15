@@ -1,9 +1,13 @@
 #include "ctrl/time/time_Renderer.h"
+#include "ctrl/TimeLineEditor.h"
+#include "gui/theme/Colors.h"
 
 using namespace core;
 
 namespace ctrl {
 namespace time {
+
+    static QColor withAlpha(QColor aColor, int aAlpha) { aColor.setAlpha(aAlpha); return aColor; }
 
     Renderer::Renderer(QPainter& aPainter, const CameraInfo& aCamera, const theme::TimeLine& aTheme,
         const TimeFormatType& timeFormat):
@@ -28,8 +32,9 @@ namespace time {
             if (!aCullRect.intersects(rect))
                 continue;
 
-            // draw line
-            mPainter.setPen(QPen(kBrushEdge, 1));
+            // draw line (fill only — the 1px border is one hairline per seam
+            // below; per-row outlines would double the shared boundary)
+            mPainter.setPen(Qt::NoPen);
             mPainter.setBrush(row.selecting ? kBrushBodySelect : kBrushBody);
             mPainter.drawRect(rect);
 
@@ -74,6 +79,24 @@ namespace time {
             // draw keys
             drawKeys(row.node, row);
         }
+
+        // 1px borders: one hairline per seam (each row's top) plus the last
+        // row's bottom, so adjacent rows' 1px outlines can't stack into a 2px
+        // border. AA off keeps each line exactly one pixel.
+        mPainter.setRenderHint(QPainter::Antialiasing, false);
+        mPainter.setPen(QPen(kBrushEdge, 1));
+        mPainter.setBrush(Qt::NoBrush);
+        for (const TimeLineRow& row : aRows) {
+            if (!aCullRect.intersects(row.rect)) continue;
+            mPainter.drawLine(row.rect.left(), row.rect.top(), row.rect.right(), row.rect.top());
+        }
+        if (!aRows.isEmpty()) {
+            const TimeLineRow& last = aRows.back();
+            if (aCullRect.intersects(last.rect)) {
+                mPainter.drawLine(last.rect.left(), last.rect.bottom(), last.rect.right(), last.rect.bottom());
+            }
+        }
+        mPainter.setRenderHint(QPainter::Antialiasing);
     }
 
     void Renderer::renderHeader(int aHeight, int aFps) {
@@ -89,32 +112,93 @@ namespace time {
             mPainter.setPen(QPen(kBrush, 1));
             mPainter.setBrush(kBrush);
             mPainter.drawRect(rect);
+
+            // hairline under the ruler separates it from the track area.
+            // The ticks end one row above this line (top + height - 1), so
+            // the line never crosses them.
+            const int lineY = rect.top() + rect.height();
+            mPainter.setPen(QPen(QBrush(mTheme.rulerLineColor()), 1));
+            mPainter.drawLine(rect.left(), lineY, rect.right(), lineY);
         }
 
         // draw header info
         {
             const QBrush kBrush(mTheme.headerContentColor());
-            const int numberHeight = 14;
             const int numberWidth = 6;
             const QPoint lt(mMargin, cameraRect.top());
-            const QPoint rb = lt + QPoint(mScale->maxPixelWidth(), aHeight);
+            // the ticks end one row above the ruler hairline (drawn at
+            // top + height) so they never draw over it
+            const QPoint rb = lt + QPoint(mScale->maxPixelWidth(), aHeight - 1);
             const TimeFormat timeFormat(mRange, aFps);
 
-            mPainter.setPen(QPen(kBrush, 1));
+            // The project's last frame owns the end of the ruler: when it is
+            // in view but not on a scale multiple, it reads as a major tick
+            // with its number, and any numbered neighbor whose label would
+            // overlap it yields instead.
+            const int lastFrame = mScale->maxFrame();
+            const auto lastAttr = mScale->attribute(lastFrame);
+            const bool lastLabelActive = lastFrame >= mRange.min() && lastFrame <= mRange.max() &&
+                                         lastAttr.grid.y() < 10;
+            const int lastLabelCenter = lt.x() + lastAttr.grid.x();
+            const QString lastNumber =
+                lastLabelActive ? timeFormat.frameToString(lastFrame, timeFormatVar) : QString();
+            const int lastNumberWidth = numberWidth * lastNumber.size();
 
             for (int i = mRange.min(); i <= mRange.max(); ++i) {
                 auto attr = mScale->attribute(i);
+                if (attr.grid.y() <= 0) continue;
 
                 QPoint pos(lt.x() + attr.grid.x(), rb.y());
+
+                // Fade the tick tiers so minor blips recede and even the
+                // numbered major ticks stay a step below full brightness.
+                const qreal alpha = attr.grid.y() >= 10 ? 0.85
+                                  : attr.grid.y() >= 8  ? 0.65
+                                  : attr.grid.y() >= 6  ? 0.45
+                                                        : 0.25;
+                QColor tickColor = kBrush.color();
+                tickColor.setAlphaF(alpha);
+                mPainter.setPen(QPen(tickColor, 1));
                 mPainter.drawLine(pos, pos + QPoint(0, -attr.grid.y()));
 
                 if (attr.showNumber) {
                     QString number = timeFormat.frameToString(i, timeFormatVar);
                     const int width = static_cast<int>(numberWidth * number.size());
+                    // A neighbor label never overlaps the end label: the last
+                    // frame's number always wins the space.
+                    if (lastLabelActive && i < lastFrame) {
+                        if (pos.x() + (width >> 1) >= lastLabelCenter - (lastNumberWidth >> 1))
+                            continue;
+                    }
+                    mPainter.setPen(QPen(kBrush, 1));
                     const int left = pos.x() - (width >> 1);
-                    const int top = lt.y() - 1;
-                    const QRect rect(QPoint(left, top), QPoint(left + width + 1, top + numberHeight));
+                    const int top = lt.y() + ctrl::TimeLineEditor::kNumberTop;
+                    const QRect rect(
+                        QPoint(left, top), QPoint(left + width + 1, top + ctrl::TimeLineEditor::kNumberHeight)
+                    );
                     mPainter.drawText(rect, number);
+                }
+            }
+
+            if (lastLabelActive) {
+                const QPoint pos(lt.x() + lastAttr.grid.x(), rb.y());
+
+                QColor tickColor = kBrush.color();
+                tickColor.setAlphaF(0.85);
+                mPainter.setPen(QPen(tickColor, 1));
+                mPainter.drawLine(pos, pos + QPoint(0, -10));
+
+                // The loop already labels this frame when it falls on a
+                // tier B/C multiple; otherwise the end number is ours.
+                if (!lastAttr.showNumber) {
+                    mPainter.setPen(QPen(kBrush, 1));
+                    const int width = numberWidth * lastNumber.size();
+                    const int left = pos.x() - (width >> 1);
+                    const int top = lt.y() + ctrl::TimeLineEditor::kNumberTop;
+                    const QRect rect(
+                        QPoint(left, top), QPoint(left + width + 1, top + ctrl::TimeLineEditor::kNumberHeight)
+                    );
+                    mPainter.drawText(rect, lastNumber);
                 }
             }
         }
@@ -124,8 +208,8 @@ namespace time {
         const QPoint pos = aPoint + QPoint(0, -static_cast<int>(mCamera.leftTopPos().y()));
         const int range = aRange;
 
-        const QBrush kBrushBody(QColor(230, 230, 230, 180));
-        const QBrush kBrushEdge(QColor(120, 120, 120, 180));
+        const QBrush kBrushBody(withAlpha(theme::Colors::current().text, 180));
+        const QBrush kBrushEdge(withAlpha(theme::Colors::current().textMuted, 180));
 
         mPainter.setPen(QPen(kBrushEdge, 1));
         mPainter.setBrush(kBrushBody);
@@ -137,19 +221,25 @@ namespace time {
 
     void Renderer::renderSelectionRange(const QRect& aRect) {
         if (aRect.width() >= 2 && aRect.height() >= 2) {
-            mPainter.setRenderHint(QPainter::Antialiasing, false);
-            const QBrush kSelectEdge(QColor(140, 140, 140, 128));
-            const QBrush kSelectBody(QColor(0, 0, 255, 16));
+            // brand-hued selection box: the marching-ants edge is the accent
+            // color, the fill the same color at lower opacity; corners are
+            // slightly rounded (6px), which needs AA so the curve reads smooth
+            mPainter.setRenderHint(QPainter::Antialiasing, true);
+            const QBrush kSelectEdge(withAlpha(theme::Colors::current().accentBright, 230));
+            const QBrush kSelectBody(withAlpha(theme::Colors::current().accentBright, 24));
             mPainter.setPen(QPen(kSelectEdge, 1, Qt::DashLine));
             mPainter.setBrush(kSelectBody);
-            mPainter.drawRect(aRect);
+            // Inset by half a pixel so the 1px pen is centered inside the
+            // rect rather than straddling its edge; the AA'd edge is
+            // intentionally soft to keep the rounded corners smooth.
+            mPainter.drawRoundedRect(QRectF(aRect).adjusted(0.5, 0.5, -0.5, -0.5), 6, 6);
         }
     }
 
     void Renderer::drawKeys(const ObjectNode* aNode, const TimeLineRow& aRow) {
-        const QBrush kBrushKeyBody1(QColor(145, 145, 145, 255));
-        const QBrush kBrushKeyBody2(QColor(240, 240, 240, 255));
-        const QBrush kBrushKeyEdge(QColor(90, 90, 100, 255));
+        const QBrush kBrushKeyBody1(theme::Colors::current().textMuted);
+        const QBrush kBrushKeyBody2(theme::Colors::current().text);
+        const QBrush kBrushKeyEdge(theme::Colors::current().outline);
         QPointF holder[4] = {QPointF(0.0, -4.2), QPointF(4.2, 0.0), QPointF(0.0, 4.2), QPointF(-4.2, 0.0)};
 
         if (aNode && aNode->timeLine()) {
@@ -207,7 +297,7 @@ namespace time {
     }
 
     void Renderer::drawChildKeys(const ObjectNode* aNode, const QPoint& aPos) {
-        const QBrush kBrushKey(QColor(170, 170, 170, 255));
+        const QBrush kBrushKey(theme::Colors::current().textMuted);
 
         mPainter.setPen(QPen(kBrushKey, 1));
         mPainter.setBrush(kBrushKey);

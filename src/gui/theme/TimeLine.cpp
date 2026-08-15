@@ -1,42 +1,36 @@
 #include "gui/theme/TimeLine.h"
+#include "gui/theme/Colors.h"
 
+#include <QApplication>
 namespace theme {
 
 //-------------------------------------------------------------------------------------------------
-TimeLine::TimeLine():
-    mHeaderContentColor(QColor(60, 60, 70, 255)),
-    mHeaderBackgroundColor(QColor(160, 160, 160, 255)),
-    mTrackColor(QColor(250, 250, 250, 255)),
-    mTrackEdgeColor(QColor(190, 190, 190, 255)),
-    mTrackTextColor(QColor(170, 170, 170, 255)),
-    mTrackSelectColor(QColor(235, 240, 250, 255)),
-    mTrackSeperatorColor(QColor(200, 200, 205, 255)) {
+TimeLine::TimeLine() {
     reset();
 }
 
 void TimeLine::reset() {
-    QPalette palette;
-    qreal lightness = palette.window().color().lightnessF();
+    // Read the cached theme tokens, activated by GUIResources before any
+    // timeline is built.
+    const Colors c = Colors::current();
+    const bool dark = c.isDark;
 
-    if (lightness > 0.5) { // Light theme
-        mHeaderContentColor = QColor(60, 60, 70, 255);
-        mHeaderBackgroundColor = QColor(160, 160, 160, 255);
+    mHeaderContentColor = c.text;
+    // the ruler is part of the timeline surface: base, not elevated
+    mHeaderBackgroundColor = c.base;
+    // hairline under the ruler separates it from the tracks
+    mRulerLineColor = c.hairline;
 
-        mTrackColor = QColor(250, 250, 250, 255);
-        mTrackEdgeColor = QColor(190, 190, 190, 255);
-        mTrackTextColor = QColor(170, 170, 170, 255);
-        mTrackSelectColor = QColor(235, 240, 250, 255);
-        mTrackSeperatorColor = QColor(200, 200, 205, 255);
-    } else { // Dark theme
-        mHeaderContentColor = palette.text().color();
-        mHeaderBackgroundColor = palette.window().color();
-
-        mTrackColor = QColor(46, 47, 48, 255);
-        mTrackEdgeColor = QColor(64, 65, 66, 255);
-        mTrackTextColor = palette.text().color(); // QColor(44, 45, 46, 255);
-        mTrackSelectColor = QColor(58, 59, 60, 255);
-        mTrackSeperatorColor = QColor(74, 75, 76, 255);
-    }
+    // track surfaces sit on the base floor; only the edges/separators/labels
+    // distinguish rows, never brightness
+    mTrackColor = c.base;
+    mTrackEdgeColor = c.hairline;
+    mTrackTextColor = c.text;
+    // selected track: brand selection hue at low elevation; the tint alpha
+    // differs by theme (dark stays subtle, light keeps its stronger fill)
+    mTrackSelectColor = c.selection;
+    mTrackSelectColor.setAlpha(dark ? 102 : 180);
+    mTrackSeperatorColor = c.hairlineHover;
     shade();
 }
 
@@ -44,7 +38,6 @@ void TimeLine::shade() {
     mTrackColor = QColor(mTrackColor.red(), mTrackColor.green(), mTrackColor.blue(), 180);
     mTrackEdgeColor = QColor(mTrackEdgeColor.red(), mTrackEdgeColor.green(), mTrackEdgeColor.blue(), 180);
     mTrackTextColor = QColor(mTrackTextColor.red(), mTrackTextColor.green(), mTrackTextColor.blue(), 180);
-    mTrackSelectColor = QColor(mTrackSelectColor.red(), mTrackSelectColor.green(), mTrackSelectColor.blue(), 180);
     mTrackSeperatorColor =
         QColor(mTrackSeperatorColor.red(), mTrackSeperatorColor.green(), mTrackSeperatorColor.blue(), 180);
 }
@@ -54,6 +47,8 @@ QColor TimeLine::headerContentColor() const { return mHeaderContentColor; }
 void TimeLine::setHeaderContentColor(const QColor& headerContentColor) { mHeaderContentColor = headerContentColor; }
 
 QColor TimeLine::headerBackgroundColor() const { return mHeaderBackgroundColor; }
+QColor TimeLine::rulerLineColor() const { return mRulerLineColor; }
+void TimeLine::setRulerLineColor(const QColor& rulerLineColor) { mRulerLineColor = rulerLineColor; }
 
 void TimeLine::setHeaderBackgroundColor(const QColor& headerBackgroundColor) {
     mHeaderBackgroundColor = headerBackgroundColor;

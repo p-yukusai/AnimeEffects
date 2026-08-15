@@ -1,0 +1,42 @@
+/*
+ *  Playback widget stylesheet (breeze_dark).
+ *
+ *  Same tokens as the tool dock: 4px controls, feedback via background.
+ */
+
+QPushButton {
+    color: @text@;
+    background-color: transparent;
+    border: none;
+    border-radius: 0.25em;
+    /* width/height pin the box: these buttons are positioned with
+       setGeometry(24, 24), but theme restyles resize absolute children to
+       the style's sizeFromContents (icon 18px + button margins = 29px),
+       so without an explicit size they come out 24x29 */
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+QPushButton:hover {
+    background-color: @hairline@;
+}
+
+QPushButton:pressed {
+    background-color: @recessed@;
+}
+
+QPushButton:checked {
+    background-color: @active@;
+}
+
+QPushButton:checked:hover {
+    background-color: @activeHover@;
+}
+
+QPushButton:disabled {
+    color: @textDisabled@;
+    background-color: transparent;
+}

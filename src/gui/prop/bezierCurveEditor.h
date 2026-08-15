@@ -11,7 +11,7 @@ class BezierCurveEditor : public QWidget
 {
     Q_OBJECT
 public:
-    explicit BezierCurveEditor(QWidget *parent = nullptr, bool isDark = true, util::Easing::CubicBezier* cubicBezier = nullptr, QVector<QDoubleSpinBox*> spins = {}, int* pro = nullptr);
+    explicit BezierCurveEditor(QWidget *parent = nullptr, util::Easing::CubicBezier* cubicBezier = nullptr, QVector<QDoubleSpinBox*> spins = {}, int* pro = nullptr);
     ~BezierCurveEditor();
     util::Easing::CubicBezier* bezier;
     QVector<QDoubleSpinBox*> spinBoxes;

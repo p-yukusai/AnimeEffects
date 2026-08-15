@@ -18,7 +18,8 @@
 #include "ctrl/TimeLineUtil.h"
 #include "ctrl/time/time_Current.h"
 #include "ctrl/time/time_Scaler.h"
-#include "ctrl/time/time_Focuser.h"
+#include "ctrl/time/time_Marquee.h"
+#include "ctrl/time/time_Selection.h"
 #include "gui/theme/TimeLine.h"
 
 namespace ctrl {
@@ -31,10 +32,20 @@ public:
 
     TimeLineEditor();
 
+    // Ruler constants shared with the header drawing (time_Renderer) and the
+    // playhead's frame-number badge (gui::TimeCursor).
+    static constexpr int kHeaderHeight = 22;
+    // Ruler number text geometry, relative to the header top.
+    static constexpr int kNumberTop = -1;
+    static constexpr int kNumberHeight = 14;
+
     void setProject(core::Project* aProject);
     void setFrame(core::Frame aFrame);
 
-    UpdateFlags updateCursor(const core::AbstractCursor& aCursor);
+    core::TimeFormatType timeFormatType() const { return timelineFormat; }
+    int fps() const { return mFps; }
+
+    UpdateFlags updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
     void updateWheel(int aDelta, bool aInvertScaling);
     void updateKey();
     void updateProjectAttribute();
@@ -48,11 +59,11 @@ public:
     int maxFrame() const { return mTimeMax; }
     QSize modelSpaceSize() const;
     QPoint currentTimeCursorPos() const;
-    
+
     int frameAtPixel(int aPixelX) const;
     int pixelAtFrame(int aFrame) const;
-    bool checkContactWithKeyFocus(core::TimeLineEvent& aEvent, const QPoint& aPos);
-    bool retrieveFocusTargets(core::TimeLineEvent& aEvent);
+    bool selectKeysAt(core::TimeLineEvent& aEvent, const QPoint& aPos);
+    bool retrieveSelectionTargets(core::TimeLineEvent& aEvent);
     static QString pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Pointee<core::Project> project, bool isFolder);
     static QList<core::TimeKey*> getTypesFromCb(util::LifeLink::Pointee<core::Project> project, core::ObjectNode *node);
     bool pasteCopiedKeys(core::TimeLineEvent& aEvent, const QPoint& aWorldPos);
@@ -61,26 +72,34 @@ public:
 
 private:
     enum State { State_Standby, State_MoveCurrent, State_MoveKeys, State_EncloseKeys, State_TERM };
+    enum MarqueeMode { Marquee_Replace, Marquee_Add, Marquee_Subtract };
 
     void setMaxFrame(int aValue);
     void clearState();
-    void beginMoveKey(const time::Focuser::SingleFocus& aTarget);
-    bool beginMoveKeys(const QPoint& aWorldPos);
+    void clearSelection();
+    bool beginMoveKeys();
     bool modifyMoveKeys(const QPoint& aWorldPos);
+    void applyMarquee(); // commit the active marquee box into the selection
 
     QVector<TimeLineRow> mRows;
     const core::ObjectNode* mSelectingRow;
     int mTimeMax;
+    int mFps;
     State mState;
     time::Current mTimeCurrent;
     time::Scaler mTimeScale;
-    time::Focuser mFocus;
+    time::Marquee mMarquee;
+    time::Selection mSelection;
     QSettings mSettings;
     core::TimeFormatType timelineFormat = static_cast<core::TimeFormatType>(mSettings.value("generalsettings/ui/timeformat").toInt());
     TimeLineUtil::MoveFrameOfKey* mMoveRef;
     int mMoveFrame;
+    int mPressFrame;       // frame where the current gesture pressed
     bool mOnUpdatingKey;
-    bool mShowSelectionRange;
+    MarqueeMode mMarqueeMode;
+    core::TimeLineEvent mPreGestureSelection;
+    core::TimeLineEvent::Target mPressedTarget; // plain-press target, for click-collapse
+    bool mPressedTargetValid;
 };
 
 } // namespace ctrl

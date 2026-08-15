@@ -1,139 +1,168 @@
-﻿#include "gui/GUIResources.h"
+#include "gui/GUIResources.h"
+
 #include <QApplication>
+#include <QDir>
+#include <QSettings>
+#include <QStandardPaths>
 #include <QStyleFactory>
+#include <QStyleHints>
+
+#include "gui/ScrollBarStyle.h"
+#include "theme/Icons.h"
 
 namespace gui {
 
 GUIResources::GUIResources(const QString& aResourceDir):
-    mResourceDir(aResourceDir), mIconMap(), mThemeMap(), mTheme(aResourceDir) {
-    detectThemes();
+    mResourceDir(aResourceDir),
+    mIconDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/icons"),
+    mHue(theme::kDefaultHue),
+    mTheme(aResourceDir, "light") {
+    setAppStyle();
 
     QSettings settings;
-    auto theme = settings.value("generalsettings/ui/theme");
-    if (!theme.isValid()) {
-        settings.setValue("generalsettings/ui/theme", "breeze_dark");
-        theme = "breeze_dark";
-    }
-    settings.sync();
-    setTheme(theme.toString());
+    QString themeId = settings.value("generalsettings/ui/theme", "dark").toString();
+    // Migrate legacy theme ids (default/breeze_dark) to light/dark, then fall
+    // back to a known theme when the saved id is missing.
+    if (themeId == "default") themeId = "light";
+    else if (themeId == "breeze_dark") themeId = "dark";
+    else if (themeId == "breeze_dark_high_dpi") themeId = "dark";
+    else if (themeId == "classic") themeId = "light";
+    if (themeId != "system" && themeId != "light" && themeId != "dark") themeId = "dark";
+    settings.setValue("generalsettings/ui/theme", themeId);
 
-    loadIcons();
+    double hue = settings.value("generalsettings/ui/accent_hue", theme::kDefaultHue).toDouble();
+    if (!theme::accentHues().contains(hue)) hue = theme::kDefaultHue;
+    settings.setValue("generalsettings/ui/accent_hue", hue);
+
+    mTheme = theme::Theme(mResourceDir, themeId);
+    mHue = hue;
+    applyAppearance();
+
+    // "system" follows the OS color scheme; follow a live light/dark switch.
+    mSchemeConnection = QObject::connect(
+        QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged,
+        [this](Qt::ColorScheme) {
+            if (mTheme.id() == "system") {
+                applyAppearance();
+                onThemeChanged(mTheme);
+            }
+        });
 }
 
 GUIResources::~GUIResources() {
-    for (IconMap::iterator itr = mIconMap.begin(); itr != mIconMap.end(); ++itr) {
-        QIcon* icon = *itr;
-        delete icon;
-    }
+    QObject::disconnect(mSchemeConnection);
 }
 
 QIcon GUIResources::icon(const QString& aName) const {
-    QIcon* icon = mIconMap[aName];
-    if (icon) {
-        return *icon;
-    } else {
-        // I don't see a benefit to asserting zero just because an icon is missing...
-        // XC_ASSERT(0);
-        return {};
-    }
+    // Missing icons resolve to an empty QIcon; callers tolerate it.
+    return mIconMap.value(aName);
 }
 
-QString GUIResources::iconPath(const QString& aName) {
-    bool loadLightIcons = mTheme.isDefault() && mTheme.isDark();
-    return mTheme.path() + "/icon" + (loadLightIcons ? "/light" : "") + "/" + aName + ".png";
+QIcon GUIResources::iconActive(const QString& aName) const {
+    // The active-only variant (hover swaps to it). The base map stores the
+    // rest/active pair; this one is the active glyph as the resting state so
+    // an unchecked hovered button renders it. Checked buttons keep rendering
+    // the On pixmap regardless.
+    return mIconMap.value(aName + "-active");
 }
 
-void GUIResources::loadIcon(const QString& aPath) {
-    QString name = QFileInfo(aPath).baseName();
-    QPixmap source(aPath);
-
-    QIcon* icon = new QIcon();
-    mIconMap[name] = icon;
-    icon->addPixmap(source, QIcon::Normal, QIcon::Off);
-
-#if 0
-    {
-        QPixmap work = source;
-        QPainter painter(&work);
-        //painter.setCompositionMode(QPainter::CompositionMode_Multiply);
-        painter.setCompositionMode(QPainter::CompositionMode_Screen);
-        painter.fillRect(work.rect(), QColor(128, 128, 128, 128));
-        painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-        painter.drawPixmap(source.rect(), source);
-        painter.end();
-        //icon->addPixmap(work, QIcon::Selected, QIcon::On);
-        icon->addPixmap(work, QIcon::Disabled, QIcon::Off);
-    }
-#endif
-}
-
-void GUIResources::loadIcons() {
-    if (!mIconMap.empty()) {
-        QHashIterator<QString, QIcon*> i(mIconMap);
-        while (i.hasNext()) {
-            i.next();
-            QIcon* icon = i.value();
-            // qDebug() << i.key() << ": " << i.value();
-            delete icon;
-        }
-        mIconMap.clear();
-    }
-
-    bool loadLightIcons = mTheme.isDefault() && mTheme.isDark();
-    const QString iconDirPath(mResourceDir + "/themes/" + mTheme.id() + "/icon" + (loadLightIcons ? "/light" : ""));
-
-    QStringList filters;
-    filters << "*.png";
-    QDirIterator itr(iconDirPath, filters, QDir::Files, QDirIterator::Subdirectories);
-
-    while (itr.hasNext()) {
-        loadIcon(itr.next());
-    }
-}
-
-void GUIResources::detectThemes() {
-    const QString themesDirPath(mResourceDir + "/themes");
-
-    QDirIterator itr(themesDirPath, QDir::Dirs, QDirIterator::FollowSymlinks);
-
-    while (itr.hasNext()) {
-        itr.next();
-        if (itr.fileName() != "." && itr.fileName() != "..") {
-            qDebug() << Q_FUNC_INFO << itr.fileName();
-            theme::Theme theme(mResourceDir, itr.fileName());
-            mThemeMap.insert(itr.fileName(), theme);
-        }
-    }
+QColor GUIResources::viewportBackground() const {
+    // the canvas sinks below the base floor (the recessed token)
+    return theme::Colors::current().recessed;
 }
 
 QStringList GUIResources::themeList() {
-    QStringList kThemeList;
-    if (!mThemeMap.empty()) {
-        QHashIterator<QString, theme::Theme> i(mThemeMap);
-        while (i.hasNext()) {
-            i.next();
-            kThemeList.append(i.key());
-        }
-    }
-    return kThemeList;
+    return QStringList() << "system" << "light" << "dark";
 }
 
-bool GUIResources::hasTheme(const QString& aThemeId) { return mThemeMap.contains(aThemeId); }
-
 void GUIResources::setTheme(const QString& aThemeId) {
-    setAppStyle();
-    if (mTheme.id() != aThemeId && hasTheme(aThemeId)) {
-        mTheme = mThemeMap.value(aThemeId);
-        loadIcons();
-        onThemeChanged(mTheme);
-    }
-    setPaletteDefault();
-    if (mTheme.id().contains("dark")){
-        setPaletteDark();
-    }
-    QApplication::setPalette(palette);
+    if (mTheme.id() == aThemeId) return;
+    mTheme = theme::Theme(mResourceDir, aThemeId);
+    applyAppearance();
+    onThemeChanged(mTheme);
+}
+
+void GUIResources::setAccentHue(double aHue) {
+    if (!theme::accentHues().contains(aHue) || mHue == aHue) return;
+    mHue = aHue;
+    QSettings().setValue("generalsettings/ui/accent_hue", aHue);
+    applyAppearance();
+    onThemeChanged(mTheme);
 }
 
 void GUIResources::triggerOnThemeChanged() { onThemeChanged(mTheme); }
+
+void GUIResources::setAppStyle() {
+    QApplication::setStyle(QStyleFactory::create("Fusion"));
+}
+
+void GUIResources::applyAppearance() {
+    theme::Colors::activate(mTheme.isDark(), mHue);
+    const theme::Colors& c = theme::Colors::current();
+
+    // The canonical currentColor set is tinted at runtime into the scratch
+    // dir; QSS and C++ both read from it (theme::iconDir).
+    theme::tintIcons(mResourceDir + "/icons", mIconDir, c);
+    theme::setIconDir(mIconDir);
+    loadIcons();
+
+    applyPalette(c);
+    QApplication::setPalette(palette);
+    qApp->setStyleSheet(dialogButtonStyleSheet());
+    // Scrollbar handles are drawn by the proxy style (a deterministic 4px pill
+    // from the theme tokens) instead of the QSS border-image path, which
+    // distorts small pills. Install the proxy once: QApplication::setStyle
+    // slots the passed style under the stylesheet wrapper (QStyleSheetStyle),
+    // so qobject_cast<ScrollBarStyle*>(qApp->style()) never matches and the
+    // old guard wrapped a fresh proxy on every appearance change.
+    if (!mScrollBarStyleInstalled) {
+        qApp->setStyle(new ScrollBarStyle(qApp->style()));
+        mScrollBarStyleInstalled = true;
+    }
+}
+
+void GUIResources::loadIcons() {
+    mIconMap.clear();
+    const QDir dir(mIconDir);
+    const QStringList files = dir.entryList(QStringList() << "*.svg", QDir::Files);
+    for (const QString& name : files) {
+        if (name.endsWith("-active.svg")) continue; // variant, not a stem
+        const QString stem = name.left(name.size() - 4); // strip .svg
+        QIcon icon;
+        // Rest (Normal/Off) and active (Normal/On): a checked QPushButton
+        // renders the On pixmap automatically (QCommonStyle maps State_On to
+        // QIcon::On), so every toggle button gets the max-contrast glyph on
+        // its accent fill without per-widget swap code. The -active file is
+        // also registered as its own stem so iconActive() can hand it out.
+        icon.addFile(dir.filePath(name), QSize(), QIcon::Normal, QIcon::Off);
+        const QString activePath = dir.filePath(stem + "-active.svg");
+        icon.addFile(activePath, QSize(), QIcon::Normal, QIcon::On);
+        mIconMap.insert(stem, icon);
+        mIconMap.insert(stem + "-active", QIcon(activePath));
+    }
+}
+
+void GUIResources::applyPalette(const theme::Colors& aColors) {
+    palette.setColor(QPalette::Window, aColors.base);
+    palette.setColor(QPalette::WindowText, aColors.text);
+    palette.setColor(QPalette::Base, aColors.raised);
+    palette.setColor(QPalette::AlternateBase, aColors.raisedHover);
+    palette.setColor(QPalette::ToolTipBase, aColors.raised);
+    palette.setColor(QPalette::ToolTipText, aColors.text);
+    palette.setColor(QPalette::Text, aColors.text);
+    palette.setColor(QPalette::Button, aColors.raised);
+    palette.setColor(QPalette::ButtonText, aColors.text);
+    palette.setColor(QPalette::BrightText, aColors.text);
+    palette.setColor(QPalette::Link, aColors.accentBright);
+    palette.setColor(QPalette::Highlight, aColors.selection);
+    palette.setColor(QPalette::HighlightedText, aColors.selectionText);
+}
+
+QString GUIResources::dialogButtonStyleSheet() const {
+    // Dialog buttons are styled app-wide (qApp->setStyleSheet) so parentless
+    // dialogs (QMessageBox) inherit them; the template lives alongside the
+    // other .ssa files and is token-substituted the same way.
+    return mTheme.loadStylesheet("dialogbutton.ssa");
+}
 
 } // namespace gui

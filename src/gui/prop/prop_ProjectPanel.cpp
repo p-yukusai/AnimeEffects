@@ -3,10 +3,10 @@
 namespace gui {
 namespace prop {
 
-    ProjectPanel::ProjectPanel(core::Project& aProject, QWidget* aParent):
-        Panel("Project", aParent),
+    ProjectPanel::ProjectPanel(core::Project& aProject, QWidget* aParent, GUIResources* aGUIResources):
+        Panel("Project", aParent, aGUIResources),
         mProject(aProject),
-        mAttributes(new AttrGroup("Time", 0))
+        mAttributes(new AttrGroup("Time", 0, aGUIResources))
 
     {}
 

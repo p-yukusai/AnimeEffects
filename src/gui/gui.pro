@@ -9,6 +9,7 @@ INCLUDES    += $$PWD
 
 QT += opengl
 QT += multimedia
+QT += svg
 
 OBJECTS_DIR = .obj
 MOC_DIR     = .moc
@@ -58,22 +59,26 @@ INCLUDEPATH += ..
 DEPENDPATH  += ..
 
 SOURCES += \
+    AnimationSettingDialog.cpp \
+    DockSash.cpp \
     Main.cpp \
+    ScrollBarStyle.cpp \
     MainDisplayWidget.cpp \
     MainWindow.cpp \
     ObjectTreeWidget.cpp \
     PlayBackWidget.cpp \
     PropertyWidget.cpp \
     TimeLineEditorWidget.cpp \
-    TimeLineInfoWidget.cpp \
     TimeLineWidget.cpp \
     ToolWidget.cpp \
     TargetWidget.cpp \
+    ThinSplitter.cpp \
     exportdiag.cpp \
     prop/prop_Panel.cpp \
     prop/prop_KeyGroup.cpp \
     prop/prop_Items.cpp \
     prop/prop_Backboard.cpp \
+    prop/prop_HeaderButton.cpp \
     obj/obj_MoveItem.cpp \
     obj/obj_InsertItem.cpp \
     obj/obj_Item.cpp \
@@ -82,6 +87,7 @@ SOURCES += \
     obj/obj_Util.cpp \
     theme/Theme.cpp \
     theme/TimeLine.cpp \
+    theme/Icons.cpp \
     tool/tool_ModePanel.cpp \
     tool/tool_FFDPanel.cpp \
     DriverHolder.cpp \
@@ -102,6 +108,7 @@ SOURCES += \
     res/res_ResourceUpdater.cpp \
     ProjectHook.cpp \
     ProjectTabBar.cpp \
+    TabCloseButton.cpp \
     EasyDialog.cpp \
     menu/menu_ProgressReporter.cpp \
     tool/tool_ViewPanel.cpp \
@@ -126,6 +133,9 @@ SOURCES += \
     MouseSetting.cpp
 
 HEADERS += \
+    AnimationSettingDialog.h \
+    DockSash.h \
+    ScrollBarStyle.h \
     MainDisplayMode.h \
     MainDisplayWidget.h \
     MainWindow.h \
@@ -133,16 +143,17 @@ HEADERS += \
     PlayBackWidget.h \
     PropertyWidget.h \
     TimeLineEditorWidget.h \
-    TimeLineInfoWidget.h \
     TimeLineWidget.h \
     ToolWidget.h \
     TargetWidget.h \
+    ThinSplitter.h \
     exportdiag.h \
     prop/prop_Panel.h \
     prop/prop_KeyGroup.h \
     prop/prop_Items.h \
     prop/prop_ItemBase.h \
     prop/prop_Backboard.h \
+    prop/prop_HeaderButton.h \
     obj/obj_MoveItem.h \
     obj/obj_InsertItem.h \
     obj/obj_Item.h \
@@ -151,6 +162,8 @@ HEADERS += \
     obj/obj_Util.h \
     theme/Theme.h \
     theme/TimeLine.h \
+    theme/Colors.h \
+    theme/Icons.h \
     tool/tool_ModePanel.h \
     tool/tool_FFDPanel.h \
     DriverHolder.h \
@@ -172,6 +185,7 @@ HEADERS += \
     res/res_ResourceUpdater.h \
     ProjectHook.h \
     ProjectTabBar.h \
+    TabCloseButton.h \
     EasyDialog.h \
     menu/menu_ProgressReporter.h \
     tool/tool_ViewPanel.h \
