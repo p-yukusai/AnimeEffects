@@ -701,7 +701,7 @@
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="236"/>
         <source>Custom</source>
-        <translation type="unfinished">Personalizado</translation>
+        <translation>Personalizado</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="237"/>
@@ -1034,7 +1034,7 @@
     <message>
         <location filename="../../src/gui/exportdiag.h" line="903"/>
         <source>Loop animation</source>
-        <translation type="unfinished">Reproducir en bucle</translation>
+        <translation>Reproducir en bucle</translation>
     </message>
     <message>
         <location filename="../../src/gui/exportdiag.h" line="904"/>
@@ -1060,7 +1060,7 @@
     <message>
         <location filename="../../src/gui/exportdiag.h" line="908"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- First frame -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- Primer marco -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- Primer fotograma -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../src/gui/exportdiag.h" line="909"/>
@@ -1199,12 +1199,12 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="28"/>
         <source>Loop animation :</source>
-        <translation type="unfinished">Reproducir en bucle :</translation>
+        <translation>Reproducir en bucle :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="36"/>
         <source>Maximum frame count :</source>
-        <translation type="unfinished">Número máximo de fotogramas:</translation>
+        <translation>Número máximo de fotogramas:</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
@@ -1214,22 +1214,22 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
         <source>Parameters</source>
-        <translation type="unfinished">Parámetros</translation>
+        <translation>Parámetros</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="56"/>
         <source>Operation Error</source>
-        <translation type="unfinished">Error de Operación</translation>
+        <translation>Error de operación</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="57"/>
         <source>Frame value cannot be set.</source>
-        <translation type="unfinished">El valor del fotograma no se puede establecer.</translation>
+        <translation>No se puede establecer el valor del fotograma.</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="58"/>
         <source>One or more keys exceed the specified frame value.</source>
-        <translation type="unfinished">Una o más claves superan el valor del fotograma especificado.</translation>
+        <translation>Una o más claves superan el número de fotograma especificado.</translation>
     </message>
 </context>
 <context>
@@ -1467,24 +1467,24 @@ Revisar generación de paleta de FFmpeg ✓</translation>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
         <source>FFmpeg was not found.</source>
-        <translation type="unfinished">FFmpeg no encontrado.</translation>
+        <translation>No se encontró FFmpeg.</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="784"/>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
 In the following screen you can instruct AnimeEffects to download and install it automatically for you, or you can download it by yourself and tell AnimeEffects where it is.</source>
-        <translation type="unfinished">La exportación de vídeo requiere que FFmpeg esté instalado en tu ordenador, FFmpeg es una herramienta gratuita que AnimeEffects utiliza para crear archivos de vídeo.
-En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e instale automáticamente por ti, o puedes descargarlo tú mismo e indicarle a AnimeEffects dónde se encuentra.</translation>
+        <translation>Para exportar vídeo, FFmpeg debe estar instalado en tu ordenador. FFmpeg es una herramienta gratuita que AnimeEffects utiliza para crear archivos de vídeo.
+En la siguiente pantalla puedes indicar a AnimeEffects que lo descargue e instale automáticamente, o descargarlo por tu cuenta e indicarle dónde se encuentra.</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="834"/>
         <source>FFmpeg was unable to export, please troubleshoot.</source>
-        <translation type="unfinished">FFmpeg no ha podido exportar, por favor solucione problemas.</translation>
+        <translation>FFmpeg no pudo exportar; consulta la solución de problemas.</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="864"/>
         <source>FFmpeg was unable to generate palettes, please troubleshoot.</source>
-        <translation type="unfinished">FFmpeg no ha podido generar paletas. Por favor, solucione problemas.</translation>
+        <translation>FFmpeg no pudo generar las paletas; consulta la solución de problemas.</translation>
     </message>
     <message>
         <source>Warning</source>
@@ -2288,7 +2288,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="146"/>
         <source>Animation</source>
-        <translation type="unfinished">Animación</translation>
+        <translation>Animación</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="159"/>
@@ -2298,7 +2298,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="205"/>
         <source>Tools</source>
-        <translation type="unfinished">Herramientas</translation>
+        <translation>Herramientas</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="1268"/>
@@ -2434,7 +2434,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="1660"/>
         <source>Operation Error</source>
-        <translation>Error de Operación</translation>
+        <translation>Error de operación</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="1660"/>
@@ -2713,7 +2713,7 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/PlayBackWidget.cpp" line="52"/>
         <source>Loop animation</source>
-        <translation type="unfinished">Reproducir en bucle</translation>
+        <translation>Reproducir en bucle</translation>
     </message>
     <message>
         <location filename="../../src/gui/PlayBackWidget.cpp" line="54"/>
@@ -2820,7 +2820,7 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="815"/>
         <source>Operation Error</source>
-        <translation>Error de Operación</translation>
+        <translation>Error de operación</translation>
     </message>
 </context>
 <context>
@@ -3078,7 +3078,7 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="636"/>
         <source>Operation Error</source>
-        <translation>Error de Operación</translation>
+        <translation>Error de operación</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="636"/>
@@ -3240,7 +3240,7 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="304"/>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="314"/>
         <source>Blur</source>
-        <translation type="unfinished">Desenfoque</translation>
+        <translation>Desenfoque</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>
@@ -3661,7 +3661,7 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="611"/>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="671"/>
         <source>Operation Error</source>
-        <translation>Error de Operación</translation>
+        <translation>Error de operación</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="607"/>

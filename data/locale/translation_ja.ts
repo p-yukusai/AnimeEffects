@@ -701,7 +701,7 @@
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="236"/>
         <source>Custom</source>
-        <translation type="unfinished">カスタム</translation>
+        <translation>カスタム</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="237"/>
@@ -1034,7 +1034,7 @@
     <message>
         <location filename="../../src/gui/exportdiag.h" line="903"/>
         <source>Loop animation</source>
-        <translation type="unfinished">ループ再生</translation>
+        <translation>ループ再生</translation>
     </message>
     <message>
         <location filename="../../src/gui/exportdiag.h" line="904"/>
@@ -1199,12 +1199,12 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="28"/>
         <source>Loop animation :</source>
-        <translation type="unfinished">ループ再生 :</translation>
+        <translation>ループ再生 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="36"/>
         <source>Maximum frame count :</source>
-        <translation type="unfinished">最大フレーム :</translation>
+        <translation>最大フレーム数 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
@@ -1214,22 +1214,22 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
         <source>Parameters</source>
-        <translation type="unfinished">パラメーター</translation>
+        <translation>パラメーター</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="56"/>
         <source>Operation Error</source>
-        <translation type="unfinished">操作エラー</translation>
+        <translation>操作エラー</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="57"/>
         <source>Frame value cannot be set.</source>
-        <translation type="unfinished">フレーム値を設定できません。</translation>
+        <translation>フレーム値を設定できません。</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="58"/>
         <source>One or more keys exceed the specified frame value.</source>
-        <translation type="unfinished">指定したフレーム値を超過するキーが存在します。</translation>
+        <translation>指定したフレーム値を超過するキーが存在します。</translation>
     </message>
 </context>
 <context>
@@ -1467,24 +1467,24 @@ FFmpeg のパレット生成を確認 ✓</translation>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
         <source>FFmpeg was not found.</source>
-        <translation type="unfinished">FFmpegが見つかりませんでした。</translation>
+        <translation>FFmpegが見つかりませんでした。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="784"/>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
 In the following screen you can instruct AnimeEffects to download and install it automatically for you, or you can download it by yourself and tell AnimeEffects where it is.</source>
-        <translation type="unfinished">ビデオをエクスポートするには、FFmpegをコンピュータにインストールする必要があります。FFmpegは、AnimeEffectsがビデオファイルを作成するために使用する無料ツールです。
-次の画面では、AnimeEffectsに指示して、自動的にダウンロードしてインストールすることもできますし、自分でダウンロードしてAnimeEffectsにその場所を伝えることもできます。</translation>
+        <translation>ビデオをエクスポートするには、FFmpegをコンピュータにインストールする必要があります。FFmpegは、AnimeEffectsがビデオファイルを作成するために使用する無料ツールです。
+次の画面では、AnimeEffectsにFFmpegを自動的にダウンロードしてインストールさせることも、自分でダウンロードしてAnimeEffectsに場所を指定することもできます。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="834"/>
         <source>FFmpeg was unable to export, please troubleshoot.</source>
-        <translation type="unfinished">FFmpeg をエクスポートできませんでした。トラブルシューティングしてください。</translation>
+        <translation>FFmpegでエクスポートできませんでした。トラブルシューティングを行ってください。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="864"/>
         <source>FFmpeg was unable to generate palettes, please troubleshoot.</source>
-        <translation type="unfinished">FFmpegはパレットを生成できませんでした、トラブルシューティングしてください。</translation>
+        <translation>FFmpegでパレットを生成できませんでした。トラブルシューティングを行ってください。</translation>
     </message>
     <message>
         <source>Warning</source>
@@ -1984,7 +1984,7 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="302"/>
         <source>Maximum frame count</source>
-        <translation>最大フレーム</translation>
+        <translation>最大フレーム数</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="303"/>
@@ -2288,7 +2288,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="146"/>
         <source>Animation</source>
-        <translation type="unfinished">アニメーション</translation>
+        <translation>アニメーション</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="159"/>
@@ -2298,7 +2298,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="205"/>
         <source>Tools</source>
-        <translation type="unfinished">ツール</translation>
+        <translation>ツール</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="1268"/>
@@ -2500,7 +2500,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="67"/>
         <source>Maximum frame count :</source>
-        <translation>最大フレーム :</translation>
+        <translation>最大フレーム数 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="77"/>
@@ -2711,7 +2711,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/PlayBackWidget.cpp" line="52"/>
         <source>Loop animation</source>
-        <translation type="unfinished">ループ再生</translation>
+        <translation>ループ再生</translation>
     </message>
     <message>
         <location filename="../../src/gui/PlayBackWidget.cpp" line="54"/>
@@ -2793,12 +2793,12 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="771"/>
         <source>Set max frames</source>
-        <translation>最大フレームの設定</translation>
+        <translation>最大フレーム数の設定</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="786"/>
         <source>Max frame count :</source>
-        <translation>最大フレーム :</translation>
+        <translation>最大フレーム数 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="788"/>
@@ -3238,7 +3238,7 @@ The log is available below.</source>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="304"/>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="314"/>
         <source>Blur</source>
-        <translation type="unfinished">ぼかし</translation>
+        <translation>ぼかし</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>

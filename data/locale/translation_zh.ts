@@ -701,7 +701,7 @@
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="236"/>
         <source>Custom</source>
-        <translation type="unfinished">自定义</translation>
+        <translation>自定义</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="237"/>
@@ -1034,7 +1034,7 @@
     <message>
         <location filename="../../src/gui/exportdiag.h" line="903"/>
         <source>Loop animation</source>
-        <translation type="unfinished">循环动画</translation>
+        <translation>循环动画</translation>
     </message>
     <message>
         <location filename="../../src/gui/exportdiag.h" line="904"/>
@@ -1199,12 +1199,12 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="28"/>
         <source>Loop animation :</source>
-        <translation type="unfinished">循环动画 :</translation>
+        <translation>循环动画 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="36"/>
         <source>Maximum frame count :</source>
-        <translation type="unfinished">最大帧数 :</translation>
+        <translation>最大帧数 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
@@ -1214,22 +1214,22 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
         <source>Parameters</source>
-        <translation type="unfinished">参数</translation>
+        <translation>参数</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="56"/>
         <source>Operation Error</source>
-        <translation type="unfinished">操作错误</translation>
+        <translation>操作错误</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="57"/>
         <source>Frame value cannot be set.</source>
-        <translation type="unfinished">无法设置帧值。</translation>
+        <translation>无法设置帧值。</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="58"/>
         <source>One or more keys exceed the specified frame value.</source>
-        <translation type="unfinished">一个或多个键超过了指定的帧数。</translation>
+        <translation>一个或多个关键帧超出了指定的帧数。</translation>
     </message>
 </context>
 <context>
@@ -1467,24 +1467,24 @@ Check FFmpeg palette generation ✓</source>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
         <source>FFmpeg was not found.</source>
-        <translation type="unfinished">未找到FFmpeg工具。</translation>
+        <translation>未找到 FFmpeg。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="784"/>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
 In the following screen you can instruct AnimeEffects to download and install it automatically for you, or you can download it by yourself and tell AnimeEffects where it is.</source>
-        <translation type="unfinished">导出视频需要在你的电脑上安装FFmpeg，FFmpeg是一个免费的工具，AnimeEffects用它来制作视频文件。
-在下面的界面中，你可以指示AnimeEffects为你自动下载并安装它，或者你可以自己下载并告诉AnimeEffects它的位置。</translation>
+        <translation>导出视频需要在电脑上安装 FFmpeg。FFmpeg 是 AnimeEffects 用来创建视频文件的免费工具。
+在下面的界面中，你可以让 AnimeEffects 自动下载并安装 FFmpeg，也可以自行下载，然后告知 AnimeEffects 其所在位置。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="834"/>
         <source>FFmpeg was unable to export, please troubleshoot.</source>
-        <translation type="unfinished">FFmpeg无法导出，请进行故障排查。</translation>
+        <translation>FFmpeg 无法导出，请排查问题。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="864"/>
         <source>FFmpeg was unable to generate palettes, please troubleshoot.</source>
-        <translation type="unfinished">FFmpeg 无法生成调色板，请进行故障排查。</translation>
+        <translation>FFmpeg 无法生成调色板，请排查问题。</translation>
     </message>
     <message>
         <source>Warning</source>
@@ -2254,7 +2254,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="146"/>
         <source>Animation</source>
-        <translation type="unfinished">动画</translation>
+        <translation>动画</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="159"/>
@@ -2264,7 +2264,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="205"/>
         <source>Tools</source>
-        <translation type="unfinished">工具</translation>
+        <translation>工具</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="1268"/>
@@ -2678,7 +2678,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/PlayBackWidget.cpp" line="52"/>
         <source>Loop animation</source>
-        <translation type="unfinished">循环动画</translation>
+        <translation>循环动画</translation>
     </message>
     <message>
         <location filename="../../src/gui/PlayBackWidget.cpp" line="54"/>
@@ -2780,7 +2780,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="814"/>
         <source>One or more keys exceed the specified frame value.</source>
-        <translation>一个或多个键超过了指定的帧数。</translation>
+        <translation>一个或多个关键帧超出了指定的帧数。</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="815"/>
@@ -3205,7 +3205,7 @@ The log is available below.</source>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="304"/>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="314"/>
         <source>Blur</source>
-        <translation type="unfinished">模糊</translation>
+        <translation>模糊</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>
