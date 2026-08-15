@@ -10,7 +10,7 @@
 
 namespace {
 
-constexpr int kLanguageTypeCount = 6;
+constexpr int kLanguageTypeCount = 7;
 const int kTimeFormatTypeCount = 6;
 const int kEasingTypeCount = 12;
 const int kRangeTypeCount = 3;
@@ -28,6 +28,8 @@ int languageToIndex(const QString& aLanguage) {
         return 4;
     if (aLanguage == "Russian")
         return 5;
+    if (aLanguage == "Korean")
+        return 6;
     return 0;
 }
 
@@ -172,6 +174,8 @@ QString indexToLanguage(int aIndex, bool translated = true) {
             return QCoreApplication::translate("GeneralSettingsDialog", "Spanish");
         case 5:
             return QCoreApplication::translate("GeneralSettingsDialog", "Russian");
+        case 6:
+            return QCoreApplication::translate("GeneralSettingsDialog", "Korean");
         default:
             return QCoreApplication::translate("GeneralSettingsDialog", "Auto");
         }
@@ -189,6 +193,8 @@ QString indexToLanguage(int aIndex, bool translated = true) {
         return {"Spanish"};
     case 5:
         return {"Russian"};
+    case 6:
+        return {"Korean"};
     default:
         return {"Auto"};
     }

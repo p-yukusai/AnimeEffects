@@ -464,140 +464,145 @@
 <context>
     <name>GeneralSettingsDialog</name>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="78"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="80"/>
         <source>None</source>
         <translation>なし</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="80"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="102"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="82"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="104"/>
         <source>Linear</source>
         <translation>リニア</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="82"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="84"/>
         <source>Sine</source>
         <translation>正弦曲線</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="84"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="86"/>
         <source>Quad</source>
         <translation>二次式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="86"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="88"/>
         <source>Cubic</source>
         <translation>三次式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="88"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="90"/>
         <source>Quart</source>
         <translation>四次式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="90"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="92"/>
         <source>Quint</source>
         <translation>五次式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="92"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="94"/>
         <source>Expo</source>
         <translation>指数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="94"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="96"/>
         <source>Circ</source>
         <translation>円形</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="96"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="98"/>
         <source>Back</source>
         <translation>バック</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="98"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="100"/>
         <source>Elastic</source>
         <translation>ゴム状</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="100"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="102"/>
         <source>Bounce</source>
         <translation>バウンス</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="139"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="141"/>
         <source>In</source>
         <translation>イン</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="141"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="143"/>
         <source>Out</source>
         <translation>アウト</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="143"/>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="145"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="147"/>
         <source>All</source>
         <translation>オール</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="164"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="176"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="166"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="180"/>
         <source>Auto</source>
         <translation>オートマチック</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="166"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="168"/>
         <source>English</source>
         <translation>英語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="168"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="170"/>
         <source>Japanese</source>
         <translation>日本語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="170"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="172"/>
         <source>Chinese</source>
         <translation>中国語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="172"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="174"/>
         <source>Spanish</source>
         <translation>スペイン語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="174"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="176"/>
         <source>Russian</source>
         <translation>ロシア語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="201"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="178"/>
+        <source>Korean</source>
+        <translation>韓国語</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="207"/>
         <source>Frame number (from 0)</source>
         <translation>フレーム番号（0から）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="203"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="209"/>
         <source>Frame number (from 1)</source>
         <translation>フレーム番号（1から）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="205"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="211"/>
         <source>Relative to FPS (1.0 = 60.0)</source>
         <translation>FPSに対する相対値（1.0＝60.0）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="207"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="213"/>
         <source>Seconds : Frame</source>
         <translation>秒数：フレーム</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="209"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
         <source>Timecode (SMPTE) (HH:MM:SS:FF)</source>
         <translation>タイムコード(SMPTE) (時:分:秒:フレーム)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="211"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
         <source>Timecode (HH:MM:SS:mmm)</source>
         <translation>タイムコード(時:分:秒:ミリ秒)</translation>
     </message>
@@ -1315,7 +1320,7 @@
 <context>
     <name>gui::GeneralSettingDialog</name>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="221"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="227"/>
         <source>General Settings</source>
         <translation>一般設定</translation>
     </message>
@@ -1324,12 +1329,12 @@
         <translation type="vanished">言語（要リブート） :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="308"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="314"/>
         <source>Default keyframe easing :</source>
         <translation>デフォルトのキーフレームイージング :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="315"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="321"/>
         <source>Default keyframe range :</source>
         <translation>デフォルトのキーフレーム範囲 :</translation>
     </message>
@@ -1338,145 +1343,145 @@
         <translation type="vanished">タイムライン形式 :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="301"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="307"/>
         <source>Language (needs restart) :</source>
         <translation>言語（要リブート） :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="322"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="328"/>
         <source>Timeline format (needs restart) :</source>
         <translation>タイムライン形式（要リブート） :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
         <source>System</source>
         <translation>システム</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
         <source>Light</source>
         <translation>ライト</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
         <source>Dark</source>
         <translation>ダーク</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="353"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="359"/>
         <source>Theme :</source>
         <translation>テーマ :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="382"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
         <source>Accent color :</source>
         <translation>アクセントカラー :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="390"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="396"/>
         <source>Automatically save your project : </source>
         <translation>プロジェクトを自動で保存する : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="394"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="400"/>
         <source>Time (in minutes) between autosaves : </source>
         <translation>オートセーブまでの時間（分） : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="402"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="408"/>
         <source>Show mesh when selecting FFD : </source>
         <translation>FFD選択時にメッシュを自動で表示する : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="406"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
         <source>On copy send keys to the clipboard : </source>
         <translation>キーをクリップボードに自動でコピーする : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="410"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
         <source>Always check for FFmpeg on export : </source>
         <translation>エクスポート時にFFmpegをチェックする ： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="414"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="420"/>
         <source>Enforce ID check on asset download : </source>
         <translation>アセットダウンロード時のIDチェックを強制する： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="418"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="424"/>
         <source>Ignore export warnings :</source>
         <translation>エクスポート警告を無視 :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="422"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="428"/>
         <source>Allow donation menu : </source>
         <translation>寄付メニューを許可する : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="426"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="432"/>
         <source>Force project to load</source>
         <translation>強制的にプロジェクトをロードする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="428"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="434"/>
         <source>Reset recent files list</source>
         <translation>最近使ったファイル一覧をリセットする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="429"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="435"/>
         <source>Deletes all project entries from your recents</source>
         <translation>すべてのプロジェクトのエントリーを履歴から削除します</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="433"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="511"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="613"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="638"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="439"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="619"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="644"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="433"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="439"/>
         <source>All entries have been successfully removed</source>
         <translation>すべてのエントリーが正常に削除されました</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="443"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="449"/>
         <source>Global keybind delay (ms) : </source>
         <translation>グローバルキーバインドディレイ(ミリ秒) : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="445"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="451"/>
         <source>Reset keybinds</source>
         <translation>キーバインドをリセットする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="446"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="452"/>
         <source>Reset all keybinds, a restart is required.</source>
         <translation>すべてのキーバインドをリセットする、再起動が必要です。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="453"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="459"/>
         <source>Keybinds reset status</source>
         <translation>キーバインドリセット状態</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="454"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="460"/>
         <source>The keybinds will be reset when you restart.</source>
         <translation>再起動すると、キーバインドがリセットされます。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="455"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="461"/>
         <source>The keybinds will not be reset when you restart.</source>
         <translation>再起動してもキーバインドがリセットされることはありません。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="464"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="470"/>
         <source>Troubleshoot FFmpeg</source>
         <translation>FFmpegのトラブルシューティング</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="478"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="484"/>
         <source>Check FFmpeg response ✓
 Check FFmpeg exporting ✓
 Check FFmpeg palette generation ✓</source>
@@ -1485,44 +1490,44 @@ FFmpeg のエクスポートを確認 ✓
 FFmpeg のパレット生成を確認 ✓</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="492"/>
         <source>Select executable and automatically set up</source>
         <translation>実行ファイルから選択し、自動的にセットアップ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="523"/>
         <source>Download and automatically set up</source>
         <translation>ダウンロードし、自動的にセットアップ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="614"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="620"/>
         <source>FFmpeg was successfully set up. Please restart AnimeEffects</source>
         <translation>FFmpeg が正常にセットアップされました。AnimeEffects を再起動してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="645"/>
         <source>FFmpeg was successfully set up.</source>
         <translation>FFmpegのセットアップに成功しました。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="788"/>
         <source>FFmpeg was not found.</source>
         <translation>FFmpegが見つかりませんでした。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="784"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="790"/>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
 In the following screen you can instruct AnimeEffects to download and install it automatically for you, or you can download it by yourself and tell AnimeEffects where it is.</source>
         <translation>ビデオをエクスポートするには、FFmpegをコンピュータにインストールする必要があります。FFmpegは、AnimeEffectsがビデオファイルを作成するために使用する無料ツールです。
 次の画面では、AnimeEffectsにFFmpegを自動的にダウンロードしてインストールさせることも、自分でダウンロードしてAnimeEffectsに場所を指定することもできます。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="834"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="840"/>
         <source>FFmpeg was unable to export, please troubleshoot.</source>
         <translation>FFmpegでエクスポートできませんでした。トラブルシューティングを行ってください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="864"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="870"/>
         <source>FFmpeg was unable to generate palettes, please troubleshoot.</source>
         <translation>FFmpegでパレットを生成できませんでした。トラブルシューティングを行ってください。</translation>
     </message>
@@ -1539,7 +1544,7 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpegが見つからないか、破損しているか、またはその他の理由で動作しない。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="833"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="839"/>
         <source>FFmpeg doesn&apos;t export</source>
         <translation>FFmpegで書き出しができない</translation>
     </message>
@@ -1548,7 +1553,7 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpegはエクスポートできませんでした。有効なFFmpegの実行ファイルかどうか確認してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="863"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="869"/>
         <source>FFmpeg doesn&apos;t generate palettes</source>
         <translation>FFmpegはパレットを生成しない</translation>
     </message>
@@ -1557,17 +1562,17 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpegはパレットを生成できませんでした、有効なFFmpeg実行ファイルかどうか確認してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="474"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="480"/>
         <source>FFmpeg test success</source>
         <translation>FFmpegのテスト成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="475"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="481"/>
         <source>All tests have passed, FFmpeg is working correctly.</source>
         <translation>すべてのテストに合格し、FFmpegは正しく動作しています。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="477"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="483"/>
         <source>FFmpeg at: </source>
         <translation>FFmpegで: </translation>
     </message>
@@ -1594,12 +1599,12 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation type="vanished">実行ファイルから選択し、自動的にセットアップ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="488"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="494"/>
         <source>This will remove previous instances of FFmpeg from your tools directory and replace them with your custom executable, please make sure this is a valid FFmpeg executable.</source>
         <translation>これにより、ツールディレクトリから以前のFFmpegのインスタンスが削除され、あなたのカスタム実行ファイルに置き換えられます、有効なFFmpegの実行ファイルであることを確認してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="510"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="516"/>
         <source>Operation successful</source>
         <translation>オペレーション成功</translation>
     </message>
@@ -1608,17 +1613,17 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation type="vanished">ダウンロードし、自動的にセットアップ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="531"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="537"/>
         <source>Unable to create directory</source>
         <translation>ディレクトリを作成できません</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="533"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="539"/>
         <source>An error has occurred while creating the tools directory in </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="534"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="540"/>
         <source> the application will use a fallback but if this doesn&apos;t work please run the app as administrator or use a folder that isn&apos;t write protected.</source>
         <translation>のツール ディレクトリを作成中にエラーが発生しました。アプリケーションはフォールバックを使用しますが、これが機能しない場合は、管理者としてアプリを実行するか、書き込み保護されていないフォルダーを使用してください。</translation>
     </message>
@@ -1627,12 +1632,12 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation type="vanished">FFmpeg が正常にセットアップされました。AnimeEffects を再起動してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="630"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="636"/>
         <source>FFmpeg installed</source>
         <translation>FFmpeg をインストールしました</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="631"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="637"/>
         <source>FFmpeg was installed but it requires to be set as executable, please right click &quot;ffmpeg&quot; go to properties and allow it to be executable as a program.</source>
         <translation>FFmpeg をインストールしましたが、実行可能ファイルとして設定する必要があります。「ffmpeg」を右クリックしてプロパティを開き、プログラムとして実行を許可してください。</translation>
     </message>
@@ -1641,32 +1646,32 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation type="vanished">FFmpegのセットアップに成功しました。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="645"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="651"/>
         <source>Error</source>
         <translation>エラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="646"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="652"/>
         <source>While setting up FFmpeg an unexpected error has occurred, please send the below information to our devs.</source>
         <translation>FFmpeg の設定中に予期しないエラーが発生しました。以下の情報を弊社の開発者に送信してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="668"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="674"/>
         <source>General</source>
         <translation>一般</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="669"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="675"/>
         <source>QoL</source>
         <translation>使いやすさ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="670"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="676"/>
         <source>FFmpeg</source>
         <translation>FFmpeg</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="671"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="677"/>
         <source>Keybindings</source>
         <translation>キーバインド</translation>
     </message>

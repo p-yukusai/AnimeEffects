@@ -464,140 +464,145 @@
 <context>
     <name>GeneralSettingsDialog</name>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="78"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="80"/>
         <source>None</source>
         <translation>无</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="80"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="102"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="82"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="104"/>
         <source>Linear</source>
         <translation>线型</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="82"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="84"/>
         <source>Sine</source>
         <translation>正弦曲线</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="84"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="86"/>
         <source>Quad</source>
         <translation>二次方</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="86"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="88"/>
         <source>Cubic</source>
         <translation>三次方</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="88"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="90"/>
         <source>Quart</source>
         <translation>四次方</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="90"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="92"/>
         <source>Quint</source>
         <translation>五次方</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="92"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="94"/>
         <source>Expo</source>
         <translation>指数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="94"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="96"/>
         <source>Circ</source>
         <translation>圆形</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="96"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="98"/>
         <source>Back</source>
         <translation>回弹</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="98"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="100"/>
         <source>Elastic</source>
         <translation>伸缩</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="100"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="102"/>
         <source>Bounce</source>
         <translation>弹跳</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="139"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="141"/>
         <source>In</source>
         <translation>进</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="141"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="143"/>
         <source>Out</source>
         <translation>出</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="143"/>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="145"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="147"/>
         <source>All</source>
         <translation>全部</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="164"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="176"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="166"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="180"/>
         <source>Auto</source>
         <translation>自动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="166"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="168"/>
         <source>English</source>
         <translation>英文</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="168"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="170"/>
         <source>Japanese</source>
         <translation>日语</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="170"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="172"/>
         <source>Chinese</source>
         <translation>中文</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="172"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="174"/>
         <source>Spanish</source>
         <translation>西班牙语</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="174"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="176"/>
         <source>Russian</source>
         <translation>俄语</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="201"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="178"/>
+        <source>Korean</source>
+        <translation>韩语</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="207"/>
         <source>Frame number (from 0)</source>
         <translation>帧数（从0开始）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="203"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="209"/>
         <source>Frame number (from 1)</source>
         <translation>帧数（从1开始）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="205"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="211"/>
         <source>Relative to FPS (1.0 = 60.0)</source>
         <translation>相对FPS (1.0 = 60.0)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="207"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="213"/>
         <source>Seconds : Frame</source>
         <translation>秒 : 帧</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="209"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
         <source>Timecode (SMPTE) (HH:MM:SS:FF)</source>
         <translation>时间编码(SMPTE) (HH:MM:SS:FF)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="211"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
         <source>Timecode (HH:MM:SS:mmm)</source>
         <translation>时间编码 (HH:MM:SS:mmm)</translation>
     </message>
@@ -1315,7 +1320,7 @@
 <context>
     <name>gui::GeneralSettingDialog</name>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="221"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="227"/>
         <source>General Settings</source>
         <translation>常规设置</translation>
     </message>
@@ -1324,12 +1329,12 @@
         <translation type="vanished">语言（需重启） :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="308"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="314"/>
         <source>Default keyframe easing :</source>
         <translation>默认关键帧缓和：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="315"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="321"/>
         <source>Default keyframe range :</source>
         <translation>默认关键帧范围 ：</translation>
     </message>
@@ -1338,145 +1343,145 @@
         <translation type="vanished">时间轴格式 :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="301"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="307"/>
         <source>Language (needs restart) :</source>
         <translation>语言（需重启） :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="322"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="328"/>
         <source>Timeline format (needs restart) :</source>
         <translation>时间轴格式（需重启） :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
         <source>System</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="353"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="359"/>
         <source>Theme :</source>
         <translation>主题 :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="382"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
         <source>Accent color :</source>
         <translation>强调色 :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="390"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="396"/>
         <source>Automatically save your project : </source>
         <translation>自动保存项目 : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="394"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="400"/>
         <source>Time (in minutes) between autosaves : </source>
         <translation>自动保存之间的时间间隔（以分钟为单位）：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="402"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="408"/>
         <source>Show mesh when selecting FFD : </source>
         <translation>选择FFD时显示网格：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="406"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
         <source>On copy send keys to the clipboard : </source>
         <translation>复制时将按键发送到剪贴板：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="410"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
         <source>Always check for FFmpeg on export : </source>
         <translation>在导出时始终检查FFmpeg：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="414"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="420"/>
         <source>Enforce ID check on asset download : </source>
         <translation>在下载素材时强制进行ID检查：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="418"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="424"/>
         <source>Ignore export warnings :</source>
         <translation>忽略导出警告：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="422"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="428"/>
         <source>Allow donation menu : </source>
         <translation>展示捐赠菜单：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="426"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="432"/>
         <source>Force project to load</source>
         <translation>强制装入工程</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="428"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="434"/>
         <source>Reset recent files list</source>
         <translation>重置最近文件列表</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="429"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="435"/>
         <source>Deletes all project entries from your recents</source>
         <translation>从历史记录中删除所有项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="433"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="511"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="613"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="638"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="439"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="619"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="644"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="433"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="439"/>
         <source>All entries have been successfully removed</source>
         <translation>所有条目删除成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="443"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="449"/>
         <source>Global keybind delay (ms) : </source>
         <translation>全局快捷键延迟（ms） ：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="445"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="451"/>
         <source>Reset keybinds</source>
         <translation>重置快捷键</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="446"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="452"/>
         <source>Reset all keybinds, a restart is required.</source>
         <translation>重置所有快捷键，需重启。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="453"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="459"/>
         <source>Keybinds reset status</source>
         <translation>快捷键重置状态</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="454"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="460"/>
         <source>The keybinds will be reset when you restart.</source>
         <translation>重启后，快捷键将被重置。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="455"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="461"/>
         <source>The keybinds will not be reset when you restart.</source>
         <translation>重启后，快捷键不重置。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="464"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="470"/>
         <source>Troubleshoot FFmpeg</source>
         <translation>FFmpeg疑难解答</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="478"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="484"/>
         <source>Check FFmpeg response ✓
 Check FFmpeg exporting ✓
 Check FFmpeg palette generation ✓</source>
@@ -1485,44 +1490,44 @@ Check FFmpeg palette generation ✓</source>
 检查 FFmpeg 调色板生成 ✓</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="492"/>
         <source>Select executable and automatically set up</source>
         <translation>从可执行文件中选择并自动安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="523"/>
         <source>Download and automatically set up</source>
         <translation>下载并自动安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="614"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="620"/>
         <source>FFmpeg was successfully set up. Please restart AnimeEffects</source>
         <translation>FFmpeg已成功设置。请重新启动AnimeEffects。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="645"/>
         <source>FFmpeg was successfully set up.</source>
         <translation>FFmpeg安装成功。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="788"/>
         <source>FFmpeg was not found.</source>
         <translation>未找到 FFmpeg。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="784"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="790"/>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
 In the following screen you can instruct AnimeEffects to download and install it automatically for you, or you can download it by yourself and tell AnimeEffects where it is.</source>
         <translation>导出视频需要在电脑上安装 FFmpeg。FFmpeg 是 AnimeEffects 用来创建视频文件的免费工具。
 在下面的界面中，你可以让 AnimeEffects 自动下载并安装 FFmpeg，也可以自行下载，然后告知 AnimeEffects 其所在位置。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="834"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="840"/>
         <source>FFmpeg was unable to export, please troubleshoot.</source>
         <translation>FFmpeg 无法导出，请排查问题。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="864"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="870"/>
         <source>FFmpeg was unable to generate palettes, please troubleshoot.</source>
         <translation>FFmpeg 无法生成调色板，请排查问题。</translation>
     </message>
@@ -1539,7 +1544,7 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpeg可能丢失损坏或异常。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="833"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="839"/>
         <source>FFmpeg doesn&apos;t export</source>
         <translation>FFmpeg不能导出</translation>
     </message>
@@ -1548,7 +1553,7 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpeg无法导出，请检查FFmpeg是否可执行文件。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="863"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="869"/>
         <source>FFmpeg doesn&apos;t generate palettes</source>
         <translation>FFmpeg生成调色板异常</translation>
     </message>
@@ -1557,17 +1562,17 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpeg无法生成调色板，请检查FFmpeg可执行文件。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="474"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="480"/>
         <source>FFmpeg test success</source>
         <translation>FFmpeg测试成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="475"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="481"/>
         <source>All tests have passed, FFmpeg is working correctly.</source>
         <translation>所有测试通过，FFmpeg工作正常。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="477"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="483"/>
         <source>FFmpeg at: </source>
         <translation>FFmpeg 在: </translation>
     </message>
@@ -1584,12 +1589,12 @@ Check FFmpeg palette generation 🗸</source>
         <translation type="vanished">从可执行文件中选择并自动安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="488"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="494"/>
         <source>This will remove previous instances of FFmpeg from your tools directory and replace them with your custom executable, please make sure this is a valid FFmpeg executable.</source>
         <translation>这将删除工具目录中以前的 FFmpeg 实例，并用您的自定义可执行文件取而代之，请确保这是一个有效的 FFmpeg 可执行文件。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="510"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="516"/>
         <source>Operation successful</source>
         <translation>操作成功</translation>
     </message>
@@ -1598,17 +1603,17 @@ Check FFmpeg palette generation 🗸</source>
         <translation type="vanished">下载并自动安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="531"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="537"/>
         <source>Unable to create directory</source>
         <translation>无法创建目录</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="533"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="539"/>
         <source>An error has occurred while creating the tools directory in </source>
         <translation>在创建工具目录时发生错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="534"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="540"/>
         <source> the application will use a fallback but if this doesn&apos;t work please run the app as administrator or use a folder that isn&apos;t write protected.</source>
         <translation>应用程序将回退，但如果不起作用，请以管理员身份运行应用程序或使用未写保护的文件夹。</translation>
     </message>
@@ -1617,12 +1622,12 @@ Check FFmpeg palette generation 🗸</source>
         <translation type="vanished">FFmpeg已成功设置。请重新启动AnimeEffects。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="630"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="636"/>
         <source>FFmpeg installed</source>
         <translation>FFmpeg 已安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="631"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="637"/>
         <source>FFmpeg was installed but it requires to be set as executable, please right click &quot;ffmpeg&quot; go to properties and allow it to be executable as a program.</source>
         <translation>FFmpeg 已安装，但需要将其设置为可执行文件。请右键单击“ffmpeg”，进入属性并允许其作为程序运行。</translation>
     </message>
@@ -1631,32 +1636,32 @@ Check FFmpeg palette generation 🗸</source>
         <translation type="vanished">FFmpeg安装成功。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="645"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="651"/>
         <source>Error</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="646"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="652"/>
         <source>While setting up FFmpeg an unexpected error has occurred, please send the below information to our devs.</source>
         <translation>在设置FFmpeg时出现了一个意外错误，请将以下信息发送给我们的开发人员。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="668"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="674"/>
         <source>General</source>
         <translation>一般</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="669"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="675"/>
         <source>QoL</source>
         <translation>QoL</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="670"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="676"/>
         <source>FFmpeg</source>
         <translation>FFmpeg</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="671"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="677"/>
         <source>Keybindings</source>
         <translation>快捷键</translation>
     </message>

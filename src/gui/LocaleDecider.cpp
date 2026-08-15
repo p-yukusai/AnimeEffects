@@ -26,6 +26,9 @@ LocaleDecider::LocaleDecider(): mLocaleParam(), mTranslator(), mHasTranslator() 
         else if (language == "Russian") {
             locAbb = "ru";
         }
+        else if (language == "Korean") {
+            locAbb = "ko";
+        }
         else {
             auto language = QLocale::system().language();
             if (language == QLocale::Japanese) {
@@ -39,6 +42,9 @@ LocaleDecider::LocaleDecider(): mLocaleParam(), mTranslator(), mHasTranslator() 
             }
             if (language == QLocale::Russian) {
                 locAbb = "ru";
+            }
+            if (language == QLocale::Korean) {
+                locAbb = "ko";
             }
         }
     }
