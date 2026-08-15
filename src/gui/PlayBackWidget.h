@@ -46,6 +46,9 @@ public:
 
 private:
     QPushButton* createButton(const QString& aName, bool aIsCheckable, int aColumn, const QString& aToolTip);
+    // Set a playback button's rest icon and its hover counterpart in one go
+    // (the play/pause glyph swap must keep the hover in sync).
+    void setButtonIcon(int aIndex, const QString& aName);
     GUIResources& mGUIResources;
     std::vector<QPushButton*> mButtons;
     PushDelegate mPushDelegate;

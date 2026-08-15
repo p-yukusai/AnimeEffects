@@ -2,8 +2,8 @@
 #include "gui/tool/tool_ItemTable.h"
 
 namespace {
-int kButtonSize = 24;
-int kButtonSpace = kButtonSize;
+const int kButtonSize = 24;
+const int kButtonSpace = kButtonSize;
 } // namespace
 
 namespace gui {
@@ -48,10 +48,6 @@ namespace tool {
     }
 
     void FFDPanel::createBrush() {
-        if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 32;
-            kButtonSpace = kButtonSize;
-        }
         // type
         mTypeGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
         mTypeGroup->setChoice(mParam.type);

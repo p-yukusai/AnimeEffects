@@ -449,10 +449,7 @@ void ObjectTreeWidget::updateColumnWidth() {
 }
 
 void ObjectTreeWidget::onThemeUpdated(theme::Theme& aTheme) {
-    QFile stylesheet(aTheme.path() + "/stylesheet/standard.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        this->setStyleSheet(QTextStream(&stylesheet).readAll());
-    }
+    this->setStyleSheet(aTheme.loadStylesheet("standard.ssa"));
 
     // Item colors are derived from the (possibly changed) palette and the icons
     // from the (rebuilt) icon map, so re-apply them to every node. Without this

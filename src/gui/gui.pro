@@ -86,6 +86,7 @@ SOURCES += \
     obj/obj_Util.cpp \
     theme/Theme.cpp \
     theme/TimeLine.cpp \
+    theme/Icons.cpp \
     tool/tool_ModePanel.cpp \
     tool/tool_FFDPanel.cpp \
     DriverHolder.cpp \
@@ -160,6 +161,8 @@ HEADERS += \
     obj/obj_Util.h \
     theme/Theme.h \
     theme/TimeLine.h \
+    theme/Colors.h \
+    theme/Icons.h \
     tool/tool_ModePanel.h \
     tool/tool_FFDPanel.h \
     DriverHolder.h \

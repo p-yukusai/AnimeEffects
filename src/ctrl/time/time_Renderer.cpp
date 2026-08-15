@@ -1,10 +1,13 @@
 #include "ctrl/time/time_Renderer.h"
 #include "ctrl/TimeLineEditor.h"
+#include "gui/theme/Colors.h"
 
 using namespace core;
 
 namespace ctrl {
 namespace time {
+
+    static QColor withAlpha(QColor aColor, int aAlpha) { aColor.setAlpha(aAlpha); return aColor; }
 
     Renderer::Renderer(QPainter& aPainter, const CameraInfo& aCamera, const theme::TimeLine& aTheme,
         const TimeFormatType& timeFormat):
@@ -205,8 +208,8 @@ namespace time {
         const QPoint pos = aPoint + QPoint(0, -static_cast<int>(mCamera.leftTopPos().y()));
         const int range = aRange;
 
-        const QBrush kBrushBody(QColor(230, 230, 230, 180));
-        const QBrush kBrushEdge(QColor(120, 120, 120, 180));
+        const QBrush kBrushBody(withAlpha(theme::Colors::current().text, 180));
+        const QBrush kBrushEdge(withAlpha(theme::Colors::current().textMuted, 180));
 
         mPainter.setPen(QPen(kBrushEdge, 1));
         mPainter.setBrush(kBrushBody);
@@ -222,8 +225,8 @@ namespace time {
             // color, the fill the same color at lower opacity; corners are
             // slightly rounded (6px), which needs AA so the curve reads smooth
             mPainter.setRenderHint(QPainter::Antialiasing, true);
-            const QBrush kSelectEdge(QColor(97, 85, 245, 230));
-            const QBrush kSelectBody(QColor(97, 85, 245, 24));
+            const QBrush kSelectEdge(withAlpha(theme::Colors::current().accentBright, 230));
+            const QBrush kSelectBody(withAlpha(theme::Colors::current().accentBright, 24));
             mPainter.setPen(QPen(kSelectEdge, 1, Qt::DashLine));
             mPainter.setBrush(kSelectBody);
             // Inset by half a pixel so the 1px pen is centered inside the
@@ -234,9 +237,9 @@ namespace time {
     }
 
     void Renderer::drawKeys(const ObjectNode* aNode, const TimeLineRow& aRow) {
-        const QBrush kBrushKeyBody1(QColor(145, 145, 145, 255));
-        const QBrush kBrushKeyBody2(QColor(240, 240, 240, 255));
-        const QBrush kBrushKeyEdge(QColor(90, 90, 100, 255));
+        const QBrush kBrushKeyBody1(theme::Colors::current().textMuted);
+        const QBrush kBrushKeyBody2(theme::Colors::current().text);
+        const QBrush kBrushKeyEdge(theme::Colors::current().outline);
         QPointF holder[4] = {QPointF(0.0, -4.2), QPointF(4.2, 0.0), QPointF(0.0, 4.2), QPointF(-4.2, 0.0)};
 
         if (aNode && aNode->timeLine()) {
@@ -294,7 +297,7 @@ namespace time {
     }
 
     void Renderer::drawChildKeys(const ObjectNode* aNode, const QPoint& aPos) {
-        const QBrush kBrushKey(QColor(170, 170, 170, 255));
+        const QBrush kBrushKey(theme::Colors::current().textMuted);
 
         mPainter.setPen(QPen(kBrushKey, 1));
         mPainter.setBrush(kBrushKey);

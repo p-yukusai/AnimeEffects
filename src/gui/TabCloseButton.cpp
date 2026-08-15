@@ -1,6 +1,7 @@
 #include <QPainter>
 #include <QEnterEvent>
 #include "gui/TabCloseButton.h"
+#include "gui/theme/Colors.h"
 
 namespace gui {
 
@@ -52,7 +53,7 @@ void TabCloseButton::paintEvent(QPaintEvent*) {
 
     QColor color = this->palette().color(QPalette::WindowText);
     if (!color.isValid()) {
-        color = QColor(180, 180, 180);
+        color = theme::Colors::current().textMuted;
     }
 
     const bool showClose = mTabHovered || mButtonHovered;

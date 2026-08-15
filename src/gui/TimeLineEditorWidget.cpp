@@ -16,13 +16,14 @@
 #include <QClipboard>
 #include <QDialogButtonBox>
 #include <QMimeData>
+#include "gui/theme/Colors.h"
 
 namespace gui {
 //-------------------------------------------------------------------------------------------------
 TimeCursor::TimeCursor(QWidget* aParent):
     QWidget(aParent),
-    mNumberColor(QColor(230, 230, 230, 255)),
-    mEdgeColor(QColor(97, 85, 245, 255)),
+    mNumberColor(theme::Colors::current().text),
+    mEdgeColor(theme::Colors::current().accentBright),
     mFrameText(),
     mBadgeColor(),
     mLineX(2) {

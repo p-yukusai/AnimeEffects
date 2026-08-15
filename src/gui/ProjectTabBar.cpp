@@ -39,10 +39,7 @@ QString ProjectTabBar::getTabName(const core::Project& aProject) const {
 }
 
 void ProjectTabBar::onThemeUpdated(theme::Theme& aTheme) {
-    QFile stylesheet(aTheme.path() + "/stylesheet/modetabbar.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        this->setStyleSheet(QTextStream(&stylesheet).readAll());
-    }
+    this->setStyleSheet(aTheme.loadStylesheet("modetabbar.ssa"));
     this->update();
     for (auto* button : mCloseButtons) {
         if (button) {

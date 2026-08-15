@@ -1,5 +1,4 @@
 #include "gui/MSVCMemoryLeakDebugger.h" // first of all
-#include <QApplication>
 #include <QDir>
 #include <QFile>
 #include <QFontDatabase>
@@ -16,6 +15,7 @@
 #include "util/NetworkUtil.h"
 #include <QLoggingCategory>
 #include <QtConcurrent>
+#include <QApplication>
 
 // This MSVC debugger is not useful and only serves to pain me in the ways it unexpectedly fails,
 // I'm sure it worked wonderfully before, but it sure doesn't anymore

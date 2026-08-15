@@ -1,55 +1,36 @@
 #include "gui/theme/TimeLine.h"
+#include "gui/theme/Colors.h"
 
+#include <QApplication>
 namespace theme {
 
 //-------------------------------------------------------------------------------------------------
-TimeLine::TimeLine():
-    mHeaderContentColor(QColor(75, 75, 75, 255)),
-    mHeaderBackgroundColor(QColor(236, 236, 236, 255)),
-    mRulerLineColor(QColor(200, 200, 200, 255)),
-    mTrackColor(QColor(250, 250, 250, 255)),
-    mTrackEdgeColor(QColor(190, 190, 190, 255)),
-    mTrackTextColor(QColor(170, 170, 170, 255)),
-    mTrackSelectColor(QColor(235, 240, 250, 255)),
-    mTrackSeperatorColor(QColor(200, 200, 205, 255)) {
+TimeLine::TimeLine() {
     reset();
 }
 
 void TimeLine::reset() {
-    QPalette palette;
-    qreal lightness = palette.window().color().lightnessF();
+    // Read the cached theme tokens, activated by GUIResources before any
+    // timeline is built.
+    const Colors c = Colors::current();
+    const bool dark = c.isDark;
 
-    if (lightness > 0.5) { // Light theme
-        mHeaderContentColor = QColor(75, 75, 75, 255);   // neutral, no chroma
-        mHeaderBackgroundColor = QColor(236, 236, 236, 255); // matches the chrome
-        mRulerLineColor = QColor(200, 200, 200, 255);    // hairline under the ruler
+    mHeaderContentColor = c.text;
+    // the ruler is part of the timeline surface: base, not elevated
+    mHeaderBackgroundColor = c.base;
+    // hairline under the ruler separates it from the tracks
+    mRulerLineColor = c.hairline;
 
-        mTrackColor = QColor(250, 250, 250, 255);
-        mTrackEdgeColor = QColor(190, 190, 190, 255);
-        mTrackTextColor = QColor(170, 170, 170, 255);
-        mTrackSelectColor = QColor(235, 240, 250, 180);
-        mTrackSeperatorColor = QColor(200, 200, 205, 255);
-    } else { // Dark theme
-        mHeaderContentColor = palette.text().color();
-        // the ruler is part of the timeline surface: base, not elevated
-        mHeaderBackgroundColor = QColor(38, 38, 38, 255);
-        // hairline under the ruler separates it from the tracks
-        mRulerLineColor = QColor(52, 52, 52, 255);
-
-        // track surfaces sit on the #262626 floor (the base token); only the
-        // edges/separators/labels distinguish rows, never brightness
-        mTrackColor = QColor(38, 38, 38, 255);
-        // row seams are hairlines (the #343434 token) like the other
-        // separators; the lane separators sit one step above (74, 75, 76)
-        mTrackEdgeColor = QColor(52, 52, 52, 255);
-        mTrackTextColor = palette.text().color(); // QColor(44, 45, 46, 255);
-        // selection token: brand oklch hue (279.3 deg) at low elevation — the
-        // selected object's track reads as the selection color. The 40% tint
-        // is baked into the alpha (dark only; the light theme keeps its
-        // stronger 180 alpha below).
-        mTrackSelectColor = QColor(54, 56, 109, 102);
-        mTrackSeperatorColor = QColor(74, 75, 76, 255);
-    }
+    // track surfaces sit on the base floor; only the edges/separators/labels
+    // distinguish rows, never brightness
+    mTrackColor = c.base;
+    mTrackEdgeColor = c.hairline;
+    mTrackTextColor = c.text;
+    // selected track: brand selection hue at low elevation; the tint alpha
+    // differs by theme (dark stays subtle, light keeps its stronger fill)
+    mTrackSelectColor = c.selection;
+    mTrackSelectColor.setAlpha(dark ? 102 : 180);
+    mTrackSeperatorColor = c.hairlineHover;
     shade();
 }
 

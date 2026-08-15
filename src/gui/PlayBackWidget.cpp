@@ -1,25 +1,44 @@
 #include "gui/PlayBackWidget.h"
 #include <QFile>
 #include <QPainter>
+#include <QTimer>
 #include <QTextStream>
 #include <functional>
+#include "gui/theme/Colors.h"
 
 namespace {
-int kButtonSize = 24;
-int kIconSize = 18;
+const int kButtonSize = 24;
+const int kIconSize = 18;
 const int kGap = 4;
 const int kButtonCount = 8;
 const int kLeftMargin = 4;
+
+// A playback button whose glyph brightens to the active (max-contrast) color
+// on hover — the icon participates in the hover feedback, not just the
+// background. setRestIcon() records the resting icon, so the play/pause glyph
+// swap keeps working; the hover icon is set explicitly via setHoverIcon and
+// re-set on theme changes. (QAbstractButton::setIcon is not virtual, so the
+// rest icon is tracked through the explicit setter only.)
+class IconButton : public QPushButton {
+public:
+    using QPushButton::QPushButton;
+    void setRestIcon(const QIcon& aIcon) { mRest = aIcon; QPushButton::setIcon(aIcon); }
+    void setHoverIcon(const QIcon& aIcon) { mHover = aIcon; }
+protected:
+    void enterEvent(QEnterEvent*) override {
+        if (isEnabled() && !mHover.isNull()) QPushButton::setIcon(mHover);
+    }
+    void leaveEvent(QEvent*) override { QPushButton::setIcon(mRest); }
+private:
+    QIcon mRest;
+    QIcon mHover;
+};
 } // namespace
 
 namespace gui {
 
 PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent, core::Project& mProject):
     QWidget(aParent), mGUIResources(aResources), mButtons(), mDoesLoop(true) {
-    if (mGUIResources.getTheme().contains("high_dpi")) {
-        kButtonSize = 28;
-        kIconSize = 22;
-    }
     // Fixed width (the layout must never stretch the toolbar), full height
     // (the column fills the dock; the buttons stay top-anchored).
     this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
@@ -45,7 +64,7 @@ void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
     connect(mButtons.at(2), &QPushButton::pressed, [=]() {
         const bool isChecked = owner->mButtons.at(2)->isChecked();
         const char* name = isChecked ? "play" : "pause";
-        owner->mButtons.at(2)->setIcon(owner->mGUIResources.icon(name));
+        owner->setButtonIcon(2, name);
         owner->mButtons.at(2)->setToolTip(isChecked ? tr("Play") : tr("Pause"));
         owner->mPushDelegate(isChecked ? PushType_Pause : PushType_Play);
     });
@@ -109,13 +128,13 @@ void PlayBackWidget::PlayPause() {
     // There are no functions currently available to check for playback, this'll do for now
     if (!isChecked) {
         auto name = "pause";
-        owner->mButtons.at(2)->setIcon(owner->mGUIResources.icon(name));
+        owner->setButtonIcon(2, name);
         owner->mButtons.at(2)->setToolTip(tr("Pause"));
         owner->mPushDelegate(PushType_Play);
         owner->mButtons.at(2)->setChecked(true);
     } else {
         auto name = "play";
-        owner->mButtons.at(2)->setIcon(owner->mGUIResources.icon(name));
+        owner->setButtonIcon(2, name);
         owner->mButtons.at(2)->setToolTip(tr("Play"));
         owner->mPushDelegate(PushType_Pause);
         owner->mButtons.at(2)->setChecked(false);
@@ -137,41 +156,63 @@ void PlayBackWidget::paintEvent(QPaintEvent* aEvent) {
     // edge. Painted here, like the ThinSplitter/DockSash hairlines, because
     // QSS box rules do not render on plain widget surfaces.
     QPainter painter(this);
-    painter.fillRect(0, 0, 1, height(), QColor(0x34, 0x34, 0x34));
+    painter.fillRect(0, 0, 1, height(), theme::Colors::current().hairline);
 }
 
 void PlayBackWidget::pushPauseButton() {
     QPushButton* button = mButtons.at(2);
     if (button->isChecked()) {
-        button->setIcon(mGUIResources.icon("play"));
+        setButtonIcon(2, QStringLiteral("play"));
         button->setChecked(false);
         mPushDelegate(PushType_Pause);
     }
 }
 
+void PlayBackWidget::setButtonIcon(int aIndex, const QString& aName) {
+    auto* b = static_cast<IconButton*>(mButtons.at(aIndex));
+    b->setRestIcon(mGUIResources.icon(aName));
+    b->setHoverIcon(mGUIResources.iconActive(aName));
+}
+
 QPushButton*
 PlayBackWidget::createButton(const QString& aName, bool aIsCheckable, int aColumn, const QString& aToolTip) {
-    auto* button = new QPushButton(this);
+    auto* button = new IconButton(this);
     XC_PTR_ASSERT(button);
     button->setObjectName(aName);
-    button->setIcon(mGUIResources.icon(aName));
+    button->setRestIcon(mGUIResources.icon(aName));
+    button->setHoverIcon(mGUIResources.iconActive(aName));
     button->setIconSize(QSize(kIconSize, kIconSize));
     button->setCheckable(aIsCheckable);
     button->setToolTip(aToolTip);
     button->setFocusPolicy(Qt::NoFocus);
+    // The QSS width/height rule pins the box; geometry alone is not enough
+    // because theme restyles resize absolute children to the style's
+    // sizeFromContents (icon + button margins -> 29px tall).
     button->setGeometry(kLeftMargin, 2 + (kButtonSize + kGap) * aColumn, kButtonSize, kButtonSize);
     return button;
 }
 
 void PlayBackWidget::onThemeUpdated(theme::Theme& aTheme) {
-    QFile stylesheet(aTheme.path() + "/stylesheet/playbackwidget.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        this->setStyleSheet(QTextStream(&stylesheet).readAll());
-    }
+    this->setStyleSheet(aTheme.loadStylesheet("playbackwidget.ssa"));
+
+    // Theme restyles (the cascade through MainWindow) resize these
+    // absolute-positioned children to the style's sizeFromContents (icon +
+    // button margins), which sticks at 29px tall even after the QSS pins
+    // the sizeHint to 24x24. Re-assert the fixed grid once the restyle
+    // cascade has settled.
+    QTimer::singleShot(0, [this]() {
+        for (int i = 0; i < (int)mButtons.size(); ++i) {
+            mButtons[i]->setGeometry(kLeftMargin, 2 + (kButtonSize + kGap) * i, kButtonSize, kButtonSize);
+        }
+    });
 
     if (!mButtons.empty()) {
-        for (auto button : mButtons) {
-            button->setIcon(mGUIResources.icon(button->objectName()));
+        for (int i = 0; i < (int)mButtons.size(); ++i) {
+            // The play button shows pause while playing; its objectName stays
+            // "play", so pick the glyph by the check state here.
+            const QString name = (i == 2 && mButtons.at(2)->isChecked())
+                                     ? QStringLiteral("pause") : mButtons.at(i)->objectName();
+            setButtonIcon(i, name);
         }
     }
 }

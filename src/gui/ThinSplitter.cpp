@@ -1,4 +1,5 @@
 #include "gui/ThinSplitter.h"
+#include "gui/theme/Colors.h"
 
 #include <algorithm>
 #include <QChildEvent>
@@ -11,12 +12,6 @@ namespace gui {
 
 namespace {
 constexpr int kHitBoxSize = 12; // invisible grab area (VS Code style)
-// hairline tokens of the dark theme: rest #343434, hover #565656 (a step up
-// from the hairline), dragging #7e7e7e (the focus/active brightness). Hover
-// and drag are deliberately distinct so the interaction reads progressively.
-const QColor kLineColor(52, 52, 52);
-const QColor kLineColorHover(86, 86, 86);
-const QColor kLineColorActive(126, 126, 126);
 } // namespace
 
 // --------------------------------------------------------------------------
@@ -70,9 +65,9 @@ protected:
         // draw only the 1px hairline centered on the boundary; never call the
         // base paintEvent, so the universal QWidget QSS background cannot
         // fill the hitbox
+        const theme::Colors c = theme::Colors::current();
         QPainter p(this);
-        p.fillRect(lineRect(),
-                   mDragging ? kLineColorActive : (mHovered ? kLineColorHover : kLineColor));
+        p.fillRect(lineRect(), mDragging ? c.hover : (mHovered ? c.hairlineHover : c.hairline));
     }
 
     void enterEvent(QEnterEvent*) override {

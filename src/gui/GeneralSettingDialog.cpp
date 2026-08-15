@@ -4,6 +4,9 @@
 #include "gui/GeneralSettingDialog.h"
 #include "util/NetworkUtil.h"
 #include <QComboBox>
+#include <QHBoxLayout>
+#include <QPixmap>
+#include "gui/theme/Colors.h"
 
 namespace {
 
@@ -221,8 +224,10 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
     mLanguageBox(),
     mInitialTimeFormatIndex(),
     mTimeFormatBox(),
-    mInitialThemeKey("breeze_dark"),
-    mThemeBox(),
+    mInitialAccentHue(theme::kDefaultHue),
+    mAccentGroup(),
+    mInitialThemeKey("dark"),
+    mThemeGroup(),
     mGUIResources(aGUIResources) {
     // read current settings
     {
@@ -248,6 +253,9 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         if (theme.isValid()) {
             mInitialThemeKey = theme.toString();
         }
+
+        auto accentHue = settings.value("generalsettings/ui/accent_hue");
+        mInitialAccentHue = accentHue.isValid() ? accentHue.toDouble() : theme::kDefaultHue;
 
         auto donationAllowed = settings.value("generalsettings/ui/donationAllowed");
         bDonationAllowed = donationAllowed.isValid()? donationAllowed.toBool() : true;
@@ -314,13 +322,65 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         form->addRow(tr("Timeline format (needs restart) :"), mTimeFormatBox);
 
 
-        mThemeBox = new QComboBox();
-        QStringList themeList = mGUIResources.themeList();
-        for (int i = 0; i < themeList.size(); ++i) {
-            mThemeBox->addItem(themeList[i], themeList[i]);
+        // Theme: a segmented control on a recessed track; the active choice
+        // is an accent-filled pill (no per-segment borders — those read as
+        // "connected buttons", which is the dated look).
+        mThemeGroup = new QButtonGroup(this);
+        mThemeGroup->setExclusive(true);
+        {
+            const theme::Colors c = theme::Colors::current();
+            auto* themeRow = new QWidget();
+            themeRow->setAttribute(Qt::WA_StyledBackground, true);
+            auto* themeLayout = new QHBoxLayout(themeRow);
+            themeLayout->setContentsMargins(2, 2, 2, 2);
+            themeLayout->setSpacing(0);
+            const QStringList themeList = mGUIResources.themeList();
+            const QStringList themeLabels{tr("System"), tr("Light"), tr("Dark")};
+            for (int i = 0; i < themeList.size(); ++i) {
+                auto* b = new QPushButton(themeLabels.at(i));
+                b->setCheckable(true);
+                b->setProperty("themeId", themeList.at(i));
+                if (themeList.at(i) == mInitialThemeKey) b->setChecked(true);
+                mThemeGroup->addButton(b);
+                themeLayout->addWidget(b, 1);
+            }
+            themeRow->setStyleSheet(
+                QString("QWidget { background-color: %1; border-radius: 0.5em; }"
+                        "QPushButton { background-color: transparent; color: %2; border: none; border-radius: 0.375em; padding: 0.25em 0.875em; }"
+                        "QPushButton:hover { background-color: %3; }"
+                        "QPushButton:checked { background-color: %4; color: %5; }")
+                    .arg(c.recessed.name(), c.icon.name(), c.raised.name(), c.accent.name(), c.accentText.name()));
+            form->addRow(tr("Theme :"), themeRow);
         }
-        mThemeBox->setCurrentIndex(mThemeBox->findData(mInitialThemeKey));
-        form->addRow(tr("Theme :"), mThemeBox);
+
+        // Accent color: a row of square colored boxes. Border on hover, a
+        // contrast ring on the active choice. No hue numbers — the user
+        // picks the color, not a degree value.
+        mAccentGroup = new QButtonGroup(this);
+        mAccentGroup->setExclusive(true);
+        {
+            const theme::Colors c = theme::Colors::current();
+            auto* accentRow = new QWidget();
+            auto* accentLayout = new QHBoxLayout(accentRow);
+            accentLayout->setContentsMargins(0, 0, 0, 0);
+            accentLayout->setSpacing(6);
+            for (double hue : theme::accentHues()) {
+                auto* b = new QPushButton();
+                b->setCheckable(true);
+                b->setProperty("hue", hue);
+                const QColor accent = theme::Colors::dark(hue).focus;
+                b->setStyleSheet(
+                    QString("QPushButton { width: 20px; height: 20px; background-color: %1; border: 2px solid transparent; padding: 0; min-height: 0; min-width: 0; }"
+                            "QPushButton:hover { border-color: %2; }"
+                            "QPushButton:checked { border-color: %3; }")
+                        .arg(accent.name(), c.outline.name(), c.text.name()));
+                if (hue == mInitialAccentHue) b->setChecked(true);
+                mAccentGroup->addButton(b);
+                accentLayout->addWidget(b);
+            }
+            accentLayout->addStretch();
+            form->addRow(tr("Accent color :"), accentRow);
+        }
     }
 
     auto projectSaving = new QFormLayout();
@@ -646,7 +706,7 @@ bool GeneralSettingDialog::rangeHasChanged() { return mInitialRangeIndex != mRan
 
 bool GeneralSettingDialog::timeFormatHasChanged() { return mInitialTimeFormatIndex != mTimeFormatBox->currentIndex(); }
 
-bool GeneralSettingDialog::themeHasChanged() { return mInitialThemeKey != mThemeBox->currentData(); }
+bool GeneralSettingDialog::themeHasChanged() { return mInitialThemeKey != theme(); }
 
 bool GeneralSettingDialog::donationHasChanged() {return bDonationAllowed != mDonationAllowed->isChecked(); }
 
@@ -664,7 +724,17 @@ bool GeneralSettingDialog::resIDCheckHasChanged() { return bResIDCheck != bResID
 
 bool GeneralSettingDialog::cbCopyHasChanged() { return bAutoCbCopy != mAutoCbCopy->isChecked(); }
 
-QString GeneralSettingDialog::theme() { return mThemeBox->currentData().toString(); }
+QString GeneralSettingDialog::theme() {
+    return mThemeGroup->checkedButton() ? mThemeGroup->checkedButton()->property("themeId").toString() : mInitialThemeKey;
+}
+
+double GeneralSettingDialog::accentHue() {
+    return mAccentGroup->checkedButton() ? mAccentGroup->checkedButton()->property("hue").toDouble() : mInitialAccentHue;
+}
+
+bool GeneralSettingDialog::accentHueHasChanged() {
+    return mInitialAccentHue != accentHue();
+}
 
 
 QString GeneralSettingDialog::getFFmpeg() {
@@ -823,7 +893,7 @@ void GeneralSettingDialog::saveSettings() {
         settings.setValue("generalsettings/ui/timeformat", mTimeFormatBox->currentIndex());
     }
     if (themeHasChanged()) {
-        settings.setValue("generalsettings/ui/theme", mThemeBox->currentData());
+        settings.setValue("generalsettings/ui/theme", theme());
     }
     if (donationHasChanged()){
         settings.setValue("generalsettings/ui/donationAllowed", mDonationAllowed->isChecked());

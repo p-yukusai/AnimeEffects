@@ -168,11 +168,8 @@ void TimeLineWidget::onPlayBackUpdated() {
 }
 
 void TimeLineWidget::onThemeUpdated(theme::Theme& aTheme) {
-    QFile stylesheet(aTheme.path() + "/stylesheet/timelinewidget.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        this->setStyleSheet(QTextStream(&stylesheet).readAll());
-        mInner->updateTheme(aTheme);
-    }
+    this->setStyleSheet(aTheme.loadStylesheet("timelinewidget.ssa"));
+    mInner->updateTheme(aTheme);
 }
 
 void TimeLineWidget::onProjectAttributeUpdated() { mInner->updateProjectAttribute(); }

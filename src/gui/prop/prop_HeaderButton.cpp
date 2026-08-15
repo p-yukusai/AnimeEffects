@@ -2,6 +2,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
+#include <QStyle>
 
 #include "gui/prop/prop_HeaderButton.h"
 #include "gui/GUIResources.h"
@@ -17,7 +18,7 @@ namespace prop {
         pm.fill(Qt::transparent);
         {
             QPainter painter(&pm);
-            painter.setOpacity(0.45);
+            painter.setOpacity(0.8);
             painter.drawPixmap(0, 0, aSrc);
         }
         return pm;
@@ -33,9 +34,8 @@ namespace prop {
         this->setFocusPolicy(Qt::NoFocus);
         this->setAttribute(Qt::WA_Hover); // QSS :hover on the row
 
-        // per-theme tinted caret pair (tools/icon_tint colors the SVGs at
-        // build time); the checked state reads expanded (caret down) vs
-        // collapsed (caret right)
+        // runtime-tinted caret pair: the checked state reads expanded (caret
+        // down) vs collapsed (caret right)
         mRightIcon = aGUIResources->icon("caret-right-regular").pixmap(aIconSize, aIconSize);
         mDownIcon = aGUIResources->icon("caret-down-regular").pixmap(aIconSize, aIconSize);
         mRightDim = dimmedPixmap(mRightIcon);

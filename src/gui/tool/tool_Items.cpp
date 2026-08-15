@@ -18,6 +18,10 @@ namespace tool {
             mButtons[i] = new QPushButton(aParent);
             mButtons[i]->setCheckable(true);
             mButtons[i]->setFocusPolicy(Qt::NoFocus);
+            // tagged so the QSS highlights these mode/option rows with the
+            // brand accent (like the toolbox) without touching the View
+            // Settings panel, which shares the tool dock stylesheet
+            mButtons[i]->setProperty("modeButton", true);
             mGroup->addButton(mButtons[i]);
         }
     }
@@ -61,6 +65,7 @@ namespace tool {
             }
         }
     }
+
 
     void SingleOutItem::setChoice(int aButtonIndex) { mButtons.at(aButtonIndex)->setChecked(true); }
 

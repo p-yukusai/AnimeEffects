@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QRegularExpression>
 #include "GeneralSettingDialog.h"
 #include "util/IProgressReporter.h"
 #include "gl/Global.h"
@@ -459,8 +460,8 @@ void MainWindow::onProjectTabChanged(core::Project& aProject) { resetProjectRefs
 void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
     mMainDisplay->setViewportBackground(mGUIResources.viewportBackground());
 
-    QFile stylesheet(aTheme.path() + "/stylesheet/standard.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    const QString standard = aTheme.loadStylesheet("standard.ssa");
+    if (!standard.isEmpty()) {
         QString fontOption;
         {
             auto hasFamily = !mLocaleParam.fontFamily.isEmpty();
@@ -484,23 +485,11 @@ void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
             }
         }
 
-        this->setStyleSheet(fontOption + QTextStream(&stylesheet).readAll());
-
-        stylesheet.close();
+        this->setStyleSheet(fontOption + standard);
     }
 
-    stylesheet.setFileName(aTheme.path() + "/stylesheet/propertywidget.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        mDockPropertyWidget->setStyleSheet(QTextStream(&stylesheet).readAll());
-        stylesheet.close();
-    }
-
-
-    stylesheet.setFileName(aTheme.path() + "/stylesheet/toolwidget.ssa");
-    if (stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        mDockToolWidget->setStyleSheet(QTextStream(&stylesheet).readAll());
-        stylesheet.close();
-    }
+    mDockPropertyWidget->setStyleSheet(aTheme.loadStylesheet("propertywidget.ssa"));
+    mDockToolWidget->setStyleSheet(aTheme.loadStylesheet("toolwidget.ssa"));
 
     if (!onStartup && !themeChangeWarned) {
         QMessageBox visualArtifactWarning;

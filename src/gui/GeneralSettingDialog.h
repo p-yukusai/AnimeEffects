@@ -8,6 +8,7 @@
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QComboBox>
+#include <QButtonGroup>
 
 namespace gui {
 
@@ -35,6 +36,8 @@ public:
     bool cbCopyHasChanged();
     bool keyDelayHasChanged();
     QString theme();
+    double accentHue();
+    bool accentHueHasChanged();
     static QString getFFmpeg();
     static bool ffmpegCheck(const QString& ffmpeg, GeneralSettingDialog* generalSettingsDialog);
     static void ffmpegCheckFailed(GeneralSettingDialog* aDialog);
@@ -85,8 +88,10 @@ private:
     int mInitialTimeFormatIndex;
     QComboBox* mTimeFormatBox;
 
+    double mInitialAccentHue;
+    QButtonGroup* mAccentGroup;
     QString mInitialThemeKey;
-    QComboBox* mThemeBox;
+    QButtonGroup* mThemeGroup;
 
     int mKeyDelay;
     QSpinBox* mKeyDelayBox;

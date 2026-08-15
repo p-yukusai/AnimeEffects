@@ -6,9 +6,9 @@ namespace {
 // The toolbox is the dock's primary control: 24x24 buttons (matching the
 // playback column) with explicit 18px glyphs. Fixed size keeps the buttons
 // exactly square — the QSS padding/sizeHint math otherwise yields 24x20.
-// high_dpi scales like the playback column (28x28 / 22px glyphs).
-int kButtonSize = 24;
-int kIconSize = 18;
+// Sizes are logical pixels; Qt6 scales the whole window on high-DPI screens.
+const int kButtonSize = 24;
+const int kIconSize = 18;
 } // namespace
 
 namespace gui {
@@ -21,10 +21,6 @@ namespace tool {
         mButtons(),
         mLayout(this, 0, 2, 2),
         mOnPushed(aOnPushed) {
-        if (mGUIResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 28;
-            kIconSize = 22;
-        }
         this->setTitle(tr("Toolbox"));
         this->setObjectName("modePanel"); // QSS id for the toolbox row's active-tool accent
         mGroup->setExclusive(true);

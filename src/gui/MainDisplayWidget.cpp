@@ -36,7 +36,7 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
     mAbstractCursor(),
     mDriver(),
     mProjectTabBar(),
-    mViewportBackground(QColor(31, 31, 31)),
+    mViewportBackground(),
     mUsingTablet(false),
     mViewSetting(),
     mCanvasMover(),

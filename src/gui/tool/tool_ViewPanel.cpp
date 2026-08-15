@@ -2,9 +2,9 @@
 
 namespace {
 // Same button family as the toolbox: 24x24 with explicit 18px glyphs.
-// high_dpi scales like the playback column (28x28 / 22px glyphs).
-int kButtonSize = 24;
-int kIconSize = 18;
+// Sizes are logical pixels; Qt6 scales the whole window on high-DPI screens.
+const int kButtonSize = 24;
+const int kIconSize = 18;
 } // namespace
 
 namespace gui {
@@ -12,10 +12,6 @@ namespace tool {
 
     ViewPanel::ViewPanel(QWidget* aParent, GUIResources& aResources, const QString& aTitle):
         QGroupBox(aParent), mGUIResources(aResources), mButtons(), mLayout(this, 0, 2, 2) {
-        if (mGUIResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 28;
-            kIconSize = 22;
-        }
         this->setTitle(aTitle);
         this->setLayout(&mLayout);
 

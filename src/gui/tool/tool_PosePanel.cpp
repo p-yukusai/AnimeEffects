@@ -2,8 +2,8 @@
 #include "gui/tool/tool_ItemTable.h"
 
 namespace {
-int kButtonSize = 24;
-int kButtonSpace = kButtonSize;
+const int kButtonSize = 24;
+const int kButtonSpace = kButtonSize;
 } // namespace
 
 namespace gui {
@@ -28,10 +28,6 @@ namespace tool {
     }
 
     void PosePanel::createMode() {
-        if (mResources.getTheme().contains("high_dpi")) {
-            kButtonSize = 32;
-            kButtonSpace = kButtonSize;
-        }
         // type
         mTypeGroup.reset(new SingleOutItem(ctrl::PoseEditMode_TERM, QSize(kButtonSpace, kButtonSpace), this));
         mTypeGroup->setChoice(mParam.mode);

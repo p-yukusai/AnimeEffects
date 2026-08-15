@@ -1,0 +1,58 @@
+/* Dialog buttons (applied application-wide, not per-widget).
+ *
+ * standard.ssa styles QPushButton for the main window and its descendants,
+ * but parentless dialogs (QMessageBox) have no parent widget to attach a
+ * stylesheet to, so the only way to reach their buttons is the app-wide
+ * qApp->setStyleSheet() in GUIResources::setTheme. This template mirrors the
+ * QPushButton rules in standard.ssa; tokens are substituted at load by
+ * theme::Colors, so both stay in lockstep with the palette.
+ *
+ * Hover is grayscale (@hover@), focus/active is accent (@focus@). */
+QPushButton {
+    color: @text@;
+    background-color: @raised@;
+    border: 1px solid @outline@;
+    padding: 0.25em 0.75em;
+    border-radius: 0.25em;
+    outline: none;
+    min-height: 1.125em;
+}
+
+QPushButton:hover {
+    background-color: @raisedHover@;
+    border: 1px solid @hover@;
+    color: @text@;
+}
+
+QPushButton:focus {
+    color: @text@;
+    border-color: @focus@;
+}
+
+QPushButton:pressed {
+    background-color: @recessed@;
+    border-color: @outline@;
+    color: @text@;
+}
+
+QPushButton:checked {
+    background-color: @active@;
+    border: 1px solid @outline@;
+    color: @text@;
+}
+
+QPushButton:checked:hover {
+    background-color: @activeHover@;
+    border: 1px solid @outline@;
+    color: @text@;
+}
+
+QPushButton:disabled {
+    color: @textDisabled@;
+    background-color: @recessed@;
+    border: 1px solid @base@;
+    padding: 0.25em 0.75em;
+    border-radius: 0.25em;
+    outline: none;
+    min-height: 1.125em;
+}

@@ -17,8 +17,12 @@ public:
 
     int pixelMetric(PixelMetric aMetric, const QStyleOption* aOption = nullptr,
                     const QWidget* aWidget = nullptr) const override;
+    QSize sizeFromContents(ContentsType aType, const QStyleOption* aOption,
+                           const QSize& aContentsSize, const QWidget* aWidget = nullptr) const override;
     void drawComplexControl(ComplexControl aControl, const QStyleOptionComplex* aOption,
                             QPainter* aPainter, const QWidget* aWidget = nullptr) const override;
+    void drawControl(ControlElement aElement, const QStyleOption* aOption, QPainter* aPainter,
+                     const QWidget* aWidget = nullptr) const override;
     void drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOption, QPainter* aPainter,
                        const QWidget* aWidget = nullptr) const override;
     void polish(QWidget* aWidget) override;

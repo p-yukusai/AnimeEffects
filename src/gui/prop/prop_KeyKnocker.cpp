@@ -2,6 +2,7 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QStyle>
 #include <QPixmap>
 #include <QToolButton>
 
@@ -19,7 +20,7 @@ namespace prop {
         pm.fill(Qt::transparent);
         {
             QPainter painter(&pm);
-            painter.setOpacity(0.45);
+            painter.setOpacity(0.8);
             painter.drawPixmap(0, 0, src);
         }
         return QIcon(pm);

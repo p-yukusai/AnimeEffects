@@ -1,0 +1,259 @@
+/* One shared field box for the three field types so every property row
+   is the same height: same vertical padding, same border, and per-type
+   content min-heights that land on the same total.
+   min-height measures the content box and the spin's box carries 3px of
+   structural overhead, so: combo/line 20 + 2*1 padding + 2*1 border ==
+   spin 17 + 3 overhead + 2 + 2 == 24px.
+   The border is geometry-reserving: at rest it takes the field color
+   (an explicit color also stops the non-editable combo's button-frame
+   fallback from painting the QPushButton border), on hover/focus it
+   only changes color, never width. */
+QComboBox,
+QAbstractSpinBox,
+QLineEdit {
+    background-color: @raised@;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    border: 1px solid @raised@;
+}
+
+QComboBox,
+QLineEdit {
+    min-height: 1.25em;
+}
+
+QAbstractSpinBox {
+    min-height: 1.0625em;
+}
+
+QComboBox:hover,
+QAbstractSpinBox:hover,
+QLineEdit:hover {
+    border: 1px solid @hover@;
+}
+
+QComboBox:focus,
+QAbstractSpinBox:focus,
+QLineEdit:focus {
+    border: 1px solid @focus@;
+}
+
+QComboBox:disabled,
+QAbstractSpinBox:disabled,
+QLineEdit:disabled {
+    background-color: @recessed@;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: right;
+    width:  1em;
+    height: 1em;
+}
+
+QComboBox::down-arrow {
+    image: url(@icondir@/caret-down.svg);
+    width:   0.625em;
+    height:  0.625em;
+}
+QComboBox::down-arrow:disabled {
+    image: url(@icondir@/caret-down.svg);
+}
+
+QSplitter#propertysplitter {
+    /* default width; the dock clamps to [320, 640] (MainWindow) */
+    width: 20em;
+}
+
+/* the dock's single flat surface (== the @base@ window floor) */
+QWidget#backboard {
+    background-color: @base@;
+}
+
+/* 1px hairline between the major panels (inserted by Backboard) */
+QFrame#separator {
+    border: none;
+    background-color: @hairline@;
+    min-height: 1px;
+    max-height: 1px;
+}
+
+QFrame#holder {
+    background-color: @base@;
+    border-radius:0.5em;
+}
+
+QCheckBox#keyIcon {
+}
+
+QCheckBox#keyIcon::indicator {
+    width: 0.9375em;
+    height: 0.9375em;
+}
+QCheckBox#keyIcon::indicator:unchecked {
+    image: url(@icondir@/caret-right.svg);
+}
+
+QCheckBox#keyIcon::indicator:checked {
+    image: url(@icondir@/caret-down.svg);
+}
+
+QFrame#keyGroup {
+    /* sections are flat on the backboard; the collapsible header
+       marks the section, a hairline sits between major panels only */
+    background-color: transparent;
+    border:0 solid transparent;
+    border-radius:0;
+    margin: 0;
+    padding-bottom: 0;
+}
+QAbstractButton#keyGroupHeader QLabel {
+    background-color: transparent;
+    font-weight: 600;
+    color: @textMuted@;
+}
+QAbstractButton#keyGroupHeader QLabel[hover="true"] {
+    color: @text@;
+}
+QAbstractButton#keyGroupHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    min-height: 1.5em;
+}
+
+
+
+
+/* field labels sit a step below the values they describe */
+QLabel#attrLabel {
+    /* transparent: same rationale as the knocker label */
+    background-color: transparent;
+    color: @text@;
+}
+QFrame#attrGroup {
+    border-radius:0;
+    margin: 0;
+    padding-bottom: 0;
+}
+QAbstractButton#attrGroupHeader QLabel {
+    background-color: transparent;
+    font-weight: 600;
+    color: @textMuted@;
+}
+QAbstractButton#attrGroupHeader QLabel[hover="true"] {
+    color: @text@;
+}
+QAbstractButton#attrGroupHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    min-height: 1.5em;
+}
+
+
+
+QWidget#keyKnocker QLabel {
+    background-color: transparent;
+    font-weight: 600;
+    color: @textMuted@;
+}
+QWidget#keyKnocker QLabel[hover="true"] {
+    color: @text@;
+}
+QWidget#keyKnocker {
+    /* the add-key row is the section header's stand-in: same
+       geometry and states, plus icon instead of the caret; the
+       whole row knocks the key. */
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    min-height: 1.5em;
+}
+QToolButton#keyKnockerPlus {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+
+QPushButton#browser {
+    background-color: transparent;
+    border: none;
+    border-radius: 0.25em;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+    width: 1em;
+    height: 1em;
+}
+QPushButton#browser::enabled {
+    image: url(@icondir@/file.svg);
+}
+QPushButton#browser:hover {
+    background-color: @overlay24@;
+}
+QPushButton#browser:pressed {
+    background-color: @overlay40@;
+}
+QPushButton#browser:disabled {
+    background-color: transparent;
+    image: url(@icondir@/file-dim.svg);
+}
+
+QFrame#propertyPanel {
+    /* the panels sit flat on the #backboard surface; hierarchy comes
+       from typography and the hairlines, not side padding */
+    background-color: transparent;
+    border:0 solid transparent;
+    border-radius:0;
+    margin: 0;
+    padding-top: 0.1875em;
+    padding-bottom: 0.625em;
+}
+QAbstractButton#propertyPanelHeader QLabel {
+    background-color: transparent;
+    font-weight: 600;
+}
+QAbstractButton#propertyPanelHeader QLabel[hover="true"] {
+    color: @text@;
+}
+QAbstractButton#propertyPanelHeader {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    min-height: 2em;
+}
+QAbstractButton#propertyPanelHeader QLabel {
+    background-color: transparent;
+    font-weight: 600;
+}
+
+
+
+QPushButton#customEasing {
+    /* Match the spinbox height: the standard QPushButton padding (4px 12px)
+       makes buttons ~29px at an 11pt font, taller than the fields. 1.36em
+       content + 0.04em border tracks the QAbstractSpinBox height at every
+       font (21px at the bundled 8pt, 28px at 11pt). */
+    height: 1.36em;
+    padding: 0em 0.75em;
+    border: 0.04em solid transparent;
+    border-radius: 0.25em;
+    background-color: transparent;
+    color: @text@;
+}
+
+QPushButton#customEasing:hover {
+    background-color: @hairline@;
+}
+
+QPushButton#customEasing:pressed {
+    background-color: @recessed@;
+}

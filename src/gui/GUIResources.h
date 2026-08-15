@@ -1,75 +1,36 @@
 #ifndef GUI_GUIRESOURCES_H
 #define GUI_GUIRESOURCES_H
 
-#include <QString>
-#include <QIcon>
-#include <QFileInfo>
-#include <QPixmap>
 #include <QHash>
-#include <QSettings>
-#include <QPainter>
+#include <QIcon>
 #include <QPalette>
-#include <QColor>
-#include <QDirIterator>
+#include <QString>
 #include <QStringList>
+
 #include "XC.h"
 #include "util/NonCopyable.h"
 #include "util/Signaler.h"
+#include "theme/Colors.h"
 #include "theme/Theme.h"
-
-#include <QApplication>
-#include <QStyle>
-#include <QStyleFactory>
 
 namespace gui {
 
 class GUIResources: private util::NonCopyable {
 public:
     GUIResources(const QString& aResourceDir);
-    ~GUIResources();
+    ~GUIResources() = default;
 
     QIcon icon(const QString& aName) const;
+    // The same glyph in the active (max-contrast) color as the only state;
+    // button widgets swap to it while hovered.
+    QIcon iconActive(const QString& aName) const;
     QColor viewportBackground() const;
 
     QStringList themeList();
-    bool hasTheme(const QString& aThemeId);
     void setTheme(const QString& aThemeId);
+    void setAccentHue(double aHue);
+    double accentHue() const { return mHue; }
 
-public:
-    QPalette palette;
-    void setPaletteDark(){
-        palette.setColor(QPalette::Window, QColor(53,53,53));
-        palette.setColor(QPalette::WindowText, Qt::white);
-        palette.setColor(QPalette::Base, QColor(25,25,25));
-        palette.setColor(QPalette::AlternateBase, QColor(53,53,53));
-        palette.setColor(QPalette::ToolTipBase, Qt::white);
-        palette.setColor(QPalette::ToolTipText, Qt::white);
-        palette.setColor(QPalette::Text, Qt::white);
-        palette.setColor(QPalette::Button, QColor(53,53,53));
-        palette.setColor(QPalette::ButtonText, Qt::white);
-        palette.setColor(QPalette::BrightText, Qt::red);
-        palette.setColor(QPalette::Link, QColor(42, 130, 218));
-        // selection token: #36386d = Oklch(0.37, 0.09, 279.3) — brand hue at
-        // low elevation (just above the raised token, well under hover)
-        palette.setColor(QPalette::Highlight, QColor(54, 56, 109));
-        palette.setColor(QPalette::HighlightedText, QColor(0xf0, 0xf0, 0xf0));
-    }
-    void setPaletteDefault(){
-        palette = QPalette();
-    }
-    static void setAppStyle() {
-        #ifdef Q_OS_LINUX
-            QApplication::setStyle(QStyleFactory::create("Fusion"));
-        #elif  defined(Q_OS_APPLE)
-            QApplication::setStyle(QStyleFactory::create("Fusion"));
-        #else
-            QApplication::setStyle(QStyleFactory::create("Fusion"));
-        #endif
-
-
-    }
-
-    QString getTheme() { return mTheme.id(); };
     // signals
     util::Signaler<void(theme::Theme&)> onThemeChanged;
     void triggerOnThemeChanged();
@@ -77,19 +38,21 @@ public:
     theme::Theme mTheme;
 
 private:
-    typedef QHash<QString, QIcon*> IconMap;
-    typedef QHash<QString, theme::Theme> ThemeMap;
+    typedef QHash<QString, QIcon> IconMap;
 
+    static void setAppStyle();
+
+    // Recompute the palette, re-tint icons, and re-apply palette + QSS.
+    void applyAppearance();
     void loadIcons();
-    void detectThemes();
-
-    void loadIcon(const QString& aPath);
+    void applyPalette(const theme::Colors& aColors);
     QString dialogButtonStyleSheet() const;
 
     QString mResourceDir;
+    QString mIconDir;  // runtime-tinted scratch dir
+    double mHue;
     IconMap mIconMap;
-
-    ThemeMap mThemeMap;
+    QPalette palette;
 };
 
 } // namespace gui

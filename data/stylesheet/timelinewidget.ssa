@@ -1,0 +1,7 @@
+/* Timeline ruler/track colors come from theme::TimeLine (theme::Colors), so
+   only the playhead badge needs qproperty overrides here. */
+
+gui--TimeCursor {
+    qproperty-numberColor: @text@;
+    qproperty-edgeColor: @accentBright@;
+}
