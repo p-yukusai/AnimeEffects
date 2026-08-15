@@ -2658,6 +2658,11 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation> 个关键帧。日志如下。</translation>
     </message>
     <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="876"/>
+        <source>Warnings present for </source>
+        <translation>警告: </translation>
+    </message>
+    <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="881"/>
         <source> keys.
 </source>

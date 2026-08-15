@@ -2692,6 +2692,11 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
         <translation> claves. El registro está disponible a continuación.</translation>
     </message>
     <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="876"/>
+        <source>Warnings present for </source>
+        <translation>Advertencias en </translation>
+    </message>
+    <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="881"/>
         <source> keys.
 </source>

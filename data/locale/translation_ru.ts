@@ -2473,6 +2473,11 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation> ключей. Журнал доступен ниже.</translation>
     </message>
     <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="876"/>
+        <source>Warnings present for </source>
+        <translation>Предупреждения для </translation>
+    </message>
+    <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="881"/>
         <source> keys.
 </source>

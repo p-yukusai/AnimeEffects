@@ -2433,6 +2433,11 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation>개의 키. 로그는 아래에 표시됩니다.</translation>
     </message>
     <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="876"/>
+        <source>Warnings present for </source>
+        <translation>경고: </translation>
+    </message>
+    <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="881"/>
         <source> keys.
 </source>

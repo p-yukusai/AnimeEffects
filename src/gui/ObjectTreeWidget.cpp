@@ -873,7 +873,7 @@ void ObjectTreeWidget::onPasteActionTriggered(bool) const {
         if (!aKeyErrored) {
             box.setText(tr("Successfully pasted ") + QString::number(successNum) + tr(" keys."));
             if (!warnings.empty()) {
-                box.setText(box.text() + "\nWarnings present for " + QString::number(warnings.size()) + tr(" keys. The log is available below.") );
+                box.setText(box.text() + "\n" + tr("Warnings present for ") + QString::number(warnings.size()) + tr(" keys. The log is available below."));
                 box.setDetailedText(warnings.join("\n"));
             }
         } else {
