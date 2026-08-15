@@ -366,8 +366,12 @@
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_ConstantPanel.cpp" line="203"/>
-        <source>update a clippping flag</source>
+        <source>update a clipping flag</source>
         <translation>クリッピング設定を更新</translation>
+    </message>
+    <message>
+        <source>update a clippping flag</source>
+        <translation type="vanished">クリッピング設定を更新</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="257"/>
@@ -601,8 +605,12 @@
 <context>
     <name>Image Loader</name>
     <message>
-        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="270"/>
         <source>Building a Object Tree...</source>
+        <translation type="vanished">オブジェクトツリーの構築...</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="270"/>
+        <source>Building an Object Tree...</source>
         <translation>オブジェクトツリーの構築...</translation>
     </message>
     <message>
@@ -789,13 +797,21 @@
 <context>
     <name>ctrl::ImageFileLoader</name>
     <message>
-        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="520"/>
         <source>Select oraFile type</source>
+        <translation type="vanished">「oraFile」タイプを選択</translation>
+    </message>
+    <message>
+        <source>How do you wish to load this oraFile file?</source>
+        <translation type="vanished">この「oraFile」ファイルをどのようにロードしますか？</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="520"/>
+        <source>Select ORA file type</source>
         <translation>「oraFile」タイプを選択</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/ImageFileLoader.cpp" line="521"/>
-        <source>How do you wish to load this oraFile file?</source>
+        <source>How do you wish to load this ORA file?</source>
         <translation>この「oraFile」ファイルをどのようにロードしますか？</translation>
     </message>
     <message>
@@ -834,8 +850,12 @@
     </message>
     <message>
         <location filename="../../src/ctrl/FFDEditor.cpp" line="265"/>
-        <source>There are no object with meshes.</source>
+        <source>There are no objects with meshes.</source>
         <translation>メッシュを持つオブジェクトは存在しない。</translation>
+    </message>
+    <message>
+        <source>There are no object with meshes.</source>
+        <translation type="vanished">メッシュを持つオブジェクトは存在しない。</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/MeshEditor.cpp" line="25"/>
@@ -1465,6 +1485,26 @@ FFmpeg のエクスポートを確認 ✓
 FFmpeg のパレット生成を確認 ✓</translation>
     </message>
     <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
+        <source>Select executable and automatically set up</source>
+        <translation>実行ファイルから選択し、自動的にセットアップ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
+        <source>Download and automatically set up</source>
+        <translation>ダウンロードし、自動的にセットアップ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="614"/>
+        <source>FFmpeg was successfully set up. Please restart AnimeEffects</source>
+        <translation>FFmpeg が正常にセットアップされました。AnimeEffects を再起動してください。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
+        <source>FFmpeg was successfully set up.</source>
+        <translation>FFmpegのセットアップに成功しました。</translation>
+    </message>
+    <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
         <source>FFmpeg was not found.</source>
         <translation>FFmpegが見つかりませんでした。</translation>
@@ -1550,9 +1590,8 @@ FFmpegのエクスポートをチェックする ... 🗸
 FFmpegのパレット生成の確認 ... 🗸</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
         <source>Select from executable and automatically setup</source>
-        <translation>実行ファイルから選択し、自動的にセットアップ</translation>
+        <translation type="vanished">実行ファイルから選択し、自動的にセットアップ</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="488"/>
@@ -1565,9 +1604,8 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation>オペレーション成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
         <source>Download and automatically setup</source>
-        <translation>ダウンロードし、自動的にセットアップ</translation>
+        <translation type="vanished">ダウンロードし、自動的にセットアップ</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="531"/>
@@ -1585,9 +1623,8 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation>のツール ディレクトリを作成中にエラーが発生しました。アプリケーションはフォールバックを使用しますが、これが機能しない場合は、管理者としてアプリを実行するか、書き込み保護されていないフォルダーを使用してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="614"/>
         <source>FFmpeg was successfully setup. Please restart AnimeEffects</source>
-        <translation>FFmpeg が正常にセットアップされました。AnimeEffects を再起動してください。</translation>
+        <translation type="vanished">FFmpeg が正常にセットアップされました。AnimeEffects を再起動してください。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="630"/>
@@ -1600,9 +1637,8 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation>FFmpeg をインストールしましたが、実行可能ファイルとして設定する必要があります。「ffmpeg」を右クリックしてプロパティを開き、プログラムとして実行を許可してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
         <source>FFmpeg was successfully setup.</source>
-        <translation>FFmpegのセットアップに成功しました。</translation>
+        <translation type="vanished">FFmpegのセットアップに成功しました。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="645"/>
@@ -2591,8 +2627,12 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation>拡大</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="662"/>
         <source>Filetree not found</source>
+        <translation type="vanished">ファイルツリーが見つかりません</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="662"/>
+        <source>File tree not found</source>
         <translation>ファイルツリーが見つかりません</translation>
     </message>
     <message>
@@ -3600,14 +3640,12 @@ The log is available below.</source>
         <translation>ORA parse error</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
         <source>Unable to find the mimetype of the solicited file.</source>
-        <translation>要求されたファイルの MIME タイプが見つかりません。</translation>
+        <translation type="vanished">要求されたファイルの MIME タイプが見つかりません。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
         <source>The mimetype is not valid.</source>
-        <translation>MIME タイプが無効です。</translation>
+        <translation type="vanished">MIME タイプが無効です。</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="339"/>
@@ -3615,13 +3653,31 @@ The log is available below.</source>
         <translation>ファイルを読み取ることができませんでした。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="345"/>
         <source>Select ora type</source>
+        <translation type="vanished">「ORA」タイプを選択</translation>
+    </message>
+    <message>
+        <source>How do you wish to load this ora file?</source>
+        <translation type="vanished">この「oraFile」ファイルをどのようにロードしますか？</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
+        <source>Unable to find the MIME type of the selected file.</source>
+        <translation>要求されたファイルの MIME タイプが見つかりません。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
+        <source>The MIME type is not valid.</source>
+        <translation>MIME タイプが無効です。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="345"/>
+        <source>Select ORA type</source>
         <translation>「ORA」タイプを選択</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="346"/>
-        <source>How do you wish to load this ora file?</source>
+        <source>How do you wish to load this ORA file?</source>
         <translation>この「oraFile」ファイルをどのようにロードしますか？</translation>
     </message>
     <message>

@@ -262,7 +262,7 @@ bool FFDEditor::resetCurrentTarget(QString* aMessage) {
     if (mTargets.hasValidTarget()) {
         createMode();
     } else if (aMessage) {
-        *aMessage = UILog::tr("There are no object with meshes.");
+        *aMessage = UILog::tr("There are no objects with meshes.");
     }
 
     return !mTargets.isEmpty();

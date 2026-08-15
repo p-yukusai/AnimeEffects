@@ -366,8 +366,12 @@
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_ConstantPanel.cpp" line="203"/>
-        <source>update a clippping flag</source>
+        <source>update a clipping flag</source>
         <translation>更新剪贴标志</translation>
+    </message>
+    <message>
+        <source>update a clippping flag</source>
+        <translation type="vanished">更新剪贴标志</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="257"/>
@@ -601,8 +605,12 @@
 <context>
     <name>Image Loader</name>
     <message>
-        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="270"/>
         <source>Building a Object Tree...</source>
+        <translation type="vanished">构建对象树...</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="270"/>
+        <source>Building an Object Tree...</source>
         <translation>构建对象树...</translation>
     </message>
     <message>
@@ -789,13 +797,21 @@
 <context>
     <name>ctrl::ImageFileLoader</name>
     <message>
-        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="520"/>
         <source>Select oraFile type</source>
+        <translation type="vanished">选择ora文件类型</translation>
+    </message>
+    <message>
+        <source>How do you wish to load this oraFile file?</source>
+        <translation type="vanished">您希望如何加载这个ora文件？</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="520"/>
+        <source>Select ORA file type</source>
         <translation>选择ora文件类型</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/ImageFileLoader.cpp" line="521"/>
-        <source>How do you wish to load this oraFile file?</source>
+        <source>How do you wish to load this ORA file?</source>
         <translation>您希望如何加载这个ora文件？</translation>
     </message>
     <message>
@@ -834,8 +850,12 @@
     </message>
     <message>
         <location filename="../../src/ctrl/FFDEditor.cpp" line="265"/>
-        <source>There are no object with meshes.</source>
+        <source>There are no objects with meshes.</source>
         <translation>无带网格对象。</translation>
+    </message>
+    <message>
+        <source>There are no object with meshes.</source>
+        <translation type="vanished">无带网格对象。</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/MeshEditor.cpp" line="25"/>
@@ -1465,6 +1485,26 @@ Check FFmpeg palette generation ✓</source>
 检查 FFmpeg 调色板生成 ✓</translation>
     </message>
     <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
+        <source>Select executable and automatically set up</source>
+        <translation>从可执行文件中选择并自动安装</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
+        <source>Download and automatically set up</source>
+        <translation>下载并自动安装</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="614"/>
+        <source>FFmpeg was successfully set up. Please restart AnimeEffects</source>
+        <translation>FFmpeg已成功设置。请重新启动AnimeEffects。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
+        <source>FFmpeg was successfully set up.</source>
+        <translation>FFmpeg安装成功。</translation>
+    </message>
+    <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
         <source>FFmpeg was not found.</source>
         <translation>未找到 FFmpeg。</translation>
@@ -1540,9 +1580,8 @@ Check FFmpeg palette generation 🗸</source>
 检查 FFmpeg 调色板生成 🗸</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
         <source>Select from executable and automatically setup</source>
-        <translation>从可执行文件中选择并自动安装</translation>
+        <translation type="vanished">从可执行文件中选择并自动安装</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="488"/>
@@ -1555,9 +1594,8 @@ Check FFmpeg palette generation 🗸</source>
         <translation>操作成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
         <source>Download and automatically setup</source>
-        <translation>下载并自动安装</translation>
+        <translation type="vanished">下载并自动安装</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="531"/>
@@ -1575,9 +1613,8 @@ Check FFmpeg palette generation 🗸</source>
         <translation>应用程序将回退，但如果不起作用，请以管理员身份运行应用程序或使用未写保护的文件夹。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="614"/>
         <source>FFmpeg was successfully setup. Please restart AnimeEffects</source>
-        <translation>FFmpeg已成功设置。请重新启动AnimeEffects。</translation>
+        <translation type="vanished">FFmpeg已成功设置。请重新启动AnimeEffects。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="630"/>
@@ -1590,9 +1627,8 @@ Check FFmpeg palette generation 🗸</source>
         <translation>FFmpeg 已安装，但需要将其设置为可执行文件。请右键单击“ffmpeg”，进入属性并允许其作为程序运行。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
         <source>FFmpeg was successfully setup.</source>
-        <translation>FFmpeg安装成功。</translation>
+        <translation type="vanished">FFmpeg安装成功。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="645"/>
@@ -2557,8 +2593,12 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation>放大</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="662"/>
         <source>Filetree not found</source>
+        <translation type="vanished">未找到文件树</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="662"/>
+        <source>File tree not found</source>
         <translation>未找到文件树</translation>
     </message>
     <message>
@@ -3567,14 +3607,12 @@ The log is available below.</source>
         <translation>ORA解析错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
         <source>Unable to find the mimetype of the solicited file.</source>
-        <translation>无法找到所请求文件的MIME类型。</translation>
+        <translation type="vanished">无法找到所请求文件的MIME类型。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
         <source>The mimetype is not valid.</source>
-        <translation>MIME类型无效。</translation>
+        <translation type="vanished">MIME类型无效。</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="339"/>
@@ -3582,13 +3620,31 @@ The log is available below.</source>
         <translation>无法读取该文件。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="345"/>
         <source>Select ora type</source>
+        <translation type="vanished">选择ora类型</translation>
+    </message>
+    <message>
+        <source>How do you wish to load this ora file?</source>
+        <translation type="vanished">您希望如何加载这个ora文件？</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
+        <source>Unable to find the MIME type of the selected file.</source>
+        <translation>无法找到所请求文件的MIME类型。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
+        <source>The MIME type is not valid.</source>
+        <translation>MIME类型无效。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="345"/>
+        <source>Select ORA type</source>
         <translation>选择ora类型</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="346"/>
-        <source>How do you wish to load this ora file?</source>
+        <source>How do you wish to load this ORA file?</source>
         <translation>您希望如何加载这个ora文件？</translation>
     </message>
     <message>

@@ -200,7 +200,7 @@ namespace prop {
             return; // fail-safe code
 
         const bool prev = aTarget->renderer()->isClipped();
-        cmnd::ScopedMacro macro(aProject.commandStack(), CmndName::tr("update a clippping flag"));
+        cmnd::ScopedMacro macro(aProject.commandStack(), CmndName::tr("update a clipping flag"));
         macro.grabListener(new ObjectNodeAttrNotifier(aProject, *aTarget));
 
         auto exec = [=]() { aTarget->renderer()->setClipped(aValue); };

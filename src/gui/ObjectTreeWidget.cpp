@@ -659,8 +659,8 @@ void ObjectTreeWidget::addItems(QStringList targets = QStringList()) {
                 }
                 else {
                     QMessageBox errorMsg;
-                    errorMsg.setWindowTitle(tr("Filetree not found"));
-                    errorMsg.setText("Filetree for " + QFileInfo(tree.filePath).baseName() + " was not found, tree has probably been renamed.");
+                    errorMsg.setWindowTitle(tr("File tree not found"));
+                    errorMsg.setText("File tree for " + QFileInfo(tree.filePath).baseName() + " was not found, tree has probably been renamed.");
                     errorMsg.exec();
                 }
                 qDebug("\nTree Identifier");

@@ -267,7 +267,7 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     }
 
     // update reporter
-    aReporter.setSection(QCoreApplication::translate("Image Loader", "Building a Object Tree..."));
+    aReporter.setSection(QCoreApplication::translate("Image Loader", "Building an Object Tree..."));
     aReporter.setMaximum(reader.format()->layerAndMaskInfo().layerCount);
     aReporter.setProgress(0);
     int progress = 0;
@@ -517,8 +517,8 @@ bool ImageFileLoader::loadOra(Project& aProject, util::IProgressReporter& aRepor
     bool merged;
     if (mOraImportMode == OraImportMode::Ask) {
         QMessageBox loadMerged;
-        loadMerged.setWindowTitle(tr("Select oraFile type"));
-        loadMerged.setText(tr("How do you wish to load this oraFile file?"));
+        loadMerged.setWindowTitle(tr("Select ORA file type"));
+        loadMerged.setText(tr("How do you wish to load this ORA file?"));
         QAbstractButton* layerButton = loadMerged.addButton(tr("Load layered"), QMessageBox::YesRole);
         QAbstractButton* mergeButton = loadMerged.addButton(tr("Load merged"), QMessageBox::YesRole);
         QAbstractButton* cancelButton = loadMerged.addButton(tr("Cancel file load"), QMessageBox::NoRole);

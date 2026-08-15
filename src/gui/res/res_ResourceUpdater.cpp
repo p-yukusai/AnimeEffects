@@ -325,12 +325,12 @@ namespace gui::res {
             XC_DEBUG_REPORT() << "ora path =" << path;
             try{
                 if (!ora.has_file("mimetype")){
-                    QMessageBox::warning(nullptr, tr("ORA parse error"), tr("Unable to find the mimetype of the solicited file."));
+                    QMessageBox::warning(nullptr, tr("ORA parse error"), tr("Unable to find the MIME type of the selected file."));
                     return nullptr;
                 }
                 auto mimetype = ora.read("mimetype");
                 if (mimetype != "image/openraster"){
-                    QMessageBox::warning(nullptr, tr("ORA parse error"), tr("The mimetype is not valid."));
+                    QMessageBox::warning(nullptr, tr("ORA parse error"), tr("The MIME type is not valid."));
                     return nullptr;
                 }
                 XC_DEBUG_REPORT() << "ora file has valid mimetype";
@@ -342,8 +342,8 @@ namespace gui::res {
         }
         ora.reset();
         QMessageBox loadMerged;
-        loadMerged.setWindowTitle(tr("Select ora type"));
-        loadMerged.setText(tr("How do you wish to load this ora file?"));
+        loadMerged.setWindowTitle(tr("Select ORA type"));
+        loadMerged.setText(tr("How do you wish to load this ORA file?"));
         loadMerged.addButton(tr("Load layered"), QMessageBox::YesRole);
         QAbstractButton* mergeButton = loadMerged.addButton(tr("Load merged"), QMessageBox::YesRole);
         QAbstractButton* cancelButton = loadMerged.addButton(tr("Cancel file load"), QMessageBox::NoRole);

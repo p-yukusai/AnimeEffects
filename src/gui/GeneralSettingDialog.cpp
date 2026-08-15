@@ -483,7 +483,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             ffmpegNotif.exec();
         });
 
-        selectFromExe = new QPushButton(tr("Select from executable and automatically setup"));
+        selectFromExe = new QPushButton(tr("Select executable and automatically set up"));
         selectFromExe->setToolTip(
             tr("This will remove previous instances of FFmpeg from your tools directory"
                " and replace them with your custom executable, please make sure this is a valid FFmpeg executable.")
@@ -514,7 +514,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         });
 
 
-        autoSetup = new QPushButton(tr("Download and automatically setup"));
+        autoSetup = new QPushButton(tr("Download and automatically set up"));
         connect(autoSetup, &QPushButton::clicked, [=]() {
             #ifdef Q_OS_LINUX
             auto dir = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
@@ -611,7 +611,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
                         if (pathSet.exitCode() == 0) {
                             QMessageBox success;
                             success.setWindowTitle(tr("Success"));
-                            success.setText(tr("FFmpeg was successfully setup. Please restart AnimeEffects"));
+                            success.setText(tr("FFmpeg was successfully set up. Please restart AnimeEffects"));
                             success.exec();
                             return;
                         }
@@ -636,7 +636,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
                 if (QFile(dir.absolutePath() + file).exists()) {
                     QMessageBox success;
                     success.setWindowTitle(tr("Success"));
-                    success.setText(tr("FFmpeg was successfully setup."));
+                    success.setText(tr("FFmpeg was successfully set up."));
                     success.exec();
                     return;
                 }

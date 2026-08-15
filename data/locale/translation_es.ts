@@ -366,8 +366,12 @@
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_ConstantPanel.cpp" line="203"/>
-        <source>update a clippping flag</source>
+        <source>update a clipping flag</source>
         <translation>actualizar un indicador de recorte</translation>
+    </message>
+    <message>
+        <source>update a clippping flag</source>
+        <translation type="vanished">actualizar un indicador de recorte</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="257"/>
@@ -601,8 +605,12 @@
 <context>
     <name>Image Loader</name>
     <message>
-        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="270"/>
         <source>Building a Object Tree...</source>
+        <translation type="vanished">Construyendo un árbol de objetos...</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="270"/>
+        <source>Building an Object Tree...</source>
         <translation>Construyendo un árbol de objetos...</translation>
     </message>
     <message>
@@ -789,13 +797,21 @@
 <context>
     <name>ctrl::ImageFileLoader</name>
     <message>
-        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="520"/>
         <source>Select oraFile type</source>
+        <translation type="vanished">Seleccionar tipo de archivo</translation>
+    </message>
+    <message>
+        <source>How do you wish to load this oraFile file?</source>
+        <translation type="vanished">¿Cómo desea cargar este archivo oraFile?</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="520"/>
+        <source>Select ORA file type</source>
         <translation>Seleccionar tipo de archivo</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/ImageFileLoader.cpp" line="521"/>
-        <source>How do you wish to load this oraFile file?</source>
+        <source>How do you wish to load this ORA file?</source>
         <translation>¿Cómo desea cargar este archivo oraFile?</translation>
     </message>
     <message>
@@ -834,8 +850,12 @@
     </message>
     <message>
         <location filename="../../src/ctrl/FFDEditor.cpp" line="265"/>
-        <source>There are no object with meshes.</source>
+        <source>There are no objects with meshes.</source>
         <translation>No hay objetos con mallas.</translation>
+    </message>
+    <message>
+        <source>There are no object with meshes.</source>
+        <translation type="vanished">No hay objetos con mallas.</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/MeshEditor.cpp" line="25"/>
@@ -1465,6 +1485,26 @@ Revisar exportación de FFmpeg ✓
 Revisar generación de paleta de FFmpeg ✓</translation>
     </message>
     <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
+        <source>Select executable and automatically set up</source>
+        <translation>Seleccionar desde el ejecutable y configurar automáticamente</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
+        <source>Download and automatically set up</source>
+        <translation>Descargar y configurar automáticamente</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="614"/>
+        <source>FFmpeg was successfully set up. Please restart AnimeEffects</source>
+        <translation>FFmpeg se ha configurado correctamente. Por favor, reinicie AnimeEffects</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
+        <source>FFmpeg was successfully set up.</source>
+        <translation>FFmpeg se ha configurado correctamente.</translation>
+    </message>
+    <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
         <source>FFmpeg was not found.</source>
         <translation>No se encontró FFmpeg.</translation>
@@ -1550,9 +1590,8 @@ Comprobar exportación de FFmpeg ...
 Comprobar generación de paletas FFmpeg ...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
         <source>Select from executable and automatically setup</source>
-        <translation>Seleccionar desde el ejecutable y configurar automáticamente</translation>
+        <translation type="vanished">Seleccionar desde el ejecutable y configurar automáticamente</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="488"/>
@@ -1565,9 +1604,8 @@ Comprobar generación de paletas FFmpeg ...</translation>
         <translation>Operación exitosa</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="517"/>
         <source>Download and automatically setup</source>
-        <translation>Descargar y configurar automáticamente</translation>
+        <translation type="vanished">Descargar y configurar automáticamente</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="531"/>
@@ -1585,9 +1623,8 @@ Comprobar generación de paletas FFmpeg ...</translation>
         <translation> la aplicación usará un respaldo, pero si esto no sirve porfavor corra la aplicación como administrador o use una carpeta que no esté protegida de escritura.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="614"/>
         <source>FFmpeg was successfully setup. Please restart AnimeEffects</source>
-        <translation>FFmpeg se ha configurado correctamente. Por favor, reinicie AnimeEffects</translation>
+        <translation type="vanished">FFmpeg se ha configurado correctamente. Por favor, reinicie AnimeEffects</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="630"/>
@@ -1600,9 +1637,8 @@ Comprobar generación de paletas FFmpeg ...</translation>
         <translation>FFmpeg se ha instalado, pero debe marcarse como ejecutable. Haga clic derecho en «ffmpeg», vaya a Propiedades y permita que se ejecute como programa.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
         <source>FFmpeg was successfully setup.</source>
-        <translation>FFmpeg se ha configurado correctamente.</translation>
+        <translation type="vanished">FFmpeg se ha configurado correctamente.</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="645"/>
@@ -2591,8 +2627,12 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
         <translation>Ampliar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="662"/>
         <source>Filetree not found</source>
+        <translation type="vanished">Árbol de archivos no encontrado</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="662"/>
+        <source>File tree not found</source>
         <translation>Árbol de archivos no encontrado</translation>
     </message>
     <message>
@@ -3602,14 +3642,12 @@ El registro está disponible a continuación.</translation>
         <translation>ORA parse error</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
         <source>Unable to find the mimetype of the solicited file.</source>
-        <translation>No se puede encontrar el mimetype del archivo solicitado.</translation>
+        <translation type="vanished">No se puede encontrar el mimetype del archivo solicitado.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
         <source>The mimetype is not valid.</source>
-        <translation>El mimetype no es válido.</translation>
+        <translation type="vanished">El mimetype no es válido.</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="339"/>
@@ -3617,13 +3655,31 @@ El registro está disponible a continuación.</translation>
         <translation>No se pudo leer el archivo.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="345"/>
         <source>Select ora type</source>
+        <translation type="vanished">Seleccionar tipo de ora</translation>
+    </message>
+    <message>
+        <source>How do you wish to load this ora file?</source>
+        <translation type="vanished">¿Cómo quieres cargar este archivo ora ?</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
+        <source>Unable to find the MIME type of the selected file.</source>
+        <translation>No se puede encontrar el mimetype del archivo solicitado.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
+        <source>The MIME type is not valid.</source>
+        <translation>El mimetype no es válido.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="345"/>
+        <source>Select ORA type</source>
         <translation>Seleccionar tipo de ora</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="346"/>
-        <source>How do you wish to load this ora file?</source>
+        <source>How do you wish to load this ORA file?</source>
         <translation>¿Cómo quieres cargar este archivo ora ?</translation>
     </message>
     <message>
