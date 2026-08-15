@@ -169,6 +169,10 @@ void setIconDir(const QString& aDir) { gIconDir = aDir; }
 void tintIcons(const QString& aSrcDir, const QString& aDstDir, const Colors& aColors) {
     const QDir src(aSrcDir);
     const QStringList files = src.entryList(QStringList() << "*.svg", QDir::Files);
+    // Wipe the scratch dir first so glyphs that left the canonical set (or
+    // lost their -active pair) do not linger across app versions and get
+    // re-registered by loadIcons.
+    QDir(aDstDir).removeRecursively();
     QDir().mkpath(aDstDir);
     for (const QString& name : files) {
         QFile f(src.filePath(name));

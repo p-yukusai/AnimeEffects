@@ -368,7 +368,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
                 auto* b = new QPushButton();
                 b->setCheckable(true);
                 b->setProperty("hue", hue);
-                const QColor accent = theme::Colors::dark(hue).focus;
+                const QColor accent = (c.isDark ? theme::Colors::dark(hue) : theme::Colors::light(hue)).focus;
                 b->setStyleSheet(
                     QString("QPushButton { width: 20px; height: 20px; background-color: %1; border: 2px solid transparent; padding: 0; min-height: 0; min-width: 0; }"
                             "QPushButton:hover { border-color: %2; }"

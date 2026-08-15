@@ -5,6 +5,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStyleFactory>
+#include <QStyleHints>
 
 #include "gui/ScrollBarStyle.h"
 #include "theme/Icons.h"
@@ -36,6 +37,20 @@ GUIResources::GUIResources(const QString& aResourceDir):
     mTheme = theme::Theme(mResourceDir, themeId);
     mHue = hue;
     applyAppearance();
+
+    // "system" follows the OS color scheme; follow a live light/dark switch.
+    mSchemeConnection = QObject::connect(
+        QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged,
+        [this](Qt::ColorScheme) {
+            if (mTheme.id() == "system") {
+                applyAppearance();
+                onThemeChanged(mTheme);
+            }
+        });
+}
+
+GUIResources::~GUIResources() {
+    QObject::disconnect(mSchemeConnection);
 }
 
 QIcon GUIResources::icon(const QString& aName) const {
@@ -96,12 +111,14 @@ void GUIResources::applyAppearance() {
     qApp->setStyleSheet(dialogButtonStyleSheet());
     // Scrollbar handles are drawn by the proxy style (a deterministic 4px pill
     // from the theme tokens) instead of the QSS border-image path, which
-    // distorts small pills. Wrap the current style once so the QSS still
-    // drives everything else; re-wrapping on every appearance change would
-    // delete the previous proxy (setStyle owns it) and leave the new one with
-    // a dangling base.
-    if (!qobject_cast<ScrollBarStyle*>(qApp->style()))
+    // distorts small pills. Install the proxy once: QApplication::setStyle
+    // slots the passed style under the stylesheet wrapper (QStyleSheetStyle),
+    // so qobject_cast<ScrollBarStyle*>(qApp->style()) never matches and the
+    // old guard wrapped a fresh proxy on every appearance change.
+    if (!mScrollBarStyleInstalled) {
         qApp->setStyle(new ScrollBarStyle(qApp->style()));
+        mScrollBarStyleInstalled = true;
+    }
 }
 
 void GUIResources::loadIcons() {

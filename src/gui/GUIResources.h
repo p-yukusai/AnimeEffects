@@ -3,6 +3,7 @@
 
 #include <QHash>
 #include <QIcon>
+#include <QObject>
 #include <QPalette>
 #include <QString>
 #include <QStringList>
@@ -18,7 +19,7 @@ namespace gui {
 class GUIResources: private util::NonCopyable {
 public:
     GUIResources(const QString& aResourceDir);
-    ~GUIResources() = default;
+    ~GUIResources();
 
     QIcon icon(const QString& aName) const;
     // The same glyph in the active (max-contrast) color as the only state;
@@ -53,6 +54,9 @@ private:
     double mHue;
     IconMap mIconMap;
     QPalette palette;
+
+    QMetaObject::Connection mSchemeConnection;  // "system" scheme tracking
+    bool mScrollBarStyleInstalled = false;      // wrap the proxy style once
 };
 
 } // namespace gui

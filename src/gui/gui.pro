@@ -9,6 +9,7 @@ INCLUDES    += $$PWD
 
 QT += opengl
 QT += multimedia
+QT += svg
 
 OBJECTS_DIR = .obj
 MOC_DIR     = .moc
