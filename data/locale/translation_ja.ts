@@ -197,12 +197,12 @@
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="324"/>
         <source>Update default blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>初期ぼかしを更新</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="325"/>
         <source>Update blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>ぼかしキーを更新</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="335"/>
@@ -287,7 +287,7 @@
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="475"/>
         <source>Add new blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>新しいぼかしキーを追加</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="481"/>
@@ -706,7 +706,7 @@
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="237"/>
         <source>Bezier editor</source>
-        <translation type="unfinished"></translation>
+        <translation>ベジェエディタ</translation>
     </message>
 </context>
 <context>
@@ -1029,12 +1029,12 @@
     </message>
     <message>
         <source>Loop animation (GIF only)</source>
-        <translation type="vanished">アニメーションをループさせる (「GIF」のみ)</translation>
+        <translation type="vanished">ループ再生 (「GIF」のみ)</translation>
     </message>
     <message>
         <location filename="../../src/gui/exportdiag.h" line="903"/>
         <source>Loop animation</source>
-        <translation type="unfinished">アニメーションをループさせる</translation>
+        <translation type="unfinished">ループ再生</translation>
     </message>
     <message>
         <location filename="../../src/gui/exportdiag.h" line="904"/>
@@ -1199,7 +1199,7 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="28"/>
         <source>Loop animation :</source>
-        <translation type="unfinished">アニメーションをループさせる :</translation>
+        <translation type="unfinished">ループ再生 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="36"/>
@@ -1209,7 +1209,7 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
         <source>Frames per second :</source>
-        <translation type="unfinished">フレーム毎秒 :</translation>
+        <translation>フレーム毎秒 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
@@ -1320,12 +1320,12 @@
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="301"/>
         <source>Language (needs restart) :</source>
-        <translation type="unfinished"></translation>
+        <translation>言語（要リブート） :</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="322"/>
         <source>Timeline format (needs restart) :</source>
-        <translation type="unfinished"></translation>
+        <translation>タイムライン形式（要リブート） :</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
@@ -1460,7 +1460,9 @@
         <source>Check FFmpeg response ✓
 Check FFmpeg exporting ✓
 Check FFmpeg palette generation ✓</source>
-        <translation type="unfinished"></translation>
+        <translation>FFmpeg のレスポンスを確認 ✓
+FFmpeg のエクスポートを確認 ✓
+FFmpeg のパレット生成を確認 ✓</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
@@ -1590,12 +1592,12 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="630"/>
         <source>FFmpeg installed</source>
-        <translation type="unfinished"></translation>
+        <translation>FFmpeg をインストールしました</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="631"/>
         <source>FFmpeg was installed but it requires to be set as executable, please right click &quot;ffmpeg&quot; go to properties and allow it to be executable as a program.</source>
-        <translation type="unfinished"></translation>
+        <translation>FFmpeg をインストールしましたが、実行可能ファイルとして設定する必要があります。「ffmpeg」を右クリックしてプロパティを開き、プログラムとして実行を許可してください。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
@@ -1987,7 +1989,7 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="303"/>
         <source>Loop animation</source>
-        <translation>アニメーションをループさせる</translation>
+        <translation>ループ再生</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="304"/>
@@ -2048,7 +2050,8 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <location filename="../../src/gui/MainMenuBar.cpp" line="376"/>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
 If we forgot to include you please let us know or open a PR!</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;br /&gt;&lt;br /&gt;寄稿者:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
+記載漏れがある場合はお知らせいただくか、PR を開いてください。</translation>
     </message>
     <message>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [aki017](https://github.com/aki017), [picoHz](https://github.com/picoHz).</source>
@@ -2545,7 +2548,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="119"/>
         <source>Add new resources</source>
-        <translation type="unfinished"></translation>
+        <translation>新しいリソースを追加</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="122"/>
@@ -2570,7 +2573,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="134"/>
         <source>Add default keys</source>
-        <translation type="unfinished"></translation>
+        <translation>デフォルトキーを追加</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="137"/>
@@ -2625,7 +2628,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="848"/>
         <source>The requested FFD key mesh (at frame %1) has %2 vertices, but the parent mesh of the targeted node has %3 vertices, artifacts may be present.</source>
-        <translation type="unfinished"></translation>
+        <translation>要求された FFD キーのメッシュ（フレーム %1）には頂点が %2 個ありますが、対象ノードの親メッシュには頂点が %3 個あります。アーティファクトが発生する可能性があります。</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="874"/>
@@ -2641,7 +2644,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="876"/>
         <source> keys. The log is available below.</source>
-        <translation type="unfinished"></translation>
+        <translation> 個のキー。ログは以下よりご覧いただけます。</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="881"/>
@@ -2664,7 +2667,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="890"/>
         <source>Clipboard does not contain valid JSON information or the timeline already has a key in the same frame.</source>
-        <translation type="unfinished"></translation>
+        <translation>クリップボードに有効なJSON情報が含まれていないか、タイムラインが同じフレームにすでにキーを持っています。</translation>
     </message>
     <message>
         <source>Clipboard does not contain valid JSON information or timeline already has a key in the same frame.</source>
@@ -2708,7 +2711,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/PlayBackWidget.cpp" line="52"/>
         <source>Loop animation</source>
-        <translation type="unfinished">アニメーションをループさせる</translation>
+        <translation type="unfinished">ループ再生</translation>
     </message>
     <message>
         <location filename="../../src/gui/PlayBackWidget.cpp" line="54"/>
@@ -2777,7 +2780,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="880"/>
         <source>Loop animation :</source>
-        <translation>アニメーションをループさせる :</translation>
+        <translation>ループ再生 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="882"/>
@@ -2823,37 +2826,37 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="71"/>
         <source>Close tab</source>
-        <translation type="unfinished"></translation>
+        <translation>タブを閉じる</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="140"/>
         <source>Save</source>
-        <translation type="unfinished"></translation>
+        <translation>保存</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="141"/>
         <source>Save As...</source>
-        <translation type="unfinished"></translation>
+        <translation>名前を付けて保存...</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="143"/>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation>閉じる</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="144"/>
         <source>Close Others</source>
-        <translation type="unfinished"></translation>
+        <translation>他のタブを閉じる</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="145"/>
         <source>Close All</source>
-        <translation type="unfinished"></translation>
+        <translation>すべて閉じる</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="147"/>
         <source>Copy Full Path</source>
-        <translation type="unfinished"></translation>
+        <translation>フルパスをコピー</translation>
     </message>
 </context>
 <context>
@@ -3079,7 +3082,8 @@ The log is available below.</source>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="636"/>
         <source>Failed to paste keys. 
 (If you want to paste across objects copy the key to the clipboard and right-click and paste to the node instead)</source>
-        <translation type="unfinished"></translation>
+        <translation>キーの貼り付けに失敗しました。
+（オブジェクトをまたいで貼り付けるには、キーをクリップボードにコピーし、ノードを右クリックして貼り付けてください）</translation>
     </message>
     <message>
         <source>Failed to paste keys.</source>
@@ -3182,7 +3186,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/ToolWidget.cpp" line="156"/>
         <source>Flip canvas</source>
-        <translation type="unfinished"></translation>
+        <translation>キャンバスを反転</translation>
     </message>
 </context>
 <context>
@@ -3239,32 +3243,32 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>
         <source>Easing :</source>
-        <translation type="unfinished"></translation>
+        <translation>イージング :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="367"/>
         <source>Amount :</source>
-        <translation type="unfinished"></translation>
+        <translation>量 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="368"/>
         <source>Directional: </source>
-        <translation type="unfinished"></translation>
+        <translation>方向性:</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="369"/>
         <source>Blur X :</source>
-        <translation type="unfinished"></translation>
+        <translation>ぼかし X :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="370"/>
         <source>Blur Y :</source>
-        <translation type="unfinished"></translation>
+        <translation>ぼかし Y :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="371"/>
         <source>Angle :</source>
-        <translation type="unfinished"></translation>
+        <translation>角度 :</translation>
     </message>
 </context>
 <context>
@@ -3419,12 +3423,12 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="475"/>
         <source>Hue</source>
-        <translation>色相 :</translation>
+        <translation>色相</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="476"/>
         <source>Saturation</source>
-        <translation>彩度 :</translation>
+        <translation>彩度</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="477"/>
@@ -4040,42 +4044,42 @@ The log is available below.</source>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="182"/>
         <source>Add (Glow)</source>
-        <translation type="unfinished"></translation>
+        <translation>加算（発光）</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="184"/>
         <source>Glow Dodge</source>
-        <translation type="unfinished"></translation>
+        <translation>覆い焼き（発光）</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="186"/>
         <source>Hue</source>
-        <translation type="unfinished">色相 :</translation>
+        <translation>色相</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="188"/>
         <source>Saturation</source>
-        <translation type="unfinished">彩度 :</translation>
+        <translation>彩度</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="190"/>
         <source>Color</source>
-        <translation type="unfinished"></translation>
+        <translation>カラー</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="192"/>
         <source>Luminosity</source>
-        <translation type="unfinished"></translation>
+        <translation>輝度</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="194"/>
         <source>Darker Color</source>
-        <translation type="unfinished"></translation>
+        <translation>色の比較（暗）</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="196"/>
         <source>Lighter Color</source>
-        <translation type="unfinished"></translation>
+        <translation>色の比較（明）</translation>
     </message>
 </context>
 <context>

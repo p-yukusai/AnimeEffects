@@ -197,12 +197,12 @@
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="324"/>
         <source>Update default blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>更新默认模糊帧</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="325"/>
         <source>Update blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>更新模糊帧</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="335"/>
@@ -287,7 +287,7 @@
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="475"/>
         <source>Add new blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>新增模糊帧</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="481"/>
@@ -706,7 +706,7 @@
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="237"/>
         <source>Bezier editor</source>
-        <translation type="unfinished"></translation>
+        <translation>贝塞尔曲线编辑器</translation>
     </message>
 </context>
 <context>
@@ -1209,7 +1209,7 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
         <source>Frames per second :</source>
-        <translation type="unfinished">每秒帧数 ：</translation>
+        <translation>每秒帧数 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
@@ -1320,12 +1320,12 @@
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="301"/>
         <source>Language (needs restart) :</source>
-        <translation type="unfinished"></translation>
+        <translation>语言（需重启） :</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="322"/>
         <source>Timeline format (needs restart) :</source>
-        <translation type="unfinished"></translation>
+        <translation>时间轴格式（需重启） :</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
@@ -1460,7 +1460,9 @@
         <source>Check FFmpeg response ✓
 Check FFmpeg exporting ✓
 Check FFmpeg palette generation ✓</source>
-        <translation type="unfinished"></translation>
+        <translation>检查 FFmpeg 响应 ✓
+检查 FFmpeg 导出 ✓
+检查 FFmpeg 调色板生成 ✓</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
@@ -1580,12 +1582,12 @@ Check FFmpeg palette generation 🗸</source>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="630"/>
         <source>FFmpeg installed</source>
-        <translation type="unfinished"></translation>
+        <translation>FFmpeg 已安装</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="631"/>
         <source>FFmpeg was installed but it requires to be set as executable, please right click &quot;ffmpeg&quot; go to properties and allow it to be executable as a program.</source>
-        <translation type="unfinished"></translation>
+        <translation>FFmpeg 已安装，但需要将其设置为可执行文件。请右键单击“ffmpeg”，进入属性并允许其作为程序运行。</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
@@ -2018,7 +2020,8 @@ Check FFmpeg palette generation 🗸</source>
         <location filename="../../src/gui/MainMenuBar.cpp" line="376"/>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
 If we forgot to include you please let us know or open a PR!</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;br /&gt;&lt;br /&gt;贡献者：&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
+如有遗漏，请告知我们或提交 PR！</translation>
     </message>
     <message>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [aki017](https://github.com/aki017), [picoHz](https://github.com/picoHz).</source>
@@ -2162,7 +2165,7 @@ If we forgot to include you please let us know or open a PR!</source>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="496"/>
         <source>Theme changed</source>
-        <translation>更改主题</translation>
+        <translation>主题已更改</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="498"/>
@@ -2468,7 +2471,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="77"/>
         <source>Frames per second :</source>
-        <translation>每秒帧数 ：</translation>
+        <translation>每秒帧数 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="109"/>
@@ -2511,7 +2514,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="119"/>
         <source>Add new resources</source>
-        <translation type="unfinished"></translation>
+        <translation>添加新资源</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="122"/>
@@ -2536,7 +2539,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="134"/>
         <source>Add default keys</source>
-        <translation type="unfinished"></translation>
+        <translation>添加默认关键帧</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="137"/>
@@ -2591,7 +2594,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="848"/>
         <source>The requested FFD key mesh (at frame %1) has %2 vertices, but the parent mesh of the targeted node has %3 vertices, artifacts may be present.</source>
-        <translation type="unfinished"></translation>
+        <translation>请求的 FFD 关键帧网格（第 %1 帧）有 %2 个顶点，但目标节点的父网格有 %3 个顶点，可能出现伪影。</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="874"/>
@@ -2607,7 +2610,7 @@ In the following screen you can instruct AnimeEffects to download and install it
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="876"/>
         <source> keys. The log is available below.</source>
-        <translation type="unfinished"></translation>
+        <translation> 个关键帧。日志如下。</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="881"/>
@@ -2631,7 +2634,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="890"/>
         <source>Clipboard does not contain valid JSON information or the timeline already has a key in the same frame.</source>
-        <translation type="unfinished"></translation>
+        <translation>剪贴板无有效的 JSON 信息，或时间轴关键帧被占用。</translation>
     </message>
     <message>
         <source>Clipboard does not contain valid JSON information or timeline already has a key in the same frame.</source>
@@ -2726,7 +2729,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="957"/>
         <source>Frames per second :</source>
-        <translation>每秒帧数 ：</translation>
+        <translation>每秒帧数 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="959"/>
@@ -2790,37 +2793,37 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="71"/>
         <source>Close tab</source>
-        <translation type="unfinished"></translation>
+        <translation>关闭标签页</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="140"/>
         <source>Save</source>
-        <translation type="unfinished"></translation>
+        <translation>保存</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="141"/>
         <source>Save As...</source>
-        <translation type="unfinished"></translation>
+        <translation>另存为...</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="143"/>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation>关闭</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="144"/>
         <source>Close Others</source>
-        <translation type="unfinished"></translation>
+        <translation>关闭其他</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="145"/>
         <source>Close All</source>
-        <translation type="unfinished"></translation>
+        <translation>关闭全部</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="147"/>
         <source>Copy Full Path</source>
-        <translation type="unfinished"></translation>
+        <translation>复制完整路径</translation>
     </message>
 </context>
 <context>
@@ -3046,7 +3049,8 @@ The log is available below.</source>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="636"/>
         <source>Failed to paste keys. 
 (If you want to paste across objects copy the key to the clipboard and right-click and paste to the node instead)</source>
-        <translation type="unfinished"></translation>
+        <translation>粘贴关键帧失败。
+（若要跨对象粘贴，请将关键帧复制到剪贴板，然后右键单击节点进行粘贴）</translation>
     </message>
     <message>
         <source>Failed to paste keys.</source>
@@ -3149,7 +3153,7 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/ToolWidget.cpp" line="156"/>
         <source>Flip canvas</source>
-        <translation type="unfinished"></translation>
+        <translation>翻转画布</translation>
     </message>
 </context>
 <context>
@@ -3206,32 +3210,32 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>
         <source>Easing :</source>
-        <translation type="unfinished"></translation>
+        <translation>缓动 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="367"/>
         <source>Amount :</source>
-        <translation type="unfinished"></translation>
+        <translation>数量 :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="368"/>
         <source>Directional: </source>
-        <translation type="unfinished"></translation>
+        <translation>方向性:</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="369"/>
         <source>Blur X :</source>
-        <translation type="unfinished"></translation>
+        <translation>模糊 X :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="370"/>
         <source>Blur Y :</source>
-        <translation type="unfinished"></translation>
+        <translation>模糊 Y :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="371"/>
         <source>Angle :</source>
-        <translation type="unfinished"></translation>
+        <translation>角度 :</translation>
     </message>
 </context>
 <context>
@@ -3386,12 +3390,12 @@ The log is available below.</source>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="475"/>
         <source>Hue</source>
-        <translation>色相：</translation>
+        <translation>色相</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="476"/>
         <source>Saturation</source>
-        <translation>饱和度：</translation>
+        <translation>饱和度</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="477"/>
@@ -4007,42 +4011,42 @@ The log is available below.</source>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="182"/>
         <source>Add (Glow)</source>
-        <translation type="unfinished"></translation>
+        <translation>添加（发光）</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="184"/>
         <source>Glow Dodge</source>
-        <translation type="unfinished"></translation>
+        <translation>颜色减淡（发光）</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="186"/>
         <source>Hue</source>
-        <translation type="unfinished">色相：</translation>
+        <translation>色相</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="188"/>
         <source>Saturation</source>
-        <translation type="unfinished">饱和度：</translation>
+        <translation>饱和度</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="190"/>
         <source>Color</source>
-        <translation type="unfinished"></translation>
+        <translation>颜色</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="192"/>
         <source>Luminosity</source>
-        <translation type="unfinished"></translation>
+        <translation>明度</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="194"/>
         <source>Darker Color</source>
-        <translation type="unfinished"></translation>
+        <translation>深色</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="196"/>
         <source>Lighter Color</source>
-        <translation type="unfinished"></translation>
+        <translation>浅色</translation>
     </message>
 </context>
 <context>

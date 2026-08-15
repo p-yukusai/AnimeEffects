@@ -197,12 +197,12 @@
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="324"/>
         <source>Update default blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>Actualizar clave de desenfoque por defecto</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="325"/>
         <source>Update blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>Actualizar clave de desenfoque</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="335"/>
@@ -287,7 +287,7 @@
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="475"/>
         <source>Add new blur key</source>
-        <translation type="unfinished"></translation>
+        <translation>Añadir nueva clave de desenfoque</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/TimeLineUtil.cpp" line="481"/>
@@ -706,7 +706,7 @@
     <message>
         <location filename="../../src/gui/prop/prop_Items.cpp" line="237"/>
         <source>Bezier editor</source>
-        <translation type="unfinished"></translation>
+        <translation>Editor de Bézier</translation>
     </message>
 </context>
 <context>
@@ -1209,7 +1209,7 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
         <source>Frames per second :</source>
-        <translation type="unfinished"></translation>
+        <translation>Fotogramas por segundo :</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
@@ -1224,7 +1224,7 @@
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="57"/>
         <source>Frame value cannot be set.</source>
-        <translation type="unfinished">El valor del marco no se puede establecer.</translation>
+        <translation type="unfinished">El valor del fotograma no se puede establecer.</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="58"/>
@@ -1320,12 +1320,12 @@
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="301"/>
         <source>Language (needs restart) :</source>
-        <translation type="unfinished"></translation>
+        <translation>Idioma (necesita reiniciar) :</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="322"/>
         <source>Timeline format (needs restart) :</source>
-        <translation type="unfinished"></translation>
+        <translation>Formato de cronología (necesita reiniciar) :</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="338"/>
@@ -1453,19 +1453,21 @@
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="464"/>
         <source>Troubleshoot FFmpeg</source>
-        <translation>Solución de problemas Fmpeg</translation>
+        <translation>Solución de problemas FFmpeg</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="478"/>
         <source>Check FFmpeg response ✓
 Check FFmpeg exporting ✓
 Check FFmpeg palette generation ✓</source>
-        <translation type="unfinished"></translation>
+        <translation>Revisar respuesta de FFmpeg ✓
+Revisar exportación de FFmpeg ✓
+Revisar generación de paleta de FFmpeg ✓</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="782"/>
         <source>FFmpeg was not found.</source>
-        <translation type="unfinished">Fmpeg no encontrado.</translation>
+        <translation type="unfinished">FFmpeg no encontrado.</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="784"/>
@@ -1494,7 +1496,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     </message>
     <message>
         <source>FFmpeg is either missing, corrupted or otherwise doesn&apos;t work.</source>
-        <translation type="vanished">Fmpeg no se encuentra, está corrupto o no funciona&apos;t.</translation>
+        <translation type="vanished">FFmpeg no se encuentra, está corrupto o no funciona&apos;t.</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="833"/>
@@ -1545,7 +1547,7 @@ Check FFmpeg palette generation ... 🗸</source>
         <translation type="vanished">Pruebas:
 Comprobar la versión de FFmpeg ...
 Comprobar exportación de FFmpeg ...
-Comprobar generación de paletas FFFmpeg ...</translation>
+Comprobar generación de paletas FFmpeg ...</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="486"/>
@@ -1590,12 +1592,12 @@ Comprobar generación de paletas FFFmpeg ...</translation>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="630"/>
         <source>FFmpeg installed</source>
-        <translation type="unfinished"></translation>
+        <translation>FFmpeg instalado</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="631"/>
         <source>FFmpeg was installed but it requires to be set as executable, please right click &quot;ffmpeg&quot; go to properties and allow it to be executable as a program.</source>
-        <translation type="unfinished"></translation>
+        <translation>FFmpeg se ha instalado, pero debe marcarse como ejecutable. Haga clic derecho en «ffmpeg», vaya a Propiedades y permita que se ejecute como programa.</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="639"/>
@@ -1748,7 +1750,7 @@ Comprobar generación de paletas FFFmpeg ...</translation>
     <message>
         <location filename="../../src/gui/KeyCommandMap.cpp" line="48"/>
         <source>Move to the initial frame</source>
-        <translation>Mover al marco inicial</translation>
+        <translation>Mover al fotograma inicial</translation>
     </message>
     <message>
         <location filename="../../src/gui/KeyCommandMap.cpp" line="52"/>
@@ -2048,7 +2050,8 @@ Comprobar generación de paletas FFFmpeg ...</translation>
         <location filename="../../src/gui/MainMenuBar.cpp" line="376"/>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
 If we forgot to include you please let us know or open a PR!</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;br /&gt;&lt;br /&gt;Colaboradores:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
+Si olvidamos incluirte, avísanos o abre un PR.</translation>
     </message>
     <message>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [aki017](https://github.com/aki017), [picoHz](https://github.com/picoHz).</source>
@@ -2258,7 +2261,7 @@ If we forgot to include you please let us know or open a PR!</source>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="1703"/>
         <source>FFmpeg was not found.</source>
-        <translation>Fmpeg no encontrado.</translation>
+        <translation>FFmpeg no encontrado.</translation>
     </message>
     <message>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
@@ -2502,7 +2505,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="77"/>
         <source>Frames per second :</source>
-        <translation>Fotogramas por segundo:</translation>
+        <translation>Fotogramas por segundo :</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="109"/>
@@ -2545,7 +2548,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="119"/>
         <source>Add new resources</source>
-        <translation type="unfinished"></translation>
+        <translation>Añadir nuevos recursos</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="122"/>
@@ -2570,7 +2573,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="134"/>
         <source>Add default keys</source>
-        <translation type="unfinished"></translation>
+        <translation>Añadir claves por defecto</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="137"/>
@@ -2625,7 +2628,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="848"/>
         <source>The requested FFD key mesh (at frame %1) has %2 vertices, but the parent mesh of the targeted node has %3 vertices, artifacts may be present.</source>
-        <translation type="unfinished"></translation>
+        <translation>La malla de la clave FFD solicitada (en el fotograma %1) tiene %2 vértices, pero la malla principal del nodo de destino tiene %3 vértices; pueden aparecer artefactos.</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="874"/>
@@ -2641,7 +2644,7 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="876"/>
         <source> keys. The log is available below.</source>
-        <translation type="unfinished"></translation>
+        <translation> claves. El registro está disponible a continuación.</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="881"/>
@@ -2666,7 +2669,7 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="890"/>
         <source>Clipboard does not contain valid JSON information or the timeline already has a key in the same frame.</source>
-        <translation type="unfinished"></translation>
+        <translation>El portapapeles no contiene información JSON válida o la línea de tiempo ya tiene una clave en el mismo fotograma.</translation>
     </message>
     <message>
         <source>Clipboard does not contain valid JSON information or timeline already has a key in the same frame.</source>
@@ -2807,7 +2810,7 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="813"/>
         <source>Frame value cannot be set.</source>
-        <translation>El valor del marco no se puede establecer.</translation>
+        <translation>El valor del fotograma no se puede establecer.</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="814"/>
@@ -2825,37 +2828,37 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="71"/>
         <source>Close tab</source>
-        <translation type="unfinished"></translation>
+        <translation>Cerrar pestaña</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="140"/>
         <source>Save</source>
-        <translation type="unfinished"></translation>
+        <translation>Guardar</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="141"/>
         <source>Save As...</source>
-        <translation type="unfinished"></translation>
+        <translation>Guardar como...</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="143"/>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation>Cerrar</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="144"/>
         <source>Close Others</source>
-        <translation type="unfinished"></translation>
+        <translation>Cerrar otras</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="145"/>
         <source>Close All</source>
-        <translation type="unfinished"></translation>
+        <translation>Cerrar todas</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="147"/>
         <source>Copy Full Path</source>
-        <translation type="unfinished"></translation>
+        <translation>Copiar ruta completa</translation>
     </message>
 </context>
 <context>
@@ -3081,7 +3084,8 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="636"/>
         <source>Failed to paste keys. 
 (If you want to paste across objects copy the key to the clipboard and right-click and paste to the node instead)</source>
-        <translation type="unfinished"></translation>
+        <translation>Error al pegar claves.
+(Si desea pegar entre objetos, copie la clave al portapapeles, haga clic derecho en el nodo y péguela)</translation>
     </message>
     <message>
         <source>Failed to paste keys.</source>
@@ -3184,7 +3188,7 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/ToolWidget.cpp" line="156"/>
         <source>Flip canvas</source>
-        <translation type="unfinished"></translation>
+        <translation>Voltear lienzo</translation>
     </message>
 </context>
 <context>
@@ -3236,37 +3240,37 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="304"/>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="314"/>
         <source>Blur</source>
-        <translation type="unfinished">Blur</translation>
+        <translation type="unfinished">Desenfoque</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>
         <source>Easing :</source>
-        <translation type="unfinished"></translation>
+        <translation>Easing :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="367"/>
         <source>Amount :</source>
-        <translation type="unfinished"></translation>
+        <translation>Cantidad :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="368"/>
         <source>Directional: </source>
-        <translation type="unfinished"></translation>
+        <translation>Direccional:</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="369"/>
         <source>Blur X :</source>
-        <translation type="unfinished"></translation>
+        <translation>Desenfoque X :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="370"/>
         <source>Blur Y :</source>
-        <translation type="unfinished"></translation>
+        <translation>Desenfoque Y :</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="371"/>
         <source>Angle :</source>
-        <translation type="unfinished"></translation>
+        <translation>Ángulo :</translation>
     </message>
 </context>
 <context>
@@ -3421,12 +3425,12 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="475"/>
         <source>Hue</source>
-        <translation>Hue :</translation>
+        <translation>Tono</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="476"/>
         <source>Saturation</source>
-        <translation>Saturación :</translation>
+        <translation>Saturación</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="477"/>
@@ -3780,7 +3784,7 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/tool/tool_FFDPanel.cpp" line="89"/>
         <source>Blur</source>
-        <translation>Blur</translation>
+        <translation>Desenfoque</translation>
     </message>
 </context>
 <context>
@@ -4042,42 +4046,42 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="182"/>
         <source>Add (Glow)</source>
-        <translation type="unfinished"></translation>
+        <translation>Añadir (brillo)</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="184"/>
         <source>Glow Dodge</source>
-        <translation type="unfinished"></translation>
+        <translation>Esquivar (brillo)</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="186"/>
         <source>Hue</source>
-        <translation type="unfinished">Hue :</translation>
+        <translation>Tono</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="188"/>
         <source>Saturation</source>
-        <translation type="unfinished">Saturación :</translation>
+        <translation>Saturación</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="190"/>
         <source>Color</source>
-        <translation type="unfinished"></translation>
+        <translation>Color</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="192"/>
         <source>Luminosity</source>
-        <translation type="unfinished"></translation>
+        <translation>Luminosidad</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="194"/>
         <source>Darker Color</source>
-        <translation type="unfinished"></translation>
+        <translation>Color más oscuro</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="196"/>
         <source>Lighter Color</source>
-        <translation type="unfinished"></translation>
+        <translation>Color más claro</translation>
     </message>
 </context>
 <context>
