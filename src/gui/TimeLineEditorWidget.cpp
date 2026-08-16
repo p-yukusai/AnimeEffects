@@ -392,9 +392,17 @@ void TimeLineEditorWidget::onContextMenuRequested(const QPoint& aPos) {
     QMenu menu(this);
 
     mTargets = core::TimeLineEvent();
-    if (mEditor->selectKeysAt(mTargets, aPos)) {
+    const bool clickedOnKey = mEditor->selectKeysAt(mTargets, aPos);
+
+    mPastePos = aPos;
+    mPasteKey->setEnabled(mCopyTargets.hasAnyTargets());
+
+    // The key menu applies when the click is on a key or when there is a
+    // current selection, so keys stay operable from anywhere once selected.
+    if (clickedOnKey || mEditor->retrieveSelectionTargets(mTargets)) {
         menu.addAction(mCopyKey);
         menu.addAction(mCopyToClipboard);
+        menu.addAction(mPasteKey);
         menu.addSeparator();
         menu.addAction(mSelectSpacing);
         menu.addMenu(mSelectEasing);
@@ -402,8 +410,6 @@ void TimeLineEditorWidget::onContextMenuRequested(const QPoint& aPos) {
         menu.addSeparator();
         menu.addAction(mDeleteKey);
     } else {
-        mPastePos = aPos;
-        mPasteKey->setEnabled(mCopyTargets.hasAnyTargets());
         menu.addAction(mPasteKey);
     }
     menu.exec(this->mapToGlobal(aPos));
