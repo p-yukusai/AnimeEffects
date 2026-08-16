@@ -31,7 +31,8 @@ namespace time {
     public:
         Marquee(const QVector<TimeLineRow>& aRows, const Scaler& aScale, int aMargin);
 
-        // Nearest key at aPoint (within a small tolerance).
+        // Nearest key within a fixed screen-space radius (px); invalid Hit if
+        // the click is not over any key.
         Hit hitTest(const QPoint& aPoint) const;
 
         void begin(const QPoint& aPoint);   // anchor the box
