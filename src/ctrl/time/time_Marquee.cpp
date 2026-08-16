@@ -40,15 +40,28 @@ namespace time {
     }
 
     Hit Marquee::hitTest(const QPoint& aPoint) const {
-        // a small horizontal tolerance so near-miss clicks still select
-        const int beginFrame = mScale.frame((aPoint.x() - 2) - mMargin);
-        const int endFrame = mScale.frame((aPoint.x() + 2) - mMargin);
-        // the key diamond is ~8px tall; clicks land on its visible shape, so
-        // accept lane centers within half of that (the old Focuser used the
-        // same radius)
-        constexpr int kHitRadius = 5;
+        // Fixed screen-space grab radius (px), independent of zoom. The key
+        // markers are ~6px across (the diamond's flat-to-flat and the ellipse's
+        // diameter); 12px doubles that, so a whole marker plus a generous margin
+        // is clickable. Erring large is deliberate: a false hit on the gate
+        // (accidentally grabbing a key when starting a marquee/deselect) is
+        // rarer than a false miss, since those gestures start well away from
+        // keys. The gate is a plain distance test: a key is selectable iff it
+        // is within the radius, and the nearest such key wins. Frame conversion
+        // below is only a pruning bound for the sorted key maps, never the
+        // tolerance itself.
+        constexpr int kHitRadius = 12;
+        const float radiusSq = static_cast<float>(kHitRadius * kHitRadius);
+
+        // Frame window that is a superset of every key within the radius in X.
+        // frame() rounds to nearest, so widen by one frame per side: a round at
+        // either edge could otherwise drop a boundary key.
+        const int beginFrame = mScale.frame((aPoint.x() - kHitRadius) - mMargin) - 1;
+        const int endFrame = mScale.frame((aPoint.x() + kHitRadius) - mMargin) + 1;
 
         Hit hit;
+        float bestDistSq = radiusSq; // "no hit yet" sentinel == the gate radius
+
         for (const TimeLineRow& line : mRows) {
             ObjectNode::Iterator nodeItr(line.node);
             while (nodeItr.hasNext()) {
@@ -64,18 +77,29 @@ namespace time {
                     if (map.isEmpty())
                         continue;
 
-                    const float height = line.keyHeight(validIndex, validNum);
+                    const float keyY = line.keyHeight(validIndex, validNum);
                     ++validIndex;
-                    if (height < aPoint.y() - kHitRadius || aPoint.y() + kHitRadius < height)
+
+                    // a lane whose vertical gap alone already reaches the best
+                    // hit can never contain a nearer key (dx^2 >= 0)
+                    const float dy = keyY - aPoint.y();
+                    if (dy * dy >= bestDistSq)
                         continue;
 
                     auto itr = map.lowerBound(beginFrame);
-                    if (itr != map.end() && itr.key() <= endFrame) {
-                        hit.node = node;
-                        hit.pos.setLine(&timeLine);
-                        hit.pos.setType(type);
-                        hit.pos.setIndex(itr.key());
-                        return hit;
+                    while (itr != map.end() && itr.key() <= endFrame) {
+                        const int frame = itr.key();
+                        const float dx = (mMargin + mScale.pixelWidth(frame)) - aPoint.x();
+                        const float distSq = dx * dx + dy * dy;
+                        // strict < resolves ties to iteration order (deterministic)
+                        if (distSq < bestDistSq) {
+                            bestDistSq = distSq;
+                            hit.node = node;
+                            hit.pos.setLine(&timeLine);
+                            hit.pos.setType(type);
+                            hit.pos.setIndex(frame);
+                        }
+                        ++itr;
                     }
                 }
                 if (!line.closedFolder)
