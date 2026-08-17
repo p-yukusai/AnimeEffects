@@ -1,0 +1,14 @@
+# LeakSanitizer suppressions for AnimeEffects (build-asan).
+#
+# These leaks are process-lifetime caches in third-party libraries pulled in
+# by the Qt gtk3 platform theme (GTK3 -> Pango -> fontconfig). fontconfig
+# never frees its font cache; LSan flags it at exit as ~315 KB of small
+# FcPattern/FcCharSet objects. Nothing app-owned appears in the stacks
+# (only Main.cpp startup frames). Suppress so real leaks stay visible.
+leak:libfontconfig.so
+leak:libpango-1.0.so.0
+leak:libpangoft2-1.0.so.0
+leak:libpangocairo-1.0.so.0
+leak:libgtk-3.so.0
+leak:libgobject-2.0.so.0
+leak:libqgtk3.so
