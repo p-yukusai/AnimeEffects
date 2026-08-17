@@ -3,7 +3,6 @@
  *
  *  Design tokens (breeze_dark v2):
  *    base @base@: the dock surface == the window floor.
- *    hairline @hairline@: 1px separators between major sections.
  *    ghost buttons: transparent at rest; hover @hairline@; pressed @recessed@
  *    (down but alive — above the inert recess, below hover).
     active (checked tool) @active@; the toolbox row uses the brand-accent hue
@@ -23,8 +22,7 @@ QGroupBox {
     /* section-title weight: the title renders with the box font (Qt ignores
        font-* on the ::title subcontrol), so semibold lives here */
     font-weight: 600;
-    /* 2px top margin + 3px bottom padding = ~5px around the 1px section
-       hairline, tight enough that the line does the separating */
+    /* 2px top margin + 3px bottom padding keeps adjacent panels breathing */
     margin-top: 0.125em;
     padding-left: 0.375em;
     padding-right: 0.375em;
@@ -38,15 +36,6 @@ QGroupBox {
 /* slider/checkbox labels stay regular (the box font cascades to children) */
 QGroupBox QLabel, QGroupBox QCheckBox {
     font-weight: 400;
-}
-
-/* The Toolbox row and the tool settings panel are one unit: exactly one
-   tool panel is visible at a time, always directly below the row, so no
-   hairline separates them. The unit's boundary with View Settings is the
-   ViewPanel's own bottom hairline below. */
-#viewPanel {
-    border-bottom: 1px solid @hairline@;
-    padding-bottom: 0.625em;
 }
 
 QGroupBox::title {
