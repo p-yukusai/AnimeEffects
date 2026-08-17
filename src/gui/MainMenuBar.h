@@ -36,10 +36,7 @@ public:
 private:
     QScopedPointer<QProcess> mProcess;
     void loadVideoFormats();
-    void onCanvasSizeTriggered();
-    void onMaxFrameTriggered();
-    void onLoopTriggered();
-    void onFPSTriggered();
+    void onProjectSettingsTriggered();
 
     ViaPoint& mViaPoint;
     core::Project* mProject;
@@ -49,54 +46,24 @@ private:
 };
 
 //-------------------------------------------------------------------------------------------------
-class ProjectCanvasSizeSettingDialog: public EasyDialog {
+class ProjectSettingDialog: public EasyDialog {
     Q_OBJECT
 public:
-    ProjectCanvasSizeSettingDialog(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent);
+    ProjectSettingDialog(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent);
     QSize canvasSize() const { return {mWidthBox->value(), mHeightBox->value()}; }
+    int maxFrame() const { return mMaxFrameBox->value(); }
+    bool loop() const { return mLoopBox->isChecked(); }
+    int fps() const { return mFPSBox->value(); }
 
 private:
+    bool confirmMaxFrameUpdating(int aNewMaxFrame) const;
     ViaPoint& mViaPoint;
     core::Project& mProject;
     QSpinBox* mWidthBox;
     QSpinBox* mHeightBox;
-};
-
-//-------------------------------------------------------------------------------------------------
-class ProjectMaxFrameSettingDialog: public EasyDialog {
-    Q_OBJECT
-public:
-    ProjectMaxFrameSettingDialog(core::Project& aProject, QWidget* aParent);
-    int maxFrame() const { return mMaxFrameBox->value(); }
-
-private:
-    bool confirmMaxFrameUpdating(int aNewMaxFrame) const;
-    core::Project& mProject;
     QSpinBox* mMaxFrameBox;
-};
-
-//-------------------------------------------------------------------------------------------------
-class ProjectFPSSettingDialog: public EasyDialog {
-    Q_OBJECT
-public:
-    ProjectFPSSettingDialog(core::Project& aProject, QWidget* aParent);
-    int fps() const { return mFPSBox->value(); }
-
-private:
-    static bool confirmFPSUpdating(int aNewFPS) ;
-    core::Project& mProject;
-    QSpinBox* mFPSBox;
-};
-
-//-------------------------------------------------------------------------------------------------
-class ProjectLoopSettingDialog: public EasyDialog {
-    Q_OBJECT
-public:
-    ProjectLoopSettingDialog(core::Project& aProject, QWidget* aParent);
-    bool isCheckedLoopBox() const { return mLoopBox->isChecked(); }
-
-private:
     QCheckBox* mLoopBox;
+    QSpinBox* mFPSBox;
 };
 
 
