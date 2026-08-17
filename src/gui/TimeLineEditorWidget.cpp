@@ -135,7 +135,7 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
 
         // This is as annoying as you think it is, but I'm too lazy to think of a better way to do this and since no
         // other easing functions will be supported this will do.
-        mSelectEasing = new QMenu(tr("Change key(s) easing to..."), this);
+        mSelectEasing = new QMenu(tr("Change key(s) easing to"), this);
         {
             auto* none = new QAction(tr("None"), this);
             auto* linear = new QAction(tr("Linear"), this);
@@ -162,7 +162,7 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
                 x++;
             }
         }
-        mSelectRange = new QMenu(tr("Change key(s) range to..."), this);
+        mSelectRange = new QMenu(tr("Change key(s) range to"), this);
         {
             auto* in = new QAction(tr("In"), this);
             auto* out = new QAction(tr("Out"), this);

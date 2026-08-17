@@ -113,10 +113,10 @@ ObjectTreeWidget::ObjectTreeWidget(ViaPoint& aViaPoint, GUIResources& aResources
         mSlimAction = new QAction(tr("Contract"), this);
         mSlimAction->connect(mSlimAction, &QAction::triggered, this, &ObjectTreeWidget::onSlimActionTriggered);
 
-        mReconstructAction = new QAction(tr("Add missing resources"), this);
+        mReconstructAction = new QAction(tr("Add missing assets"), this);
         mReconstructAction->connect(mReconstructAction, &QAction::triggered, this, &ObjectTreeWidget::onObjectReconstructionTriggered);
 
-        mAddTreeAction = new QAction(tr("Add new resources"), this);
+        mAddTreeAction = new QAction(tr("Add new assets"), this);
         mAddTreeAction->connect(mAddTreeAction, &QAction::triggered, this, &ObjectTreeWidget::onAddTreeTriggered);
 
         mRenameAction = new QAction(tr("Rename"), this);

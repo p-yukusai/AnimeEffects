@@ -222,7 +222,7 @@ void ResourceTreeWidget::onChangePathActionTriggered(bool) {
 
         if (mHolder) {
             auto& stack = mProject->commandStack();
-            cmnd::ScopedMacro macro(stack, CmndName::tr("Update resource file path"));
+            cmnd::ScopedMacro macro(stack, CmndName::tr("Update asset file path"));
 
             // notifier
             auto notifier = new res::ChangeFilePathNotifier(mViaPoint, item->node());
@@ -276,7 +276,7 @@ void ResourceTreeWidget::endRenameEditor() {
 
         if (curName != newName) {
             auto& stack = mProject->commandStack();
-            cmnd::ScopedMacro macro(stack, CmndName::tr("Rename resource"));
+            cmnd::ScopedMacro macro(stack, CmndName::tr("Rename asset"));
 
             // notifier
             auto notifier = new res::RenameNotifier(mViaPoint, *mProject, item->treePos());

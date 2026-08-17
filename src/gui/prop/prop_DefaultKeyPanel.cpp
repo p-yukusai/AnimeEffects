@@ -78,7 +78,7 @@ namespace prop {
                     this->mAccessor.assignDefaultImageResource(*resNode);
                 }
             };
-            this->addItem(tr("Resource"), mBrowse);
+            this->addItem(tr("Asset"), mBrowse);
 
             // offset
             mOffset = new Vector2DItem(this);
