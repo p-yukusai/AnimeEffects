@@ -100,7 +100,7 @@ static constexpr int kTailwindLight[] = {
     /* kAccentHover       */ 3,
     /* kAccentText        */ 9,
     /* kFloaterBody       */ 0,
-    /* kFloaterEdge       */ 1,
+    /* kFloaterEdge       */ 2, // popup border; tracks hairline
 };
 static_assert(sizeof(kTailwindLight) / sizeof(kTailwindLight[0]) == kTokenCount,
               "kTailwindLight must have one column per TokenRole");
@@ -129,7 +129,7 @@ static constexpr int kTailwindDark[] = {
     /* kAccentHover       */ 6,
     /* kAccentText        */ 1,
     /* kFloaterBody       */ 9,
-    /* kFloaterEdge       */ 8,
+    /* kFloaterEdge       */ 8, // normal edge; the body is the sunken surface
 };
 static_assert(sizeof(kTailwindDark) / sizeof(kTailwindDark[0]) == kTokenCount,
               "kTailwindDark must have one column per TokenRole");
@@ -184,7 +184,9 @@ struct Colors {
                           // max-contrast (white in dark, black in light)
     QColor floaterBody;   // menu/combo popup panel: dark stays sunken, light
                           // flips to white (the proxy rounds the corners)
-    QColor floaterEdge;   // popup panel edge
+    QColor floaterEdge;   // popup panel edge: light tracks the hairline token
+                          // (borders match separators), dark keeps its own
+                          // edge — the body is the sunken surface
     // Per-key colors for easier identification.
    // https://supercolorpalette.com/?scp=eJxl0sluwyAQBuB34fxHYjMMvnnjJaIc3EVJpbaRmuUS5d07BIwVRb7w4_lY7LmJd9Fub-JHtOJwugqIA4_m3_n7uD9eTpxP_N44bDSUgtmhgFSmo-4ayzVzDZPj-Cba89_lE-LKpdp6NBLGIMjdHVk6ZTovi8xhGkUBZGAJ1iKYCmiwg6cCcohNAUYFWIemQXAVdNRMbjlbDnFYAJfy8s4hhAoGG3qvC8ghxgVIWA3voeR6h9FPknwBOVTAS1sJoifQhziEsYAcKlBSwxCf50k4EyMtt85hFYZvoFL5E-m4Irp67xRW4i1YvZBxzDVzDZVoxb9Ov5C-600lOayE_4WRL2Tqeqokh5WQhqaV8AOx50a7pV56-C2fw8ld7sf0bdP4-zGv0pBX3YZlx1SU1SZ1EhW2IVBRWkLbwh7Td1Z70Urub97XQ5zTMT--zuL-D5svvOQ
     QColor baseKey; // Equal to TimeKeyType_TERM
@@ -200,7 +202,6 @@ struct Colors {
     QColor imageKey;
     QColor HSVKey;
     QColor blurKey;
-
 
     bool isDark; // which elevation model the tokens were computed with
 
