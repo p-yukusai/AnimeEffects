@@ -24,6 +24,7 @@ ToolWidget::ToolWidget(
     mBonePanel(),
     mPosePanel(),
     mMeshPanel() {
+    setObjectName("toolWidget"); // QSS id for the dock surface
     createViewPanel();
 
     createModePanel();

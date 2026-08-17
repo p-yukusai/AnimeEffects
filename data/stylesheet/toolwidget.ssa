@@ -11,7 +11,7 @@
  */
 
 /* the dock's single surface */
-ToolWidget {
+#toolWidget {
     background-color: @base@;
 }
 
@@ -40,17 +40,11 @@ QGroupBox QLabel, QGroupBox QCheckBox {
     font-weight: 400;
 }
 
-/* hairline separators between the major sections (all panels except the
-   first; hidden panels don't render, so this stays correct as tool
-   panels appear/disappear). ModePanel is excluded: its boundary with the
-   View Settings panel is the ViewPanel's own bottom hairline below. */
-SRTPanel, FFDPanel, BonePanel, PosePanel, MeshPanel {
-    border-top: 1px solid @hairline@;
-}
-
-/* View Settings is a different kind of thing from the tool stack: its own
-   bottom hairline (plus breathing room) separates it from the Toolbox. */
-ViewPanel {
+/* The Toolbox row and the tool settings panel are one unit: exactly one
+   tool panel is visible at a time, always directly below the row, so no
+   hairline separates them. The unit's boundary with View Settings is the
+   ViewPanel's own bottom hairline below. */
+#viewPanel {
     border-bottom: 1px solid @hairline@;
     padding-bottom: 0.625em;
 }
@@ -125,24 +119,13 @@ QPushButton:disabled {
     background-color: transparent;
 }
 
-QSlider::groove:horizontal {
-    height: 0.1875em;
-    background: @recessed@;
-    border: none;
-    border-radius: 0.125em;
-    margin: 0.125em 0;
-}
-
-QSlider::handle:horizontal {
-    /* a circular accent head: the brand sits on the interactive part, the
-       track stays neutral (the filled portion is @hover@, see standard.ssa) */
-    background: @accent@;
-    border: none;
-    width: 0.8em;
-    height: 0.8em;
-    margin: -0.3em 0; /* center the 0.8em circle on the 0.1875em groove */
-    border-radius: 0.4em;
-}
+/* Tool-panel sliders (FFD/Bone/Pose/etc. option rows) are custom-painted by
+   gui::tool::ToolSlider: Qt QSS subcontrol rendering caps border-radius
+   below half the box (radius >= half draws a plain rectangle) and folds
+   groove margins into the track height, so a clean circular head on a 4px
+   track is not reliably reachable with stylesheets. ToolSlider draws the
+   track (4px), the accent-filled portion, the recessed empty portion, and
+   the accent circular head with QPainter using the theme tokens. */
 
 QCheckBox#checkItem {
 }

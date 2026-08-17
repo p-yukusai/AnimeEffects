@@ -97,6 +97,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     tool/tool_FlowLayout.cpp tool/tool_FlowLayout.h
     tool/tool_ItemTable.cpp tool/tool_ItemTable.h
     tool/tool_Items.cpp tool/tool_Items.h
+    tool/ToolSlider.cpp tool/ToolSlider.h
     tool/tool_MeshPanel.cpp tool/tool_MeshPanel.h
     tool/tool_ModePanel.cpp tool/tool_ModePanel.h
     tool/tool_PosePanel.cpp tool/tool_PosePanel.h

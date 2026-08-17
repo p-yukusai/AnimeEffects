@@ -1,6 +1,7 @@
 #include "XC.h"
 #include "gui/tool/tool_Items.h"
 #include "gui/tool/tool_ItemTable.h"
+#include "gui/tool/ToolSlider.h"
 
 namespace gui {
 namespace tool {
@@ -94,8 +95,11 @@ namespace tool {
         mLabel->setPalette(aPalette);
         mLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 
-        mSlider = new QSlider(Qt::Horizontal, aParent);
-        mSlider->setFocusPolicy(Qt::NoFocus);
+        // The option-row slider is custom-painted (ToolSlider): QSS cannot
+        // render a clean circular head on a thin track (Qt's subcontrol
+        // border-radius cap), so the head/track are drawn with QPainter
+        // using the theme tokens instead.
+        mSlider = new ToolSlider(aParent);
         QSlider::connect(mSlider, &QSlider::valueChanged, [=](const int aValue) {
             this->updateText(aValue);
             // We have to emit this signal so the text update doesn't eat it completely

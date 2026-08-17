@@ -12,6 +12,7 @@ namespace tool {
 
     ViewPanel::ViewPanel(QWidget* aParent, GUIResources& aResources, const QString& aTitle):
         QGroupBox(aParent), mGUIResources(aResources), mButtons(), mLayout(this, 0, 2, 2) {
+        this->setObjectName("viewPanel"); // QSS id for the section hairline
         this->setTitle(aTitle);
         this->setLayout(&mLayout);
 
