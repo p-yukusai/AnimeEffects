@@ -15,7 +15,7 @@ namespace gui {
 GUIResources::GUIResources(const QString& aResourceDir):
     mResourceDir(aResourceDir),
     mIconDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/icons"),
-    mHue(theme::kDefaultHue),
+    mAccent(theme::kDefaultAccent),
     mTheme(aResourceDir, "light") {
     setAppStyle();
 
@@ -30,12 +30,12 @@ GUIResources::GUIResources(const QString& aResourceDir):
     if (themeId != "system" && themeId != "light" && themeId != "dark") themeId = "dark";
     settings.setValue("generalsettings/ui/theme", themeId);
 
-    double hue = settings.value("generalsettings/ui/accent_hue", theme::kDefaultHue).toDouble();
-    if (!theme::accentHues().contains(hue)) hue = theme::kDefaultHue;
-    settings.setValue("generalsettings/ui/accent_hue", hue);
+    // Accent: the selected Tailwind row, persisted by name.
+    const QString accentName = settings.value("generalsettings/ui/accent", QString()).toString();
+    mAccent = theme::accentFromName(accentName);
+    settings.setValue("generalsettings/ui/accent", QLatin1String(theme::accentName(mAccent)));
 
     mTheme = theme::Theme(mResourceDir, themeId);
-    mHue = hue;
     applyAppearance();
 
     // "system" follows the OS color scheme; follow a live light/dark switch.
@@ -82,10 +82,10 @@ void GUIResources::setTheme(const QString& aThemeId) {
     onThemeChanged(mTheme);
 }
 
-void GUIResources::setAccentHue(double aHue) {
-    if (!theme::accentHues().contains(aHue) || mHue == aHue) return;
-    mHue = aHue;
-    QSettings().setValue("generalsettings/ui/accent_hue", aHue);
+void GUIResources::setAccent(theme::AccentColor aAccent) {
+    if (mAccent == aAccent) return;
+    mAccent = aAccent;
+    QSettings().setValue("generalsettings/ui/accent", QLatin1String(theme::accentName(aAccent)));
     applyAppearance();
     onThemeChanged(mTheme);
 }
@@ -97,7 +97,7 @@ void GUIResources::setAppStyle() {
 }
 
 void GUIResources::applyAppearance() {
-    theme::Colors::activate(mTheme.isDark(), mHue);
+    theme::Colors::activate(mTheme.isDark(), mAccent);
     const theme::Colors& c = theme::Colors::current();
 
     // The canonical currentColor set is tinted at runtime into the scratch
@@ -154,7 +154,7 @@ void GUIResources::applyPalette(const theme::Colors& aColors) {
     palette.setColor(QPalette::ButtonText, aColors.text);
     palette.setColor(QPalette::BrightText, aColors.text);
     palette.setColor(QPalette::Link, aColors.accentBright);
-    palette.setColor(QPalette::Highlight, aColors.selection);
+    palette.setColor(QPalette::Highlight, aColors.textSelection);
     palette.setColor(QPalette::HighlightedText, aColors.selectionText);
 }
 

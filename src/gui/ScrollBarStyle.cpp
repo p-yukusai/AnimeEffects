@@ -7,7 +7,6 @@
 #include <QStyleOption>
 #include <QStyleOptionSlider>
 #include <QAbstractItemView>
-#include <QGraphicsDropShadowEffect>
 
 namespace gui {
 
@@ -31,26 +30,11 @@ void ScrollBarStyle::polish(QWidget* aWidget) {
     if (isFloater) {
         aWidget->setAttribute(Qt::WA_TranslucentBackground);
         aWidget->setAttribute(Qt::WA_NoSystemBackground);
-        // Light theme floaters are white cards — the sunken body can't
-        // separate them from a white window — so they get a drop shadow.
-        // Dark keeps the sunken look (see floaterBody/floaterEdge tokens)
-        // and needs none. Re-polished on theme changes, so current() is
-        // fresh; drop the effect when going back to dark.
-        if (theme::Colors::current().isDark) {
-            if (aWidget->graphicsEffect())
-                aWidget->setGraphicsEffect(nullptr);
-        } else if (!aWidget->graphicsEffect()) {
-            auto* shadow = new QGraphicsDropShadowEffect(aWidget);
-            shadow->setBlurRadius(12);
-            shadow->setOffset(0, 2);
-            shadow->setColor(QColor(0, 0, 0, 90));
-            aWidget->setGraphicsEffect(shadow);
-        }
     }
     // The combo popup paints its items as CE_MenuItem through Qt's
     // QComboMenuDelegate, which builds the style option from the VIEW's
     // palette; the QSS selection-background-color never reaches that paint
-    // path. Mark the popup translucent (below) and carry the QMenu-style
+    // path. The popup is translucent (above) and carries the QMenu-style
     // grey on the view's palette Highlight without touching the other roles
     // (the view's Base stays transparent so the recessed panel shows).
     // The style is re-polished on theme changes, so Colors::current() is
@@ -107,14 +91,12 @@ void ScrollBarStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption
         const theme::Colors c = theme::Colors::current();
         const qreal kRadius = 8;
         // the floater tokens: sunken body on dark, white body on light
-        // (the drop shadow from polish() does the separating there)
         const QColor kBody = c.floaterBody;
         const QColor kEdge = c.floaterEdge;
         aPainter->save();
         aPainter->setRenderHint(QPainter::Antialiasing);
-        // The popup window is translucent (see eventFilter), so the corner
-        // cut shows the backdrop through real alpha instead of any backing
-        // fill.
+        // The popup window is translucent, so the corner cut shows the
+        // backdrop through real alpha instead of any backing fill.
         const QRectF rect = QRectF(aOption->rect).adjusted(0.5, 0.5, -0.5, -0.5);
         QPainterPath path;
         path.addRoundedRect(rect, kRadius, kRadius);

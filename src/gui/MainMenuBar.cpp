@@ -337,8 +337,8 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                     this->onTimeFormatChanged();
                 if (generalSettingsDialog->themeHasChanged())
                     this->mGUIResources.setTheme(generalSettingsDialog->theme());
-                if (generalSettingsDialog->accentHueHasChanged())
-                    this->mGUIResources.setAccentHue(generalSettingsDialog->accentHue());
+                if (generalSettingsDialog->accentHasChanged())
+                    this->mGUIResources.setAccent(generalSettingsDialog->accent());
             }
         });
 

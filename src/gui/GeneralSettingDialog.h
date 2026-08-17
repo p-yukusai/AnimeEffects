@@ -36,8 +36,8 @@ public:
     bool cbCopyHasChanged();
     bool keyDelayHasChanged();
     QString theme();
-    double accentHue();
-    bool accentHueHasChanged();
+    theme::AccentColor accent();
+    bool accentHasChanged();
     static QString getFFmpeg();
     static bool ffmpegCheck(const QString& ffmpeg, GeneralSettingDialog* generalSettingsDialog);
     static void ffmpegCheckFailed(GeneralSettingDialog* aDialog);
@@ -88,7 +88,7 @@ private:
     int mInitialTimeFormatIndex;
     QComboBox* mTimeFormatBox;
 
-    double mInitialAccentHue;
+    theme::AccentColor mInitialAccent;
     QButtonGroup* mAccentGroup;
     QString mInitialThemeKey;
     QButtonGroup* mThemeGroup;

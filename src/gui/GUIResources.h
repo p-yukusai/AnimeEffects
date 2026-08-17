@@ -29,8 +29,8 @@ public:
 
     QStringList themeList();
     void setTheme(const QString& aThemeId);
-    void setAccentHue(double aHue);
-    double accentHue() const { return mHue; }
+    void setAccent(theme::AccentColor aAccent);
+    theme::AccentColor accent() const { return mAccent; }
 
     // signals
     util::Signaler<void(theme::Theme&)> onThemeChanged;
@@ -51,7 +51,7 @@ private:
 
     QString mResourceDir;
     QString mIconDir;  // runtime-tinted scratch dir
-    double mHue;
+    theme::AccentColor mAccent;
     IconMap mIconMap;
     QPalette palette;
 

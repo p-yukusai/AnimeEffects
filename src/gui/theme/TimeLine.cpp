@@ -13,7 +13,6 @@ void TimeLine::reset() {
     // Read the cached theme tokens, activated by GUIResources before any
     // timeline is built.
     const Colors c = Colors::current();
-    const bool dark = c.isDark;
 
     mHeaderContentColor = c.text;
     // the ruler is part of the timeline surface: base, not elevated
@@ -26,10 +25,9 @@ void TimeLine::reset() {
     mTrackColor = c.base;
     mTrackEdgeColor = c.hairline;
     mTrackTextColor = c.text;
-    // selected track: brand selection hue at low elevation; the tint alpha
-    // differs by theme (dark stays subtle, light keeps its stronger fill)
+    // selected track: the brand selection fill from the tokens (fixed alpha;
+    // theme differences live in the Tailwind columns, not per-widget)
     mTrackSelectColor = c.selection;
-    mTrackSelectColor.setAlpha(dark ? 102 : 180);
     mTrackSeperatorColor = c.hairlineHover;
     shade();
 }
