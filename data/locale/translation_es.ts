@@ -375,8 +375,8 @@
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="257"/>
-        <source>Add new resource</source>
-        <translation>Añadir nuevo recurso</translation>
+        <source>Add new asset</source>
+        <translation>Añadir nuevo activo</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="635"/>
@@ -390,13 +390,13 @@
     </message>
     <message>
         <location filename="../../src/gui/ResourceTreeWidget.cpp" line="225"/>
-        <source>Update resource file path</source>
-        <translation>Actualizar ruta del archivo de recurso</translation>
+        <source>Update asset file path</source>
+        <translation>Actualizar ruta del archivo de activo</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceTreeWidget.cpp" line="279"/>
-        <source>Rename resource</source>
-        <translation>Renombrar recurso</translation>
+        <source>Rename asset</source>
+        <translation>Renombrar activo</translation>
     </message>
     <message>
         <location filename="../../src/gui/TargetWidget.cpp" line="133"/>
@@ -1223,23 +1223,18 @@
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="28"/>
-        <source>Loop animation :</source>
-        <translation>Reproducir en bucle :</translation>
+        <source>Loop animation</source>
+        <translation>Reproducir en bucle</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="36"/>
-        <source>Maximum frame count :</source>
-        <translation>Número máximo de fotogramas:</translation>
+        <source>Maximum frame count</source>
+        <translation>Número máximo de fotogramas</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
-        <source>Frames per second :</source>
-        <translation>Fotogramas por segundo :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
+        <source>Frames per second</source>
+        <translation>Fotogramas por segundo</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="56"/>
@@ -1261,8 +1256,8 @@
     <name>gui::ExportDialog</name>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="35"/>
-        <source>Export Animation...</source>
-        <translation>Exportar Animación...</translation>
+        <source>Export Animation</source>
+        <translation>Exportar Animación</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="70"/>
@@ -1288,33 +1283,33 @@
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="134"/>
-        <source>Image width :</source>
-        <translation>Anchura de la imagen:</translation>
+        <source>Image width</source>
+        <translation>Anchura de la imagen</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="135"/>
-        <source>Image height :</source>
-        <translation>Image height :</translation>
+        <source>Image height</source>
+        <translation>Image height</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="136"/>
-        <source>Fix aspect ratio :</source>
-        <translation>Fijar la relación de aspecto:</translation>
+        <source>Fix aspect ratio</source>
+        <translation>Fijar la relación de aspecto</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="171"/>
-        <source>Initial frame :</source>
-        <translation>Initial frame :</translation>
+        <source>Initial frame</source>
+        <translation>Initial frame</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="172"/>
-        <source>Last frame :</source>
-        <translation>Last frame :</translation>
+        <source>Last frame</source>
+        <translation>Last frame</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="183"/>
-        <source>FPS :</source>
-        <translation>FPS:</translation>
+        <source>FPS</source>
+        <translation>FPS</translation>
     </message>
 </context>
 <context>
@@ -1330,13 +1325,13 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="314"/>
-        <source>Default keyframe easing :</source>
-        <translation>Aceleración de fotogramas clave por defecto :</translation>
+        <source>Default keyframe easing</source>
+        <translation>Aceleración de fotogramas clave por defecto</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="321"/>
-        <source>Default keyframe range :</source>
-        <translation>Rango de fotogramas clave por defecto :</translation>
+        <source>Default keyframe range</source>
+        <translation>Rango de fotogramas clave por defecto</translation>
     </message>
     <message>
         <source>Timeline format :</source>
@@ -1344,13 +1339,13 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="307"/>
-        <source>Language (needs restart) :</source>
-        <translation>Idioma (necesita reiniciar) :</translation>
+        <source>Language (needs restart)</source>
+        <translation>Idioma (necesita reiniciar)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="328"/>
-        <source>Timeline format (needs restart) :</source>
-        <translation>Formato de cronología (necesita reiniciar) :</translation>
+        <source>Timeline format (needs restart)</source>
+        <translation>Formato de cronología (necesita reiniciar)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
@@ -1369,53 +1364,53 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="359"/>
-        <source>Theme :</source>
-        <translation>Tema :</translation>
+        <source>Theme</source>
+        <translation>Tema</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
-        <source>Accent color :</source>
-        <translation>Color de acento :</translation>
+        <source>Accent color</source>
+        <translation>Color de acento</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="396"/>
-        <source>Automatically save your project : </source>
-        <translation>Guarda automáticamente tu proyecto : </translation>
+        <source>Automatically save your project</source>
+        <translation>Guarda automáticamente tu proyecto</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="400"/>
-        <source>Time (in minutes) between autosaves : </source>
-        <translation>Tiempo (en minutos) entre autoguardados: </translation>
+        <source>Time (in minutes) between autosaves</source>
+        <translation>Tiempo (en minutos) entre autoguardados</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="408"/>
-        <source>Show mesh when selecting FFD : </source>
-        <translation>Mostrar malla al seleccionar FFD : </translation>
+        <source>Show mesh when selecting FFD</source>
+        <translation>Mostrar malla al seleccionar FFD</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
-        <source>On copy send keys to the clipboard : </source>
-        <translation>Al copiar envía las claves al portapapeles : </translation>
+        <source>On copy send keys to the clipboard</source>
+        <translation>Al copiar envía las claves al portapapeles</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
-        <source>Always check for FFmpeg on export : </source>
-        <translation>Comprobar siempre FFmpeg al exportar : </translation>
+        <source>Always check for FFmpeg on export</source>
+        <translation>Comprobar siempre FFmpeg al exportar</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="420"/>
-        <source>Enforce ID check on asset download : </source>
-        <translation>Comprobar ID en descarga de activos: </translation>
+        <source>Enforce ID check on asset download</source>
+        <translation>Comprobar ID en descarga de activos</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="424"/>
-        <source>Ignore export warnings :</source>
-        <translation>Ignorar advertencias de exportación :</translation>
+        <source>Ignore export warnings</source>
+        <translation>Ignorar advertencias de exportación</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="428"/>
-        <source>Allow donation menu : </source>
-        <translation>Permitir menú de donaciones : </translation>
+        <source>Allow donation menu</source>
+        <translation>Permitir menú de donaciones</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="432"/>
@@ -1447,8 +1442,8 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="449"/>
-        <source>Global keybind delay (ms) : </source>
-        <translation>Retraso global de combinación de teclas (ms) : </translation>
+        <source>Global keybind delay (ms)</source>
+        <translation>Retraso global de combinación de teclas (ms)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="451"/>
@@ -1679,37 +1674,27 @@ Comprobar generación de paletas FFmpeg ...</translation>
 <context>
     <name>gui::GifExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="257"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="296"/>
-        <source>Optimize palette :</source>
-        <translation>Optimizar paleta :</translation>
+        <source>Optimize palette</source>
+        <translation>Optimizar paleta</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="297"/>
-        <source>Relay bit rate (Kbps) :</source>
-        <translation>Tasa de bits de relé (Kbps) :</translation>
+        <source>Relay bit rate (Kbps)</source>
+        <translation>Tasa de bits de relé (Kbps)</translation>
     </message>
 </context>
 <context>
     <name>gui::ImageExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="200"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="223"/>
-        <source>Prefix name :</source>
-        <translation>Nombre del prefijo :</translation>
+        <source>Prefix name</source>
+        <translation>Nombre del prefijo</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="236"/>
-        <source>Quality :</source>
-        <translation>Calidad :</translation>
+        <source>Quality</source>
+        <translation>Calidad</translation>
     </message>
 </context>
 <context>
@@ -1893,8 +1878,8 @@ Comprobar generación de paletas FFmpeg ...</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="151"/>
-        <source>No other projects...</source>
-        <translation>No hay otros proyectos...</translation>
+        <source>No other projects</source>
+        <translation>No hay otros proyectos</translation>
     </message>
     <message>
         <source>Save Project</source>
@@ -1923,8 +1908,8 @@ Comprobar generación de paletas FFmpeg ...</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="209"/>
-        <source>Save project as...</source>
-        <translation>Guardar proyecto como...</translation>
+        <source>Save project as</source>
+        <translation>Guardar proyecto como</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="210"/>
@@ -1933,8 +1918,8 @@ Comprobar generación de paletas FFmpeg ...</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="211"/>
-        <source>Export project as...</source>
-        <translation>Exportar proyecto como...</translation>
+        <source>Export project as</source>
+        <translation>Exportar proyecto como</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="212"/>
@@ -1964,8 +1949,8 @@ Comprobar generación de paletas FFmpeg ...</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="235"/>
-        <source>Quickly export as...</source>
-        <translation>Exportar rápidamente como...</translation>
+        <source>Quickly export as</source>
+        <translation>Exportar rápidamente como</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="238"/>
@@ -2013,39 +1998,14 @@ Comprobar generación de paletas FFmpeg ...</translation>
         <translation>Rehacer</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="299"/>
-        <source>Project attributes</source>
-        <translation>Atributos del proyecto</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="301"/>
-        <source>Canvas size</source>
-        <translation>Tamaño del lienzo</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="302"/>
-        <source>Maximum frame count</source>
-        <translation>Número máximo de fotogramas</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="303"/>
-        <source>Loop animation</source>
-        <translation>Reproducir en bucle</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="304"/>
-        <source>Frames per second</source>
-        <translation>Fotogramas por segundo</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="305"/>
-        <source>Resources</source>
-        <translation>Recursos</translation>
+        <source>Assets</source>
+        <translation>Activos</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="326"/>
-        <source>Options</source>
-        <translation>Opciones</translation>
+        <source>Preferences</source>
+        <translation>Preferencias</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="328"/>
@@ -2222,7 +2182,17 @@ Si olvidamos incluirte, avísanos o abre un PR.</translation>
         <source>Donate</source>
         <translation>Donar</translation>
     </message>
-</context>
+
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Project settings</source>
+        <translation>Configuración del proyecto</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>View</source>
+        <translation>Ver</translation>
+    </message></context>
 <context>
     <name>gui::MainWindow</name>
     <message>
@@ -2502,23 +2472,18 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="26"/>
-        <source>Inverse canvas scrolling :</source>
-        <translation>Desplazamiento del lienzo inverso:</translation>
+        <source>Inverse canvas scrolling</source>
+        <translation>Desplazamiento del lienzo inverso</translation>
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="30"/>
-        <source>Inverse timeline scrolling :</source>
-        <translation>Desplazamiento de la línea de tiempo inversa:</translation>
+        <source>Inverse timeline scrolling</source>
+        <translation>Desplazamiento de la línea de tiempo inversa</translation>
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="34"/>
-        <source>Middle mouse moves canvas :</source>
-        <translation>El botón central del ratón mueve el lienzo:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MouseSettingDialog.cpp" line="37"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
+        <source>Middle mouse moves canvas</source>
+        <translation>El botón central del ratón mueve el lienzo</translation>
     </message>
 </context>
 <context>
@@ -2535,38 +2500,33 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="56"/>
-        <source>Initial resource :</source>
-        <translation>Recurso inicial:</translation>
+        <source>Initial asset</source>
+        <translation>Activo inicial</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="67"/>
-        <source>Maximum frame count :</source>
-        <translation>Número máximo de fotogramas:</translation>
+        <source>Maximum frame count</source>
+        <translation>Número máximo de fotogramas</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="77"/>
-        <source>Frames per second :</source>
-        <translation>Fotogramas por segundo :</translation>
+        <source>Frames per second</source>
+        <translation>Fotogramas por segundo</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="109"/>
-        <source>Specify canvas size :</source>
-        <translation>Especifique el tamaño del lienzo:</translation>
+        <source>Specify canvas size</source>
+        <translation>Especifique el tamaño del lienzo</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="110"/>
-        <source>Canvas width :</source>
-        <translation>Ancho del lienzo:</translation>
+        <source>Canvas width</source>
+        <translation>Ancho del lienzo</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="111"/>
-        <source>Canvas height :</source>
-        <translation>Altura del lienzo:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="114"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
+        <source>Canvas height</source>
+        <translation>Altura del lienzo</translation>
     </message>
 </context>
 <context>
@@ -2579,8 +2539,8 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="116"/>
-        <source>Add missing resources</source>
-        <translation>Añadir recursos faltantes</translation>
+        <source>Add missing assets</source>
+        <translation>Añadir activos faltantes</translation>
     </message>
     <message>
         <source>Add new PSD</source>
@@ -2588,8 +2548,8 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="119"/>
-        <source>Add new resources</source>
-        <translation>Añadir nuevos recursos</translation>
+        <source>Add new assets</source>
+        <translation>Añadir nuevos activos</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="122"/>
@@ -2793,16 +2753,6 @@ El registro está disponible a continuación.</translation>
         <source>Set canvas size</source>
         <translation>Establecer tamaño del lienzo</translation>
     </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="713"/>
-        <source>Size :</source>
-        <translation>Tamaño:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="715"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
-    </message>
 </context>
 <context>
     <name>gui::ProjectFPSSettingDialog</name>
@@ -2810,16 +2760,6 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/MainMenuBar.cpp" line="937"/>
         <source>Set FPS</source>
         <translation>Establecer FPS</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="957"/>
-        <source>Frames per second :</source>
-        <translation>Fotogramas por segundo :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="959"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
     </message>
 </context>
 <context>
@@ -2829,16 +2769,6 @@ El registro está disponible a continuación.</translation>
         <source>Set loop</source>
         <translation>Fijar ciclo</translation>
     </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="880"/>
-        <source>Loop animation :</source>
-        <translation>Reproducir en bucle :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="882"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
-    </message>
 </context>
 <context>
     <name>gui::ProjectMaxFrameSettingDialog</name>
@@ -2846,16 +2776,6 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/MainMenuBar.cpp" line="771"/>
         <source>Set max frames</source>
         <translation>Definir fotogramas máximos</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="786"/>
-        <source>Max frame count :</source>
-        <translation>Número máximo de fotogramas :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="788"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="813"/>
@@ -2887,8 +2807,8 @@ El registro está disponible a continuación.</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="141"/>
-        <source>Save As...</source>
-        <translation>Guardar como...</translation>
+        <source>Save As</source>
+        <translation>Guardar como</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="143"/>
@@ -2915,13 +2835,13 @@ El registro está disponible a continuación.</translation>
     <name>gui::ResourceDialog</name>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="16"/>
-        <source>Project resources</source>
-        <translation>Recursos del proyecto</translation>
+        <source>Project assets</source>
+        <translation>Activos del proyecto</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="22"/>
-        <source>Add Resources</source>
-        <translation>Añadir Recursos</translation>
+        <source>Add Assets</source>
+        <translation>Añadir activos</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="80"/>
@@ -3037,8 +2957,8 @@ El registro está disponible a continuación.</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="138"/>
-        <source>Change key(s) easing to...</source>
-        <translation>Cambiar la aceleración de la(s) clave(s) a...</translation>
+        <source>Change key(s) easing to</source>
+        <translation>Cambiar la aceleración de la(s) clave(s) a</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="140"/>
@@ -3102,8 +3022,8 @@ El registro está disponible a continuación.</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="165"/>
-        <source>Change key(s) range to...</source>
-        <translation>Cambiar rango de clave(s) a...</translation>
+        <source>Change key(s) range to</source>
+        <translation>Cambiar rango de clave(s) a</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="167"/>
@@ -3244,11 +3164,6 @@ El registro está disponible a continuación.</translation>
 <context>
     <name>gui::VideoExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="314"/>
-        <source>Parameters</source>
-        <translation>Parámetros</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="359"/>
         <source>This codec requires a dedicated GPU.</source>
         <translation>Este código requiere un GPU dedicado.</translation>
@@ -3265,23 +3180,23 @@ El registro está disponible a continuación.</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="440"/>
-        <source>Codec :</source>
-        <translation>Códec :</translation>
+        <source>Codec</source>
+        <translation>Códec</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="444"/>
-        <source>Color standard :</source>
-        <translation>Color estándar:</translation>
+        <source>Color standard</source>
+        <translation>Color estándar</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="446"/>
-        <source>Pixel format :</source>
-        <translation>Pixel format :</translation>
+        <source>Pixel format</source>
+        <translation>Pixel format</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="461"/>
-        <source>Bit rate (Kbps) :</source>
-        <translation>Tasa de bits (Kbps) :</translation>
+        <source>Bit rate (Kbps)</source>
+        <translation>Tasa de bits (Kbps)</translation>
     </message>
 </context>
 <context>
@@ -3294,33 +3209,33 @@ El registro está disponible a continuación.</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>
-        <source>Easing :</source>
-        <translation>Easing :</translation>
+        <source>Easing</source>
+        <translation>Easing</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="367"/>
-        <source>Amount :</source>
-        <translation>Cantidad :</translation>
+        <source>Amount</source>
+        <translation>Cantidad</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="368"/>
-        <source>Directional: </source>
-        <translation>Direccional:</translation>
+        <source>Directional</source>
+        <translation>Direccional</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="369"/>
-        <source>Blur X :</source>
-        <translation>Desenfoque X :</translation>
+        <source>Blur X</source>
+        <translation>Desenfoque X</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="370"/>
-        <source>Blur Y :</source>
-        <translation>Desenfoque Y :</translation>
+        <source>Blur Y</source>
+        <translation>Desenfoque Y</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="371"/>
-        <source>Angle :</source>
-        <translation>Ángulo :</translation>
+        <source>Angle</source>
+        <translation>Ángulo</translation>
     </message>
 </context>
 <context>
@@ -3386,8 +3301,8 @@ El registro está disponible a continuación.</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="81"/>
-        <source>Resource</source>
-        <translation>Recurso:</translation>
+        <source>Asset</source>
+        <translation>Activo</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="89"/>
@@ -3503,8 +3418,8 @@ El registro está disponible a continuación.</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="622"/>
-        <source>Resource</source>
-        <translation>Recurso:</translation>
+        <source>Asset</source>
+        <translation>Activo</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="628"/>
@@ -4240,4 +4155,32 @@ Save anyway?</source>
         <translation>Personalizado</translation>
     </message>
 </context>
+<context>
+    <name>gui::ProjectSettingDialog</name>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Project settings</source>
+        <translation>Configuración del proyecto</translation>
+    </message>
+
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Canvas size</source>
+        <translation>Tamaño del lienzo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Max frame count</source>
+        <translation>Número máximo de fotogramas</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Loop animation</source>
+        <translation>Reproducir en bucle</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Frames per second</source>
+        <translation>Fotogramas por segundo</translation>
+    </message></context>
 </TS>
