@@ -29,10 +29,10 @@ public:
     enum Range { Range_In, Range_Out, Range_InOut, Range_TERM};
 
     struct CubicBezier {
-        float x1 = 1.0f;
-        float y1 = 0.0f;
-        float x2 = 0.0f;
-        float y2 = 1.0f;
+        float x1 = 0.0f;
+        float y1 = 1.0f;
+        float x2 = 1.0f;
+        float y2 = 0.0f;
     };
 
     struct Param {
@@ -41,7 +41,8 @@ public:
             type(Type_Linear), range(Range_InOut), weight(1.0f) {}
         bool isValidParam() const;
         bool operator==(const Param& aRhs) const;
-        inline bool operator!=(const Param& aRhs) const { return !(*this == aRhs); }
+
+        bool operator!=(const Param& aRhs) const { return !(*this == aRhs); }
         mutable Type type;
         Range range;
         float weight;

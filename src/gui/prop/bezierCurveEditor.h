@@ -37,14 +37,16 @@ public:
 
     //Functions
 private:
-    qreal distance(QPointF a, QPointF b) {
-        QPointF diff = a - b;
+    static qreal distance(const QPointF a, const QPointF b) {
+        const QPointF diff = a - b;
         return sqrt(diff.x()*diff.x() + diff.y()*diff.y());
     }
 
 public:
     const int NUM_POINTS = 4;
+    const qreal POINT_TOLERANCE = 5.0;
     const qreal POINT_RADIUS = 6.0;
+    const int MAGIC_BORDER = 50;
 
     QPointF         m_points[4];
     QPen            m_pens[4];
@@ -52,6 +54,7 @@ public:
     QColor          m_colors[4];
 
     QPen        m_curvePen;
+    QPen        m_borderPen;
 
     bool        m_dragging;
     int         m_selectedPoint{};

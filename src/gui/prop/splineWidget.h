@@ -72,9 +72,9 @@ public:
         bezier = cubicBezier;
         if (splineWidget->objectName().isEmpty())
             splineWidget->setObjectName("splineWidget");
-        splineWidget->resize(400, 400);
-        splineWidget->setMinimumHeight(200);
-        splineWidget->setMinimumWidth(200);
+        splineWidget->resize(600, 600);
+        splineWidget->setMinimumHeight(250);
+        splineWidget->setMinimumWidth(250);
         gridLayout_2 = new QGridLayout(splineWidget);
         gridLayout_2->setObjectName("gridLayout_2");
         x1_spin = new QDoubleSpinBox(splineWidget);
@@ -107,6 +107,7 @@ public:
 
         spins = {x1_spin, y1_spin, x2_spin, y2_spin};
         m_editor = new BezierCurveEditor(splineWidget, cubicBezier, spins, &progress);
+        m_editor->adjustSize();
         for (auto spin : spins) {
             // dot separator, matching the property fields (see prop_Items)
             spin->setLocale(QLocale::c());
@@ -126,11 +127,11 @@ public:
                 const int width = m_editor->width();
                 const int height = m_editor->height();
                 const QPointF points1 = {
-                    denormalize(cubicBezier->x1, 20, width - 20), 
-                    denormalize(invert(0, 1, cubicBezier->y1), 20, height -20)};
+                    denormalize(cubicBezier->x1, m_editor->MAGIC_BORDER, width - m_editor->MAGIC_BORDER), 
+                    denormalize(invert(0, 1, cubicBezier->y1), m_editor->MAGIC_BORDER, height -m_editor->MAGIC_BORDER)};
                 QPointF points2 = {
-                    denormalize(cubicBezier->x2, 20, width - 20),
-                    denormalize(invert(0, 1, cubicBezier->y2), 20, height - 20)};
+                    denormalize(cubicBezier->x2, m_editor->MAGIC_BORDER, width - m_editor->MAGIC_BORDER),
+                    denormalize(invert(0, 1, cubicBezier->y2), m_editor->MAGIC_BORDER, height - m_editor->MAGIC_BORDER)};
                 m_editor->m_points[1] = points1;
                 m_editor->m_points[2] = points2;
                 m_editor->blockSignals(false);
@@ -144,7 +145,7 @@ public:
         sizePolicy.setHorizontalStretch(0);
         sizePolicy.setVerticalStretch(0);
 
-        gridLayout_2->addWidget(m_editor, 0, 0, 1, 6);
+        gridLayout_2->addWidget(m_editor, 0, 0, 1, gridLayout_2->columnCount());
 
         // Copy
         toolButton = new QToolButton(splineWidget);
@@ -179,11 +180,11 @@ public:
                 const int width = m_editor->width();
                 const int height = m_editor->height();
                 const QPointF points1 = {
-                    denormalize(bezier->x1, 20, width - 20),
-                    denormalize(invert(0, 1, bezier->y1), 20, height -20)};
+                    denormalize(bezier->x1, m_editor->MAGIC_BORDER, width - m_editor->MAGIC_BORDER),
+                    denormalize(invert(0, 1, bezier->y1), m_editor->MAGIC_BORDER, height -m_editor->MAGIC_BORDER)};
                 const QPointF points2 = {
-                    denormalize(bezier->x2, 20, width - 20),
-                    denormalize(invert(0, 1, bezier->y2), 20, height - 20)};
+                    denormalize(bezier->x2, m_editor->MAGIC_BORDER, width - m_editor->MAGIC_BORDER),
+                    denormalize(invert(0, 1, bezier->y2), m_editor->MAGIC_BORDER, height - m_editor->MAGIC_BORDER)};
                 m_editor->m_points[1] = points1;
                 m_editor->m_points[2] = points2;
                 m_editor->blockSignals(false);
@@ -207,10 +208,11 @@ public:
         progressBar->setValue(0);
         progressBar->setMinimum(0.0);
         progressBar->setMaximum(static_cast<int>(accuracy));
-        progressBar->setFormat("Preview");
+        progressBar->setTextVisible(false);
+        progressBar->setAlignment(Qt::AlignCenter);
         progressBar->setObjectName("progressBar");
 
-        gridLayout_2->addWidget(progressBar, 6, 0, 1, 6);
+        gridLayout_2->addWidget(progressBar, 6, 0, 1, gridLayout_2->columnCount());
 
         auto *timer = new QTimer(splineWidget);
         QTimer::connect(timer, &QTimer::timeout, [=] {
