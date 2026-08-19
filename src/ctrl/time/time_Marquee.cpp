@@ -39,19 +39,10 @@ namespace time {
         mActive = false;
     }
 
-    Hit Marquee::hitTest(const QPoint& aPoint) const {
-        // Fixed screen-space grab radius (px), independent of zoom. The key
-        // markers are ~6px across (the diamond's flat-to-flat and the ellipse's
-        // diameter); 12px doubles that, so a whole marker plus a generous margin
-        // is clickable. Erring large is deliberate: a false hit on the gate
-        // (accidentally grabbing a key when starting a marquee/deselect) is
-        // rarer than a false miss, since those gestures start well away from
-        // keys. The gate is a plain distance test: a key is selectable iff it
-        // is within the radius, and the nearest such key wins. Frame conversion
-        // below is only a pruning bound for the sorted key maps, never the
-        // tolerance itself.
-        constexpr int kHitRadius = 12;
-        const float radiusSq = static_cast<float>(kHitRadius * kHitRadius);
+    Hit Marquee::hitTest(const QPoint& aPoint, const float scaleFactor) const {
+        // Hit radius now takes a scale factor dependent on the key renderer
+        const float kHitRadius = 12 * scaleFactor;
+        const float radiusSq = kHitRadius * kHitRadius;
 
         // Frame window that is a superset of every key within the radius in X.
         // frame() rounds to nearest, so widen by one frame per side: a round at

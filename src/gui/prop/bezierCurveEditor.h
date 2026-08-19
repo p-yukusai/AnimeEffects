@@ -11,11 +11,11 @@ class BezierCurveEditor : public QWidget
 {
     Q_OBJECT
 public:
-    explicit BezierCurveEditor(QWidget *parent = nullptr, util::Easing::CubicBezier* cubicBezier = nullptr, QVector<QDoubleSpinBox*> spins = {}, int* pro = nullptr);
+    explicit BezierCurveEditor(QWidget *parent = nullptr, util::Easing::CubicBezier* cubicBezier = nullptr, QVector<QDoubleSpinBox*> spins = {}, float* pro = nullptr);
     ~BezierCurveEditor();
     util::Easing::CubicBezier* bezier;
     QVector<QDoubleSpinBox*> spinBoxes;
-    int* progress;
+    float* progress;
 
     void paintEvent(QPaintEvent *);
     void resizeEvent(QResizeEvent *);
@@ -46,7 +46,9 @@ public:
     const int NUM_POINTS = 4;
     const qreal POINT_TOLERANCE = 5.0;
     const qreal POINT_RADIUS = 6.0;
-    const int MAGIC_BORDER = 50;
+    const int DESIRED_RANGE = 50;
+    const int MAGIC_BORDER_Y = static_cast<int>(2.44 * DESIRED_RANGE);
+    const int MAGIC_BORDER_X = static_cast<int>(POINT_RADIUS);
 
     QPointF         m_points[4];
     QPen            m_pens[4];

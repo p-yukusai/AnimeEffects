@@ -165,7 +165,7 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
             flags |= UpdateFlag_ModView;
             flags |= UpdateFlag_ModFrame;
         } else {
-            const time::Hit hit = mMarquee.hitTest(worldPoint);
+            const time::Hit hit = mMarquee.hitTest(worldPoint, radiiFactor);
 
             if (hit.isValid()) {
                 // clicked a key: standard creative-tool selection conventions.
@@ -333,7 +333,7 @@ void TimeLineEditor::applyMarquee() {
 }
 
 bool TimeLineEditor::selectKeysAt(TimeLineEvent& aEvent, const QPoint& aPos) {
-    const time::Hit hit = mMarquee.hitTest(aPos);
+    const time::Hit hit = mMarquee.hitTest(aPos, radiiFactor);
     if (!hit.isValid())
         return false;
 
@@ -351,13 +351,14 @@ bool TimeLineEditor::selectKeysAt(TimeLineEvent& aEvent, const QPoint& aPos) {
     return true;
 }
 
-bool TimeLineEditor::retrieveSelectionTargets(TimeLineEvent& aEvent) {
+bool TimeLineEditor::retrieveSelectionTargets(TimeLineEvent& aEvent) const {
     if (mSelection.empty())
         return false;
     mSelection.assign(aEvent);
     return true;
 }
-bool isKeyJsonValid(QJsonObject json) {
+
+static bool isKeyJsonValid(QJsonObject json) {
     if (json.contains("TargetsSize") && json["TargetsSize"] != 0 && json.contains("Keys") &&
         json.value("Keys").toArray().size() != 0) {
         return true;
@@ -365,11 +366,11 @@ bool isKeyJsonValid(QJsonObject json) {
     return false;
 }
 
-QVector2D objToVec(QJsonObject obj, const QString& varName) {
+static QVector2D objToVec(QJsonObject obj, const QString& varName) {
     return {static_cast<float>(obj[varName + "X"].toDouble()), static_cast<float>(obj[varName + "Y"].toDouble())};
 }
 
-util::Easing::Param objToEasing(QJsonObject obj) {
+static util::Easing::Param objToEasing(QJsonObject obj) {
     util::Easing::Param easing;
     easing.range = util::Easing::rangeToEnum(obj["aRange"].toString());
     easing.type = util::Easing::easingToEnum(obj["eType"].toString());
@@ -378,7 +379,7 @@ util::Easing::Param objToEasing(QJsonObject obj) {
     return easing;
 }
 
-TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project, bool isFolder, ObjectNode* aOwner) {
+static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project, bool isFolder, ObjectNode* aOwner) {
     TimeKeyType type = TimeLine::getTimeKeyType(obj["Type"].toString());
     // We're losing precision for float casts from json strings because
     // the cast rounds at the third decimal for some godforsaken reason.

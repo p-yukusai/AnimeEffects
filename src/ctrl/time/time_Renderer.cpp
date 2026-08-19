@@ -237,8 +237,6 @@ namespace time {
     }
 
     void Renderer::drawKeys(const ObjectNode* aNode, const TimeLineRow& aRow) {
-        const QBrush kBrushKeyBody1(theme::Colors::current().textMuted);
-        const QBrush kBrushKeyBody2(theme::Colors::current().text);
         const QBrush kBrushKeyEdge(theme::Colors::current().outline);
         QPointF holder[4] = {QPointF(0.0, -4.2), QPointF(4.2, 0.0), QPointF(0.0, 4.2), QPointF(-4.2, 0.0)};
 
@@ -263,10 +261,65 @@ namespace time {
                 auto itr = map.lowerBound(mRange.min());
                 while (itr != map.end() && itr.key() <= mRange.max()) {
                     const bool isFocused = itr.value()->isFocused();
+                    constexpr int lighter_val_selected = 150;
+                    QBrush kBrushKeyBody1(theme::Colors::current().baseKey.lighter(lighter_val_selected));
+                    QBrush kBrushKeyBody2(theme::Colors::current().baseKey);
+                    switch (itr.value()->type()) {
+                        case TimeKeyType_Move:
+                            kBrushKeyBody1 = theme::Colors::current().moveKey;
+                            kBrushKeyBody2 = theme::Colors::current().moveKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Rotate:
+                            kBrushKeyBody1 = theme::Colors::current().rotateKey;
+                            kBrushKeyBody2 = theme::Colors::current().rotateKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Scale:
+                            kBrushKeyBody1 = theme::Colors::current().scaleKey;
+                            kBrushKeyBody2 = theme::Colors::current().scaleKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Depth:
+                            kBrushKeyBody1 = theme::Colors::current().depthKey;
+                            kBrushKeyBody2 = theme::Colors::current().depthKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Opa:
+                            kBrushKeyBody1 = theme::Colors::current().opaKey;
+                            kBrushKeyBody2 = theme::Colors::current().opaKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Bone:
+                            kBrushKeyBody1 = theme::Colors::current().boneKey;
+                            kBrushKeyBody2 = theme::Colors::current().boneKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Pose:
+                            kBrushKeyBody1 = theme::Colors::current().poseKey;
+                            kBrushKeyBody2 = theme::Colors::current().poseKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Mesh:
+                            kBrushKeyBody1 = theme::Colors::current().meshKey;
+                            kBrushKeyBody2 = theme::Colors::current().meshKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_FFD:
+                            kBrushKeyBody1 = theme::Colors::current().FFDKey;
+                            kBrushKeyBody2 = theme::Colors::current().FFDKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Image:
+                            kBrushKeyBody1 = theme::Colors::current().imageKey;
+                            kBrushKeyBody2 = theme::Colors::current().imageKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_HSV:
+                            kBrushKeyBody1 = theme::Colors::current().HSVKey;
+                            kBrushKeyBody2 = theme::Colors::current().HSVKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_Blur:
+                            kBrushKeyBody1 = theme::Colors::current().blurKey;
+                            kBrushKeyBody2 = theme::Colors::current().blurKey.lighter(lighter_val_selected);
+                            break;
+                        case TimeKeyType_TERM:
+                            break;
+                    }
                     mPainter.setBrush(isFocused ? kBrushKeyBody2 : kBrushKeyBody1);
 
                     auto attr = mScale->attribute(itr.key());
-                    QPointF pos(left + attr.grid.x() + 0.5, static_cast<double>(height + 0.5f));
+                    QPointF pos(left + attr.grid.x() + 0.5, height + 0.5f);
 
                     if (isSlimmed) {
                         /*
@@ -278,16 +331,16 @@ namespace time {
                         */
                         // mPainter.drawEllipse(pos, 3.0f, 1.5f);
                         const QPointF poly[] = {
-                            pos + QPointF(-3.0, -2.0),
-                            pos + QPointF(3.0, -2.0),
-                            pos + QPointF(3.0, 2.0),
-                            pos + QPointF(-3.0, 2.0)};
+                            pos + QPointF(keyRadius * -1, keyRadiusSlim * -1),
+                            pos + QPointF(keyRadius, keyRadiusSlim * -1),
+                            pos + QPointF(keyRadius, keyRadiusSlim),
+                            pos + QPointF(keyRadius * -1, keyRadiusSlim)};
                         mPainter.drawConvexPolygon(poly, 4);
                     } else if (itr.value()->canHoldChild()) {
                         const QPointF poly[4] = {pos + holder[0], pos + holder[1], pos + holder[2], pos + holder[3]};
                         mPainter.drawConvexPolygon(poly, 4);
                     } else {
-                        mPainter.drawEllipse(pos, 3.0, 3.0);
+                        mPainter.drawEllipse(pos, keyRadius, keyRadius);
                     }
 
                     ++itr;
@@ -297,7 +350,7 @@ namespace time {
     }
 
     void Renderer::drawChildKeys(const ObjectNode* aNode, const QPoint& aPos) {
-        const QBrush kBrushKey(theme::Colors::current().textMuted);
+        const QBrush kBrushKey(theme::Colors::current().baseKey);
 
         mPainter.setPen(QPen(kBrushKey, 1));
         mPainter.setBrush(kBrushKey);
@@ -319,8 +372,8 @@ namespace time {
                         auto attr = mScale->attribute(itr.key());
                         QPointF pos[3];
                         pos[0] = QPointF(aPos.x() + attr.grid.x() + 0.5, aPos.y());
-                        pos[1] = pos[0] + QPointF(3, -5);
-                        pos[2] = pos[0] + QPointF(-3, -5);
+                        pos[1] = pos[0] + QPointF(keyRadiusChild, keyRadiusChildPoly * -1);
+                        pos[2] = pos[0] + QPointF(keyRadiusChild * -1, keyRadiusChildPoly * -1);
                         mPainter.drawConvexPolygon(pos, 3);
                         ++itr;
                     }

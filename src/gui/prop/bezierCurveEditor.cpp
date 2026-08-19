@@ -7,18 +7,18 @@
 #include <utility>
 #include "gui/theme/Colors.h"
 
-float normalize(const float val, const int min, const int max) {
+static float normalize(const float val, const int min, const int max) {
     return (val - static_cast<float>(min)) / static_cast<float>(max - min);
 }
-float denormalize (const float var, const int min, const int max) {
+static float denormalize (const float var, const int min, const int max) {
     return var * static_cast<float>(max - min) + static_cast<float>(min);
 }
-float invert (const int min, const int max, const float value) {
+static float invert (const int min, const int max, const float value) {
     return static_cast<float>(max) - value + static_cast<float>(min);
 }
 
-BezierCurveEditor::BezierCurveEditor(QWidget *parent, util::Easing::CubicBezier* cubicBezier, QVector<QDoubleSpinBox*> spins, int* pro):
-    QWidget(parent), m_dragging(false), m_selectedPoint(0) {
+BezierCurveEditor::BezierCurveEditor(QWidget *parent, util::Easing::CubicBezier* cubicBezier, QVector<QDoubleSpinBox*> spins, float* pro):
+    QWidget(parent), m_dragging(false) {
     const theme::Colors c = theme::Colors::current();
     m_curvePen.setColor(c.text);
     m_curvePen.setWidth(2);
@@ -74,36 +74,35 @@ void BezierCurveEditor::mouseReleaseEvent(QMouseEvent *)
 
 void BezierCurveEditor::resizeEvent(QResizeEvent *)
 {
-    m_points[StartPoint]    = QPointF(MAGIC_BORDER, height() - MAGIC_BORDER);
-    const QPointF points1 = { denormalize(bezier->x1, MAGIC_BORDER, width() - MAGIC_BORDER), denormalize(invert(0, 1, bezier->y1), MAGIC_BORDER, height() - MAGIC_BORDER ) };
-    const QPointF points2 = { denormalize(bezier->x2, MAGIC_BORDER, width() - MAGIC_BORDER),denormalize(invert(0, 1, bezier->y2), MAGIC_BORDER, height() - MAGIC_BORDER) };
+    m_points[StartPoint]    = QPointF(MAGIC_BORDER_X, height() - MAGIC_BORDER_Y);
+    const QPointF points1 = { denormalize(bezier->x1, MAGIC_BORDER_X, width() - MAGIC_BORDER_X), denormalize(invert(0, 1, bezier->y1), MAGIC_BORDER_Y, height() - MAGIC_BORDER_Y ) };
+    const QPointF points2 = { denormalize(bezier->x2, MAGIC_BORDER_X, width() - MAGIC_BORDER_X),denormalize(invert(0, 1, bezier->y2), MAGIC_BORDER_Y, height() - MAGIC_BORDER_Y) };
     m_points[1] = points1;
     m_points[2] = points2;
-    m_points[EndPoint]      = QPointF(width() - MAGIC_BORDER, MAGIC_BORDER);
+    m_points[EndPoint] = QPointF(width() - MAGIC_BORDER_X, MAGIC_BORDER_Y);
 }
 
 void BezierCurveEditor::paintEvent(QPaintEvent *)
 {
     // Points are not meant to be moved for any reason as that would break the calculations
-    m_points[StartPoint]    = QPointF(MAGIC_BORDER, height() - MAGIC_BORDER);
-    m_points[EndPoint]      = QPointF(width() - MAGIC_BORDER, MAGIC_BORDER);
+    m_points[StartPoint]    = QPointF(MAGIC_BORDER_X, height() - MAGIC_BORDER_Y);
+    m_points[EndPoint]      = QPointF(width() - MAGIC_BORDER_X, MAGIC_BORDER_Y);
     // We clamp to not go outside the widget
-    constexpr auto clamp_min = static_cast<qreal>(0);
-    m_points[ControlPoint1].setX(std::clamp(m_points[ControlPoint1].x(), clamp_min, static_cast<qreal>(width())));
-    m_points[ControlPoint1].setY(std::clamp(m_points[ControlPoint1].y(), clamp_min, static_cast<qreal>(height())));
+    m_points[ControlPoint1].setX(std::clamp(m_points[ControlPoint1].x(), static_cast<qreal>(MAGIC_BORDER_X), static_cast<qreal>(width() - MAGIC_BORDER_X)));
+    m_points[ControlPoint1].setY(std::clamp(m_points[ControlPoint1].y(), POINT_RADIUS, static_cast<qreal>(height() - static_cast<int>(POINT_RADIUS))));
 
-    m_points[ControlPoint2].setX(std::clamp(m_points[ControlPoint2].x(), clamp_min, static_cast<qreal>(width())));
-    m_points[ControlPoint2].setY(std::clamp(m_points[ControlPoint2].y(), clamp_min, static_cast<qreal>(height())));
+    m_points[ControlPoint2].setX(std::clamp(m_points[ControlPoint2].x(), static_cast<qreal>(MAGIC_BORDER_X), static_cast<qreal>(width() - MAGIC_BORDER_X)));
+    m_points[ControlPoint2].setY(std::clamp(m_points[ControlPoint2].y(), POINT_RADIUS, static_cast<qreal>(height() - static_cast<int>(POINT_RADIUS))));
 
     // We normalize these because the points are not lower-left 0 and upper-right 1, also, we need to inverse the Y points
     // because the Y axis is inverted in the GUI
-    bezier->x1 = normalize(m_points[ControlPoint1].x(), MAGIC_BORDER, width() - MAGIC_BORDER);
+    bezier->x1 = normalize(m_points[ControlPoint1].x(), MAGIC_BORDER_X, width() - MAGIC_BORDER_X);
     const auto inverted_y1 = invert(0, height(), m_points[ControlPoint1].y());
-    bezier->y1 = normalize(inverted_y1, MAGIC_BORDER, height() - MAGIC_BORDER);
+    bezier->y1 = normalize(inverted_y1, MAGIC_BORDER_Y, height() - MAGIC_BORDER_Y);
 
-    bezier->x2 = normalize(m_points[ControlPoint2].x(), MAGIC_BORDER, width() -MAGIC_BORDER);
+    bezier->x2 = normalize(m_points[ControlPoint2].x(), MAGIC_BORDER_X, width() -MAGIC_BORDER_X);
     const auto inverted_y2 = invert(0, height(), m_points[ControlPoint2].y());
-    bezier->y2 = normalize(inverted_y2, MAGIC_BORDER, height() -MAGIC_BORDER);
+    bezier->y2 = normalize(inverted_y2, MAGIC_BORDER_Y, height() -MAGIC_BORDER_Y);
 
     if (!spinBoxes.empty() && spinBoxes.at(0)) {
         for (const auto box : spinBoxes) {
@@ -143,6 +142,7 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     }
 
     painter.setPen(m_borderPen);
-    painter.drawRect(MAGIC_BORDER, MAGIC_BORDER, width() - MAGIC_BORDER * 2, height() - MAGIC_BORDER * 2);
+    painter.drawLine(QLine{0, MAGIC_BORDER_Y, width(), MAGIC_BORDER_Y});
+    painter.drawLine(QLine{0, height() - MAGIC_BORDER_Y, width(), height() - MAGIC_BORDER_Y});
     painter.drawRect(0, 0, width(), height());
 }

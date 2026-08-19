@@ -42,7 +42,7 @@ public:
     QPushButton *cancel;
     QPushButton *apply;
     QProgressBar *progressBar;
-    int progress;
+    float progress;
     QVector<QDoubleSpinBox*> spins;
 
 
@@ -127,11 +127,11 @@ public:
                 const int width = m_editor->width();
                 const int height = m_editor->height();
                 const QPointF points1 = {
-                    denormalize(cubicBezier->x1, m_editor->MAGIC_BORDER, width - m_editor->MAGIC_BORDER), 
-                    denormalize(invert(0, 1, cubicBezier->y1), m_editor->MAGIC_BORDER, height -m_editor->MAGIC_BORDER)};
-                QPointF points2 = {
-                    denormalize(cubicBezier->x2, m_editor->MAGIC_BORDER, width - m_editor->MAGIC_BORDER),
-                    denormalize(invert(0, 1, cubicBezier->y2), m_editor->MAGIC_BORDER, height - m_editor->MAGIC_BORDER)};
+                    denormalize(cubicBezier->x1, m_editor->MAGIC_BORDER_X, width - m_editor->MAGIC_BORDER_X),
+                    denormalize(invert(0, 1, cubicBezier->y1), m_editor->MAGIC_BORDER_Y, height -m_editor->MAGIC_BORDER_Y)};
+                const QPointF points2 = {
+                    denormalize(cubicBezier->x2, m_editor->MAGIC_BORDER_X, width - m_editor->MAGIC_BORDER_X),
+                    denormalize(invert(0, 1, cubicBezier->y2), m_editor->MAGIC_BORDER_Y, height - m_editor->MAGIC_BORDER_Y)};
                 m_editor->m_points[1] = points1;
                 m_editor->m_points[2] = points2;
                 m_editor->blockSignals(false);
@@ -180,11 +180,11 @@ public:
                 const int width = m_editor->width();
                 const int height = m_editor->height();
                 const QPointF points1 = {
-                    denormalize(bezier->x1, m_editor->MAGIC_BORDER, width - m_editor->MAGIC_BORDER),
-                    denormalize(invert(0, 1, bezier->y1), m_editor->MAGIC_BORDER, height -m_editor->MAGIC_BORDER)};
+                    denormalize(bezier->x1, m_editor->MAGIC_BORDER_X, width - m_editor->MAGIC_BORDER_X),
+                    denormalize(invert(0, 1, bezier->y1), m_editor->MAGIC_BORDER_Y, height -m_editor->MAGIC_BORDER_Y)};
                 const QPointF points2 = {
-                    denormalize(bezier->x2, m_editor->MAGIC_BORDER, width - m_editor->MAGIC_BORDER),
-                    denormalize(invert(0, 1, bezier->y2), m_editor->MAGIC_BORDER, height - m_editor->MAGIC_BORDER)};
+                    denormalize(bezier->x2, m_editor->MAGIC_BORDER_X, width - m_editor->MAGIC_BORDER_X),
+                    denormalize(invert(0, 1, bezier->y2), m_editor->MAGIC_BORDER_Y, height - m_editor->MAGIC_BORDER_Y)};
                 m_editor->m_points[1] = points1;
                 m_editor->m_points[2] = points2;
                 m_editor->blockSignals(false);
@@ -200,10 +200,9 @@ public:
 
 
         gridLayout_2->addWidget(toolButton, 3, 0, 1, 1);
-
-        // Fuck it, we ball. These numbers are picked for increased smoothness and also to make this easier to code lol
-        constexpr float accuracy = 10000000.0f;
-        constexpr float progressAccuracy = 1000.0f;
+        // Approximation of bezier progress via Qt func
+        constexpr float accuracy = 100.f;
+        constexpr float progressAccuracy = 0.0009f;
         progressBar = new QProgressBar(splineWidget);
         progressBar->setValue(0);
         progressBar->setMinimum(0.0);
@@ -216,22 +215,23 @@ public:
 
         auto *timer = new QTimer(splineWidget);
         QTimer::connect(timer, &QTimer::timeout, [=] {
-            progress++;
+            progress += progressAccuracy;
             // The addition is for extra time so the animation is smoother
-            if (static_cast<float>(progress) >= progressAccuracy + 125) {
+            if (progress >= 1.25f) {
                 progress = 0;
             }
             /*qDebug("---");
             qDebug() << progress;*/
             QEasingCurve easing;
             easing.setType(QEasingCurve::BezierSpline);
-            easing.addCubicBezierSegment({
-                cubicBezier->x1, cubicBezier->x2},
-                {cubicBezier->y1, cubicBezier->y2},
+            easing.addCubicBezierSegment(
+                {cubicBezier->x1, cubicBezier->y1},
+                {cubicBezier->x2, cubicBezier->y2},
                 {1.0, 1.0}
                 );
-            const double easingProgress = easing.valueForProgress(static_cast<double>(progress) / progressAccuracy);
-            /*qDebug() << easingProgress;
+            const double easingProgress = easing.valueForProgress(progress);
+            /*qDebug("---");
+            qDebug() << easingProgress;
             qDebug("---");*/
             progressBar->setValue(static_cast<int>(easingProgress * accuracy));
         });

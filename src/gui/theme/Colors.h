@@ -115,6 +115,22 @@ struct Colors {
     QColor floaterBody;   // menu/combo popup panel: dark stays sunken, light
                           // flips to white (the proxy draws a shadow there)
     QColor floaterEdge;   // popup panel edge
+    // Per-key colors for easier identification.
+   // https://supercolorpalette.com/?scp=eJxl0sluwyAQBuB34fxHYjMMvnnjJaIc3EVJpbaRmuUS5d07BIwVRb7w4_lY7LmJd9Fub-JHtOJwugqIA4_m3_n7uD9eTpxP_N44bDSUgtmhgFSmo-4ayzVzDZPj-Cba89_lE-LKpdp6NBLGIMjdHVk6ZTovi8xhGkUBZGAJ1iKYCmiwg6cCcohNAUYFWIemQXAVdNRMbjlbDnFYAJfy8s4hhAoGG3qvC8ghxgVIWA3voeR6h9FPknwBOVTAS1sJoifQhziEsYAcKlBSwxCf50k4EyMtt85hFYZvoFL5E-m4Irp67xRW4i1YvZBxzDVzDZVoxb9Ov5C-600lOayE_4WRL2Tqeqokh5WQhqaV8AOx50a7pV56-C2fw8ld7sf0bdP4-zGv0pBX3YZlx1SU1SZ1EhW2IVBRWkLbwh7Td1Z70Urub97XQ5zTMT--zuL-D5svvOQ
+    QColor baseKey; // Equal to TimeKeyType_TERM
+    QColor moveKey;
+    QColor rotateKey;
+    QColor scaleKey; // Scale, rotate & transform
+    QColor depthKey;
+    QColor opaKey;
+    QColor boneKey;
+    QColor poseKey;
+    QColor meshKey;
+    QColor FFDKey;
+    QColor imageKey;
+    QColor HSVKey;
+    QColor blurKey;
+
 
     bool isDark; // which elevation model the tokens were computed with
     double hue; // the accent hue these tokens were computed with
@@ -155,6 +171,20 @@ struct Colors {
             oklch(0.00, 0, 0),         // accentText (max-contrast content)
             oklch(1.00, 0, aHue),      // floaterBody (white; shadow separates)
             oklch(0.96, 0, aHue),      // floaterEdge
+            // In RGB because the oklch formula doesn't play nice with my values
+            {50, 50, 50}, // key base
+            {47, 42, 84}, // move
+            {97, 58, 112}, // rotate
+            {140, 76, 120}, // scale
+            {168, 94, 100}, // depth
+            {196, 155, 114}, // opa
+            {215, 224, 135}, // bone
+            {185, 252, 157}, // pose
+            {99, 255, 136}, // mesh
+            {168, 255, 246}, // ffd
+            {173, 214, 255}, // image
+            {186, 179, 255}, // hsv
+            {234, 184, 255} // blur
         };
         c.isDark = false;
         c.hue = aHue;
@@ -196,6 +226,20 @@ struct Colors {
             oklch(1.00, 0, 0),         // accentText (max-contrast content)
             oklch(0.24, 0, aHue),      // floaterBody (sunken)
             oklch(0.27, 0, aHue),      // floaterEdge
+            // In RGB because the oklch formula doesn't play nice with my values
+            {232, 232, 232}, // key base
+            {47, 42, 84}, // move
+            {97, 58, 112}, // rotate
+            {140, 76, 120}, // scale
+            {168, 94, 100}, // depth
+            {196, 155, 114}, // opa
+            {215, 224, 135}, // bone
+            {185, 252, 157}, // pose
+            {99, 255, 136}, // mesh
+            {168, 255, 246}, // ffd
+            {173, 214, 255}, // image
+            {186, 179, 255}, // hsv
+            {234, 184, 255} // blur
         };
         c.isDark = true;
         c.hue = aHue;

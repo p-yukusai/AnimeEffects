@@ -13,6 +13,12 @@
 #include "gui/theme/TimeLine.h"
 
 namespace ctrl {
+    constexpr float radiiFactor = 1.25;
+    constexpr float childRadiiFactor = 1.0;
+    constexpr double keyRadius = 3.0 * radiiFactor;
+    constexpr double keyRadiusSlim = 2.0 * radiiFactor;
+    constexpr double keyRadiusChild = 3.0 * childRadiiFactor;
+    constexpr double keyRadiusChildPoly = 5.0 * childRadiiFactor;
 namespace time {
 
     class Renderer {

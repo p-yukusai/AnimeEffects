@@ -63,7 +63,7 @@ public:
     int frameAtPixel(int aPixelX) const;
     int pixelAtFrame(int aFrame) const;
     bool selectKeysAt(core::TimeLineEvent& aEvent, const QPoint& aPos);
-    bool retrieveSelectionTargets(core::TimeLineEvent& aEvent);
+    bool retrieveSelectionTargets(core::TimeLineEvent& aEvent) const;
     static QString pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Pointee<core::Project> project, bool isFolder);
     static QList<core::TimeKey*> getTypesFromCb(util::LifeLink::Pointee<core::Project> project, core::ObjectNode *node);
     bool pasteCopiedKeys(core::TimeLineEvent& aEvent, const QPoint& aWorldPos);

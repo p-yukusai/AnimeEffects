@@ -33,7 +33,7 @@ namespace time {
 
         // Nearest key within a fixed screen-space radius (px); invalid Hit if
         // the click is not over any key.
-        Hit hitTest(const QPoint& aPoint) const;
+        Hit hitTest(const QPoint &aPoint, float scaleFactor) const;
 
         void begin(const QPoint& aPoint);   // anchor the box
         void update(const QPoint& aPoint);  // resize while dragging
