@@ -2,7 +2,11 @@
 
 namespace {
 static const int kWheelValue = 120;
-static const int kMinScaleRaw = 1 * kWheelValue;
+// Wheel zoom range in notches of kWheelValue: mIndex 0..15 -> 1..16 px per
+// frame. The ceiling is unchanged since the 2016 upstream import; the floor
+// was lowered to index 0 (1 px/frame) so zoom-out can pass the startup zoom
+// (2 px/frame). No rationale for the original bounds was ever recorded.
+static const int kMinScaleRaw = 0 * kWheelValue;
 static const int kMaxScaleRaw = 15 * kWheelValue;
 
 // Least prime factor of n; n itself when prime. Trial division is fine: the
@@ -48,9 +52,11 @@ namespace time {
             mLadder.push_back(mFps * multiple);
     }
 
-    void Scaler::update(int aWheelDelta) {
+    bool Scaler::update(int aWheelDelta) {
+        const int previous = mWheel;
         mWheel = std::max(kMinScaleRaw, std::min(kMaxScaleRaw, mWheel - aWheelDelta));
         mIndex = mWheel / kWheelValue;
+        return mWheel != previous;
     }
 
     int Scaler::majorStep(int aSpacing) const {
@@ -86,15 +92,20 @@ namespace time {
     }
 
     int Scaler::pixelWidth(int aFrame) const {
-        const int frame = std::max(0, std::min(mMaxFrame, aFrame));
-        return (mIndex + 1) * frame;
+        // Pure linear map: the keying system is decoupled from the frame
+        // range, so keys may live at any frame (before 0 or past maxFrame)
+        // and must render where they are, not projected onto the range edge.
+        return (mIndex + 1) * aFrame;
     }
 
     int Scaler::maxPixelWidth() const { return pixelWidth(mMaxFrame); }
 
     int Scaler::frame(int aPixelWidth) const {
-        const int frame = (aPixelWidth + ((mIndex + 1) >> 1)) / (mIndex + 1);
-        return std::max(0, std::min(mMaxFrame, frame));
+        // Unbounded inverse of pixelWidth: a mouse position outside the frame
+        // range maps to an out-of-range frame, so keys can be created, moved
+        // and selected beyond the range. The playback range (Current) clamps
+        // its own values; this scale never does.
+        return (aPixelWidth + ((mIndex + 1) >> 1)) / (mIndex + 1);
     }
 
     int Scaler::maxFrame() const { return mMaxFrame; }

@@ -46,7 +46,7 @@ public:
     int fps() const { return mFps; }
 
     UpdateFlags updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
-    void updateWheel(int aDelta, bool aInvertScaling);
+    bool updateWheel(int aDelta, bool aInvertScaling);
     void updateKey();
     void updateProjectAttribute();
 
@@ -60,8 +60,13 @@ public:
     QSize modelSpaceSize() const;
     QPoint currentTimeCursorPos() const;
 
-    int frameAtPixel(int aPixelX) const;
-    int pixelAtFrame(int aFrame) const;
+    // The last frame's content position (px), frame 0 at 0 — the frame
+    // range's end on the timeline's own axis.
+    int frameEndPixel() const;
+    int pixelsPerFrame() const;
+    // New-scale position of the content point under the mouse, computed
+    // pixel-exact from the old scale (see implementation for why).
+    int anchorPixelAfterScale(int aContentPixel, int aOldSpacing) const;
     bool selectKeysAt(core::TimeLineEvent& aEvent, const QPoint& aPos);
     bool retrieveSelectionTargets(core::TimeLineEvent& aEvent) const;
     static QString pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Pointee<core::Project> project, bool isFolder);

@@ -1,4 +1,5 @@
 #include "core/ResourceUpdatingWorkspace.h"
+#include <limits>
 #include "core/BlurKey.h"
 #include "core/TimeKeyExpans.h"
 #include "ffd/ffd_Target.h"
@@ -300,7 +301,12 @@ bool TimeLineEditor::modifyMoveKeys(const QPoint& aWorldPos) {
 
         mOnUpdatingKey = true;
         int clampedAdd = addFrame;
-        if (mMoveRef->modifyMove(modEvent, addFrame, util::Range(0, mTimeMax), &clampedAdd)) {
+        // Keys may move to any frame; the frame range is playback/export
+        // territory and does not constrain the keying system. Conflicts are
+        // still rejected by modifyMove (occupying a frame with an existing
+        // key fails).
+        if (mMoveRef->modifyMove(modEvent, addFrame,
+            util::Range(std::numeric_limits<int>::min(), std::numeric_limits<int>::max()), &clampedAdd)) {
             mMoveFrame = newFrame;
             mProject->onTimeLineModified(modEvent, false);
         }
@@ -715,22 +721,20 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
     // a minimum frame for key pasting
     auto pasteFrame = mTimeScale.frame(aWorldPos.x() - kTimeLineMargin);
 
-    // a minimum frame in copied keys
-    int copiedFrame = mTimeMax;
+    // a minimum frame in copied keys (the paste offset is measured from the
+    // earliest copied key; copying out-of-range keys must not cap it at the
+    // frame range's end)
+    int copiedFrame = std::numeric_limits<int>::max();
     for (auto target : aEvent.targets()) {
         copiedFrame = std::min(copiedFrame, target.pos.index());
     }
 
     const int frameOffset = pasteFrame - copiedFrame;
 
-    // check validity
+    // check validity: the destination frame is unconstrained (the frame range
+    // does not gate the keying system); only an existing key conflicts.
     for (auto target : aEvent.targets()) {
         auto newFrame = target.pos.index() + frameOffset;
-
-        // invalid frame
-        if (newFrame < 0 || mTimeMax < newFrame) {
-            return false;
-        }
 
         // a key already exists.
         auto type = target.pos.type();
@@ -827,8 +831,11 @@ void TimeLineEditor::deleteCheckedKeys(TimeLineEvent& aEvent) {
     clearSelection();
 }
 
-void TimeLineEditor::updateWheel(int aDelta, bool aInvertScaling) {
-    mTimeScale.update(aInvertScaling ? -aDelta : aDelta);
+bool TimeLineEditor::updateWheel(int aDelta, bool aInvertScaling) {
+    const bool changed = mTimeScale.update(aInvertScaling ? -aDelta : aDelta);
+    if (!changed)
+        return false;
+
     mTimeCurrent.update(mTimeScale);
 
     const int lineWidth = mTimeScale.maxPixelWidth();
@@ -836,6 +843,7 @@ void TimeLineEditor::updateWheel(int aDelta, bool aInvertScaling) {
     for (TimeLineRow& row : mRows) {
         row.rect.setWidth(lineWidth);
     }
+    return true;
 }
 
 void TimeLineEditor::setFrame(Frame aFrame) { mTimeCurrent.setFrame(mTimeScale, aFrame); }
@@ -856,12 +864,22 @@ QSize TimeLineEditor::modelSpaceSize() const {
 
 QPoint TimeLineEditor::currentTimeCursorPos() const { return mTimeCurrent.handlePos(); }
 
-int TimeLineEditor::frameAtPixel(int aPixelX) const {
-    return mTimeScale.frame(aPixelX - kTimeLineMargin);
+int TimeLineEditor::frameEndPixel() const {
+    return mTimeScale.maxPixelWidth();
 }
 
-int TimeLineEditor::pixelAtFrame(int aFrame) const {
-    return mTimeScale.pixelWidth(aFrame) + kTimeLineMargin;
+int TimeLineEditor::pixelsPerFrame() const {
+    return mTimeScale.pixelsPerFrame();
+}
+
+int TimeLineEditor::anchorPixelAfterScale(int aContentPixel, int aOldSpacing) const {
+    // The zoom anchor is the content pixel under the mouse, scaled exactly (no
+    // frame rounding, no range clamp). Anchoring a frame instead would snap
+    // the edge frame to the cursor when the mouse sits outside the frame range.
+    const int newSpacing = mTimeScale.pixelsPerFrame();
+    const qint64 scaled =
+        (static_cast<qint64>(aContentPixel) - kTimeLineMargin) * newSpacing + aOldSpacing / 2;
+    return kTimeLineMargin + static_cast<int>(scaled / aOldSpacing);
 }
 
 void TimeLineEditor::render(
@@ -883,6 +901,9 @@ void TimeLineEditor::render(
     renderer.setTimeScale(mTimeScale);
 
     renderer.renderLines(mRows, camRect, cullRect);
+    // Range hairlines paint under the header and the marquee: they mark the
+    // frame range's edges through the tracks without competing with either.
+    renderer.renderRangeMarkers(camRect);
     renderer.renderHeader(kHeaderHeight, mFps);
     // renderer.renderHandle(mTimeCurrent.handlePos(), mTimeCurrent.handleRange());
 
