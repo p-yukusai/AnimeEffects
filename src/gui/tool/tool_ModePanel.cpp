@@ -43,6 +43,8 @@ namespace tool {
         button->setIconSize(QSize(kIconSize, kIconSize));
         button->setFixedSize(kButtonSize, kButtonSize);
         button->setCheckable(true);
+        // active-state button: press reads as hover, not the sunken press
+        button->setProperty("activeButton", true);
         button->setToolTip(aToolTip);
 
         XC_ASSERT(aType == mButtons.size());

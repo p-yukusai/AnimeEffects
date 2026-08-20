@@ -18,11 +18,10 @@ namespace tool {
         for (int i = 0; i < mButtonNum; ++i) {
             mButtons[i] = new QPushButton(aParent);
             mButtons[i]->setCheckable(true);
+            // tagged so the QSS gives active-state buttons their hover
+            // color on press (never the sunken press)
+            mButtons[i]->setProperty("activeButton", true);
             mButtons[i]->setFocusPolicy(Qt::NoFocus);
-            // tagged so the QSS highlights these mode/option rows with the
-            // brand accent (like the toolbox) without touching the View
-            // Settings panel, which shares the tool dock stylesheet
-            mButtons[i]->setProperty("modeButton", true);
             mGroup->addButton(mButtons[i]);
         }
     }

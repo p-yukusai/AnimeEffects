@@ -596,7 +596,7 @@ QPushButton:focus
 
 QPushButton:pressed
 {
-    background-color: @recessed@;
+    background-color: @active@;
     border-color: @outline@;
     color: @text@;
 }

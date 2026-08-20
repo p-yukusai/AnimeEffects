@@ -24,8 +24,18 @@ QPushButton:hover {
     background-color: @hairline@;
 }
 
+/* Press reflects state: active-state (checkable) buttons read as their
+   hover while pressed; non-checkable buttons press with the active fill. */
 QPushButton:pressed {
-    background-color: @recessed@;
+    background-color: @active@;
+}
+
+QPushButton[activeButton="true"]:pressed {
+    background-color: @hairline@;
+}
+
+QPushButton:checked:pressed {
+    background-color: @activeHover@;
 }
 
 QPushButton:checked {

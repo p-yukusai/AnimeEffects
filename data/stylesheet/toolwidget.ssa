@@ -68,8 +68,20 @@ QPushButton:hover {
     background-color: @hairline@;
 }
 
+/* Press reflects state: active-state (checkable) buttons read as their
+   hover while pressed; non-checkable buttons press with the active fill.
+   Never the sunken recessed press — it reads as "dead" on buttons that
+   signal their state. */
 QPushButton:pressed {
-    background-color: @recessed@;
+    background-color: @active@;
+}
+
+QPushButton[activeButton="true"]:pressed {
+    background-color: @hairline@;
+}
+
+QPushButton:checked:pressed {
+    background-color: @activeHover@;
 }
 
 QPushButton:checked {
@@ -78,18 +90,6 @@ QPushButton:checked {
 
 QPushButton:checked:hover {
     background-color: @activeHover@;
-}
-
-/* the mode/option rows inside the tool panels (SingleOutItem buttons)
-   highlight with the brand accent, matching the toolbox row (#modePanel).
-   Scoped to the modeButton tag: the View Settings panel shares this dock
-   stylesheet and keeps the neutral active fill. */
-QPushButton[modeButton="true"]:checked {
-    background-color: @accent@;
-}
-
-QPushButton[modeButton="true"]:checked:hover {
-    background-color: @accent@;
 }
 
 /* active tool (the toolbox row only) uses the brand-accent hue at the same

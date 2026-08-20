@@ -105,13 +105,16 @@ button.tool {
   cursor: pointer;
 }
 button.tool:hover { background: var(--hairline); }
-button.tool:active { background: var(--recessed); }
+/* Press matches the app: active-state (checkable) buttons read as their
+   hover while pressed; checked+pressed reads as the checked fill. */
+button.tool:active { background: var(--hairline); }
+button.tool.on:active { background: var(--active); }
 button.tool.on { background: var(--active); color: var(--text); }
 .btnrow.tools button.tool.on { background: var(--accent); color: #fff; }
-/* subtool (mode) rows inside the tool panels: QPushButton[modeButton=true],
-   same accent highlight as the toolbox */
+/* subtool (mode) rows inside the tool panels: neutral active fill (the
+   generic .on rule), same as the View settings rows; only the toolbox
+   (.btnrow.tools) keeps the accent */
 .btnrow.subs { padding: 0 3px 4px; }
-.btnrow.subs button.tool.on { background: var(--accent); color: #fff; }
 
 .hairline { border-bottom: 1px solid var(--hairline); margin: 10px 0 0; }
 .hairline.inset { margin: 10px 8px 0; }

@@ -183,6 +183,10 @@ PlayBackWidget::createButton(const QString& aName, bool aIsCheckable, int aColum
     button->setHoverIcon(mGUIResources.iconActive(aName));
     button->setIconSize(QSize(kIconSize, kIconSize));
     button->setCheckable(aIsCheckable);
+    if (aIsCheckable) {
+        // active-state button: press reads as hover, not the sunken press
+        button->setProperty("activeButton", true);
+    }
     button->setToolTip(aToolTip);
     button->setFocusPolicy(Qt::NoFocus);
     // The QSS width/height rule pins the box; geometry alone is not enough
