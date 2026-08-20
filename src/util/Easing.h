@@ -29,10 +29,14 @@ public:
     enum Range { Range_In, Range_Out, Range_InOut, Range_TERM};
 
     struct CubicBezier {
-        float x1 = 0.0f;
-        float y1 = 1.0f;
-        float x2 = 1.0f;
-        float y2 = 0.0f;
+        // Classic cubic ease-in-out (smoothstep): controls crossed at the
+        // thirds — (2/3, 0) and (1/3, 1) — giving Y(t) = 3t^2 - 2t^3. Both
+        // controls ON the diagonal would degenerate the curve to a straight
+        // line, so the Ys sit at the extremes.
+        float x1 = 2.0f / 3.0f;
+        float y1 = 0.0f;
+        float x2 = 1.0f / 3.0f;
+        float y2 = 1.0f;
     };
 
     struct Param {
