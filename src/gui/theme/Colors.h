@@ -68,10 +68,10 @@ enum TokenRole {
     kSelection, kSelectionText, kTextSelection, kAccent, kAccentSwatch, kAccentBright, kAccentHover, kAccentText,
     kFloaterBody, kFloaterEdge,
     kRecessedGuideLine, // dashed interactive guides on the recessed canvas
-                       // (spline editor): 4 lightness steps from the recessed
+                       // (spline editor): 2 lightness steps from the recessed
                        // column in both themes
     kRecessedHairline, // 1px informational lines on the recessed canvas:
-                       // 2 steps from the recessed column, quieter than the
+                       // 1 step from the recessed column, quieter than the
                        // guides
     kTokenCount
 };
@@ -108,11 +108,10 @@ static constexpr int kTailwindLight[] = {
     /* kAccentText        */ 9,
     /* kFloaterBody       */ 0,
     /* kFloaterEdge       */ 2, // popup border; tracks hairline
-    /* kRecessedGuideLine */ 5, // 4 steps from the recessed column (light
-                                 // col 1) — same distance as dark, slightly
-                                 // weaker than the old col 8
-    /* kRecessedHairline  */ 3, // 2 steps from the recessed column (light
-                                 // col 1) — enough to read, no stronger
+    /* kRecessedGuideLine */ 3, // 2 steps from the recessed column (light
+                                 // col 1) — same distance as dark
+    /* kRecessedHairline  */ 2, // 1 step from the recessed column (light
+                                 // col 1)
 };
 static_assert(sizeof(kTailwindLight) / sizeof(kTailwindLight[0]) == kTokenCount,
               "kTailwindLight must have one column per TokenRole");
@@ -143,9 +142,9 @@ static constexpr int kTailwindDark[] = {
     /* kAccentText        */ 1,
     /* kFloaterBody       */ 9,
     /* kFloaterEdge       */ 8, // normal edge; the body is the sunken surface
-    /* kRecessedGuideLine */ 5, // 4 steps from the recessed column (dark
+    /* kRecessedGuideLine */ 7, // 2 steps from the recessed column (dark
                                  // col 9) — same distance as light
-    /* kRecessedHairline  */ 7, // 2 steps from the recessed column (dark
+    /* kRecessedHairline  */ 8, // 1 step from the recessed column (dark
                                  // col 9)
 };
 static_assert(sizeof(kTailwindDark) / sizeof(kTailwindDark[0]) == kTokenCount,
@@ -244,11 +243,11 @@ struct Colors {
                           // edge — the body is the sunken surface
     QColor recessedGuideLine; // dashed interactive guides on the recessed
                              // canvas (spline editor): equidistant from the
-                             // recessed column in both themes (4 steps), so
+                             // recessed column in both themes (2 steps), so
                              // the guides read at the same strength on the
                              // sunken surface of either theme
     QColor recessedHairline; // 1px informational lines on the recessed
-                             // canvas (spline axis, preview track): 2 steps
+                             // canvas (spline axis, preview track): 1 step
                              // from the recessed column, quieter than the
                              // guides
     // Per-key colors for easier identification: one Tailwind row per key
