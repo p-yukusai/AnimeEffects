@@ -8,38 +8,30 @@ namespace theme {
 namespace {
 const QHash<QString, IconRole>& roleTable() {
     static const QHash<QString, IconRole> k{
-        {QStringLiteral("animation"), IconRole::Text},
-        {QStringLiteral("audio"), IconRole::Text},
-        {QStringLiteral("bind"), IconRole::Text},
+        {QStringLiteral("images"), IconRole::Text},
+        {QStringLiteral("speaker-high"), IconRole::Text},
+        {QStringLiteral("link"), IconRole::Text},
         {QStringLiteral("bone"), IconRole::Text},
-        {QStringLiteral("branch_closed"), IconRole::Muted},
-        {QStringLiteral("branch_closed_hover"), IconRole::Accent},
-        {QStringLiteral("branch_end"), IconRole::Hairline},
-        {QStringLiteral("branch_end_arrow"), IconRole::Hairline},
-        {QStringLiteral("branch_more"), IconRole::Hairline},
-        {QStringLiteral("branch_more_arrow"), IconRole::Hairline},
-        {QStringLiteral("branch_open"), IconRole::Muted},
-        {QStringLiteral("branch_open_hover"), IconRole::Accent},
-        {QStringLiteral("calendar_next"), IconRole::Text},
-        {QStringLiteral("calendar_previous"), IconRole::Text},
         {QStringLiteral("caret-down"), IconRole::Muted},
-        {QStringLiteral("caret-down-regular"), IconRole::Muted},
+        {QStringLiteral("caret-down-bold"), IconRole::Muted},
+        {QStringLiteral("caret-down-bold-disabled"), IconRole::Disabled},
+        {QStringLiteral("caret-down-bold-hover"), IconRole::Accent},
         {QStringLiteral("caret-right"), IconRole::Muted},
-        {QStringLiteral("caret-right-regular"), IconRole::Muted},
-        {QStringLiteral("check"), IconRole::Text},
+        {QStringLiteral("caret-right-bold"), IconRole::Muted},
+        {QStringLiteral("caret-up-bold"), IconRole::Muted},
+        {QStringLiteral("caret-up-bold-disabled"), IconRole::Disabled},
+        {QStringLiteral("caret-up-bold-hover"), IconRole::Accent},
+        {QStringLiteral("check-bold"), IconRole::Text},
         {QStringLiteral("checkbox_checked"), IconRole::Accent},
         {QStringLiteral("checkbox_checked_disabled"), IconRole::Disabled},
         {QStringLiteral("checkbox_indeterminate"), IconRole::Accent},
         {QStringLiteral("checkbox_indeterminate_disabled"), IconRole::Disabled},
         {QStringLiteral("checkbox_unchecked"), IconRole::Outline},
         {QStringLiteral("checkbox_unchecked_disabled"), IconRole::Disabled},
-        {QStringLiteral("clear_text"), IconRole::Text},
         {QStringLiteral("close"), IconRole::Muted},
         {QStringLiteral("close_hover"), IconRole::Muted},
         {QStringLiteral("close_pressed"), IconRole::Accent},
-        {QStringLiteral("computer"), IconRole::Text},
-        {QStringLiteral("cursor"), IconRole::Text},
-        {QStringLiteral("desktop"), IconRole::Text},
+        {QStringLiteral("hand"), IconRole::Text},
         {QStringLiteral("dialog_cancel"), IconRole::Text},
         {QStringLiteral("dialog_close"), IconRole::Text},
         {QStringLiteral("dialog_discard"), IconRole::Text},
@@ -49,8 +41,7 @@ const QHash<QString, IconRole>& roleTable() {
         {QStringLiteral("dialog_open"), IconRole::Text},
         {QStringLiteral("dialog_reset"), IconRole::Text},
         {QStringLiteral("dialog_save"), IconRole::Text},
-        {QStringLiteral("disc_drive"), IconRole::Text},
-        {QStringLiteral("door-open"), IconRole::Text},
+        {QStringLiteral("arrows-out-line-horizontal"), IconRole::Text},
         {QStringLiteral("down_arrow"), IconRole::Muted},
         {QStringLiteral("down_arrow_disabled"), IconRole::Disabled},
         {QStringLiteral("down_arrow_hover"), IconRole::Accent},
@@ -59,85 +50,57 @@ const QHash<QString, IconRole>& roleTable() {
         {QStringLiteral("eye-close"), IconRole::Muted},
         {QStringLiteral("eye-open"), IconRole::Muted},
         {QStringLiteral("faders-horizontal"), IconRole::Text},
-        {QStringLiteral("fast"), IconRole::Text},
         {QStringLiteral("ffd"), IconRole::Text},
         {QStringLiteral("file"), IconRole::Text},
-        {QStringLiteral("file-dim"), IconRole::Muted},
-        {QStringLiteral("file_dialog_contents"), IconRole::Text},
-        {QStringLiteral("file_dialog_detailed"), IconRole::Text},
-        {QStringLiteral("file_dialog_end"), IconRole::Text},
-        {QStringLiteral("file_dialog_info"), IconRole::Text},
-        {QStringLiteral("file_dialog_list"), IconRole::Text},
-        {QStringLiteral("file_dialog_start"), IconRole::Text},
-        {QStringLiteral("file_link"), IconRole::Text},
-        {QStringLiteral("flip"), IconRole::Text},
-        {QStringLiteral("floppy_drive"), IconRole::Text},
+        {QStringLiteral("file-dashed"), IconRole::Muted},
+        {QStringLiteral("flip-horizontal"), IconRole::Text},
         {QStringLiteral("folder"), IconRole::Text},
-        {QStringLiteral("folder_link"), IconRole::Text},
-        {QStringLiteral("folder_open"), IconRole::Text},
-        {QStringLiteral("hard_drive"), IconRole::Text},
         {QStringLiteral("hardness-1"), IconRole::Text},
         {QStringLiteral("hardness-2"), IconRole::Text},
         {QStringLiteral("hardness-3"), IconRole::Text},
-        {QStringLiteral("help"), IconRole::Text},
-        {QStringLiteral("hmovetoolbar"), IconRole::Muted},
-        {QStringLiteral("home_directory"), IconRole::Text},
-        {QStringLiteral("hseptoolbar"), IconRole::Muted},
         {QStringLiteral("image"), IconRole::Text},
-        {QStringLiteral("influence"), IconRole::Text},
+        {QStringLiteral("broadcast"), IconRole::Text},
         {QStringLiteral("left_arrow"), IconRole::Muted},
         {QStringLiteral("left_arrow_disabled"), IconRole::Disabled},
         {QStringLiteral("left_arrow_hover"), IconRole::Accent},
-        {QStringLiteral("loop"), IconRole::Text},
-        {QStringLiteral("maximize"), IconRole::Muted},
-        {QStringLiteral("menu"), IconRole::Muted},
-        {QStringLiteral("mesh"), IconRole::Text},
+        {QStringLiteral("arrows-clockwise"), IconRole::Text},
+        {QStringLiteral("triangle"), IconRole::Text},
         {QStringLiteral("message_critical"), IconRole::Text},
         {QStringLiteral("message_information"), IconRole::Text},
         {QStringLiteral("message_question"), IconRole::Text},
         {QStringLiteral("message_warning"), IconRole::Text},
-        {QStringLiteral("minimize"), IconRole::Muted},
         {QStringLiteral("minus"), IconRole::Muted},
-        {QStringLiteral("move"), IconRole::Text},
-        {QStringLiteral("move-centroid"), IconRole::Text},
-        {QStringLiteral("network_drive"), IconRole::Text},
+        {QStringLiteral("minus-bold"), IconRole::Muted},
+        {QStringLiteral("navigation-arrow"), IconRole::Text},
+        {QStringLiteral("crosshair"), IconRole::Text},
         {QStringLiteral("paint-brush"), IconRole::Text},
         {QStringLiteral("pause"), IconRole::Text},
-        {QStringLiteral("pencil"), IconRole::Text},
+        {QStringLiteral("pencil-simple"), IconRole::Text},
         {QStringLiteral("play"), IconRole::Text},
         {QStringLiteral("plus"), IconRole::Muted},
+        {QStringLiteral("plus-bold"), IconRole::Muted},
         {QStringLiteral("pose"), IconRole::Text},
         {QStringLiteral("radio_checked"), IconRole::Accent},
         {QStringLiteral("radio_checked_disabled"), IconRole::Disabled},
         {QStringLiteral("radio_unchecked"), IconRole::Outline},
         {QStringLiteral("radio_unchecked_disabled"), IconRole::Disabled},
-        {QStringLiteral("reset-rotation"), IconRole::Text},
-        {QStringLiteral("restore"), IconRole::Muted},
-        {QStringLiteral("rewind"), IconRole::Text},
+        {QStringLiteral("dot-outline"), IconRole::Text},
         {QStringLiteral("right_arrow"), IconRole::Muted},
         {QStringLiteral("right_arrow_disabled"), IconRole::Disabled},
         {QStringLiteral("right_arrow_hover"), IconRole::Accent},
-        {QStringLiteral("rotate-ccw"), IconRole::Text},
-        {QStringLiteral("rotate-cw"), IconRole::Text},
-        {QStringLiteral("shade"), IconRole::Muted},
-        {QStringLiteral("show-mesh"), IconRole::Text},
-        {QStringLiteral("sizegrip"), IconRole::Muted},
-        {QStringLiteral("srt"), IconRole::Text},
-        {QStringLiteral("step"), IconRole::Text},
-        {QStringLiteral("step-back"), IconRole::Text},
+        {QStringLiteral("arrow-counter-clockwise"), IconRole::Text},
+        {QStringLiteral("arrow-clockwise"), IconRole::Text},
+        {QStringLiteral("cube"), IconRole::Text},
+        {QStringLiteral("arrows-out-cardinal"), IconRole::Text},
+        {QStringLiteral("skip-forward"), IconRole::Text},
+        {QStringLiteral("skip-back"), IconRole::Text},
         {QStringLiteral("transparent"), IconRole::Muted},
-        {QStringLiteral("trash"), IconRole::Text},
         {QStringLiteral("undock"), IconRole::Muted},
         {QStringLiteral("undock_hover"), IconRole::Muted},
         {QStringLiteral("undock_hover_pressed"), IconRole::Accent},
-        {QStringLiteral("unshade"), IconRole::Muted},
         {QStringLiteral("up_arrow"), IconRole::Muted},
         {QStringLiteral("up_arrow_disabled"), IconRole::Disabled},
         {QStringLiteral("up_arrow_hover"), IconRole::Accent},
-        {QStringLiteral("vline"), IconRole::Hairline},
-        {QStringLiteral("vmovetoolbar"), IconRole::Muted},
-        {QStringLiteral("vseptoolbar"), IconRole::Muted},
-        {QStringLiteral("window_close"), IconRole::Muted},
     };
     return k;
 }
@@ -163,23 +126,30 @@ static QString gIconDir;
 QString iconDir() { return gIconDir; }
 void setIconDir(const QString& aDir) { gIconDir = aDir; }
 
-// Tint the canonical currentColor set into the scratch dir. Multi-color glyphs
-// (message/file-dialog) keep their semantic accents; only currentColor is
-// replaced, so they stay correct.
+// Tint the canonical currentColor set (root icons plus the ph/ phosphor
+// imports) into the scratch dir. Multi-color glyphs (message/file-dialog)
+// keep their semantic accents; only currentColor is replaced, so they stay
+// correct.
 void tintIcons(const QString& aSrcDir, const QString& aDstDir, const Colors& aColors) {
     const QDir src(aSrcDir);
-    const QStringList files = src.entryList(QStringList() << "*.svg", QDir::Files);
+    // Full paths: the ph/ imports resolve into the subdir, not the root.
+    QStringList files;
+    const QStringList roots = src.entryList(QStringList() << "*.svg", QDir::Files);
+    for (const QString& n : roots) files << aSrcDir + "/" + n;
+    const QStringList phs = QDir(aSrcDir + "/ph").entryList(QStringList() << "*.svg", QDir::Files);
+    for (const QString& n : phs) files << aSrcDir + "/ph/" + n;
     // Wipe the scratch dir first so glyphs that left the canonical set (or
     // lost their -active pair) do not linger across app versions and get
     // re-registered by loadIcons.
     QDir(aDstDir).removeRecursively();
     QDir().mkpath(aDstDir);
-    for (const QString& name : files) {
-        QFile f(src.filePath(name));
+    for (const QString& path : files) {
+        QFile f(path);
         if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) continue;
         const QString svg = QString::fromUtf8(f.readAll());
         f.close();
-        const QString stem = name.left(name.size() - 4);
+        const QString name = QFileInfo(path).fileName();
+        const QString stem = QFileInfo(path).completeBaseName();
         // the canonical tint (role color)
         QString out = svg;
         out.replace("currentColor", roleColor(iconRole(stem), aColors).name());

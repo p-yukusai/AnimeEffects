@@ -230,7 +230,7 @@ public:
         sizePolicy2.setVerticalStretch(0);
         sizePolicy2.setHeightForWidth(insertFrameRangeButton->sizePolicy().hasHeightForWidth());
         insertFrameRangeButton->setSizePolicy(sizePolicy2);
-        QIcon icon = aResources.icon("plus");
+        QIcon icon = aResources.icon("plus-bold");
         insertFrameRangeButton->setIcon(icon);
 
         gridLayout_2->addWidget(insertFrameRangeButton, 23, 0, 1, 1);
@@ -240,7 +240,7 @@ public:
         removeFrameRangeButton = new QPushButton(globalParamScrollContents);
         removeFrameRangeButton->setObjectName(QString::fromUtf8("removeFrameRangeButton"));
         removeFrameRangeButton->setSizePolicy(sizePolicy2);
-        QIcon rfIcon = aResources.icon("minus");
+        QIcon rfIcon = aResources.icon("minus-bold");
         removeFrameRangeButton->setIcon(rfIcon);
 
         gridLayout_2->addWidget(removeFrameRangeButton, 24, 0, 1, 1);
@@ -316,7 +316,7 @@ public:
 
         setWidthNative = new QPushButton(globalParamScrollContents);
         setWidthNative->setObjectName(QString::fromUtf8("setWidthNative"));
-        QIcon icon1 = aResources.icon("rotate-cw");
+        QIcon icon1 = aResources.icon("arrow-clockwise");
         setWidthNative->setIcon(icon1);
 
         gridLayout_2->addWidget(setWidthNative, 3, 2, 1, 1);
@@ -400,7 +400,7 @@ public:
         gridLayout_2->addWidget(renderingLabel, 2, 1, 1, 1);
 
         exportTypeCombo = new QComboBox(globalParamScrollContents);
-        QIcon icon2 = aResources.icon("animation");
+        QIcon icon2 = aResources.icon("images");
         exportTypeCombo->addItem(icon2, QString());
         QIcon icon3 = aResources.icon("image");
         exportTypeCombo->addItem(icon3, QString());

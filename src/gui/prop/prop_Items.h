@@ -139,7 +139,8 @@ namespace prop {
     public:
         typedef std::function<void(util::Easing::Param, util::Easing::Param)> UpdateType;
 
-        EasingItem(QWidget* aParent, const GUIResources* mGUIResources);
+        EasingItem(QWidget* aParent, GUIResources* mGUIResources);
+        virtual ~EasingItem();
 
         QComboBox& comboBox(int aIndex) { return *mBox.at(aIndex); }
         const QComboBox& comboBox(int aIndex) const { return *mBox.at(aIndex); }
@@ -150,6 +151,8 @@ namespace prop {
         virtual QLayout* itemLayout() { return mLayout; }
         virtual void setItemEnabled(bool aEnable);
         virtual void setItemVisible(bool aVisible);
+        // Re-fetch the runtime-tinted "Custom" glyph after a theme change.
+        void refreshIcon();
 
         UpdateType onValueUpdated;
 
@@ -162,6 +165,8 @@ namespace prop {
         DoubleSpinBox* mDBox;
         util::Easing::Param mStamp;
         QPushButton* mCustomEasing;
+        GUIResources* mGUIResources;
+        util::SlotId mThemeSlot;
         bool mSignal;
     };
 

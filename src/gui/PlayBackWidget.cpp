@@ -44,15 +44,15 @@ PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent, core:
     this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     aProject = &mProject;
 
-    mButtons.push_back(createButton("rewind", false, 0, tr("Return to initial frame")));
+    mButtons.push_back(createButton("skip-back", false, 0, tr("Return to initial frame")));
     mButtons.push_back(createButton("step-back", false, 1, tr("One frame back")));
     mButtons.push_back(createButton("play", true, 2, tr("Play")));
-    mButtons.push_back(createButton("step", false, 3, tr("One frame forward")));
-    mButtons.push_back(createButton("fast", false, 4, tr("Advance to final frame")));
-    mButtons.push_back(createButton("loop", true, 5, tr("Loop animation")));
+    mButtons.push_back(createButton("step-forward", false, 3, tr("One frame forward")));
+    mButtons.push_back(createButton("skip-forward", false, 4, tr("Advance to final frame")));
+    mButtons.push_back(createButton("arrows-clockwise", true, 5, tr("Loop animation")));
     mButtons.back()->setChecked(mDoesLoop);
     mButtons.push_back(createButton("faders-horizontal", false, 6, tr("Animation settings")));
-    mButtons.push_back(createButton("audio", false, 7, tr("Audio track")));
+    mButtons.push_back(createButton("speaker-high", false, 7, tr("Audio track")));
     audioWidget->setupUi(audioUI, &mediaPlayer, aConf);
     mGUIResources.onThemeChanged.connect(this, &PlayBackWidget::onThemeUpdated);
 }

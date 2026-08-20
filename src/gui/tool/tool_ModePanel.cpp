@@ -26,11 +26,11 @@ namespace tool {
         mGroup->setExclusive(true);
         this->setLayout(&mLayout);
 
-        addButton(ctrl::ToolType_Cursor, "cursor", tr("Pan tool"));
-        addButton(ctrl::ToolType_SRT, "srt", tr("Transform"));
+        addButton(ctrl::ToolType_Cursor, "hand", tr("Pan tool"));
+        addButton(ctrl::ToolType_SRT, "arrows-out-cardinal", tr("Transform"));
         addButton(ctrl::ToolType_Bone, "bone", tr("Bone editor"));
         addButton(ctrl::ToolType_Pose, "pose", tr("Pose editor"));
-        addButton(ctrl::ToolType_Mesh, "mesh", tr("Mesh editor"));
+        addButton(ctrl::ToolType_Mesh, "triangle", tr("Mesh editor"));
         addButton(ctrl::ToolType_FFD, "ffd", tr("Free-form deformation"));
 
         mGUIResources.onThemeChanged.connect(this, &ModePanel::onThemeUpdated);

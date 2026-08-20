@@ -203,7 +203,7 @@ QPushButton#browser:pressed {
 }
 QPushButton#browser:disabled {
     background-color: transparent;
-    image: url(@icondir@/file-dim.svg);
+    image: url(@icondir@/file-dashed.svg);
 }
 
 QFrame#propertyPanel {

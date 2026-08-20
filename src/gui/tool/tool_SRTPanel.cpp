@@ -25,7 +25,7 @@ namespace tool {
 
     void SRTPanel::applyIcons() {
         mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("move") << mResources.icon("move-centroid"), QSize(18, 18));
+            QVector<QIcon>() << mResources.icon("navigation-arrow") << mResources.icon("crosshair"), QSize(18, 18));
     }
 
     void SRTPanel::onThemeUpdated(theme::Theme&) {
