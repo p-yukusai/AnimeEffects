@@ -67,7 +67,12 @@ enum TokenRole {
     kText, kTextMuted, kTextDisabled, kIcon,
     kSelection, kSelectionText, kTextSelection, kAccent, kAccentSwatch, kAccentBright, kAccentHover, kAccentText,
     kFloaterBody, kFloaterEdge,
-    kGuideLine, // dashed guides drawn on the recessed canvas (spline editor)
+    kRecessedGuideLine, // dashed interactive guides on the recessed canvas
+                       // (spline editor): 4 lightness steps from the recessed
+                       // column in both themes
+    kRecessedHairline, // 1px informational lines on the recessed canvas:
+                       // 2 steps from the recessed column, quieter than the
+                       // guides
     kTokenCount
 };
 
@@ -103,9 +108,11 @@ static constexpr int kTailwindLight[] = {
     /* kAccentText        */ 9,
     /* kFloaterBody       */ 0,
     /* kFloaterEdge       */ 2, // popup border; tracks hairline
-    /* kGuideLine         */ 8, // a mid-dark line that reads on the pale
-                                 // recessed canvas (light theme; the 1px
-                                 // dashed AA halves the nominal contrast)
+    /* kRecessedGuideLine */ 5, // 4 steps from the recessed column (light
+                                 // col 1) — same distance as dark, slightly
+                                 // weaker than the old col 8
+    /* kRecessedHairline  */ 3, // 2 steps from the recessed column (light
+                                 // col 1) — enough to read, no stronger
 };
 static_assert(sizeof(kTailwindLight) / sizeof(kTailwindLight[0]) == kTokenCount,
               "kTailwindLight must have one column per TokenRole");
@@ -136,8 +143,10 @@ static constexpr int kTailwindDark[] = {
     /* kAccentText        */ 1,
     /* kFloaterBody       */ 9,
     /* kFloaterEdge       */ 8, // normal edge; the body is the sunken surface
-    /* kGuideLine         */ 4, // a mid-light line that reads on the dark
-                                 // recessed canvas
+    /* kRecessedGuideLine */ 5, // 4 steps from the recessed column (dark
+                                 // col 9) — same distance as light
+    /* kRecessedHairline  */ 7, // 2 steps from the recessed column (dark
+                                 // col 9)
 };
 static_assert(sizeof(kTailwindDark) / sizeof(kTailwindDark[0]) == kTokenCount,
               "kTailwindDark must have one column per TokenRole");
@@ -233,9 +242,15 @@ struct Colors {
     QColor floaterEdge;   // popup panel edge: light tracks the hairline token
                           // (borders match separators), dark keeps its own
                           // edge — the body is the sunken surface
-    QColor guideLine;     // dashed guides on the recessed canvas (spline
-                          // editor): mid-toned per theme so they read on the
-                          // sunken surface, where the hairline family fades
+    QColor recessedGuideLine; // dashed interactive guides on the recessed
+                             // canvas (spline editor): equidistant from the
+                             // recessed column in both themes (4 steps), so
+                             // the guides read at the same strength on the
+                             // sunken surface of either theme
+    QColor recessedHairline; // 1px informational lines on the recessed
+                             // canvas (spline axis, preview track): 2 steps
+                             // from the recessed column, quieter than the
+                             // guides
     // Per-key colors for easier identification: one Tailwind row per key
     // type (kKeyColorRow) at a shared per-theme column, so all keys read at
     // the same lightness; baseKey is the neutral key color.
@@ -289,7 +304,8 @@ struct Colors {
             paletteColor(n[kTailwindLight[kAccentText]]), // accentText
             paletteColor(n[kTailwindLight[kFloaterBody]]), // floaterBody
             paletteColor(n[kTailwindLight[kFloaterEdge]]), // floaterEdge
-            paletteColor(n[kTailwindLight[kGuideLine]]),   // guideLine
+            paletteColor(n[kTailwindLight[kRecessedGuideLine]]),   // recessedGuideLine
+            paletteColor(n[kTailwindLight[kRecessedHairline]]), // recessedHairline
             // Per-key colors: kKeyColorRow at one shared column per theme
             // (kKeyColorColumnLight), so all keys read at the same lightness.
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnLight]), // baseKey
@@ -340,7 +356,8 @@ struct Colors {
             paletteColor(n[kTailwindDark[kAccentText]]),  // accentText
             paletteColor(n[kTailwindDark[kFloaterBody]]), // floaterBody
             paletteColor(n[kTailwindDark[kFloaterEdge]]), // floaterEdge
-            paletteColor(n[kTailwindDark[kGuideLine]]),   // guideLine
+            paletteColor(n[kTailwindDark[kRecessedGuideLine]]),   // recessedGuideLine
+            paletteColor(n[kTailwindDark[kRecessedHairline]]), // recessedHairline
             // Per-key colors: kKeyColorRow at one shared column per theme
             // (kKeyColorColumnDark), so all keys read at the same lightness.
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnDark]), // baseKey

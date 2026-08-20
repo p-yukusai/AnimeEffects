@@ -154,12 +154,17 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
 
     // Tangent guides: dashed line from each curve anchor to its handle.
-    // guideLine is mid-toned per theme so it reads on the sunken canvas
-    // (hairline fades against the pale light canvas).
-    painter.setPen(QPen(c.guideLine, 1.0, Qt::DashLine));
+    // recessedGuideLine is equidistant from the recessed column in both
+    // themes, so the guides read at the same strength on the sunken canvas
+    // (the plain hairline fades against the pale light canvas). AA is off
+    // for the pass: a 1px pen under antialiasing spreads each dash across
+    // pixels at partial coverage, reading as a thicker, dimmer line.
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    painter.setPen(QPen(c.recessedGuideLine, 1.0, Qt::DashLine));
     painter.setBrush(Qt::NoBrush);
     painter.drawLine(m_points[StartPoint], m_points[ControlPoint1]);
     painter.drawLine(m_points[EndPoint], m_points[ControlPoint2]);
+    painter.setRenderHint(QPainter::Antialiasing, true);
 
     // Curve.
     m_curvePen.setColor(c.text);
@@ -174,6 +179,16 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     painter.setBrush(c.text);
     painter.drawEllipse(m_points[StartPoint], 3.0, 3.0);
     painter.drawEllipse(m_points[EndPoint], 3.0, 3.0);
+
+    // Value-axis hairlines at Y=0 and Y=1 (the band boundaries): plain
+    // 1px lines for orientation, at the same heights the anchors sit on.
+    // recessedHairline — between hairline (fades on the sunken canvas) and
+    // recessedGuideLine (too strong for an informational axis). The +0.5
+    // snaps the 1px pen onto one pixel row (an integer y with AA on
+    // straddles two rows at half coverage and reads as a 2px line).
+    painter.setPen(QPen(c.recessedHairline, 1.0, Qt::SolidLine));
+    painter.drawLine(QLineF(0, MAGIC_BORDER_Y + 0.5, width(), MAGIC_BORDER_Y + 0.5));
+    painter.drawLine(QLineF(0, height() - MAGIC_BORDER_Y + 0.5, width(), height() - MAGIC_BORDER_Y + 0.5));
 
     // Tangent handles: the mid accent tone at rest (visible on both
     // canvases — the plain accent fill is ~1.3:1 against the light canvas),
