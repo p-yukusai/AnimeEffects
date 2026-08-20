@@ -55,8 +55,11 @@ protected:
         const int band = height() - 2 * top; // the 0..1 extent
         const int cx = width() / 2;
         // the track: the full height (the 0..1 band sits inside it, like the
-        // canvas's draggable range); +0.5 snaps the 1px pen onto one column
-        p.setPen(QPen(c.recessedHairline, 1.0));
+        // canvas's draggable range); +0.5 snaps the 1px pen onto one column.
+        // The strip sits on the dialog's base surface, not the recessed
+        // canvas, so it uses the plain hairline token (recessedHairline
+        // would be invisible here — dark col 8 == base col 8).
+        p.setPen(QPen(c.hairline, 1.0));
         p.drawLine(cx + 0.5, 0, cx + 0.5, height());
         // the dot at Y = value (0 at the bottom of the band, 1 at the top)
         const qreal y = top + (1.0 - mValue) * band;
