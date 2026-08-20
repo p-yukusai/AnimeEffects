@@ -195,10 +195,11 @@ public:
         // Approximation of bezier progress via Qt func. The preview sweeps
         // the bar as progress ramps 0..1.25; a step at or above the reset
         // threshold pins progress at 0 and freezes the sweep. The tick
-        // fires at 60Hz (16ms), not the original 2ms: at 500Hz the bar
-        // repainted on every tick and flickered. progressAccuracy keeps the
-        // old sweep duration (~2.8s per loop).
-        constexpr float accuracy = 100.f;
+        // fires at 60Hz (16ms); accuracy is the bar's step resolution — at
+        // 100 the sweep jumped ~5px per step and read as low-FPS, 1000
+        // moves the bar on every tick. progressAccuracy keeps the old sweep
+        // duration (~2.8s per loop).
+        constexpr float accuracy = 1000.f;
         constexpr float progressAccuracy = 0.0072f;
         progressBar = new QProgressBar(splineWidget);
         progressBar->setValue(0);
