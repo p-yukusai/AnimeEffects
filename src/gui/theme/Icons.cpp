@@ -1,6 +1,7 @@
 #include "theme/Icons.h"
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QHash>
 
 namespace theme {
@@ -130,30 +131,64 @@ void setIconDir(const QString& aDir) { gIconDir = aDir; }
 // imports) into the scratch dir. Multi-color glyphs (message/file-dialog)
 // keep their semantic accents; only currentColor is replaced, so they stay
 // correct.
+//
+// The name set is the source files plus every roleTable entry. State
+// variants (-hover/-disabled/-pressed, root underscore and ph/ hyphen
+// conventions) share the base glyph's source file — the role table tints
+// each name with its own state color, so the byte-identical duplicate
+// sources are not shipped. Each name still gets its own output (the QSS
+// references @icondir@/<name>.svg) and its -active pair.
 void tintIcons(const QString& aSrcDir, const QString& aDstDir, const Colors& aColors) {
-    const QDir src(aSrcDir);
-    // Full paths: the ph/ imports resolve into the subdir, not the root.
-    QStringList files;
-    const QStringList roots = src.entryList(QStringList() << "*.svg", QDir::Files);
-    for (const QString& n : roots) files << aSrcDir + "/" + n;
-    const QStringList phs = QDir(aSrcDir + "/ph").entryList(QStringList() << "*.svg", QDir::Files);
-    for (const QString& n : phs) files << aSrcDir + "/ph/" + n;
+    const auto exists = [&](const QString& aStem) {
+        return QFile::exists(aSrcDir + "/" + aStem + ".svg")
+            || QFile::exists(aSrcDir + "/ph/" + aStem + ".svg");
+    };
+    // The base glyph for a state name: the name's own file, else the name
+    // with one state suffix stripped (checked against the files on disk, so
+    // a name that merely ends like a suffix still resolves to itself).
+    const auto sourceStem = [&](const QString& aName) {
+        if (exists(aName)) return aName;
+        const QStringList suffixes = {"-hover", "-disabled", "-pressed",
+                                      "_hover", "_disabled", "_pressed"};
+        for (const QString& s : suffixes) {
+            if (aName.endsWith(s)) {
+                const QString base = aName.left(aName.size() - s.size());
+                if (exists(base)) return base;
+            }
+        }
+        return aName;
+    };
+
+    // Canonical names: every source file (root + ph/) plus every roleTable
+    // name (state variants live only there once their source files dedupe).
+    QStringList names;
+    const auto addDir = [&](const QString& aDir) {
+        for (const QString& n : QDir(aDir).entryList(QStringList() << "*.svg", QDir::Files))
+            names << QFileInfo(n).completeBaseName();
+    };
+    addDir(aSrcDir);
+    addDir(aSrcDir + "/ph");
+    for (auto it = roleTable().keyBegin(); it != roleTable().keyEnd(); ++it)
+        names << *it;
+    names.removeDuplicates();
+    names.sort();
+
     // Wipe the scratch dir first so glyphs that left the canonical set (or
     // lost their -active pair) do not linger across app versions and get
     // re-registered by loadIcons.
     QDir(aDstDir).removeRecursively();
     QDir().mkpath(aDstDir);
-    for (const QString& path : files) {
-        QFile f(path);
+    for (const QString& name : names) {
+        const QString stem = sourceStem(name);
+        QFile f(aSrcDir + "/" + stem + ".svg");
+        if (!f.exists()) f.setFileName(aSrcDir + "/ph/" + stem + ".svg");
         if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) continue;
         const QString svg = QString::fromUtf8(f.readAll());
         f.close();
-        const QString name = QFileInfo(path).fileName();
-        const QString stem = QFileInfo(path).completeBaseName();
         // the canonical tint (role color)
         QString out = svg;
-        out.replace("currentColor", roleColor(iconRole(stem), aColors).name());
-        QFile of(aDstDir + "/" + name);
+        out.replace("currentColor", roleColor(iconRole(name), aColors).name());
+        QFile of(aDstDir + "/" + name + ".svg");
         if (of.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
             of.write(out.toUtf8());
         }
@@ -162,7 +197,7 @@ void tintIcons(const QString& aSrcDir, const QString& aDstDir, const Colors& aCo
         // renders the active glyph automatically via the QIcon On state.
         QString active = svg;
         active.replace("currentColor", aColors.accentText.name());
-        QFile af(aDstDir + "/" + stem + "-active.svg");
+        QFile af(aDstDir + "/" + name + "-active.svg");
         if (af.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
             af.write(active.toUtf8());
         }
