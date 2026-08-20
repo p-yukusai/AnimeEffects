@@ -21,7 +21,10 @@
 #include <QtMultimedia/QAudioOutput>
 #include <utility>
 
+#include "gui/tool/ToolSlider.h"
+
 namespace core { class Project; }
+namespace theme { class Theme; }
 
 struct audioConfig{
     QString audioName = "Placeholder";
@@ -47,7 +50,11 @@ struct UIState{
     QLabel *endLabel{ new QLabel };
     QLabel *musDurationLabel{ new QLabel };
     QLabel *volumeLabel{ new QLabel };
-    QSlider *volumeSlider{ new QSlider };
+    QLabel *volumeIcon{ new QLabel };
+    // Custom-painted like the tool-panel sliders: QSS cannot draw a clean
+    // circular head on a thin track (see ToolSlider), so the volume row
+    // shares the same widget instead of a QSS-styled QSlider.
+    QSlider *volumeSlider{ new gui::tool::ToolSlider };
     QFrame *line{ new QFrame };
     mutable bool addTrack = true;
 };
@@ -71,6 +78,8 @@ public:
     void connect(QWidget *audioWidget, mediaState *state, std::vector<audioConfig>* config);
     void addUIState(std::vector<audioConfig>* config, int index, mediaState *mediaPlayer, bool bulk = false);
     void rectifyUI(std::vector<audioConfig>* config, mediaState* mediaPlayer, bool bulk = true);
+    // Re-fetch the runtime-tinted speaker glyph after a theme change.
+    void onThemeUpdated(theme::Theme&);
     static void addTrack(mediaState *state, const QUrl& source);
     static void modifyTrack(mediaState *state, std::vector<audioConfig>* config, int index);
     static void removeTrack(mediaState *state, int index);

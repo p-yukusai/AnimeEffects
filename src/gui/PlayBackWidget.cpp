@@ -53,8 +53,19 @@ PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent, core:
     mButtons.back()->setChecked(mDoesLoop);
     mButtons.push_back(createButton("faders-horizontal", false, 6, tr("Animation settings")));
     mButtons.push_back(createButton("speaker-high", false, 7, tr("Audio track")));
+    // Frame nudge buttons repeat on hold: fire once on press, then every
+    // 50ms after a 400ms hold (QAbstractButton re-emits pressed()).
+    for (const int column : {1, 3}) {
+        QPushButton* b = mButtons.at(column);
+        b->setAutoRepeat(true);
+        b->setAutoRepeatDelay(400);
+        b->setAutoRepeatInterval(50);
+    }
     audioWidget->setupUi(audioUI, &mediaPlayer, aConf);
     mGUIResources.onThemeChanged.connect(this, &PlayBackWidget::onThemeUpdated);
+    // The audio window's speaker glyph is a runtime-tinted icon; refresh it
+    // (and let the ToolSlider repaint) on theme changes.
+    mGUIResources.onThemeChanged.connect(audioWidget, &AudioPlaybackWidget::onThemeUpdated);
 }
 
 void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
