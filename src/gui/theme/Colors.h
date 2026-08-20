@@ -154,7 +154,7 @@ enum KeyColorToken { kKeyBase, kKeyMove, kKeyRotate, kKeyScale, kKeyDepth,
                      kKeyOpa, kKeyBone, kKeyPose, kKeyMesh, kKeyFFD,
                      kKeyImage, kKeyHSV, kKeyBlur, kKeyCount };
 static constexpr int kKeyColorRow[] = {
-    kTailwindNeutralRow, // baseKey  (neutral; column per theme)
+    kTailwindNeutralRow, // baseKey  (neutral)
     11,                  // moveKey  (indigo)
     13,                  // rotateKey (purple)
     14,                  // scaleKey (fuchsia)
@@ -165,16 +165,18 @@ static constexpr int kKeyColorRow[] = {
     6,                   // meshKey  (emerald)
     8,                   // FFDKey   (cyan)
     9,                   // imageKey (sky)
-    11,                  // HSVKey   (indigo, pale)
-    14,                  // blurKey  (fuchsia, pale)
+    11,                  // HSVKey   (indigo)
+    14,                  // blurKey  (fuchsia)
 };
 static_assert(sizeof(kKeyColorRow) / sizeof(kKeyColorRow[0]) == kKeyCount,
               "kKeyColorRow must have one row per KeyColorToken");
-static constexpr int kKeyColorColumn[] = {
-    0, // baseKey: unused — resolved per theme (light 8, dark 2)
-    9, 9, 8, 7, 5, 3, 3, 3, 2, 2, 3, 3 };
-static_assert(sizeof(kKeyColorColumn) / sizeof(kKeyColorColumn[0]) == kKeyCount,
-              "kKeyColorColumn must have one column per KeyColorToken");
+// Every key type shares one lightness column per theme, so the keys read at
+// the same brightness and stay distinguishable by hue alone (a mix of deep
+// and pale steps read as inconsistent). The mid-vivid steps mirror
+// kAccentBright (light 6, dark 4): a step darker on pale lanes, a step
+// lighter on dark lanes.
+static constexpr int kKeyColorColumnLight = 6;
+static constexpr int kKeyColorColumnDark = 4;
 
 // ---------------------------------------------------------------------------
 // Design tokens for an appearance (light/dark x accent hue).
@@ -226,8 +228,8 @@ struct Colors {
                           // (borders match separators), dark keeps its own
                           // edge — the body is the sunken surface
     // Per-key colors for easier identification: one Tailwind row per key
-    // type at a fixed column (kKeyColorRow / kKeyColorColumn); baseKey is
-    // the neutral key color, flipping polarity per theme.
+    // type (kKeyColorRow) at a shared per-theme column, so all keys read at
+    // the same lightness; baseKey is the neutral key color.
     QColor baseKey; // Equal to TimeKeyType_TERM
     QColor moveKey;
     QColor rotateKey;
@@ -278,22 +280,21 @@ struct Colors {
             paletteColor(n[kTailwindLight[kAccentText]]), // accentText
             paletteColor(n[kTailwindLight[kFloaterBody]]), // floaterBody
             paletteColor(n[kTailwindLight[kFloaterEdge]]), // floaterEdge
-            // Per-key colors: kKeyColorRow at kKeyColorColumn; baseKey is
-            // the neutral key color, a dark column here so keys read on the
-            // pale lanes (dark themes flip it to a pale column).
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][8]), // baseKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyMove]][kKeyColorColumn[kKeyMove]]), // moveKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyRotate]][kKeyColorColumn[kKeyRotate]]), // rotateKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyScale]][kKeyColorColumn[kKeyScale]]), // scaleKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyDepth]][kKeyColorColumn[kKeyDepth]]), // depthKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpa]][kKeyColorColumn[kKeyOpa]]), // opaKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyBone]][kKeyColorColumn[kKeyBone]]), // boneKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyPose]][kKeyColorColumn[kKeyPose]]), // poseKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyMesh]][kKeyColorColumn[kKeyMesh]]), // meshKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyFFD]][kKeyColorColumn[kKeyFFD]]), // FFDKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumn[kKeyImage]]), // imageKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumn[kKeyHSV]]), // HSVKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumn[kKeyBlur]]), // blurKey
+            // Per-key colors: kKeyColorRow at one shared column per theme
+            // (kKeyColorColumnLight), so all keys read at the same lightness.
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnLight]), // baseKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMove]][kKeyColorColumnLight]), // moveKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyRotate]][kKeyColorColumnLight]), // rotateKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyScale]][kKeyColorColumnLight]), // scaleKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyDepth]][kKeyColorColumnLight]), // depthKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpa]][kKeyColorColumnLight]), // opaKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBone]][kKeyColorColumnLight]), // boneKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyPose]][kKeyColorColumnLight]), // poseKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMesh]][kKeyColorColumnLight]), // meshKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyFFD]][kKeyColorColumnLight]), // FFDKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnLight]), // imageKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnLight]), // HSVKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnLight]), // blurKey
         };
         c.isDark = false;
         return c;
@@ -329,22 +330,21 @@ struct Colors {
             paletteColor(n[kTailwindDark[kAccentText]]),  // accentText
             paletteColor(n[kTailwindDark[kFloaterBody]]), // floaterBody
             paletteColor(n[kTailwindDark[kFloaterEdge]]), // floaterEdge
-            // Per-key colors: kKeyColorRow at kKeyColorColumn; baseKey is
-            // the neutral key color, a pale column here so keys read on the
-            // dark lanes.
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][2]), // baseKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyMove]][kKeyColorColumn[kKeyMove]]), // moveKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyRotate]][kKeyColorColumn[kKeyRotate]]), // rotateKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyScale]][kKeyColorColumn[kKeyScale]]), // scaleKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyDepth]][kKeyColorColumn[kKeyDepth]]), // depthKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpa]][kKeyColorColumn[kKeyOpa]]), // opaKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyBone]][kKeyColorColumn[kKeyBone]]), // boneKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyPose]][kKeyColorColumn[kKeyPose]]), // poseKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyMesh]][kKeyColorColumn[kKeyMesh]]), // meshKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyFFD]][kKeyColorColumn[kKeyFFD]]), // FFDKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumn[kKeyImage]]), // imageKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumn[kKeyHSV]]), // HSVKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumn[kKeyBlur]]), // blurKey
+            // Per-key colors: kKeyColorRow at one shared column per theme
+            // (kKeyColorColumnDark), so all keys read at the same lightness.
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnDark]), // baseKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMove]][kKeyColorColumnDark]), // moveKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyRotate]][kKeyColorColumnDark]), // rotateKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyScale]][kKeyColorColumnDark]), // scaleKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyDepth]][kKeyColorColumnDark]), // depthKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpa]][kKeyColorColumnDark]), // opaKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBone]][kKeyColorColumnDark]), // boneKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyPose]][kKeyColorColumnDark]), // poseKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMesh]][kKeyColorColumnDark]), // meshKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyFFD]][kKeyColorColumnDark]), // FFDKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnDark]), // imageKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnDark]), // HSVKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnDark]), // blurKey
         };
         c.isDark = true;
         return c;
