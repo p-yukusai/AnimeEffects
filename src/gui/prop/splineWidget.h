@@ -22,9 +22,53 @@
 #include <QtConcurrent>
 
 #include <QMessageBox>
-#include <QProgressBar>
+#include <QPainter>
+#include <QPen>
 
 QT_BEGIN_NAMESPACE
+
+// Easing preview: the canvas's value axis flattened to a vertical strip. A
+// dot rides up/down with Y = the easing value, using the same band mapping
+// (the MAGIC_BORDER_Y insets) at the same row height as the editor, so its
+// vertical position mirrors the curve's height at the current progress.
+// The track is the full widget height and the value is not clamped: the
+// canvas's handles can drag past the 0..1 band (under/over range), and the
+// dot follows beyond it.
+class EasingDot : public QWidget {
+public:
+    explicit EasingDot(const BezierCurveEditor* aEditor, QWidget* aParent = nullptr)
+        : QWidget(aParent), mEditor(aEditor) {
+        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+        setFixedWidth(16);
+    }
+    void setValue(double aValue) {
+        mValue = aValue;
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        const theme::Colors& c = theme::Colors::current();
+        const int top = mEditor ? mEditor->MAGIC_BORDER_Y : 0;
+        const int band = height() - 2 * top; // the 0..1 extent
+        const int cx = width() / 2;
+        // the track: the full height (the 0..1 band sits inside it, like the
+        // canvas's draggable range); +0.5 snaps the 1px pen onto one column
+        p.setPen(QPen(c.recessedHairline, 1.0));
+        p.drawLine(cx + 0.5, 0, cx + 0.5, height());
+        // the dot at Y = value (0 at the bottom of the band, 1 at the top)
+        const qreal y = top + (1.0 - mValue) * band;
+        p.setPen(Qt::NoPen);
+        p.setBrush(c.accentSwatch);
+        p.drawEllipse(QPointF(cx, y), 5.0, 5.0);
+    }
+
+private:
+    const BezierCurveEditor* mEditor;
+    double mValue = 0.0;
+};
 
 class Ui_splineWidget {
 public:
@@ -39,7 +83,7 @@ public:
     QDoubleSpinBox *y2_spin;
     QPushButton *cancel;
     QPushButton *apply;
-    QProgressBar *progressBar;
+    EasingDot* mEasingDot;
     float progress;
     QVector<QDoubleSpinBox*> spins;
 
@@ -192,24 +236,15 @@ public:
 
 
         gridLayout_2->addWidget(toolButton, 2, 0, 1, 1);
-        // Approximation of bezier progress via Qt func. The preview sweeps
-        // the bar as progress ramps 0..1.25; a step at or above the reset
-        // threshold pins progress at 0 and freezes the sweep. The tick
-        // fires at 60Hz (16ms); accuracy is the bar's step resolution — at
-        // 100 the sweep jumped ~5px per step and read as low-FPS, 1000
-        // moves the bar on every tick. progressAccuracy keeps the old sweep
-        // duration (~2.8s per loop).
-        constexpr float accuracy = 1000.f;
+        // Easing preview: the canvas's value axis as a vertical strip to the
+        // right, with a dot at Y = value — the curve's height at the current
+        // progress reads directly. The sweep ramps 0..1.25 (the extra head
+        // room keeps the loop from stalling at the exact end); the tick
+        // fires at 60Hz (16ms) with progressAccuracy keeping a ~2.8s loop.
         constexpr float progressAccuracy = 0.0072f;
-        progressBar = new QProgressBar(splineWidget);
-        progressBar->setValue(0);
-        progressBar->setMinimum(0.0);
-        progressBar->setMaximum(static_cast<int>(accuracy));
-        progressBar->setTextVisible(false);
-        progressBar->setAlignment(Qt::AlignCenter);
-        progressBar->setObjectName("progressBar");
+        mEasingDot = new EasingDot(m_editor, splineWidget);
 
-        gridLayout_2->addWidget(progressBar, 5, 0, 1, gridLayout_2->columnCount());
+        gridLayout_2->addWidget(mEasingDot, 0, 6, 1, 1);
 
         auto *timer = new QTimer(splineWidget);
         QTimer::connect(timer, &QTimer::timeout, [=] {
@@ -231,7 +266,7 @@ public:
             /*qDebug("---");
             qDebug() << easingProgress;
             qDebug("---");*/
-            progressBar->setValue(static_cast<int>(easingProgress * accuracy));
+            mEasingDot->setValue(easingProgress);
         });
         timer->start(16);
 
