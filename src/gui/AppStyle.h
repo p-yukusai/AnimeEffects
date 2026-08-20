@@ -1,19 +1,22 @@
-#ifndef GUI_SCROLLBARSTYLE_H
-#define GUI_SCROLLBARSTYLE_H
+#ifndef GUI_APPSTYLE_H
+#define GUI_APPSTYLE_H
 
 #include <QProxyStyle>
 
 namespace gui {
 
-// Renders scrollbar handles deterministically: a 4px pill drawn with
-// QPainter::drawRoundedRect, centered in a 12px invisible track. The QSS
-// border-image path for scrollbar subcontrols distorts a 4px pill's caps
-// (protruding / inverted ends), so scrollbars get their own proxy style.
-// Muted at rest (#565656), bright on hover/drag (#7e7e7e).
-class ScrollBarStyle: public QProxyStyle {
+// The app-wide QProxyStyle (installed by GUIResources::applyAppearance, slotted
+// under the stylesheet wrapper). Custom-paints the primitives QSS can't do
+// deterministically:
+//  - CC_ScrollBar: a 4px pill centered in a 12px invisible track (the QSS
+//    border-image path distorts the pill's caps; colors from theme tokens).
+//  - PE_PanelMenu / CE_MenuItem: rounded popup panels and combo rows.
+//  - PE_IndicatorBranch: object-tree guide lines + the caret, drawn as a real
+//    QIcon at a fixed pixel size (QSS ::branch has no sizing knob).
+class AppStyle: public QProxyStyle {
     Q_OBJECT
 public:
-    explicit ScrollBarStyle(QStyle* aBaseStyle);
+    explicit AppStyle(QStyle* aBaseStyle);
 
     int pixelMetric(PixelMetric aMetric, const QStyleOption* aOption = nullptr,
                     const QWidget* aWidget = nullptr) const override;
@@ -30,4 +33,4 @@ public:
 
 } // namespace gui
 
-#endif // GUI_SCROLLBARSTYLE_H
+#endif // GUI_APPSTYLE_H

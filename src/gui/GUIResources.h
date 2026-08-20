@@ -56,7 +56,7 @@ private:
     QPalette palette;
 
     QMetaObject::Connection mSchemeConnection;  // "system" scheme tracking
-    bool mScrollBarStyleInstalled = false;      // wrap the proxy style once
+    bool mAppStyleInstalled = false;        // wrap the proxy style once
 };
 
 } // namespace gui

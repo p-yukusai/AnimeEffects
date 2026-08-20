@@ -1570,19 +1570,6 @@ QListView:!selected
     border: 0em solid black;
 }
 
-QTreeView::branch:has-siblings
-{
-    border-image: url(@icondir@/vline.svg);
-    image: none;
-}
-
-/* These branch indicators don't scale */
-QTreeView::branch:!has-siblings
-{
-    border-image: none;
-    image: none;
-}
-
 
 QGroupBox::indicator:unchecked {
     image: url(@icondir@/caret-right.svg);
@@ -1598,52 +1585,6 @@ QTreeView#objectTree::indicator:unchecked {
 
 QTreeView#objectTree::indicator:checked {
     image: url(@icondir@/eye-open.svg);
-}
-
-QTreeView::branch:has-siblings:adjoins-item
-{
-    border-image: url(@icondir@/branch_more.svg);
-}
-
-QTreeView::branch:!has-children:!has-siblings:adjoins-item
-{
-    border-image: url(@icondir@/branch_end.svg);
-}
-
-QTreeView::branch:has-children:!has-siblings:closed,
-QTreeView::branch:closed:has-children:has-siblings
-{
-    image: url(@icondir@/branch_closed.svg);
-}
-
-QTreeView::branch:has-children:!has-siblings:closed:hover,
-QTreeView::branch:closed:has-children:has-siblings:hover
-{
-    image: url(@icondir@/branch_closed_hover.svg);
-}
-
-QTreeView::branch:has-children:!has-siblings:closed,
-QTreeView::branch:open:has-children:!has-siblings
-{
-    border-image: url(@icondir@/branch_end_arrow.svg);
-}
-
-QTreeView::branch:closed:has-children:has-siblings,
-QTreeView::branch:open:has-children:has-siblings
-{
-    border-image: url(@icondir@/branch_more_arrow.svg);
-}
-
-QTreeView::branch:open:has-children:!has-siblings,
-QTreeView::branch:open:has-children:has-siblings
-{
-    image: url(@icondir@/branch_open.svg);
-}
-
-QTreeView::branch:open:has-children:!has-siblings:hover,
-QTreeView::branch:open:has-children:has-siblings:hover
-{
-    image: url(@icondir@/branch_open_hover.svg);
 }
 
 QListView

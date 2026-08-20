@@ -7,7 +7,7 @@
 #include <QStyleFactory>
 #include <QStyleHints>
 
-#include "gui/ScrollBarStyle.h"
+#include "gui/AppStyle.h"
 #include "theme/Icons.h"
 
 namespace gui {
@@ -108,17 +108,23 @@ void GUIResources::applyAppearance() {
 
     applyPalette(c);
     QApplication::setPalette(palette);
-    qApp->setStyleSheet(dialogButtonStyleSheet());
-    // Scrollbar handles are drawn by the proxy style (a deterministic 4px pill
-    // from the theme tokens) instead of the QSS border-image path, which
-    // distorts small pills. Install the proxy once: QApplication::setStyle
-    // slots the passed style under the stylesheet wrapper (QStyleSheetStyle),
-    // so qobject_cast<ScrollBarStyle*>(qApp->style()) never matches and the
-    // old guard wrapped a fresh proxy on every appearance change.
-    if (!mScrollBarStyleInstalled) {
-        qApp->setStyle(new ScrollBarStyle(qApp->style()));
-        mScrollBarStyleInstalled = true;
+    // The app proxy style custom-paints the primitives QSS can't do well:
+    // scrollbar pill, popup panels/rows, and the tree-branch carets (QSS
+    // ::branch has no sizing knob). Install it BEFORE setStyleSheet: at that
+    // point the app style is Fusion, which setStyle reparents under the
+    // proxy. Installing after would capture the QStyleSheetStyle wrapper that
+    // setStyleSheet just created; QApplication::setStyle then derefs that
+    // wrapper (refcount 1 -> 0) and deletes it, leaving the proxy's base
+    // dangling — a use-after-free on every forwarded call. Install it once:
+    // setStyle slots the passed style under the stylesheet wrapper
+    // (QStyleSheetStyle), so qobject_cast<AppStyle*>(qApp->style()) never
+    // matches and the old guard wrapped a fresh proxy on every appearance
+    // change.
+    if (!mAppStyleInstalled) {
+        qApp->setStyle(new AppStyle(qApp->style()));
+        mAppStyleInstalled = true;
     }
+    qApp->setStyleSheet(dialogButtonStyleSheet());
 }
 
 void GUIResources::loadIcons() {

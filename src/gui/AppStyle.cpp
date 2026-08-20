@@ -1,6 +1,8 @@
-#include "gui/ScrollBarStyle.h"
+#include "gui/AppStyle.h"
 #include "gui/theme/Colors.h"
+#include "gui/theme/Icons.h"
 
+#include <QIcon>
 #include <QMenu>
 #include <QPainter>
 #include <QPainterPath>
@@ -14,13 +16,23 @@ namespace {
 constexpr int kTrackThickness = 12; // hit area / extent (invisible)
 constexpr int kPillThickness = 4;
 constexpr int kPillRadius = 2;
+// Object-tree branch caret: the QIcon box the caret is rendered into
+// (glyph inside is ~0.73 of the box at phosphor's 256 canvas).
+constexpr int kBranchCaretSize = 14;
+// Caret alpha: the caret is the dimmest element of the row (below the
+// eye's baked 0.45 and the folder/file's antialiased ~0.45). No hover
+// state, consistent with the eye.
+constexpr qreal kBranchCaretOpacity = 0.4;
+// Guide-line alpha: the tree's indentation lines are dimmer still than the
+// caret, matching the row's secondary-chrome hierarchy.
+constexpr qreal kBranchLineOpacity = 0.4;
 // The pill colors come from the theme tokens (outline at rest, hover when
 // hovered/dragged); see theme/Colors.h.
 } // namespace
 
-ScrollBarStyle::ScrollBarStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
+AppStyle::AppStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
 
-void ScrollBarStyle::polish(QWidget* aWidget) {
+void AppStyle::polish(QWidget* aWidget) {
     // Menus are opaque OS popup windows by default (their backing is the
     // palette Window role). For real rounded corners the popup must be an
     // alpha window, so mark them translucent at polish time — before the
@@ -54,14 +66,14 @@ void ScrollBarStyle::polish(QWidget* aWidget) {
     QProxyStyle::polish(aWidget);
 }
 
-int ScrollBarStyle::pixelMetric(PixelMetric aMetric, const QStyleOption* aOption,
+int AppStyle::pixelMetric(PixelMetric aMetric, const QStyleOption* aOption,
                                 const QWidget* aWidget) const {
     if (aMetric == PM_ScrollBarExtent)
         return kTrackThickness;
     return QProxyStyle::pixelMetric(aMetric, aOption, aWidget);
 }
 
-QSize ScrollBarStyle::sizeFromContents(ContentsType aType, const QStyleOption* aOption,
+QSize AppStyle::sizeFromContents(ContentsType aType, const QStyleOption* aOption,
                                        const QSize& aContentsSize, const QWidget* aWidget) const {
     if (aType == CT_MenuItem && aOption) {
         // The combo popup's QComboMenuDelegate sizes its rows via
@@ -77,7 +89,7 @@ QSize ScrollBarStyle::sizeFromContents(ContentsType aType, const QStyleOption* a
     return QProxyStyle::sizeFromContents(aType, aOption, aContentsSize, aWidget);
 }
 
-void ScrollBarStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOption,
+void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOption,
                                    QPainter* aPainter, const QWidget* aWidget) const {
     if (aElement == PE_PanelMenu && aOption) {
         // Deterministic menu/combo-popup panel: a sunken surface (recessed)
@@ -107,10 +119,74 @@ void ScrollBarStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption
         aPainter->restore();
         return;
     }
+    if (aElement == PE_IndicatorBranch && aOption) {
+        // Object-tree branches: QSS has no sizing knob for ::branch (the
+        // image is scaled to the style-computed cell, and width/height are
+        // ignored), so the caret is drawn here as a real QIcon at a fixed
+        // pixel size. The guide lines are painted with the hairline token
+        // (same as the tinted icons they replace) and routed around the
+        // caret box so they never show through the translucent glyph.
+        // Fusion contributes no branch drawing of its own (it only paints
+        // the arrow primitive), so nothing is lost by skipping the base call.
+        const QRect r = aOption->rect;
+        const int midX = r.left() + r.width() / 2;
+        const int midY = r.top() + r.height() / 2;
+        const bool hasCaret = aOption->state & QStyle::State_Children;
+
+        QRect box;
+        if (hasCaret) {
+            box = QRect(r.left() + (r.width() - kBranchCaretSize) / 2,
+                        r.top() + (r.height() - kBranchCaretSize) / 2,
+                        kBranchCaretSize, kBranchCaretSize);
+        }
+
+        aPainter->save();
+        aPainter->setPen(theme::Colors::current().hairline);
+        aPainter->setRenderHint(QPainter::Antialiasing, false);
+        aPainter->setOpacity(kBranchLineOpacity);
+        // Vertical connector: full height when a sibling row follows, else
+        // only down to the corner (last child). Split around the caret box
+        // so the guide line never crosses the glyph.
+        if (aOption->state & QStyle::State_Sibling) {
+            if (hasCaret) {
+                aPainter->drawLine(midX, r.top(), midX, box.top() - 1);
+                aPainter->drawLine(midX, box.bottom() + 1, midX, r.bottom());
+            } else {
+                aPainter->drawLine(midX, r.top(), midX, r.bottom());
+            }
+        } else if (aOption->state & QStyle::State_Item) {
+            aPainter->drawLine(midX, r.top(), midX, hasCaret ? box.top() - 1 : midY);
+        }
+
+        // The elbow: a 1px horizontal stub at midY from the guide (or the
+        // caret box) to the row's right edge, so rows read as connected to
+        // the guide lines. QCommonStyle draws the same connector and the
+        // QSS images this replaces (branch_more/branch_end) included it;
+        // without it the rows would hang off the trunks. LTR layout (the
+        // app has no RTL locales; Qt would mirror this for RTL).
+        if (aOption->state & QStyle::State_Item) {
+            const int fromX = hasCaret ? box.right() + 1 : midX;
+            aPainter->drawLine(fromX, midY, r.right(), midY);
+        }
+
+        if (hasCaret) {
+            // No hover feedback (Figma-style): the click's state change is
+            // the feedback, and hover would be inconsistent with the eye.
+            const bool open = aOption->state & QStyle::State_Open;
+            const QString stem = QStringLiteral("caret-%1-bold").arg(open ? QStringLiteral("down") : QStringLiteral("right"));
+            QIcon icon(theme::iconDir() + QLatin1Char('/') + stem + QStringLiteral(".svg"));
+            aPainter->setRenderHint(QPainter::Antialiasing, true);
+            aPainter->setOpacity(kBranchCaretOpacity);
+            icon.paint(aPainter, box, Qt::AlignCenter);
+            aPainter->setOpacity(1.0);
+        }
+        aPainter->restore();
+        return;
+    }
     QProxyStyle::drawPrimitive(aElement, aOption, aPainter, aWidget);
 }
 
-void ScrollBarStyle::drawControl(ControlElement aElement, const QStyleOption* aOption,
+void AppStyle::drawControl(ControlElement aElement, const QStyleOption* aOption,
                                  QPainter* aPainter, const QWidget* aWidget) const {
     if (aElement == CE_MenuItem && aOption) {
         // Combo popups draw their items as CE_MenuItem rows; the QSS
@@ -159,7 +235,7 @@ void ScrollBarStyle::drawControl(ControlElement aElement, const QStyleOption* aO
     QProxyStyle::drawControl(aElement, aOption, aPainter, aWidget);
 }
 
-void ScrollBarStyle::drawComplexControl(ComplexControl aControl, const QStyleOptionComplex* aOption,
+void AppStyle::drawComplexControl(ComplexControl aControl, const QStyleOptionComplex* aOption,
                                         QPainter* aPainter, const QWidget* aWidget) const {
     if (aControl == CC_ScrollBar) {
         // Invisible track (the dock surface shows through); only the pill.
