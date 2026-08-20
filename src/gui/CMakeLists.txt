@@ -120,6 +120,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         AE_MINOR_VERSION=7
         AE_MICRO_VERSION=1
     USE_GL_CORE_PROFILE
+    $<$<CONFIG:Debug>:QT_DEBUG>
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
