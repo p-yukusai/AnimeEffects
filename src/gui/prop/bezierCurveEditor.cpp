@@ -191,6 +191,8 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     }
 
     painter.setPen(m_borderPen);
+    painter.setBrush(Qt::NoBrush); // drawRect below must outline only — the
+                                   // handles loop leaves accentSwatch set
     painter.drawLine(QLine{0, MAGIC_BORDER_Y, width(), MAGIC_BORDER_Y});
     painter.drawLine(QLine{0, height() - MAGIC_BORDER_Y, width(), height() - MAGIC_BORDER_Y});
     painter.drawRect(0, 0, width(), height());
