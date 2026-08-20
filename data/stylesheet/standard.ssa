@@ -1515,7 +1515,10 @@ QListView::item,
 QTreeView::item
 {
     padding: 0.13em;
-    color: @text@;
+    /* No `color`: a matching ::item color would override the per-item
+       foreground brush, which is how ObjectTreeWidget dims hidden layers'
+       labels. Unbrushed items fall back to the palette Text role, which is
+       the same @text@ token. */
 }
 
 QTreeView::item
@@ -1539,7 +1542,9 @@ QTreeView::item:!selected:hover
     /* the accent hue at 10% alpha, so hover tints track the selected hue */
     background-color: @accentOverlay@;
     outline: 0;
-    color: @text@;
+    /* no `color` either: the item brush must keep winning on hover, or a
+       hidden layer's faded label would snap bright under the cursor while
+       its icon stays faded */
     padding: 0.13em;
 }
 
@@ -1872,21 +1877,19 @@ QTableView
     border-radius: 0em;
 }
 
-QAbstractItemView::item
-{
-    color: @text@;
-}
-
 /* Selected items render as one muted brand-tinted state for every state
-   (active, inactive, hover); the color is the selection token (@selection@),
-   the brand hue at low elevation. */
+   (active, inactive, hover); the fill is the selection token (@selection@),
+   the brand hue at low elevation. (No `color` anywhere in the ::item rules:
+   a matching QSS color would override the per-item foreground brush the
+   object tree uses to dim hidden labels, including the gentler dim it keeps
+   on a selected row. Unbrushed items draw the palette's Text role, which is
+   the same @text@ token.) */
 QAbstractItemView::item:pressed,
 QAbstractItemView::item:selected:!active,
 QAbstractItemView::item:selected:active,
 QAbstractItemView::item:selected:hover
 {
     background: @selection@;
-    color: @text@;
 }
 
 QHeaderView
