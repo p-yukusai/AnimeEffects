@@ -36,8 +36,9 @@ public:
     // playhead's frame-number badge (gui::TimeCursor).
     static constexpr int kHeaderHeight = 22;
     // Content-axis gutter before frame 0's tick; the scrollbar track also
-    // reserves one margin past the last frame (see TimeLineWidget).
-    static constexpr int kTimeLineMargin = 14;
+    // reserves one margin past the last frame (see TimeLineWidget). A single
+    // 24px token keeps both sides symmetric.
+    static constexpr int kTimeLineMargin = 24;
     // Ruler number text geometry, relative to the header top.
     static constexpr int kNumberTop = -1;
     static constexpr int kNumberHeight = 14;

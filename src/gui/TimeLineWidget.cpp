@@ -241,10 +241,10 @@ void TimeLineWidget::projectHorizontalScrollBar() {
     // the handle is painted at the viewport's own pixel span (see
     // TimelineScrollBar), so it is flush left when viewportStart <=
     // frameStart and flush right when viewportEnd >= frameEnd — symmetric.
-    // frameEnd is the last frame's position PLUS the trailing margin: the
-    // ruler draws the last frame's number centered on its tick, so flush
-    // right must leave it a full margin of room (mirroring the left gutter),
-    // not clip it at the viewport edge.
+    // frameEnd is the last frame's position PLUS the trailing margin: a
+    // fixed 24px, the same token as the left gutter before frame 0's tick,
+    // so flush-right leaves a full margin of empty track after the last
+    // frame (the centered number overhangs it slightly; that is accepted).
     const int frameStart = 0;
     const int frameEnd = mInner->frameEndPixel() + ctrl::TimeLineEditor::kTimeLineMargin;
     const int windowWidth = mInner->width();
