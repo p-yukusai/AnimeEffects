@@ -153,8 +153,10 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     painter.setBrush(c.recessed);
     painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
 
-    // Tangent guides: dashed hairline from each curve anchor to its handle.
-    painter.setPen(QPen(c.hairline, 1.0, Qt::DashLine));
+    // Tangent guides: dashed line from each curve anchor to its handle.
+    // guideLine is mid-toned per theme so it reads on the sunken canvas
+    // (hairline fades against the pale light canvas).
+    painter.setPen(QPen(c.guideLine, 1.0, Qt::DashLine));
     painter.setBrush(Qt::NoBrush);
     painter.drawLine(m_points[StartPoint], m_points[ControlPoint1]);
     painter.drawLine(m_points[EndPoint], m_points[ControlPoint2]);

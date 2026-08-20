@@ -67,6 +67,7 @@ enum TokenRole {
     kText, kTextMuted, kTextDisabled, kIcon,
     kSelection, kSelectionText, kTextSelection, kAccent, kAccentSwatch, kAccentBright, kAccentHover, kAccentText,
     kFloaterBody, kFloaterEdge,
+    kGuideLine, // dashed guides drawn on the recessed canvas (spline editor)
     kTokenCount
 };
 
@@ -102,6 +103,9 @@ static constexpr int kTailwindLight[] = {
     /* kAccentText        */ 9,
     /* kFloaterBody       */ 0,
     /* kFloaterEdge       */ 2, // popup border; tracks hairline
+    /* kGuideLine         */ 8, // a mid-dark line that reads on the pale
+                                 // recessed canvas (light theme; the 1px
+                                 // dashed AA halves the nominal contrast)
 };
 static_assert(sizeof(kTailwindLight) / sizeof(kTailwindLight[0]) == kTokenCount,
               "kTailwindLight must have one column per TokenRole");
@@ -132,6 +136,8 @@ static constexpr int kTailwindDark[] = {
     /* kAccentText        */ 1,
     /* kFloaterBody       */ 9,
     /* kFloaterEdge       */ 8, // normal edge; the body is the sunken surface
+    /* kGuideLine         */ 4, // a mid-light line that reads on the dark
+                                 // recessed canvas
 };
 static_assert(sizeof(kTailwindDark) / sizeof(kTailwindDark[0]) == kTokenCount,
               "kTailwindDark must have one column per TokenRole");
@@ -227,6 +233,9 @@ struct Colors {
     QColor floaterEdge;   // popup panel edge: light tracks the hairline token
                           // (borders match separators), dark keeps its own
                           // edge — the body is the sunken surface
+    QColor guideLine;     // dashed guides on the recessed canvas (spline
+                          // editor): mid-toned per theme so they read on the
+                          // sunken surface, where the hairline family fades
     // Per-key colors for easier identification: one Tailwind row per key
     // type (kKeyColorRow) at a shared per-theme column, so all keys read at
     // the same lightness; baseKey is the neutral key color.
@@ -280,6 +289,7 @@ struct Colors {
             paletteColor(n[kTailwindLight[kAccentText]]), // accentText
             paletteColor(n[kTailwindLight[kFloaterBody]]), // floaterBody
             paletteColor(n[kTailwindLight[kFloaterEdge]]), // floaterEdge
+            paletteColor(n[kTailwindLight[kGuideLine]]),   // guideLine
             // Per-key colors: kKeyColorRow at one shared column per theme
             // (kKeyColorColumnLight), so all keys read at the same lightness.
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnLight]), // baseKey
@@ -330,6 +340,7 @@ struct Colors {
             paletteColor(n[kTailwindDark[kAccentText]]),  // accentText
             paletteColor(n[kTailwindDark[kFloaterBody]]), // floaterBody
             paletteColor(n[kTailwindDark[kFloaterEdge]]), // floaterEdge
+            paletteColor(n[kTailwindDark[kGuideLine]]),   // guideLine
             // Per-key colors: kKeyColorRow at one shared column per theme
             // (kKeyColorColumnDark), so all keys read at the same lightness.
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnDark]), // baseKey
