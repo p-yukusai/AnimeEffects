@@ -22,12 +22,6 @@ BezierCurveEditor::BezierCurveEditor(QWidget *parent, util::Easing::CubicBezier*
     const theme::Colors c = theme::Colors::current();
     m_curvePen.setColor(c.text);
     m_curvePen.setWidth(2);
-
-    QColor borderColor = c.text;
-    borderColor.setAlpha(128);
-    m_borderPen.setColor(borderColor);
-    m_borderPen.setWidth(1);
-    m_borderPen.setStyle(Qt::PenStyle::DashLine);
     bezier = cubicBezier;
     progress = pro;
 
@@ -189,11 +183,4 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
         painter.setBrush(i == m_hoveredPoint ? c.accentBright : c.accentSwatch);
         painter.drawEllipse(m_points[i], POINT_RADIUS, POINT_RADIUS);
     }
-
-    painter.setPen(m_borderPen);
-    painter.setBrush(Qt::NoBrush); // drawRect below must outline only — the
-                                   // handles loop leaves accentSwatch set
-    painter.drawLine(QLine{0, MAGIC_BORDER_Y, width(), MAGIC_BORDER_Y});
-    painter.drawLine(QLine{0, height() - MAGIC_BORDER_Y, width(), height() - MAGIC_BORDER_Y});
-    painter.drawRect(0, 0, width(), height());
 }

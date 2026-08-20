@@ -56,7 +56,6 @@ public:
     QPointF         m_points[4];
 
     QPen        m_curvePen;
-    QPen        m_borderPen;
 
     bool        m_dragging;
     int         m_selectedPoint{};
