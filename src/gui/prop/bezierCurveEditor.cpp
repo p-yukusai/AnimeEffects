@@ -58,8 +58,10 @@ void BezierCurveEditor::mouseMoveEvent(QMouseEvent *event)
     }
     if(m_dragging) {
         m_points[m_selectedPoint] = event->pos();
+        // Editing restarts the preview from the new curve; hover alone must
+        // not freeze it (mouse tracking fires move events without buttons).
+        *progress = 0;
     }
-    *progress = 0;
     update();
 }
 

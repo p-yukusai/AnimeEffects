@@ -135,8 +135,6 @@ public:
         sizePolicy.setHorizontalStretch(0);
         sizePolicy.setVerticalStretch(0);
 
-        gridLayout_2->addWidget(m_editor, 0, 0, 1, gridLayout_2->columnCount());
-
         // Copy
         toolButton = new QToolButton(splineWidget);
         toolButton->setObjectName("toolButton");
@@ -157,6 +155,10 @@ public:
         });
 
         gridLayout_2->addWidget(toolButton_2, 2, 5, 1, 1);
+
+        // The editor spans the full width; added after the paste button so
+        // columnCount() includes its column (copy, x1, y1, x2, y2, paste).
+        gridLayout_2->addWidget(m_editor, 0, 0, 1, gridLayout_2->columnCount());
 
         QToolButton::connect(toolButton_2, &QToolButton::clicked, [=]() {
             QClipboard *clip = QGuiApplication::clipboard();
