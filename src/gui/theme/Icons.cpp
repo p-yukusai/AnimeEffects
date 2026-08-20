@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QSet>
 
 namespace theme {
 
@@ -123,6 +124,33 @@ IconRole iconRole(const QString& aStem) {
     return roleTable().value(aStem, IconRole::Text);
 }
 
+// Icons that render on a checkable button or swap to the active glyph on
+// hover — the transport row's hover icons use iconActive(), and checked
+// mode/view/tool buttons render the QIcon On state. Only these names get an
+// -active tint; the other glyphs never show a checked state, so generating
+// (and registering) -active copies for them was pure scratch-dir weight.
+const QSet<QString>& activeVariantNames() {
+    static const QSet<QString> s = {
+        // transport row (hover swap via iconActive): all eight buttons
+        "skip-back", "step-back", "play", "step-forward", "skip-forward",
+        "arrows-clockwise", "faders-horizontal", "speaker-high",
+        // mode panel (checkable)
+        "hand", "arrows-out-cardinal", "bone", "pose", "triangle", "ffd",
+        // view panel (checkable)
+        "cube", "image", "arrow-clockwise", "arrow-counter-clockwise",
+        "dot-outline", "flip-horizontal",
+        // tool mode groups (checkable SingleOutItem buttons)
+        "plus-bold", "minus-bold", "navigation-arrow", "link", "broadcast",
+        "paint-brush", "eraser", "pencil-simple", "hardness-1", "hardness-2",
+        "hardness-3", "crosshair",
+    };
+    return s;
+}
+
+bool needsActiveVariant(const QString& aName) {
+    return activeVariantNames().contains(aName);
+}
+
 static QString gIconDir;
 QString iconDir() { return gIconDir; }
 void setIconDir(const QString& aDir) { gIconDir = aDir; }
@@ -137,7 +165,8 @@ void setIconDir(const QString& aDir) { gIconDir = aDir; }
 // conventions) share the base glyph's source file — the role table tints
 // each name with its own state color, so the byte-identical duplicate
 // sources are not shipped. Each name still gets its own output (the QSS
-// references @icondir@/<name>.svg) and its -active pair.
+// references @icondir@/<name>.svg); the -active pair is generated only for
+// names that render checked/hover states (activeVariantNames).
 void tintIcons(const QString& aSrcDir, const QString& aDstDir, const Colors& aColors) {
     const auto exists = [&](const QString& aStem) {
         return QFile::exists(aSrcDir + "/" + aStem + ".svg")
@@ -194,12 +223,15 @@ void tintIcons(const QString& aSrcDir, const QString& aDstDir, const Colors& aCo
         }
         // the active-state tint (checked buttons: max-contrast content color).
         // The QIcon pairs base (rest) with this (active) so a checked button
-        // renders the active glyph automatically via the QIcon On state.
-        QString active = svg;
-        active.replace("currentColor", aColors.accentText.name());
-        QFile af(aDstDir + "/" + name + "-active.svg");
-        if (af.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
-            af.write(active.toUtf8());
+        // renders the active glyph automatically via the QIcon On state. Only
+        // names on checkable buttons / hover swaps get one (activeVariantNames).
+        if (needsActiveVariant(name)) {
+            QString active = svg;
+            active.replace("currentColor", aColors.accentText.name());
+            QFile af(aDstDir + "/" + name + "-active.svg");
+            if (af.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+                af.write(active.toUtf8());
+            }
         }
     }
 }

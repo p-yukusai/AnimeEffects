@@ -142,9 +142,14 @@ void GUIResources::loadIcons() {
         // also registered as its own stem so iconActive() can hand it out.
         icon.addFile(dir.filePath(name), QSize(), QIcon::Normal, QIcon::Off);
         const QString activePath = dir.filePath(stem + "-active.svg");
-        icon.addFile(activePath, QSize(), QIcon::Normal, QIcon::On);
+        // Only toggle/hover-swap names carry an -active file (tintIcons
+        // generates it for those); register the On state conditionally so a
+        // plain icon never references a missing pixmap.
+        if (QFile::exists(activePath)) {
+            icon.addFile(activePath, QSize(), QIcon::Normal, QIcon::On);
+            mIconMap.insert(stem + "-active", QIcon(activePath));
+        }
         mIconMap.insert(stem, icon);
-        mIconMap.insert(stem + "-active", QIcon(activePath));
     }
 }
 
