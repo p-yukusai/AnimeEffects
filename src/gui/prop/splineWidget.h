@@ -14,7 +14,6 @@
 
 
 #include <qgraphicsview.h>
-#include <QtWidgets/QFrame>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QToolButton>
 #include "gui/prop/bezierCurveEditor.h"
@@ -33,7 +32,6 @@ public:
     QDoubleSpinBox *x1_spin;
     QDoubleSpinBox *x2_spin;
     QDoubleSpinBox *y1_spin;
-    QFrame *line;
     BezierCurveEditor* m_editor;
     util::Easing::CubicBezier* bezier;
     QToolButton *toolButton_2;
@@ -80,30 +78,22 @@ public:
         x1_spin = new QDoubleSpinBox(splineWidget);
         x1_spin->setObjectName("x1_spin");
 
-        gridLayout_2->addWidget(x1_spin, 3, 1, 1, 1);
+        gridLayout_2->addWidget(x1_spin, 2, 1, 1, 1);
 
         x2_spin = new QDoubleSpinBox(splineWidget);
         x2_spin->setObjectName("x2_spin");
 
-        gridLayout_2->addWidget(x2_spin, 3, 3, 1, 1);
+        gridLayout_2->addWidget(x2_spin, 2, 3, 1, 1);
 
         y1_spin = new QDoubleSpinBox(splineWidget);
         y1_spin->setObjectName("y1_spin");
 
-        gridLayout_2->addWidget(y1_spin, 3, 2, 1, 1);
-
-        line = new QFrame(splineWidget);
-        line->setObjectName("line");
-        line->setFrameShape(QFrame::HLine);
-        line->setFrameShadow(QFrame::Sunken);
-
-        gridLayout_2->addWidget(line, 1, 0, 1, 6);
-
+        gridLayout_2->addWidget(y1_spin, 2, 2, 1, 1);
 
         y2_spin = new QDoubleSpinBox(splineWidget);
         y2_spin->setObjectName("y2_spin");
 
-        gridLayout_2->addWidget(y2_spin, 3, 4, 1, 1);
+        gridLayout_2->addWidget(y2_spin, 2, 4, 1, 1);
 
         spins = {x1_spin, y1_spin, x2_spin, y2_spin};
         m_editor = new BezierCurveEditor(splineWidget, cubicBezier, spins, &progress);
@@ -166,7 +156,7 @@ public:
             toolButton->setText("Copy");
         });
 
-        gridLayout_2->addWidget(toolButton_2, 3, 5, 1, 1);
+        gridLayout_2->addWidget(toolButton_2, 2, 5, 1, 1);
 
         QToolButton::connect(toolButton_2, &QToolButton::clicked, [=]() {
             QClipboard *clip = QGuiApplication::clipboard();
@@ -199,8 +189,10 @@ public:
         });
 
 
-        gridLayout_2->addWidget(toolButton, 3, 0, 1, 1);
-        // Approximation of bezier progress via Qt func
+        gridLayout_2->addWidget(toolButton, 2, 0, 1, 1);
+        // Approximation of bezier progress via Qt func. The preview sweeps
+        // the bar as progress ramps 0..1.25; a step at or above the reset
+        // threshold pins progress at 0 and freezes the sweep.
         constexpr float accuracy = 100.f;
         constexpr float progressAccuracy = 0.0009f;
         progressBar = new QProgressBar(splineWidget);
@@ -211,7 +203,7 @@ public:
         progressBar->setAlignment(Qt::AlignCenter);
         progressBar->setObjectName("progressBar");
 
-        gridLayout_2->addWidget(progressBar, 6, 0, 1, gridLayout_2->columnCount());
+        gridLayout_2->addWidget(progressBar, 5, 0, 1, gridLayout_2->columnCount());
 
         auto *timer = new QTimer(splineWidget);
         QTimer::connect(timer, &QTimer::timeout, [=] {
@@ -249,7 +241,7 @@ public:
             splineWidget->reject();
         });
 
-        gridLayout_2->addWidget(cancel, 7, 0, 1, 3);
+        gridLayout_2->addWidget(cancel, 6, 0, 1, 3);
 
         apply = new QPushButton(splineWidget);
         apply->setObjectName("apply");
@@ -258,7 +250,7 @@ public:
             splineWidget->accept();
         });
 
-        gridLayout_2->addWidget(apply, 7, 3, 1, 3);
+        gridLayout_2->addWidget(apply, 6, 3, 1, 3);
 
 
         retranslateUi(splineWidget);

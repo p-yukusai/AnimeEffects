@@ -3,7 +3,6 @@
 
 #include "util/Easing.h"
 #include <QPen>
-#include <QBrush>
 #include <QDoubleSpinBox>
 #include <QWidget>
 
@@ -22,6 +21,7 @@ public:
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *);
     void mouseReleaseEvent(QMouseEvent *);
+    void leaveEvent(QEvent *);
 
     signals:
 
@@ -42,24 +42,25 @@ private:
         return sqrt(diff.x()*diff.x() + diff.y()*diff.y());
     }
 
+    // Which tangent handle (ControlPoint1/2) is under the cursor, or -1.
+    int handleAt(const QPoint& aPos) const;
+
 public:
     const int NUM_POINTS = 4;
-    const qreal POINT_TOLERANCE = 5.0;
-    const qreal POINT_RADIUS = 6.0;
-    const int DESIRED_RANGE = 50;
+    const qreal POINT_RADIUS = 6.0; // visual radius of the tangent handles
+    const qreal HIT_RADIUS = 12.0;  // grab radius: generous like timeline keys
+    const int DESIRED_RANGE = 50;   // the editable range band (see border)
     const int MAGIC_BORDER_Y = static_cast<int>(2.44 * DESIRED_RANGE);
     const int MAGIC_BORDER_X = static_cast<int>(POINT_RADIUS);
 
     QPointF         m_points[4];
-    QPen            m_pens[4];
-    QBrush          m_brushes[4];
-    QColor          m_colors[4];
 
     QPen        m_curvePen;
     QPen        m_borderPen;
 
     bool        m_dragging;
     int         m_selectedPoint{};
+    int         m_hoveredPoint = -1;
 };
 
 #endif // BEZIERCURVEEDITOR_H
