@@ -63,7 +63,7 @@ inline constexpr int kTailwindNeutralRow = 20; // the achromatic neutral row
 // Token roles; the column maps are indexed by these.
 enum TokenRole {
     kBase, kRecessed, kRaised, kRaisedHover, kActive, kActiveHover,
-    kHairline, kHairlineHover, kOutline, kFocus, kHover,
+    kHairline, kHairlineHover, kOutline, kHandleBorder, kFocus, kHover,
     kText, kTextMuted, kTextDisabled, kIcon,
     kSelection, kSelectionText, kTextSelection, kAccent, kAccentSwatch, kAccentBright, kAccentHover, kAccentText,
     kFloaterBody, kFloaterEdge,
@@ -85,6 +85,7 @@ static constexpr int kTailwindLight[] = {
     /* kHairline          */ 2,
     /* kHairlineHover     */ 3,
     /* kOutline           */ 3,
+    /* kHandleBorder      */ 2,
     /* kFocus             */ 6,
     /* kHover             */ 4,
     /* kText              */ 9,
@@ -109,11 +110,12 @@ static constexpr int kTailwindDark[] = {
     /* kRecessed          */ 9,
     /* kRaised            */ 7,
     /* kRaisedHover       */ 6,
-    /* kActive            */ 5,
-    /* kActiveHover       */ 5,
+    /* kActive            */ 6,
+    /* kActiveHover       */ 6,
     /* kHairline          */ 7,
     /* kHairlineHover     */ 6,
     /* kOutline           */ 6,
+    /* kHandleBorder      */ 5,
     /* kFocus             */ 4,
     /* kHover             */ 5,
     /* kText              */ 1,
@@ -163,6 +165,9 @@ struct Colors {
     QColor hairline;      // separators, splitter/dock lines, ruler line, row seams
     QColor hairlineHover; // one step up from hairline (hover, lane separators)
     QColor outline;       // input/button borders, scrollbar pill at rest
+    QColor handleBorder;  // slider knob rest border: a border tone, not the
+                          // strong checked-fill token (own role so it can
+                          // diverge from the border family later)
     QColor focus;         // focus ring / active border (accent hue)
     QColor hover;         // hover border, splitter drag, scrollbar pill active (neutral)
     QColor text;          // primary text
@@ -218,6 +223,7 @@ struct Colors {
             paletteColor(n[kTailwindLight[kHairline]]),    // hairline
             paletteColor(n[kTailwindLight[kHairlineHover]]), // hairlineHover
             paletteColor(n[kTailwindLight[kOutline]]),     // outline
+            paletteColor(n[kTailwindLight[kHandleBorder]]), // handleBorder
             paletteColor(a[kTailwindLight[kFocus]]),       // focus (accent edge)
             paletteColor(n[kTailwindLight[kHover]]),       // hover
             paletteColor(n[kTailwindLight[kText]]),        // text
@@ -272,6 +278,7 @@ struct Colors {
             paletteColor(n[kTailwindDark[kHairline]]),    // hairline
             paletteColor(n[kTailwindDark[kHairlineHover]]), // hairlineHover
             paletteColor(n[kTailwindDark[kOutline]]),     // outline
+            paletteColor(n[kTailwindDark[kHandleBorder]]), // handleBorder
             paletteColor(a[kTailwindDark[kFocus]]),       // focus (accent edge)
             paletteColor(n[kTailwindDark[kHover]]),       // hover
             paletteColor(n[kTailwindDark[kText]]),        // text
@@ -330,6 +337,7 @@ struct Colors {
         aTemplate.replace("@hairline@", hairline.name());
         aTemplate.replace("@hairlineHover@", hairlineHover.name());
         aTemplate.replace("@outline@", outline.name());
+        aTemplate.replace("@handleBorder@", handleBorder.name());
         aTemplate.replace("@focus@", focus.name());
         aTemplate.replace("@hover@", hover.name());
         aTemplate.replace("@text@", text.name());

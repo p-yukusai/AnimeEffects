@@ -1621,7 +1621,7 @@ QSlider::handle:vertical:focus
 QSlider::handle:horizontal:!focus:!hover,
 QSlider::handle:vertical:!focus:!hover
 {
-    border: 0.04em solid @active@;
+    border: 0.04em solid @handleBorder@;
 }
 
 QSlider::sub-page:horizontal,
