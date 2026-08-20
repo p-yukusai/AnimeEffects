@@ -167,15 +167,14 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     // Tangent guides: dashed line from each curve anchor to its handle.
     // recessedGuideLine is equidistant from the recessed column in both
     // themes, so the guides read at the same strength on the sunken canvas
-    // (the plain hairline fades against the pale light canvas). AA is off
-    // for the pass: a 1px pen under antialiasing spreads each dash across
-    // pixels at partial coverage, reading as a thicker, dimmer line.
-    painter.setRenderHint(QPainter::Antialiasing, false);
+    // (the plain hairline fades against the pale light canvas). AA stays on
+    // for the diagonal; the +0.5 shift moves the line onto pixel centers so
+    // the 1px pen doesn't straddle two rows at half coverage.
     painter.setPen(QPen(c.recessedGuideLine, 1.0, Qt::DashLine));
     painter.setBrush(Qt::NoBrush);
-    painter.drawLine(m_points[StartPoint], m_points[ControlPoint1]);
-    painter.drawLine(m_points[EndPoint], m_points[ControlPoint2]);
-    painter.setRenderHint(QPainter::Antialiasing, true);
+    const QPointF half(0.5, 0.5);
+    painter.drawLine(m_points[StartPoint] + half, m_points[ControlPoint1] + half);
+    painter.drawLine(m_points[EndPoint] + half, m_points[ControlPoint2] + half);
 
     // Curve.
     m_curvePen.setColor(c.text);
