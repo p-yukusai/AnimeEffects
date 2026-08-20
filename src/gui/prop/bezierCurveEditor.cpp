@@ -3,18 +3,33 @@
 #include <QPainterPath>
 #include <QPainter>
 #include <QMouseEvent>
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <utility>
 #include "gui/theme/Colors.h"
 
-static float normalize(const float val, const int min, const int max) {
-    return (val - static_cast<float>(min)) / static_cast<float>(max - min);
+// Value ↔ pixel maps: the fixed viewport [kMinValue, kMaxValue] ×
+// [kMinX, kMaxX] onto the widget rect. Affine, so clamping the value and
+// clamping the pixel are the same operation; the value-space clamp is the
+// spec, kept explicit so the reachable range is the constant viewport.
+qreal BezierCurveEditor::valueToX(const qreal aValue, const qreal aWidth) {
+    return POINT_RADIUS + (aValue - kMinX) / (kMaxX - kMinX) * (aWidth - 2 * POINT_RADIUS);
 }
-static float denormalize (const float var, const int min, const int max) {
-    return var * static_cast<float>(max - min) + static_cast<float>(min);
+qreal BezierCurveEditor::xToValue(const qreal aPixelX, const qreal aWidth) {
+    return kMinX + (aPixelX - POINT_RADIUS) / (aWidth - 2 * POINT_RADIUS) * (kMaxX - kMinX);
 }
-static float invert (const int min, const int max, const float value) {
-    return static_cast<float>(max) - value + static_cast<float>(min);
+qreal BezierCurveEditor::valueToY(const qreal aValue, const qreal aHeight) {
+    return (kMaxValue - aValue) / (kMaxValue - kMinValue) * aHeight;
+}
+qreal BezierCurveEditor::yToValue(const qreal aPixelY, const qreal aHeight) {
+    return kMaxValue - aPixelY / aHeight * (kMaxValue - kMinValue);
+}
+qreal BezierCurveEditor::clampX(const qreal aValue) {
+    return std::clamp(aValue, kMinX, kMaxX);
+}
+qreal BezierCurveEditor::clampValue(const qreal aValue) {
+    return std::clamp(aValue, kMinValue, kMaxValue);
 }
 
 BezierCurveEditor::BezierCurveEditor(QWidget *parent, util::Easing::CubicBezier* cubicBezier, QVector<QDoubleSpinBox*> spins, float* pro):
@@ -100,35 +115,34 @@ void BezierCurveEditor::mouseReleaseEvent(QMouseEvent *event)
 
 void BezierCurveEditor::resizeEvent(QResizeEvent *)
 {
-    m_points[StartPoint]    = QPointF(MAGIC_BORDER_X, height() - MAGIC_BORDER_Y);
-    const QPointF points1 = { denormalize(bezier->x1, MAGIC_BORDER_X, width() - MAGIC_BORDER_X), denormalize(invert(0, 1, bezier->y1), MAGIC_BORDER_Y, height() - MAGIC_BORDER_Y ) };
-    const QPointF points2 = { denormalize(bezier->x2, MAGIC_BORDER_X, width() - MAGIC_BORDER_X),denormalize(invert(0, 1, bezier->y2), MAGIC_BORDER_Y, height() - MAGIC_BORDER_Y) };
-    m_points[1] = points1;
-    m_points[2] = points2;
-    m_points[EndPoint] = QPointF(width() - MAGIC_BORDER_X, MAGIC_BORDER_Y);
+    m_points[StartPoint] = QPointF(valueToX(kMinX, width()), valueToY(0.0, height()));
+    m_points[ControlPoint1] = QPointF(valueToX(clampX(bezier->x1), width()), valueToY(clampValue(bezier->y1), height()));
+    m_points[ControlPoint2] = QPointF(valueToX(clampX(bezier->x2), width()), valueToY(clampValue(bezier->y2), height()));
+    m_points[EndPoint] = QPointF(valueToX(kMaxX, width()), valueToY(1.0, height()));
 }
 
 void BezierCurveEditor::paintEvent(QPaintEvent *)
 {
-    // Points are not meant to be moved for any reason as that would break the calculations
-    m_points[StartPoint]    = QPointF(MAGIC_BORDER_X, height() - MAGIC_BORDER_Y);
-    m_points[EndPoint]      = QPointF(width() - MAGIC_BORDER_X, MAGIC_BORDER_Y);
-    // We clamp to not go outside the widget
-    m_points[ControlPoint1].setX(std::clamp(m_points[ControlPoint1].x(), static_cast<qreal>(MAGIC_BORDER_X), static_cast<qreal>(width() - MAGIC_BORDER_X)));
-    m_points[ControlPoint1].setY(std::clamp(m_points[ControlPoint1].y(), POINT_RADIUS, static_cast<qreal>(height() - static_cast<int>(POINT_RADIUS))));
+    // Anchors are fixed at value (0,0) and (1,1) — the curve's start and
+    // end; only the tangent handles move.
+    m_points[StartPoint] = QPointF(valueToX(kMinX, width()), valueToY(0.0, height()));
+    m_points[EndPoint]   = QPointF(valueToX(kMaxX, width()), valueToY(1.0, height()));
+    // Clamp the handles in value space to the fixed viewport: y may swing
+    // ±kUnderOverRange past the 0..1 band, x stays in the [0, 1] domain.
+    m_points[ControlPoint1] = QPointF(
+        valueToX(clampX(xToValue(m_points[ControlPoint1].x(), width())), width()),
+        valueToY(clampValue(yToValue(m_points[ControlPoint1].y(), height())), height()));
+    m_points[ControlPoint2] = QPointF(
+        valueToX(clampX(xToValue(m_points[ControlPoint2].x(), width())), width()),
+        valueToY(clampValue(yToValue(m_points[ControlPoint2].y(), height())), height()));
 
-    m_points[ControlPoint2].setX(std::clamp(m_points[ControlPoint2].x(), static_cast<qreal>(MAGIC_BORDER_X), static_cast<qreal>(width() - MAGIC_BORDER_X)));
-    m_points[ControlPoint2].setY(std::clamp(m_points[ControlPoint2].y(), POINT_RADIUS, static_cast<qreal>(height() - static_cast<int>(POINT_RADIUS))));
-
-    // We normalize these because the points are not lower-left 0 and upper-right 1, also, we need to inverse the Y points
-    // because the Y axis is inverted in the GUI
-    bezier->x1 = normalize(m_points[ControlPoint1].x(), MAGIC_BORDER_X, width() - MAGIC_BORDER_X);
-    const auto inverted_y1 = invert(0, height(), m_points[ControlPoint1].y());
-    bezier->y1 = normalize(inverted_y1, MAGIC_BORDER_Y, height() - MAGIC_BORDER_Y);
-
-    bezier->x2 = normalize(m_points[ControlPoint2].x(), MAGIC_BORDER_X, width() -MAGIC_BORDER_X);
-    const auto inverted_y2 = invert(0, height(), m_points[ControlPoint2].y());
-    bezier->y2 = normalize(inverted_y2, MAGIC_BORDER_Y, height() -MAGIC_BORDER_Y);
+    // The editor is authoritative: write the clamped values back so bezier
+    // (and the spin boxes below) always hold viewport values. Y is inverted
+    // in pixels (y grows downward), hence the inverse map.
+    bezier->x1 = static_cast<float>(xToValue(m_points[ControlPoint1].x(), width()));
+    bezier->y1 = static_cast<float>(yToValue(m_points[ControlPoint1].y(), height()));
+    bezier->x2 = static_cast<float>(xToValue(m_points[ControlPoint2].x(), width()));
+    bezier->y2 = static_cast<float>(yToValue(m_points[ControlPoint2].y(), height()));
 
     if (!spinBoxes.empty() && spinBoxes.at(0)) {
         for (const auto box : spinBoxes) {
@@ -153,16 +167,19 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     painter.setBrush(c.recessed);
     painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
 
-    // Value-axis hairlines at Y=0 and Y=1 (the band boundaries): plain
-    // 1px lines for orientation, at the same heights the anchors sit on.
-    // Drawn before the curve so the curve always passes over them.
+    // Value-axis hairlines at Y=0 and Y=1 — the anchors sit on these rows.
+    // The viewport maps [−0.5, 1.5] onto the full height, so they fall at
+    // fixed fractions (25%/75%) and the reachable overshoot is the constant
+    // ±kUnderOverRange, not an artifact of the widget size.
     // recessedHairline — between hairline (fades on the sunken canvas) and
-    // recessedGuideLine (too strong for an informational axis). The +0.5
-    // snaps the 1px pen onto one pixel row (an integer y with AA on
-    // straddles two rows at half coverage and reads as a 2px line).
+    // recessedGuideLine (too strong for an informational axis). Rounded to a
+    // pixel row then +0.5: an integer y with AA on straddles two rows at
+    // half coverage and reads as a 2px line.
     painter.setPen(QPen(c.recessedHairline, 1.0, Qt::SolidLine));
-    painter.drawLine(QLineF(0, MAGIC_BORDER_Y + 0.5, width(), MAGIC_BORDER_Y + 0.5));
-    painter.drawLine(QLineF(0, height() - MAGIC_BORDER_Y + 0.5, width(), height() - MAGIC_BORDER_Y + 0.5));
+    const qreal axisY0 = std::round(valueToY(0.0, height())) + 0.5;
+    const qreal axisY1 = std::round(valueToY(1.0, height())) + 0.5;
+    painter.drawLine(QLineF(0, axisY0, width(), axisY0));
+    painter.drawLine(QLineF(0, axisY1, width(), axisY1));
 
     // Tangent guides: dashed line from each curve anchor to its handle.
     // recessedGuideLine is equidistant from the recessed column in both

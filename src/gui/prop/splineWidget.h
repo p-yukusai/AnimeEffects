@@ -28,12 +28,14 @@
 QT_BEGIN_NAMESPACE
 
 // Easing preview: the canvas's value axis flattened to a vertical strip. A
-// dot rides up/down with Y = the easing value, using the same band mapping
-// (the MAGIC_BORDER_Y insets) at the same row height as the editor, so its
-// vertical position mirrors the curve's height at the current progress.
-// The track is the full widget height and the value is not clamped: the
-// canvas's handles can drag past the 0..1 band (under/over range), and the
-// dot follows beyond it.
+// dot rides up/down with Y = the easing value, using the editor's fixed
+// value viewport ([kMinValue, kMaxValue] over the full height) at the same
+// row height as the canvas, so its vertical position mirrors the curve's
+// height at the current progress. The track is the full height — the
+// viewport — and the value is not clamped: the canvas's handles can swing
+// ±kUnderOverRange past the 0..1 band, and the dot follows (values stay
+// inside the viewport: the curve's y is within the convex hull of
+// {0, y1, y2, 1} ⊂ [−0.5, 1.5]).
 class EasingDot : public QWidget {
 public:
     explicit EasingDot(const BezierCurveEditor* aEditor, QWidget* aParent = nullptr)
@@ -51,18 +53,18 @@ protected:
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
         const theme::Colors& c = theme::Colors::current();
-        const int top = mEditor ? mEditor->MAGIC_BORDER_Y : 0;
-        const int band = height() - 2 * top; // the 0..1 extent
         const int cx = width() / 2;
-        // the track: the full height (the 0..1 band sits inside it, like the
-        // canvas's draggable range); +0.5 snaps the 1px pen onto one column.
-        // The strip sits on the dialog's base surface, not the recessed
-        // canvas, so it uses the plain hairline token (recessedHairline
-        // would be invisible here — dark col 8 == base col 8).
+        // the track: the full viewport height (the 0..1 band is its middle
+        // half); +0.5 snaps the 1px pen onto one column. The strip sits on
+        // the dialog's base surface, not the recessed canvas, so it uses
+        // the plain hairline token (recessedHairline would be invisible
+        // here — dark col 8 == base col 8).
         p.setPen(QPen(c.hairline, 1.0));
         p.drawLine(cx + 0.5, 0, cx + 0.5, height());
-        // the dot at Y = value (0 at the bottom of the band, 1 at the top)
-        const qreal y = top + (1.0 - mValue) * band;
+        // the dot at Y = value — the editor's viewport applied to this
+        // strip, so the dot rides the same rows the canvas's anchors and
+        // axis lines do.
+        const qreal y = mEditor ? mEditor->valueToY(mValue, height()) : height() / 2.0;
         p.setPen(Qt::NoPen);
         p.setBrush(c.accentSwatch);
         p.drawEllipse(QPointF(cx, y), 5.0, 5.0);
@@ -90,18 +92,6 @@ public:
     float progress;
     QVector<QDoubleSpinBox*> spins;
 
-
-    static float denormalize (const float var, const int min, const int max) {
-        return var * static_cast<float>(max - min) + static_cast<float>(min);
-    }
-
-    static float normalize (const float var, const int min, const int max) {
-        return (var - static_cast<float>(min)) / static_cast<float>(max - min);
-    }
-
-    static float invert (const int min, const int max, const float value) {
-        return static_cast<float>(max) - value + static_cast<float>(min);
-    }
 
     static void delay() // https://stackoverflow.com/questions/3752742/how-do-i-create-a-pause-wait-function-using-qt#11487434
     {
@@ -163,14 +153,12 @@ public:
                 m_editor->bezier = cubicBezier;
                 const int width = m_editor->width();
                 const int height = m_editor->height();
-                const QPointF points1 = {
-                    denormalize(cubicBezier->x1, m_editor->MAGIC_BORDER_X, width - m_editor->MAGIC_BORDER_X),
-                    denormalize(invert(0, 1, cubicBezier->y1), m_editor->MAGIC_BORDER_Y, height -m_editor->MAGIC_BORDER_Y)};
-                const QPointF points2 = {
-                    denormalize(cubicBezier->x2, m_editor->MAGIC_BORDER_X, width - m_editor->MAGIC_BORDER_X),
-                    denormalize(invert(0, 1, cubicBezier->y2), m_editor->MAGIC_BORDER_Y, height - m_editor->MAGIC_BORDER_Y)};
-                m_editor->m_points[1] = points1;
-                m_editor->m_points[2] = points2;
+                m_editor->m_points[1] = QPointF(
+                    m_editor->valueToX(cubicBezier->x1, width),
+                    m_editor->valueToY(cubicBezier->y1, height));
+                m_editor->m_points[2] = QPointF(
+                    m_editor->valueToX(cubicBezier->x2, width),
+                    m_editor->valueToY(cubicBezier->y2, height));
                 m_editor->blockSignals(false);
                 m_editor->repaint();
             });
@@ -218,14 +206,12 @@ public:
                 m_editor->bezier = bezier;
                 const int width = m_editor->width();
                 const int height = m_editor->height();
-                const QPointF points1 = {
-                    denormalize(bezier->x1, m_editor->MAGIC_BORDER_X, width - m_editor->MAGIC_BORDER_X),
-                    denormalize(invert(0, 1, bezier->y1), m_editor->MAGIC_BORDER_Y, height -m_editor->MAGIC_BORDER_Y)};
-                const QPointF points2 = {
-                    denormalize(bezier->x2, m_editor->MAGIC_BORDER_X, width - m_editor->MAGIC_BORDER_X),
-                    denormalize(invert(0, 1, bezier->y2), m_editor->MAGIC_BORDER_Y, height - m_editor->MAGIC_BORDER_Y)};
-                m_editor->m_points[1] = points1;
-                m_editor->m_points[2] = points2;
+                m_editor->m_points[1] = QPointF(
+                    m_editor->valueToX(bezier->x1, width),
+                    m_editor->valueToY(bezier->y1, height));
+                m_editor->m_points[2] = QPointF(
+                    m_editor->valueToX(bezier->x2, width),
+                    m_editor->valueToY(bezier->y2, height));
                 m_editor->blockSignals(false);
                 m_editor->repaint();
                 toolButton_2->setText("Success ✓");
