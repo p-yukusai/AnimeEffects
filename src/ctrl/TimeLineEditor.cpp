@@ -19,7 +19,6 @@
 using namespace core;
 
 namespace {
-    constexpr int kTimeLineMargin = 14;
     constexpr int kDefaultMaxFrame = 600;
 
 } // namespace
@@ -865,7 +864,11 @@ QSize TimeLineEditor::modelSpaceSize() const {
 QPoint TimeLineEditor::currentTimeCursorPos() const { return mTimeCurrent.handlePos(); }
 
 int TimeLineEditor::frameEndPixel() const {
-    return mTimeScale.maxPixelWidth();
+    // The last frame's position on the content axis: the left margin gutter
+    // plus its scale position (the renderer's range-marker x1 uses the same
+    // convention). The scrollbar track adds one more margin past this, so
+    // flush-right leaves the tick and its number breathing room.
+    return kTimeLineMargin + mTimeScale.maxPixelWidth();
 }
 
 int TimeLineEditor::pixelsPerFrame() const {

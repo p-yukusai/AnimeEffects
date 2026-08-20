@@ -35,6 +35,9 @@ public:
     // Ruler constants shared with the header drawing (time_Renderer) and the
     // playhead's frame-number badge (gui::TimeCursor).
     static constexpr int kHeaderHeight = 22;
+    // Content-axis gutter before frame 0's tick; the scrollbar track also
+    // reserves one margin past the last frame (see TimeLineWidget).
+    static constexpr int kTimeLineMargin = 14;
     // Ruler number text geometry, relative to the header top.
     static constexpr int kNumberTop = -1;
     static constexpr int kNumberHeight = 14;
@@ -60,8 +63,9 @@ public:
     QSize modelSpaceSize() const;
     QPoint currentTimeCursorPos() const;
 
-    // The last frame's content position (px), frame 0 at 0 — the frame
-    // range's end on the timeline's own axis.
+    // The frame range's end on the content axis (px): the left margin gutter
+    // plus the last frame's scale position. Frame 0's tick sits at the
+    // margin; the range spans [0, frameEndPixel].
     int frameEndPixel() const;
     int pixelsPerFrame() const;
     // New-scale position of the content point under the mouse, computed

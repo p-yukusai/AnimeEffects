@@ -254,10 +254,10 @@ void TimeLineEditorWidget::updateTimeCursorPos() {
         const core::TimeFormat format(util::Range(0, mEditor->maxFrame()), mEditor->fps());
         const QString frameText = format.frameToString(mEditor->currentFrame().get(), mEditor->timeFormatType());
         mTimeCursor.setHeaderInfo(frameText, mTimelineTheme.headerBackgroundColor());
-        // The ruler header starts at the camera's top; anchor the cursor widget
-        // there so the badge lands on the numbers row.
-        const int headerTop = -mCamera->leftTopPos().toPoint().y();
-        mTimeCursor.setCursorPos(QPoint(pos.x(), headerTop), mCamera->screenHeight());
+        // The playhead overlays the viewport: pinned to the top (on the fixed
+        // ruler) and following the content horizontally.
+        const QPoint viewportPos(mCamera->leftTopPos().toPoint().x() + pos.x(), 0);
+        mTimeCursor.setCursorPos(viewportPos, mCamera->screenHeight());
     }
 }
 
@@ -319,26 +319,26 @@ bool TimeLineEditorWidget::updateCursor(const core::AbstractCursor& aCursor, Qt:
     return (flags & ctrl::TimeLineEditor::UpdateFlag_ModFrame);
 }
 
-void TimeLineEditorWidget::updateWheel(QWheelEvent* aEvent, int aMouseX, int& aFrameBefore, int& aPixelAfter) {
-    aFrameBefore = mEditor->frameAtPixel(aMouseX);
-    mEditor->updateWheel(aEvent->angleDelta().y(), mViaPoint.mouseSetting().invertTimeLineScaling);
-    aPixelAfter = mEditor->pixelAtFrame(aFrameBefore);
-    updateSize();
+bool TimeLineEditorWidget::updateWheel(QWheelEvent* aEvent, int aMouseX, int& aPixelAfter) {
+    const int oldSpacing = mEditor->pixelsPerFrame();
+    const bool changed =
+        mEditor->updateWheel(aEvent->angleDelta().y(), mViaPoint.mouseSetting().invertTimeLineScaling);
+    if (changed) {
+        // Pixel-exact zoom anchor: the content point under the mouse stays put,
+        // regardless of whether it lies inside the frame range.
+        aPixelAfter = mEditor->anchorPixelAfterScale(aMouseX, oldSpacing);
+        updateSize();
+    } else {
+        // Zoom clamped at floor/ceiling: keep the view exactly still instead of
+        // re-deriving a scroll offset (frame<->pixel rounding would drift it).
+        aPixelAfter = aMouseX;
+    }
+    return changed;
 }
 
 void TimeLineEditorWidget::updateSize() {
-    // get inner size
-    // add enough margin to coordinate height with ObjectTreeWidget.
-    QSize size = mEditor->modelSpaceSize() + QSize(0, 128);
-
-    if (mCamera) {
-        const QSize camsize = mCamera->screenSize();
-        if (size.width() < camsize.width())
-            size.setWidth(camsize.width());
-        if (size.height() < camsize.height())
-            size.setHeight(camsize.height());
-    }
-    this->resize(size);
+    // The widget is a viewport-fixed surface sized by TimeLineWidget; content
+    // size changes only need a repaint (the paint translates by the camera).
     this->update();
 }
 
@@ -357,19 +357,20 @@ QSize TimeLineEditorWidget::getEditorSize() const {
     return mEditor->modelSpaceSize();
 }
 
-int TimeLineEditorWidget::frameAtPixel(int aPixelX) const {
-    return mEditor->frameAtPixel(aPixelX);
-}
-
-int TimeLineEditorWidget::pixelAtFrame(int aFrame) const {
-    return mEditor->pixelAtFrame(aFrame);
+int TimeLineEditorWidget::frameEndPixel() const {
+    return mEditor->frameEndPixel();
 }
 
 void TimeLineEditorWidget::paintEvent(QPaintEvent* aEvent) {
     QPainter painter;
     painter.begin(this);
     if (mCamera) {
-        mEditor->render(painter, *mCamera, mTimelineTheme, aEvent->rect());
+        // The surface is viewport-fixed; the content translates by the view
+        // origin. Everything then lands at its viewport position — fixed UI
+        // (ruler) included — and nothing is clipped by the frame range.
+        const QPoint origin = mCamera->leftTopPos().toPoint();
+        painter.translate(origin);
+        mEditor->render(painter, *mCamera, mTimelineTheme, aEvent->rect().translated(-origin));
     }
     painter.end();
 }
@@ -868,9 +869,10 @@ void TimeLineEditorWidget::onSelectSpacingTriggered() {
         // We ignore the first keyframe for each target, which are at the back in this case
         QList<core::TimeKey*> ignoredTargets;
         for(auto target: targets) { ignoredTargets.emplaceBack(target->back().pos.key()); }
-        // We move the keys and check if the move was successful
+        // We move the keys and check if the move was successful. Destinations
+        // are unconstrained: the frame range does not gate the keying system,
+        // so keys may be spaced past the last frame.
         QList<QPair<core::TimeLineEvent::Target, int>> conflicts;
-        QList<QPair<core::TimeLineEvent::Target, int>> outsideRange;
         for(auto target: targets) {
             int tSize = static_cast<int>(target->size()) - 1;
             int initialFrame = target->back().pos.key()->frame();
@@ -880,8 +882,7 @@ void TimeLineEditorWidget::onSelectSpacingTriggered() {
                     int frame = key.pos.key()->frame();
                     int dest = initialFrame + frameAccumulation;
                     const core::TimeKeyType keyType = key.pos.type();
-                    if(mProject->attribute().maxFrame() < dest){ outsideRange.emplace_back(key, dest); }
-                    else if(!key.pos.line()->move(keyType, frame, dest)) {
+                    if(!key.pos.line()->move(keyType, frame, dest)) {
                         conflicts.emplace_back(key, dest);
                     }
                     else {
@@ -892,7 +893,7 @@ void TimeLineEditorWidget::onSelectSpacingTriggered() {
                 }
             }
         }
-        if (!outsideRange.empty() || !conflicts.empty()) {
+        if (!conflicts.empty()) {
             QMessageBox msg;
             QStringList errorLog;
             for (const auto& [key, frame] : conflicts) {
@@ -900,13 +901,8 @@ void TimeLineEditorWidget::onSelectSpacingTriggered() {
                     tr("Key conflict detected for key type ") + keyToString(key.pos.type()) +
                     tr(" in node ") + key.node->name() + tr(" at frame ") + QString::number(frame));
             }
-            for (const auto& [key, frame] : outsideRange) {
-                errorLog.append(
-                    tr("Destination for key type ") + keyToString(key.pos.type()) + tr(" in node ") + key.node->name() +
-                    tr(" is outside maximum frame for project, ignored attempt to move key to frame ") + QString::number(frame));
-            }
             msg.setWindowTitle(tr("Move error"));
-            msg.setText(tr("Unable to move ") + QString::number(conflicts.size() + outsideRange.size()) + tr(" key(s), due to the following reasons: "));
+            msg.setText(tr("Unable to move ") + QString::number(conflicts.size()) + tr(" key(s), due to the following reasons: "));
             msg.setDetailedText(errorLog.join("\n"));
             msg.exec();
         }

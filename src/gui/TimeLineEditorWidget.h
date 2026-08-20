@@ -65,17 +65,19 @@ public:
     void updateLines(QTreeWidgetItem* aTopNode);
     void updateLineSelection(core::ObjectNode* aRepresent);
     bool updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
-    void updateWheel(QWheelEvent* aEvent, int aMouseX, int& aFrameBefore, int& aPixelAfter);
+    bool updateWheel(QWheelEvent* aEvent, int aMouseX, int& aPixelAfter);
     void updateProjectAttribute();
     void updateTheme(theme::Theme&);
+
+    // The frame range's end on the content axis (px): the left margin gutter
+    // plus the last frame's scale position. Frame 0's tick sits at the
+    // margin; the range spans [0, frameEndPixel].
+    int frameEndPixel() const;
 
     QSize getEditorSize() const;
 
     core::Frame currentFrame() const;
     int maxFrame() const;
-    
-    int frameAtPixel(int aPixelX) const;
-    int pixelAtFrame(int aFrame) const;
 
     QColor headerContentColor() const;
     void setHeaderContentColor(const QColor& headerContentColor);
