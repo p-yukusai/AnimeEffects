@@ -323,7 +323,7 @@ namespace prop {
 
             // easing
             mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing :"), mEasing);
+            this->addItem(tr("Easing"), mEasing);
             mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
                 this->mAccessor.assignBlurEasing(aNext);
             };
@@ -364,11 +364,11 @@ namespace prop {
             mAngle->box().setSingleStep(1.0);
             mAngle->onValueUpdated = [=](double, double) { this->assignBlurAxis(mAngle); };
 
-            this->addItem(tr("Amount :"), mAmount);
-            this->addItem(tr("Directional: "), mDirectional);
-            this->addItem(tr("Blur X :"), mBlurX);
-            this->addItem(tr("Blur Y :"), mBlurY);
-            this->addItem(tr("Angle :"), mAngle);
+            this->addItem(tr("Amount"), mAmount);
+            this->addItem(tr("Directional"), mDirectional);
+            this->addItem(tr("Blur X"), mBlurX);
+            this->addItem(tr("Blur Y"), mBlurY);
+            this->addItem(tr("Angle"), mAngle);
         }
         setKeyEnabled(false);
         setKeyExists(false);
@@ -619,7 +619,7 @@ namespace prop {
                     this->mAccessor.assignImageResource(*resNode);
                 }
             };
-            this->addItem(tr("Resource"), mBrowse);
+            this->addItem(tr("Asset"), mBrowse);
 
             // offset
             mOffset = new Vector2DItem(this);

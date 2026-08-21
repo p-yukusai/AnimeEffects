@@ -2,8 +2,19 @@
 
 namespace {
 static const int kWheelValue = 120;
-static const int kMinScaleRaw = 1 * kWheelValue;
-static const int kMaxScaleRaw = 15 * kWheelValue;
+// Wheel zoom range in mIndex notches: 0..15 -> 1..16 px per frame —
+// pixelWidth() scales by (mIndex + 1), so the min index is 1 px/frame,
+// never 0 px. The scale is a function of the index, not of kWheelValue,
+// which only converts wheel deltas into notches. The ceiling is unchanged
+// since the 2016 upstream import; the floor was lowered to index 0
+// (1 px/frame) so zoom-out can pass the startup zoom (2 px/frame). No
+// rationale for the original bounds was ever recorded.
+static const int kMinScaleIndex = 0;   // mIndex 0  -> 1  px/frame
+static const int kMaxScaleIndex = 15;  // mIndex 15 -> 16 px/frame
+// The raw wheel accumulator clamps in notch units: the wheel position of
+// an index is index * kWheelValue (the min index's notch is 0).
+static const int kMinScaleRaw = kMinScaleIndex * kWheelValue;
+static const int kMaxScaleRaw = kMaxScaleIndex * kWheelValue;
 
 // Least prime factor of n; n itself when prime. Trial division is fine: the
 // chain below only ever divides a value by its least prime factor, so n
@@ -48,9 +59,11 @@ namespace time {
             mLadder.push_back(mFps * multiple);
     }
 
-    void Scaler::update(int aWheelDelta) {
+    bool Scaler::update(int aWheelDelta) {
+        const int previous = mWheel;
         mWheel = std::max(kMinScaleRaw, std::min(kMaxScaleRaw, mWheel - aWheelDelta));
         mIndex = mWheel / kWheelValue;
+        return mWheel != previous;
     }
 
     int Scaler::majorStep(int aSpacing) const {
@@ -86,15 +99,20 @@ namespace time {
     }
 
     int Scaler::pixelWidth(int aFrame) const {
-        const int frame = std::max(0, std::min(mMaxFrame, aFrame));
-        return (mIndex + 1) * frame;
+        // Pure linear map: the keying system is decoupled from the frame
+        // range, so keys may live at any frame (before 0 or past maxFrame)
+        // and must render where they are, not projected onto the range edge.
+        return (mIndex + 1) * aFrame;
     }
 
     int Scaler::maxPixelWidth() const { return pixelWidth(mMaxFrame); }
 
     int Scaler::frame(int aPixelWidth) const {
-        const int frame = (aPixelWidth + ((mIndex + 1) >> 1)) / (mIndex + 1);
-        return std::max(0, std::min(mMaxFrame, frame));
+        // Unbounded inverse of pixelWidth: a mouse position outside the frame
+        // range maps to an out-of-range frame, so keys can be created, moved
+        // and selected beyond the range. The playback range (Current) clamps
+        // its own values; this scale never does.
+        return (aPixelWidth + ((mIndex + 1) >> 1)) / (mIndex + 1);
     }
 
     int Scaler::maxFrame() const { return mMaxFrame; }

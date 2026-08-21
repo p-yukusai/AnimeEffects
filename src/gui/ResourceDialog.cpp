@@ -13,13 +13,13 @@
 namespace gui {
 
 ResourceDialog::ResourceDialog(ViaPoint& aViaPoint, bool aModal, QWidget* aParent):
-    EasyDialog(tr("Project resources"), aParent, aModal), mViaPoint(aViaPoint), mProject(), mTree() {
+    EasyDialog(tr("Project assets"), aParent, aModal), mViaPoint(aViaPoint), mProject(), mTree() {
     // menu bar
     if (!aModal) {
         // Remove redundant menu
         auto menuBar = new QMenuBar(this);
         // auto fileMenu = new QMenu(tr("File"), menuBar);
-        auto addResource = new QAction(tr("Add Resources"));
+        auto addResource = new QAction(tr("Add Assets"));
         connect(addResource, &QAction::triggered, this, &ResourceDialog::onAddResourceTriggered);
         // fileMenu->addAction(addResource);
         menuBar->setNativeMenuBar(false);

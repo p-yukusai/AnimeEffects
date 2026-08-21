@@ -29,7 +29,7 @@ namespace tool {
 
     void FFDPanel::applyIcons() {
         mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("move") << mResources.icon("pencil") << mResources.icon("eraser")
+            QVector<QIcon>() << mResources.icon("navigation-arrow") << mResources.icon("pencil-simple") << mResources.icon("eraser")
         , QSize(18, 18));
         mHardnessGroup->setIcons(
             QVector<QIcon>() << mResources.icon("hardness-1") << mResources.icon("hardness-2")

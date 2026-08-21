@@ -24,6 +24,7 @@ ToolWidget::ToolWidget(
     mBonePanel(),
     mPosePanel(),
     mMeshPanel() {
+    setObjectName("toolWidget"); // QSS id for the dock surface
     createViewPanel();
 
     createModePanel();
@@ -107,7 +108,7 @@ void ToolWidget::createViewPanel() {
         delete mViewPanel;
     mViewPanel = new tool::ViewPanel(this, mResources, tr("View Settings"));
 
-    mViewPanel->addButton("show-mesh", true, tr("Show mesh"), [=](bool aChecked) {
+    mViewPanel->addButton("cube", true, tr("Show mesh"), [=](bool aChecked) {
         this->viewSetting().showLayerMesh = aChecked;
         this->onViewSettingChanged(this->viewSetting());
     });
@@ -119,7 +120,7 @@ void ToolWidget::createViewPanel() {
     QString _rotateViewAntiClockwiseKeyBindingText =
         this->mKeyCommandMap.get("RotateCanvas15AntiClockwise")->binding.text();
     mViewPanel->addButton(
-        "rotate-ccw",
+        "arrow-counter-clockwise",
         false,
         tr("Rotate the canvas counterclockwise (%1)").arg(_rotateViewAntiClockwiseKeyBindingText),
         [=](bool) {
@@ -131,7 +132,7 @@ void ToolWidget::createViewPanel() {
 
     QString _rotateResetKeyBindingText = this->mKeyCommandMap.get("ResetCanvasAngle")->binding.text();
     mViewPanel->addButton(
-        "reset-rotation",
+        "dot-outline",
         false,
         tr("Reset rotation of the canvas (%1)").arg(_rotateResetKeyBindingText),
         [=](bool) {
@@ -143,7 +144,7 @@ void ToolWidget::createViewPanel() {
 
     QString _rotateViewClockwiseKeyBindingText = this->mKeyCommandMap.get("RotateCanvas15Clockwise")->binding.text();
     mViewPanel->addButton(
-        "rotate-cw",
+        "arrow-clockwise",
         false,
         tr("Rotate the canvas clockwise (%1)").arg(_rotateViewClockwiseKeyBindingText),
         [=](bool) {
@@ -153,7 +154,7 @@ void ToolWidget::createViewPanel() {
         }
     );
 
-    mViewPanel->addButton("flip", true, tr("Flip canvas"), [=](bool aChecked) {
+    mViewPanel->addButton("flip-horizontal", true, tr("Flip canvas"), [=](bool aChecked) {
         this->viewSetting().flipCanvas = aChecked;
         this->onViewSettingChanged(this->viewSetting());
     });

@@ -1,5 +1,7 @@
 #include "AudioPlaybackWidget.h"
 #include "core/Project.h"
+#include "gui/theme/Icons.h"
+#include <QIcon>
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QStringRef>
@@ -12,6 +14,17 @@ void checkConnection(const bool connection){
 }
 
 namespace {
+
+// The volume-row speaker glyph at 16 logical px, scaled by the label's
+// device-pixel ratio (a fixed device-pixel pixmap would render half-size
+// on HiDPI, unlike the toolbar's DPR-aware speaker button).
+QPixmap speakerPixmap(const QLabel& aLabel) {
+    const qreal dpr = aLabel.devicePixelRatioF();
+    QPixmap pm = QIcon(theme::iconDir() + QLatin1Char('/') + QStringLiteral("speaker-high.svg"))
+                     .pixmap(qRound(16 * dpr), qRound(16 * dpr));
+    pm.setDevicePixelRatio(dpr);
+    return pm;
+}
 
 // Target playback position of a track (in ms) while the playhead is at curFrame.
 qint64 trackPositionMs(const audioConfig& config, int curFrame, int fps) {
@@ -138,24 +151,25 @@ void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, me
 
 void AudioPlaybackWidget::connect(QWidget *audioWidget, mediaState *state, std::vector<audioConfig>* config){
     checkConnection(QToolButton::connect(saveConfigButton, &QToolButton::clicked, [=](){
-        QFileDialog diag(audioWidget);
-        diag.setAcceptMode(QFileDialog::AcceptSave);
-        diag.setDirectory(QDir::currentPath());
-        diag.setNameFilter(QCoreApplication::translate("SaveMus", "Anie audio configuration file (*.aemus)", nullptr));
-        if(diag.exec()) {
-            QString fileName = diag.selectedFiles().first();
-            static QRegularExpression fileRegex("\\.aemus$");
-            if (!fileRegex.match(fileName).hasMatch()) { fileName.append(".aemus"); }
-            serialize(config, fileName);
+        const QString fileName = QFileDialog::getSaveFileName(
+            audioWidget,
+            QCoreApplication::translate("SaveMus", "Save audio configuration", nullptr),
+            QDir::currentPath(),
+            QCoreApplication::translate("SaveMus", "Anie audio configuration file (*.aemus)", nullptr));
+        if (!fileName.isEmpty()) {
+            QString path = fileName;
+            if (!path.endsWith(".aemus")) { path.append(".aemus"); }
+            serialize(config, path);
         }
     }));
     checkConnection(QToolButton::connect(loadConfigButton, &QToolButton::clicked, [=]()mutable {
-        QFileDialog diag(audioWidget);
-        diag.setAcceptMode(QFileDialog::AcceptOpen);
-        diag.setDirectory(QDir::currentPath());
-        diag.setNameFilter(QCoreApplication::translate("LoadMus", "Anie audio configuration file (*.aemus)", nullptr));
-        if(diag.exec()) {
-            auto file = QFile(diag.selectedFiles().first());
+        const QString fileName = QFileDialog::getOpenFileName(
+            audioWidget,
+            QCoreApplication::translate("LoadMus", "Load audio configuration", nullptr),
+            QDir::currentPath(),
+            QCoreApplication::translate("LoadMus", "Anie audio configuration file (*.aemus)", nullptr));
+        if (!fileName.isEmpty()) {
+            auto file = QFile(fileName);
             if(!file.open(QIODevice::ReadOnly)) {
                 QMessageBox::warning(audioWidget, "File error", file.errorString());
                 return;
@@ -239,6 +253,14 @@ void AudioPlaybackWidget::rectifyUI(std::vector<audioConfig>* config, mediaState
     gridLayout_2->update();
 }
 
+void AudioPlaybackWidget::onThemeUpdated(theme::Theme&) {
+    // The speaker glyph is a runtime-tinted icon; re-fetch it from the
+    // freshly regenerated scratch dir so the row tracks the new theme.
+    for (auto& ui : vecUIState) {
+        ui.volumeIcon->setPixmap(speakerPixmap(*ui.volumeIcon));
+    }
+}
+
 void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index, mediaState* mediaPlayer, const bool bulk) {
     // This is a great time to tell you that we accept pull requests that fix this kind of nonsense
     const auto curUIState = UIState();
@@ -280,17 +302,23 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
     sizePolicy.setHeightForWidth(curUIState.endLabel->sizePolicy().hasHeightForWidth());
     curUIState.endLabel->setSizePolicy(sizePolicy);
     gridLayout_2->addWidget(curUIState.endLabel, idxRow0, 2, 1, 1);
-    // Volume text
-    curUIState.volumeLabel->setObjectName(QString::fromUtf8("volumeLabel"));
-    curUIState.volumeLabel->setSizePolicy(sizePolicy);
-    gridLayout_2->addWidget(curUIState.volumeLabel, idxRow2, 0, 1, 1);
+    // Volume: speaker icon, slider, percentage.
+    curUIState.volumeIcon->setObjectName(QString::fromUtf8("volumeIcon"));
+    curUIState.volumeIcon->setAlignment(Qt::AlignCenter);
+    curUIState.volumeIcon->setPixmap(speakerPixmap(*curUIState.volumeIcon));
+    curUIState.volumeIcon->setSizePolicy(sizePolicy);
+    gridLayout_2->addWidget(curUIState.volumeIcon, idxRow2, 0, 1, 1);
     // Volume
     curUIState.volumeSlider->setObjectName(QString::fromUtf8("volumeSlider"));
     curUIState.volumeSlider->setMaximum(100);
     curUIState.volumeSlider->setMinimum(0);
     curUIState.volumeSlider->setOrientation(Qt::Horizontal);
     curUIState.volumeSlider->setSizePolicy(sizePolicy);
-    gridLayout_2->addWidget(curUIState.volumeSlider, idxRow2, 1, 1, 3);
+    gridLayout_2->addWidget(curUIState.volumeSlider, idxRow2, 1, 1, 2);
+    // Volume percentage
+    curUIState.volumeLabel->setObjectName(QString::fromUtf8("volumeLabel"));
+    curUIState.volumeLabel->setSizePolicy(sizePolicy);
+    gridLayout_2->addWidget(curUIState.volumeLabel, idxRow2, 3, 1, 1);
     // Separator
     curUIState.line->setObjectName(QString::fromUtf8("line"));
     curUIState.line->setFrameShape(QFrame::HLine);
@@ -310,7 +338,7 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
     curUIState.endLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Playback end frame</p></body></html>", nullptr));
     curUIState.musDurationLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Duration (in frames): </p></body></html>", nullptr) +
                                        "<html><head/><body><p align=\"center\">" + QString::number(config->at(index).endFrame - config->at(index).startFrame) + "</p></body></html>");
-    curUIState.volumeLabel->setText(QCoreApplication::translate("audioWidget", "Media volume", nullptr) + " (" + QString::number(config->at(index).volume) + "%)");
+    curUIState.volumeLabel->setText(QString::number(config->at(index).volume) + QStringLiteral("%"));
     // Init
     curUIState.playAudio->setChecked(config->at(index).playbackEnable);
     curUIState.startSpinBox->setValue(config->at(index).startFrame);
@@ -420,7 +448,7 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
     checkConnection(QSlider::connect(curUIState.volumeSlider, &QSlider::valueChanged, [=](const int val){
         config->at(index).volume = val;
         modifyTrack(mediaPlayer, config, index);
-        curUIState.volumeLabel->setText(QCoreApplication::translate("audioWidget", "Media volume", nullptr) + " (" + QString::number(val) + "%)");
+        curUIState.volumeLabel->setText(QString::number(val) + QStringLiteral("%"));
     }));
 }
 

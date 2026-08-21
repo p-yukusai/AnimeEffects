@@ -138,7 +138,7 @@ void ProjectTabBar::showContextMenu(const QPoint& aGlobalPos) {
 
     QMenu menu(this);
     QAction* saveAction = menu.addAction(tr("Save"));
-    QAction* saveAsAction = menu.addAction(tr("Save As..."));
+    QAction* saveAsAction = menu.addAction(tr("Save As"));
     menu.addSeparator();
     QAction* closeAction = menu.addAction(tr("Close"));
     QAction* closeOthersAction = menu.addAction(tr("Close Others"));

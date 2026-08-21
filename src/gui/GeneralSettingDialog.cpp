@@ -230,7 +230,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
     mLanguageBox(),
     mInitialTimeFormatIndex(),
     mTimeFormatBox(),
-    mInitialAccentHue(theme::kDefaultHue),
+    mInitialAccent(theme::kDefaultAccent),
     mAccentGroup(),
     mInitialThemeKey("dark"),
     mThemeGroup(),
@@ -260,8 +260,8 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             mInitialThemeKey = theme.toString();
         }
 
-        auto accentHue = settings.value("generalsettings/ui/accent_hue");
-        mInitialAccentHue = accentHue.isValid() ? accentHue.toDouble() : theme::kDefaultHue;
+        const QString accentName = settings.value("generalsettings/ui/accent", QString()).toString();
+        mInitialAccent = theme::accentFromName(accentName);
 
         auto donationAllowed = settings.value("generalsettings/ui/donationAllowed");
         bDonationAllowed = donationAllowed.isValid()? donationAllowed.toBool() : true;
@@ -304,28 +304,28 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             mLanguageBox->addItem(indexToLanguage(i));
         }
         mLanguageBox->setCurrentIndex(mInitialLanguageIndex);
-        form->addRow(tr("Language (needs restart) :"), mLanguageBox);
+        form->addRow(tr("Language (needs restart)"), mLanguageBox);
 
         mEasingBox = new QComboBox();
         for (int i = 0; i < kEasingTypeCount; ++i) {
             mEasingBox->addItem(indexToEasing(i));
         }
         mEasingBox->setCurrentIndex(mInitialEasingIndex);
-        form->addRow(tr("Default keyframe easing :"), mEasingBox);
+        form->addRow(tr("Default keyframe easing"), mEasingBox);
 
         mRangeBox = new QComboBox();
         for (int i = 0; i < kRangeTypeCount; ++i) {
             mRangeBox->addItem(indexToRange(i));
         }
         mRangeBox->setCurrentIndex(mInitialRangeIndex);
-        form->addRow(tr("Default keyframe range :"), mRangeBox);
+        form->addRow(tr("Default keyframe range"), mRangeBox);
 
         mTimeFormatBox = new QComboBox();
         for (int i = 0; i < kTimeFormatTypeCount; ++i) {
             mTimeFormatBox->addItem(indexToTimeFormat(i));
         }
         mTimeFormatBox->setCurrentIndex(mInitialTimeFormatIndex);
-        form->addRow(tr("Timeline format (needs restart) :"), mTimeFormatBox);
+        form->addRow(tr("Timeline format (needs restart)"), mTimeFormatBox);
 
 
         // Theme: a segmented control on a recessed track; the active choice
@@ -356,7 +356,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
                         "QPushButton:hover { background-color: %3; }"
                         "QPushButton:checked { background-color: %4; color: %5; }")
                     .arg(c.recessed.name(), c.icon.name(), c.raised.name(), c.accent.name(), c.accentText.name()));
-            form->addRow(tr("Theme :"), themeRow);
+            form->addRow(tr("Theme"), themeRow);
         }
 
         // Accent color: a row of square colored boxes. Border on hover, a
@@ -370,22 +370,27 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             auto* accentLayout = new QHBoxLayout(accentRow);
             accentLayout->setContentsMargins(0, 0, 0, 0);
             accentLayout->setSpacing(6);
-            for (double hue : theme::accentHues()) {
+            for (int i = 0; i < theme::kAccentCount; ++i) {
+                const theme::AccentColor acc = (theme::AccentColor)i;
                 auto* b = new QPushButton();
                 b->setCheckable(true);
-                b->setProperty("hue", hue);
-                const QColor accent = (c.isDark ? theme::Colors::dark(hue) : theme::Colors::light(hue)).focus;
+                b->setProperty("accent", i);
+                // Preview the accent hue at a mid lightness (accentSwatch):
+                // the fill token itself is theme-tuned (pale in light, deep
+                // in dark) and reads poorly as a bare swatch on the dialog
+                // background; the swatch shows the recognizable hue.
+                const QColor accent = (c.isDark ? theme::Colors::dark(acc) : theme::Colors::light(acc)).accentSwatch;
                 b->setStyleSheet(
                     QString("QPushButton { width: 20px; height: 20px; background-color: %1; border: 2px solid transparent; padding: 0; min-height: 0; min-width: 0; }"
                             "QPushButton:hover { border-color: %2; }"
                             "QPushButton:checked { border-color: %3; }")
                         .arg(accent.name(), c.outline.name(), c.text.name()));
-                if (hue == mInitialAccentHue) b->setChecked(true);
+                if (acc == mInitialAccent) b->setChecked(true);
                 mAccentGroup->addButton(b);
                 accentLayout->addWidget(b);
             }
             accentLayout->addStretch();
-            form->addRow(tr("Accent color :"), accentRow);
+            form->addRow(tr("Accent color"), accentRow);
         }
     }
 
@@ -393,11 +398,11 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
     {
         mAutoSave = new QCheckBox();
         mAutoSave->setChecked(bAutoSave);
-        projectSaving->addRow(tr("Automatically save your project : "), mAutoSave);
+        projectSaving->addRow(tr("Automatically save your project"), mAutoSave);
 
         mAutoSaveDelayBox = new QSpinBox();
         mAutoSaveDelayBox->setValue(mAutoSaveDelay);
-        projectSaving->addRow(tr("Time (in minutes) between autosaves : "), mAutoSaveDelayBox);
+        projectSaving->addRow(tr("Time (in minutes) between autosaves"), mAutoSaveDelayBox);
 
         mAutoShowMesh = new QCheckBox();
         mAutoShowMesh->setChecked(bAutoShowMesh);
@@ -405,27 +410,27 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             QSettings settings;
             settings.setValue("generalsettings/tools/autoshowmesh", mAutoShowMesh->isChecked());
         });
-        projectSaving->addRow(tr("Show mesh when selecting FFD : "), mAutoShowMesh);
+        projectSaving->addRow(tr("Show mesh when selecting FFD"), mAutoShowMesh);
 
         mAutoCbCopy = new QCheckBox();
         mAutoCbCopy->setChecked(bAutoCbCopy);
-        projectSaving->addRow(tr("On copy send keys to the clipboard : "), mAutoCbCopy);
+        projectSaving->addRow(tr("On copy send keys to the clipboard"), mAutoCbCopy);
 
         mAutoFFmpegBox = new QCheckBox();
         mAutoFFmpegBox->setChecked(mAutoFFmpegCheck);
-        projectSaving->addRow(tr("Always check for FFmpeg on export : "), mAutoFFmpegBox);
+        projectSaving->addRow(tr("Always check for FFmpeg on export"), mAutoFFmpegBox);
 
         bResIDBox = new QCheckBox();
         bResIDBox->setChecked(bResIDCheck);
-        projectSaving->addRow(tr("Enforce ID check on asset download : "), bResIDBox);
+        projectSaving->addRow(tr("Enforce ID check on asset download"), bResIDBox);
 
         mIgnoreWarnings = new QCheckBox();
         mIgnoreWarnings->setChecked(bIgnoreWarnings);
-        projectSaving->addRow(tr("Ignore export warnings :"), mIgnoreWarnings);
+        projectSaving->addRow(tr("Ignore export warnings"), mIgnoreWarnings);
 
         mDonationAllowed = new QCheckBox();
         mDonationAllowed->setChecked(bDonationAllowed);
-        projectSaving->addRow(tr("Allow donation menu : "), mDonationAllowed);
+        projectSaving->addRow(tr("Allow donation menu"), mDonationAllowed);
 
         mForceSolverLoad = new QCheckBox();
         mForceSolverLoad->setChecked(bForceSolverLoad);
@@ -446,7 +451,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         mKeyDelayBox = new QSpinBox();
         mKeyDelayBox->setRange(0, 10000);
         mKeyDelayBox->setValue(mKeyDelay);
-        keybindingSettings->addRow(tr("Global keybind delay (ms) : "), mKeyDelayBox);
+        keybindingSettings->addRow(tr("Global keybind delay (ms)"), mKeyDelayBox);
 
         mResetKeybindsButton = new QPushButton(tr("Reset keybinds"));
         mResetKeybindsButton->setToolTip(tr("Reset all keybinds, a restart is required."));
@@ -734,12 +739,14 @@ QString GeneralSettingDialog::theme() {
     return mThemeGroup->checkedButton() ? mThemeGroup->checkedButton()->property("themeId").toString() : mInitialThemeKey;
 }
 
-double GeneralSettingDialog::accentHue() {
-    return mAccentGroup->checkedButton() ? mAccentGroup->checkedButton()->property("hue").toDouble() : mInitialAccentHue;
+theme::AccentColor GeneralSettingDialog::accent() {
+    return mAccentGroup->checkedButton()
+        ? (theme::AccentColor)mAccentGroup->checkedButton()->property("accent").toInt()
+        : mInitialAccent;
 }
 
-bool GeneralSettingDialog::accentHueHasChanged() {
-    return mInitialAccentHue != accentHue();
+bool GeneralSettingDialog::accentHasChanged() {
+    return mInitialAccent != accent();
 }
 
 

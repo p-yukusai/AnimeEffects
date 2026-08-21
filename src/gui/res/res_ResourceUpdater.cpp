@@ -254,7 +254,7 @@ namespace gui::res {
         {
             auto& stack = mProject.commandStack();
 
-            cmnd::ScopedMacro macro(stack, CmndName::tr("Add new resource"));
+            cmnd::ScopedMacro macro(stack, CmndName::tr("Add new asset"));
 
             // notifier
             auto notifier = new AddNewOneNotifier(mViaPoint, mProject);

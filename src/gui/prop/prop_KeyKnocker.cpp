@@ -33,7 +33,7 @@ namespace prop {
         this->setCursor(Qt::PointingHandCursor);
         this->setAttribute(Qt::WA_Hover); // QSS :hover on a plain QWidget
 
-        mPlusIcon = aGUIResources->icon("plus");
+        mPlusIcon = aGUIResources->icon("plus-bold");
         mPlusDim = dimmedIcon(mPlusIcon);
 
         mLabel = new QLabel(aLabel, this);

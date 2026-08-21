@@ -31,6 +31,7 @@ namespace time {
         void setTimeScale(const Scaler& aScale) { mScale = &aScale; }
 
         void renderLines(const QVector<TimeLineRow>& aRows, const QRect& aCameraRect, const QRect& aCullRect);
+        void renderRangeMarkers(const QRect& aCameraRect);
         void renderHeader(int aHeight, int aFps);
         void renderHandle(const QPoint& aPoint, int aRange);
         void renderSelectionRange(const QRect& aRect);

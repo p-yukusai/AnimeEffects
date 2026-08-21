@@ -23,7 +23,12 @@ namespace time {
 
         void setMaxFrame(int aMaxFrame);
         void setFps(int aFps);
-        void update(int aWheelDelta);
+        // Applies a wheel delta; returns false when the zoom is already
+        // clamped at the floor or ceiling and the delta had no room to act.
+        // (Sub-notch deltas still report true: trackpad steps must each
+        // re-anchor the view even when the pixel spacing does not change.)
+        bool update(int aWheelDelta);
+        int pixelsPerFrame() const { return mIndex + 1; }
         int pixelWidth(int aFrame) const;
         int maxPixelWidth() const;
         int frame(int aPixelWidth) const;

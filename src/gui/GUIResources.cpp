@@ -7,7 +7,7 @@
 #include <QStyleFactory>
 #include <QStyleHints>
 
-#include "gui/ScrollBarStyle.h"
+#include "gui/AppStyle.h"
 #include "theme/Icons.h"
 
 namespace gui {
@@ -15,7 +15,7 @@ namespace gui {
 GUIResources::GUIResources(const QString& aResourceDir):
     mResourceDir(aResourceDir),
     mIconDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/icons"),
-    mHue(theme::kDefaultHue),
+    mAccent(theme::kDefaultAccent),
     mTheme(aResourceDir, "light") {
     setAppStyle();
 
@@ -30,12 +30,12 @@ GUIResources::GUIResources(const QString& aResourceDir):
     if (themeId != "system" && themeId != "light" && themeId != "dark") themeId = "dark";
     settings.setValue("generalsettings/ui/theme", themeId);
 
-    double hue = settings.value("generalsettings/ui/accent_hue", theme::kDefaultHue).toDouble();
-    if (!theme::accentHues().contains(hue)) hue = theme::kDefaultHue;
-    settings.setValue("generalsettings/ui/accent_hue", hue);
+    // Accent: the selected Tailwind row, persisted by name.
+    const QString accentName = settings.value("generalsettings/ui/accent", QString()).toString();
+    mAccent = theme::accentFromName(accentName);
+    settings.setValue("generalsettings/ui/accent", QLatin1String(theme::accentName(mAccent)));
 
     mTheme = theme::Theme(mResourceDir, themeId);
-    mHue = hue;
     applyAppearance();
 
     // "system" follows the OS color scheme; follow a live light/dark switch.
@@ -82,10 +82,10 @@ void GUIResources::setTheme(const QString& aThemeId) {
     onThemeChanged(mTheme);
 }
 
-void GUIResources::setAccentHue(double aHue) {
-    if (!theme::accentHues().contains(aHue) || mHue == aHue) return;
-    mHue = aHue;
-    QSettings().setValue("generalsettings/ui/accent_hue", aHue);
+void GUIResources::setAccent(theme::AccentColor aAccent) {
+    if (mAccent == aAccent) return;
+    mAccent = aAccent;
+    QSettings().setValue("generalsettings/ui/accent", QLatin1String(theme::accentName(aAccent)));
     applyAppearance();
     onThemeChanged(mTheme);
 }
@@ -97,7 +97,7 @@ void GUIResources::setAppStyle() {
 }
 
 void GUIResources::applyAppearance() {
-    theme::Colors::activate(mTheme.isDark(), mHue);
+    theme::Colors::activate(mTheme.isDark(), mAccent);
     const theme::Colors& c = theme::Colors::current();
 
     // The canonical currentColor set is tinted at runtime into the scratch
@@ -108,17 +108,23 @@ void GUIResources::applyAppearance() {
 
     applyPalette(c);
     QApplication::setPalette(palette);
-    qApp->setStyleSheet(dialogButtonStyleSheet());
-    // Scrollbar handles are drawn by the proxy style (a deterministic 4px pill
-    // from the theme tokens) instead of the QSS border-image path, which
-    // distorts small pills. Install the proxy once: QApplication::setStyle
-    // slots the passed style under the stylesheet wrapper (QStyleSheetStyle),
-    // so qobject_cast<ScrollBarStyle*>(qApp->style()) never matches and the
-    // old guard wrapped a fresh proxy on every appearance change.
-    if (!mScrollBarStyleInstalled) {
-        qApp->setStyle(new ScrollBarStyle(qApp->style()));
-        mScrollBarStyleInstalled = true;
+    // The app proxy style custom-paints the primitives QSS can't do well:
+    // scrollbar pill, popup panels/rows, and the tree-branch carets (QSS
+    // ::branch has no sizing knob). Install it BEFORE setStyleSheet: at that
+    // point the app style is Fusion, which setStyle reparents under the
+    // proxy. Installing after would capture the QStyleSheetStyle wrapper that
+    // setStyleSheet just created; QApplication::setStyle then derefs that
+    // wrapper (refcount 1 -> 0) and deletes it, leaving the proxy's base
+    // dangling — a use-after-free on every forwarded call. Install it once:
+    // setStyle slots the passed style under the stylesheet wrapper
+    // (QStyleSheetStyle), so qobject_cast<AppStyle*>(qApp->style()) never
+    // matches and the old guard wrapped a fresh proxy on every appearance
+    // change.
+    if (!mAppStyleInstalled) {
+        qApp->setStyle(new AppStyle(qApp->style()));
+        mAppStyleInstalled = true;
     }
+    qApp->setStyleSheet(dialogButtonStyleSheet());
 }
 
 void GUIResources::loadIcons() {
@@ -136,9 +142,14 @@ void GUIResources::loadIcons() {
         // also registered as its own stem so iconActive() can hand it out.
         icon.addFile(dir.filePath(name), QSize(), QIcon::Normal, QIcon::Off);
         const QString activePath = dir.filePath(stem + "-active.svg");
-        icon.addFile(activePath, QSize(), QIcon::Normal, QIcon::On);
+        // Only toggle/hover-swap names carry an -active file (tintIcons
+        // generates it for those); register the On state conditionally so a
+        // plain icon never references a missing pixmap.
+        if (QFile::exists(activePath)) {
+            icon.addFile(activePath, QSize(), QIcon::Normal, QIcon::On);
+            mIconMap.insert(stem + "-active", QIcon(activePath));
+        }
         mIconMap.insert(stem, icon);
-        mIconMap.insert(stem + "-active", QIcon(activePath));
     }
 }
 
@@ -154,7 +165,7 @@ void GUIResources::applyPalette(const theme::Colors& aColors) {
     palette.setColor(QPalette::ButtonText, aColors.text);
     palette.setColor(QPalette::BrightText, aColors.text);
     palette.setColor(QPalette::Link, aColors.accentBright);
-    palette.setColor(QPalette::Highlight, aColors.selection);
+    palette.setColor(QPalette::Highlight, aColors.textSelection);
     palette.setColor(QPalette::HighlightedText, aColors.selectionText);
 }
 

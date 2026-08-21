@@ -148,7 +148,7 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                  << eigthPath;
 
             // Path actions
-            auto placeholderAction = new QAction(tr("No other projects..."), this);
+            auto placeholderAction = new QAction(tr("No other projects"), this);
             auto firstPathAction = new QAction(firstPath);
             auto secondPathAction = new QAction(secondPath);
             auto thirdPathAction = new QAction(thirdPath);
@@ -206,9 +206,9 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
             connect(eigthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(eigthPath); });
         }
         auto saveProject = new QAction(tr("Save project"), this);
-        auto saveProjectAs = new QAction(tr("Save project as..."), this);
+        auto saveProjectAs = new QAction(tr("Save project as"), this);
         auto closeProject = new QAction(tr("Close project"), this);
-        auto exportWindow = new QAction(tr("Export project as..."), this);
+        auto exportWindow = new QAction(tr("Export project as"), this);
         auto exportAs = new QMenu(tr("Legacy exporter (deprecated)"), this);
         {
             ctrl::VideoFormat gifFormat;
@@ -232,7 +232,7 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                 exportAs->addAction(video);
             }
         }
-        auto quickExport = new QMenu(tr("Quickly export as..."), this);
+        auto quickExport = new QMenu(tr("Quickly export as"), this);
         {
             auto pngs = new QAction(tr("PNG Sequence"), this);
             auto gif_transparent = new QAction(tr("GIF Animation (Transparent)"), this);
@@ -285,45 +285,31 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
     {
         auto undo = new QAction(tr("Undo"), this);
         auto redo = new QAction(tr("Redo"), this);
+        auto projectSettings = new QAction(tr("Project settings"), this);
+        auto assets = new QAction(tr("Assets"), this);
 
         mProjectActions.push_back(undo);
         mProjectActions.push_back(redo);
+        mProjectActions.push_back(projectSettings);
+        mProjectActions.push_back(assets);
 
         connect(undo, &QAction::triggered, mainWindow, &MainWindow::onUndoTriggered);
         connect(redo, &QAction::triggered, mainWindow, &MainWindow::onRedoTriggered);
+        connect(projectSettings, &QAction::triggered, this, &MainMenuBar::onProjectSettingsTriggered);
+        connect(assets, &QAction::triggered, [&] {
+            if (aViaPoint.resourceDialog()) {
+                aViaPoint.resourceDialog()->setVisible(!aViaPoint.resourceDialog()->isVisible());
+            }
+        });
 
         editMenu->addAction(undo);
         editMenu->addAction(redo);
+        editMenu->addSeparator();
+        editMenu->addAction(projectSettings);
+        editMenu->addAction(assets);
     }
 
-    auto projMenu = new QMenu(tr("Project attributes"), this);
-    {
-        auto canvSize = new QAction(tr("Canvas size"), this);
-        auto maxFrame = new QAction(tr("Maximum frame count"), this);
-        auto loopAnim = new QAction(tr("Loop animation"), this);
-        auto setFPS = new QAction(tr("Frames per second"), this);
-        auto resource = new QAction(tr("Resources"), this);
-
-        mProjectActions.push_back(canvSize);
-        mProjectActions.push_back(maxFrame);
-        mProjectActions.push_back(loopAnim);
-        mProjectActions.push_back(setFPS);
-        mProjectActions.push_back(resource);
-
-        connect(canvSize, &QAction::triggered, this, &MainMenuBar::onCanvasSizeTriggered);
-        connect(maxFrame, &QAction::triggered, this, &MainMenuBar::onMaxFrameTriggered);
-        connect(loopAnim, &QAction::triggered, this, &MainMenuBar::onLoopTriggered);
-        connect(setFPS, &QAction::triggered, this, &MainMenuBar::onFPSTriggered);
-        connect(resource, &QAction::triggered, [&] { if (aViaPoint.resourceDialog()) { aViaPoint.resourceDialog()->setVisible(!aViaPoint.resourceDialog()->isVisible()); } });
-
-        projMenu->addAction(resource);
-        projMenu->addAction(canvSize);
-        projMenu->addAction(maxFrame);
-        projMenu->addAction(loopAnim);
-        projMenu->addAction(setFPS);
-    }
-
-    auto optionMenu = new QMenu(tr("Options"), this);
+    auto preferenceMenu = new QMenu(tr("Preferences"), this);
     {
         auto general = new QAction(tr("General settings"), this);
         auto mouse = new QAction(tr("Mouse settings"), this);
@@ -337,8 +323,8 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                     this->onTimeFormatChanged();
                 if (generalSettingsDialog->themeHasChanged())
                     this->mGUIResources.setTheme(generalSettingsDialog->theme());
-                if (generalSettingsDialog->accentHueHasChanged())
-                    this->mGUIResources.setAccentHue(generalSettingsDialog->accentHue());
+                if (generalSettingsDialog->accentHasChanged())
+                    this->mGUIResources.setAccent(generalSettingsDialog->accent());
             }
         });
 
@@ -353,9 +339,9 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
             dialog->exec();
         });
 
-        optionMenu->addAction(general);
-        optionMenu->addAction(mouse);
-        optionMenu->addAction(keyBind);
+        preferenceMenu->addAction(general);
+        preferenceMenu->addAction(mouse);
+        preferenceMenu->addAction(keyBind);
     }
 
     auto helpMenu = new QMenu(tr("Help"), this);
@@ -587,8 +573,7 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
 
     this->addAction(fileMenu->menuAction());
     this->addAction(editMenu->menuAction());
-    this->addAction(projMenu->menuAction());
-    this->addAction(optionMenu->menuAction());
+    this->addAction(preferenceMenu->menuAction());
     this->addAction(helpMenu->menuAction());
     QSettings settings;
     bool donationAllowed = !settings.value("generalsettings/ui/donationAllowed").isValid()
@@ -683,12 +668,22 @@ void MainMenuBar::loadVideoFormats() {
 }
 
 //-------------------------------------------------------------------------------------------------
-ProjectCanvasSizeSettingDialog::ProjectCanvasSizeSettingDialog(
-    ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent
-):
-    EasyDialog(tr("Set canvas size"), aParent), mViaPoint(aViaPoint), mProject(aProject) {
+//-------------------------------------------------------------------------------------------------
+ProjectSettingDialog::ProjectSettingDialog(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent):
+    EasyDialog(tr("Project settings"), aParent),
+    mViaPoint(aViaPoint),
+    mProject(aProject),
+    mWidthBox(),
+    mHeightBox(),
+    mMaxFrameBox(),
+    mLoopBox(),
+    mFPSBox() {
     // create inner widgets
     auto curSize = mProject.attribute().imageSize();
+    auto curMaxFrame = mProject.attribute().maxFrame();
+    auto curLoop = mProject.attribute().loop();
+    auto curFPS = mProject.attribute().fps();
+
     {
         auto devInfo = mViaPoint.glDeviceInfo();
         const int maxBufferSize = std::min(devInfo.maxTextureSize, devInfo.maxRenderBufferSize);
@@ -698,6 +693,7 @@ ProjectCanvasSizeSettingDialog::ProjectCanvasSizeSettingDialog(
         form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
         form->setLabelAlignment(Qt::AlignRight);
 
+        // canvas size
         auto sizeLayout = new QHBoxLayout();
         {
             mWidthBox = new QSpinBox();
@@ -710,84 +706,26 @@ ProjectCanvasSizeSettingDialog::ProjectCanvasSizeSettingDialog(
             mHeightBox->setValue(curSize.height());
             sizeLayout->addWidget(mHeightBox);
         }
-        form->addRow(tr("Size :"), sizeLayout);
+        form->addRow(tr("Canvas size"), sizeLayout);
 
-        auto group = new QGroupBox(tr("Parameters"));
-        group->setLayout(form);
-        this->setMainWidget(group);
-    }
-    this->setOkCancel();
-    this->fixSize();
-}
+        // maximum frame count
+        mMaxFrameBox = new QSpinBox();
+        mMaxFrameBox->setRange(1, 0x7FFFFFFF);
+        mMaxFrameBox->setValue(curMaxFrame);
+        form->addRow(tr("Max frame count"), mMaxFrameBox);
 
-void MainMenuBar::onCanvasSizeTriggered() {
-    if (!mProject)
-        return;
+        // loop animation
+        mLoopBox = new QCheckBox();
+        mLoopBox->setChecked(curLoop);
+        form->addRow(tr("Loop animation"), mLoopBox);
 
-    auto curSize = mProject->attribute().imageSize();
+        // frames per second
+        mFPSBox = new QSpinBox();
+        mFPSBox->setRange(1, 0x7FFFFFFF);
+        mFPSBox->setValue(curFPS);
+        form->addRow(tr("Frames per second"), mFPSBox);
 
-    // create dialog
-    QScopedPointer<ProjectCanvasSizeSettingDialog> dialog(new ProjectCanvasSizeSettingDialog(mViaPoint, *mProject, this)
-    );
-
-    // execute dialog
-    dialog->exec();
-    if (dialog->result() != QDialog::Accepted)
-        return;
-
-    // get new canvas size
-    const QSize newSize = dialog->canvasSize();
-    XC_ASSERT(!newSize.isEmpty());
-    if (curSize == newSize)
-        return;
-
-    // create commands
-    {
-        cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the canvas size"));
-
-        core::Project* projectPtr = mProject;
-        auto command = new cmnd::Delegatable(
-            [=]() {
-                projectPtr->attribute().setImageSize(newSize);
-                auto event = core::ProjectEvent::imageSizeChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, false);
-                this->onProjectAttributeUpdated();
-                this->onVisualUpdated();
-            },
-            [=]() {
-                projectPtr->attribute().setImageSize(curSize);
-                auto event = core::ProjectEvent::imageSizeChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, true);
-                this->onProjectAttributeUpdated();
-                this->onVisualUpdated();
-            }
-        );
-        mProject->commandStack().push(command);
-    }
-}
-
-//-------------------------------------------------------------------------------------------------
-ProjectMaxFrameSettingDialog::ProjectMaxFrameSettingDialog(core::Project& aProject, QWidget* aParent):
-    EasyDialog(tr("Set max frames"), aParent), mProject(aProject), mMaxFrameBox() {
-    // create inner widgets
-    auto curMaxFrame = mProject.attribute().maxFrame();
-    {
-        auto form = new QFormLayout();
-        form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
-        form->setLabelAlignment(Qt::AlignRight);
-
-        auto layout = new QHBoxLayout();
-        {
-            mMaxFrameBox = new QSpinBox();
-            mMaxFrameBox->setRange(1, 0x7FFFFFFF);
-            mMaxFrameBox->setValue(curMaxFrame);
-            layout->addWidget(mMaxFrameBox);
-        }
-        form->addRow(tr("Max frame count :"), layout);
-
-        auto group = new QGroupBox(tr("Parameters"));
-        group->setLayout(form);
-        this->setMainWidget(group);
+        this->setMainLayout(form);
     }
 
     this->setOkCancel([=](int aIndex) -> bool {
@@ -799,7 +737,7 @@ ProjectMaxFrameSettingDialog::ProjectMaxFrameSettingDialog(core::Project& aProje
     this->fixSize();
 }
 
-bool ProjectMaxFrameSettingDialog::confirmMaxFrameUpdating(int aNewMaxFrame) const {
+bool ProjectSettingDialog::confirmMaxFrameUpdating(int aNewMaxFrame) const {
     XC_ASSERT(aNewMaxFrame > 0);
 
     auto curMaxFrame = mProject.attribute().maxFrame();
@@ -816,207 +754,127 @@ bool ProjectMaxFrameSettingDialog::confirmMaxFrameUpdating(int aNewMaxFrame) con
     return false;
 }
 
-void MainMenuBar::onMaxFrameTriggered() {
+void MainMenuBar::onProjectSettingsTriggered() {
     if (!mProject)
         return;
 
+    auto curSize = mProject->attribute().imageSize();
     auto curMaxFrame = mProject->attribute().maxFrame();
-
-    // create dialog
-    QScopedPointer<ProjectMaxFrameSettingDialog> dialog(new ProjectMaxFrameSettingDialog(*mProject, this));
-
-    // execute dialog
-    dialog->exec();
-    if (dialog->result() != QDialog::Accepted)
-        return;
-
-    // get new canvas size
-    const int newMaxFrame = dialog->maxFrame();
-    XC_ASSERT(newMaxFrame > 0);
-    if (curMaxFrame == newMaxFrame)
-        return;
-
-    // create commands
-    {
-        cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the max frame"));
-
-        core::Project* projectPtr = mProject;
-        auto command = new cmnd::Delegatable(
-            [=]() {
-                projectPtr->attribute().setMaxFrame(newMaxFrame);
-                auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, false);
-                this->onProjectAttributeUpdated();
-                this->onVisualUpdated();
-            },
-            [=]() {
-                projectPtr->attribute().setMaxFrame(curMaxFrame);
-                auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, true);
-                this->onProjectAttributeUpdated();
-                this->onVisualUpdated();
-            }
-        );
-        mProject->commandStack().push(command);
-    }
-}
-
-//-------------------------------------------------------------------------------------------------
-ProjectLoopSettingDialog::ProjectLoopSettingDialog(core::Project& aProject, QWidget* aParent):
-    EasyDialog(tr("Set loop"), aParent) {
-    // create inner widgets
-    auto curLoop = aProject.attribute().loop();
-    {
-        auto form = new QFormLayout();
-        form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
-        form->setLabelAlignment(Qt::AlignRight);
-
-        auto layout = new QHBoxLayout();
-        {
-            mLoopBox = new QCheckBox();
-            mLoopBox->setChecked(curLoop);
-            layout->addWidget(mLoopBox);
-        }
-        form->addRow(tr("Loop animation :"), layout);
-
-        auto group = new QGroupBox(tr("Parameters"));
-        group->setLayout(form);
-        this->setMainWidget(group);
-    }
-
-    this->setOkCancel();
-    this->fixSize();
-}
-
-void MainMenuBar::onLoopTriggered() {
-    if (!mProject)
-        return;
-
     auto curLoop = mProject->attribute().loop();
-
-    // create dialog
-    QScopedPointer<ProjectLoopSettingDialog> dialog(new ProjectLoopSettingDialog(*mProject, this));
-
-    // execute dialog
-    dialog->exec();
-    if (dialog->result() != QDialog::Accepted)
-        return;
-
-    // get new loop setting
-    const bool newLoop = dialog->isCheckedLoopBox();
-    if (curLoop == newLoop)
-        return;
-
-    // create commands
-    {
-        cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change loop settings"));
-
-        core::Project* projectPtr = mProject;
-        auto command = new cmnd::Delegatable(
-            [=]() {
-                projectPtr->attribute().setLoop(newLoop);
-                auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, false);
-                this->onProjectAttributeUpdated();
-                this->onVisualUpdated();
-            },
-            [=]() {
-                projectPtr->attribute().setLoop(curLoop);
-                auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, true);
-                this->onProjectAttributeUpdated();
-                this->onVisualUpdated();
-            }
-        );
-        mProject->commandStack().push(command);
-    }
-}
-
-// ----------------------------------------------------------------------------- //
-ProjectFPSSettingDialog::ProjectFPSSettingDialog(core::Project& aProject, QWidget* aParent):
-    EasyDialog(tr("Set FPS"), aParent),
-    mProject(aProject),
-    mFPSBox()
-
-{
-    // create inner widgets
-    auto curFPS = mProject.attribute().fps();
-    {
-        auto form = new QFormLayout();
-        form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
-        form->setLabelAlignment(Qt::AlignRight);
-
-        auto layout = new QHBoxLayout();
-        {
-            mFPSBox = new QSpinBox();
-            const int max = 0x7fffffff;
-            mFPSBox->setRange(1, max);
-            mFPSBox->setValue(curFPS);
-            layout->addWidget(mFPSBox);
-        }
-        form->addRow(tr("Frames per second :"), layout);
-
-        auto group = new QGroupBox(tr("Parameters"));
-        group->setLayout(form);
-        this->setMainWidget(group);
-    }
-
-    this->setOkCancel([=](int aIndex) -> bool {
-        if (aIndex == 0) {
-            return confirmFPSUpdating(this->mFPSBox->value());
-        }
-        return true;
-    });
-    this->fixSize();
-}
-
-bool ProjectFPSSettingDialog::confirmFPSUpdating(int aNewFPS) {
-    XC_ASSERT(aNewFPS > 0);
-    return true;
-}
-
-void MainMenuBar::onFPSTriggered() {
-    if (!mProject)
-        return;
-
     auto curFPS = mProject->attribute().fps();
 
     // create dialog
-    QScopedPointer<ProjectFPSSettingDialog> dialog(new ProjectFPSSettingDialog(*mProject, this));
+    QScopedPointer<ProjectSettingDialog> dialog(new ProjectSettingDialog(mViaPoint, *mProject, this));
 
     // execute dialog
     dialog->exec();
     if (dialog->result() != QDialog::Accepted)
         return;
 
-    // get new canvas size
-    const int newFPS = dialog->fps();
-    XC_ASSERT(newFPS > 0);
-    if (curFPS == newFPS)
-        return;
-
-    // create commands
+    // apply each changed attribute as its own undoable command
     {
-        cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the FPS"));
+        // canvas size
+        const QSize newSize = dialog->canvasSize();
+        XC_ASSERT(!newSize.isEmpty());
+        if (curSize != newSize) {
+            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the canvas size"));
 
-        core::Project* projectPtr = mProject;
-        auto command = new cmnd::Delegatable(
-            [=]() {
-                projectPtr->attribute().setFps(newFPS);
-                auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, false);
-                this->onProjectAttributeUpdated();
-                this->onVisualUpdated();
-            },
-            [=]() {
-                projectPtr->attribute().setFps(curFPS);
-                auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, true);
-                this->onProjectAttributeUpdated();
-                this->onVisualUpdated();
-            }
-        );
-        mProject->commandStack().push(command);
+            core::Project* projectPtr = mProject;
+            auto command = new cmnd::Delegatable(
+                [=]() {
+                    projectPtr->attribute().setImageSize(newSize);
+                    auto event = core::ProjectEvent::imageSizeChangeEvent(*projectPtr);
+                    projectPtr->onProjectAttributeModified(event, false);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                },
+                [=]() {
+                    projectPtr->attribute().setImageSize(curSize);
+                    auto event = core::ProjectEvent::imageSizeChangeEvent(*projectPtr);
+                    projectPtr->onProjectAttributeModified(event, true);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                }
+            );
+            mProject->commandStack().push(command);
+        }
+
+        // max frame count
+        const int newMaxFrame = dialog->maxFrame();
+        XC_ASSERT(newMaxFrame > 0);
+        if (curMaxFrame != newMaxFrame) {
+            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the max frame"));
+
+            core::Project* projectPtr = mProject;
+            auto command = new cmnd::Delegatable(
+                [=]() {
+                    projectPtr->attribute().setMaxFrame(newMaxFrame);
+                    auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
+                    projectPtr->onProjectAttributeModified(event, false);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                },
+                [=]() {
+                    projectPtr->attribute().setMaxFrame(curMaxFrame);
+                    auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
+                    projectPtr->onProjectAttributeModified(event, true);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                }
+            );
+            mProject->commandStack().push(command);
+        }
+
+        // loop animation
+        const bool newLoop = dialog->loop();
+        if (curLoop != newLoop) {
+            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change loop settings"));
+
+            core::Project* projectPtr = mProject;
+            auto command = new cmnd::Delegatable(
+                [=]() {
+                    projectPtr->attribute().setLoop(newLoop);
+                    auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
+                    projectPtr->onProjectAttributeModified(event, false);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                },
+                [=]() {
+                    projectPtr->attribute().setLoop(curLoop);
+                    auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
+                    projectPtr->onProjectAttributeModified(event, true);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                }
+            );
+            mProject->commandStack().push(command);
+        }
+
+        // frames per second
+        const int newFPS = dialog->fps();
+        XC_ASSERT(newFPS > 0);
+        if (curFPS != newFPS) {
+            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the FPS"));
+
+            core::Project* projectPtr = mProject;
+            auto command = new cmnd::Delegatable(
+                [=]() {
+                    projectPtr->attribute().setFps(newFPS);
+                    auto event = core::ProjectEvent::fpsChangeEvent(*projectPtr);
+                    projectPtr->onProjectAttributeModified(event, false);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                },
+                [=]() {
+                    projectPtr->attribute().setFps(curFPS);
+                    auto event = core::ProjectEvent::fpsChangeEvent(*projectPtr);
+                    projectPtr->onProjectAttributeModified(event, true);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                }
+            );
+            mProject->commandStack().push(command);
+        }
     }
 }
 

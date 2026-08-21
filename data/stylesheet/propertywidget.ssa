@@ -199,11 +199,11 @@ QPushButton#browser:hover {
     background-color: @overlay24@;
 }
 QPushButton#browser:pressed {
-    background-color: @overlay40@;
+    background-color: @active@;
 }
 QPushButton#browser:disabled {
     background-color: transparent;
-    image: url(@icondir@/file-dim.svg);
+    image: url(@icondir@/file-dashed.svg);
 }
 
 QFrame#propertyPanel {
@@ -255,5 +255,5 @@ QPushButton#customEasing:hover {
 }
 
 QPushButton#customEasing:pressed {
-    background-color: @recessed@;
+    background-color: @active@;
 }

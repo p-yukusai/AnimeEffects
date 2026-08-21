@@ -1,5 +1,7 @@
 #include <QMenu>
 #include <QPainter>
+#include <QStyledItemDelegate>
+#include <QStyleOptionViewItem>
 #include <QTreeWidgetItemIterator>
 #include <memory>
 #include <QScrollBar>
@@ -46,9 +48,36 @@ static const int kItemSizeInc = ctrl::TimeLineRow::kIncrease;
 // tail so the last glyph of the widest name is never clipped.
 static const int kColumnPadding = 30;
 static const int kColumnDecorationGap = 4;
+// Item-data role caching the last icon-fade factor (baseOpacity * fade), so
+// the selection refresh can skip rows whose icon is unchanged. QIcon has no
+// operator==, so setIcon would always emit dataChanged -> updateColumnWidth
+// (O(N) per row), making a full refresh O(N^2) per selection change.
+constexpr int kIconFadeRole = Qt::UserRole + 1;
 // Scrollable space kept after the last row so collapsing a branch near the
 // bottom doesn't make the view jump when the content height shrinks.
 static const int kBottomPadding = 12;
+
+// QStyledItemDelegate maps the item's ForegroundRole brush onto the palette's
+// Text role only: selected text is drawn with HighlightedText, so a hidden
+// layer's dimmed label (carried by the brush) would snap back to full text
+// color the moment the row is selected. Force both roles from the brush so
+// the per-item dim survives selection. The visible @text@ brush equals the
+// palette's HighlightedText token, so visible rows are unaffected.
+class ItemBrushDelegate : public QStyledItemDelegate {
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void initStyleOption(QStyleOptionViewItem* aOption, const QModelIndex& aIndex) const override {
+        QStyledItemDelegate::initStyleOption(aOption, aIndex);
+        const QVariant fg = aIndex.data(Qt::ForegroundRole);
+        if (fg.isValid()) {
+            const QBrush brush = fg.value<QBrush>();
+            if (brush.style() != Qt::NoBrush) {
+                aOption->palette.setBrush(QPalette::HighlightedText, brush);
+            }
+        }
+    }
+};
 } // namespace
 
 namespace gui {
@@ -83,6 +112,10 @@ ObjectTreeWidget::ObjectTreeWidget(ViaPoint& aViaPoint, GUIResources& aResources
     this->setDragDropMode(InternalMove);
     this->setDefaultDropAction(Qt::TargetMoveAction);
     // this->setAlternatingRowColors(true);
+    // Selected text draws with the palette's HighlightedText role, which the
+    // default delegate never derives from the item brush; ItemBrushDelegate
+    // fixes that so hidden rows keep their dimmed label when selected.
+    this->setItemDelegate(new ItemBrushDelegate(this));
     this->setVerticalScrollMode(ScrollPerItem);
     // A single column scrolls in pixels, not items: ScrollPerItem computes the
     // horizontal range from the column count (always 1 here), pinning it to 0
@@ -113,10 +146,10 @@ ObjectTreeWidget::ObjectTreeWidget(ViaPoint& aViaPoint, GUIResources& aResources
         mSlimAction = new QAction(tr("Contract"), this);
         mSlimAction->connect(mSlimAction, &QAction::triggered, this, &ObjectTreeWidget::onSlimActionTriggered);
 
-        mReconstructAction = new QAction(tr("Add missing resources"), this);
+        mReconstructAction = new QAction(tr("Add missing assets"), this);
         mReconstructAction->connect(mReconstructAction, &QAction::triggered, this, &ObjectTreeWidget::onObjectReconstructionTriggered);
 
-        mAddTreeAction = new QAction(tr("Add new resources"), this);
+        mAddTreeAction = new QAction(tr("Add new assets"), this);
         mAddTreeAction->connect(mAddTreeAction, &QAction::triggered, this, &ObjectTreeWidget::onAddTreeTriggered);
 
         mRenameAction = new QAction(tr("Rename"), this);
@@ -208,8 +241,12 @@ core::ObjectNode* ObjectTreeWidget::findSelectingRepresentNode() {
 }
 
 void ObjectTreeWidget::notifyViewUpdated() {
-    onTreeViewUpdated(this->topLevelItem(0));
+    // Sync the scroll to the timeline FIRST so the row re-push (which derives
+    // content positions from the tree's scrolled visual rects) uses the
+    // current value; otherwise a restructure-induced scroll shift desyncs the
+    // lanes from the tree until the next update.
     onScrollUpdated(scrollHeight());
+    onTreeViewUpdated(this->topLevelItem(0));
     updateColumnWidth();
 }
 
@@ -253,36 +290,50 @@ int ObjectTreeWidget::itemHeight(const core::ObjectNode& aNode) const {
 }
 
 void ObjectTreeWidget::updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bool aVisible) {
-    if (aVisible) {
-        // Visible items render with the view's natural text color. Leave the
-        // brush unset: forcing palette().color(WindowText) bakes a color that
-        // differs from what the view actually draws under a stylesheet (the
-        // stylesheet's QWidget color rule leaks into the palette), which read
-        // as slightly faded text until the item was re-clicked.
-        aItem->setForeground(kItemColumn, QBrush());
-    } else {
-        // hidden layers read as faded: muted text blended toward the window
-        // color (the palette's Disabled group is not derived for the app's
-        // custom palettes, so it can't be relied on).
-        const QPalette pal = palette();
-        QColor textColor = pal.color(QPalette::WindowText);
-        const QColor bg = pal.color(QPalette::Window);
-        textColor.setRgbF(textColor.redF() * 0.45 + bg.redF() * 0.55,
-                          textColor.greenF() * 0.45 + bg.greenF() * 0.55,
-                          textColor.blueF() * 0.45 + bg.blueF() * 0.55);
-        aItem->setForeground(kItemColumn, QBrush(textColor));
+    // The label color is carried by the per-item foreground brush: the
+    // stylesheet's ::item rules no longer declare a color (a matching QSS
+    // color would override the brush), so the brush is authoritative. The
+    // palette's WindowText role is the same token the stylesheet's @text@
+    // substitutes to, so visible items render exactly as before.
+    const QPalette pal = palette();
+    QColor textColor = pal.color(QPalette::WindowText);
+    const QColor bg = pal.color(QPalette::Window);
+    // A selected row keeps more presence than an unselected one (its label
+    // must stay readable against the selection fill) while still reading as
+    // faded. (The palette's Disabled group is not derived for the app's
+    // custom palettes, so it can't be relied on.)
+    const bool selected = aItem->isSelected();
+    if (!aVisible) {
+        const qreal blend = selected ? 0.65 : 0.45;
+        textColor.setRgbF(textColor.redF() * blend + bg.redF() * (1.0 - blend),
+                          textColor.greenF() * blend + bg.greenF() * (1.0 - blend),
+                          textColor.blueF() * blend + bg.blueF() * (1.0 - blend));
     }
+    aItem->setForeground(kItemColumn, QBrush(textColor));
 
     const bool isFolder = (aItem->flags() & Qt::ItemIsDropEnabled) != 0;
     QIcon icon = mGUIResources.icon(isFolder ? "folder" : "file");
     // file/folder icons rest at 2/3 of the text's presence, so the labels
-    // carry the hierarchy; hidden items fade further on top of that
+    // carry the hierarchy; hidden items fade further on top of that, and a
+    // selected hidden item fades less than an unselected one (same rule as
+    // the label blend above). A selected row is the active highlight, so its
+    // icon also draws a step stronger than at rest: the selection fill would
+    // otherwise show through the translucent glyph and read as a dimmer icon
+    // next to the full-brightness label.
     const qreal baseOpacity = 0.66;
+    const qreal fade = aVisible ? (selected ? 1.2 : 1.0) : (selected ? 0.7 : 0.45);
+    const qreal effectiveFade = baseOpacity * fade;
+    // Skip the rebuild when the fade is unchanged (selection refreshes run
+    // over every row): the foreground above already early-returns on an equal
+    // brush, but setIcon cannot — QIcon has no operator==.
+    if (qFuzzyCompare(aItem->data(kItemColumn, kIconFadeRole).toReal(), effectiveFade))
+        return;
+    aItem->setData(kItemColumn, kIconFadeRole, effectiveFade);
     const QPixmap pm = icon.pixmap(kItemSize, kItemSize);
     QPixmap faded(pm.size());
     faded.fill(Qt::transparent);
     QPainter painter(&faded);
-    painter.setOpacity(baseOpacity * (aVisible ? 1.0 : 0.45));
+    painter.setOpacity(baseOpacity * fade);
     painter.drawPixmap(0, 0, pm);
     painter.end();
     icon = QIcon(faded);
@@ -525,6 +576,24 @@ void ObjectTreeWidget::onItemExpanded(QTreeWidgetItem* aItem) {
 }
 
 void ObjectTreeWidget::onItemSelectionChanged() {
+    // Selection shifts the hidden rows' dim (a selected hidden item keeps
+    // more presence than an unselected one) and strengthens a selected
+    // visible row's icon (which would otherwise read dimmer through the
+    // selection fill), so re-derive the brushes/icons for every row except
+    // the document root. Keyed off the check state (the same state
+    // onItemClicked reads and the eye indicator paints): the root has no eye,
+    // never gets check data, and its check state reads Unchecked by default,
+    // so without the isTopNode() guard (the same one onItemClicked uses) it
+    // would receive the hidden dim and a folder icon on the first selection
+    // change.
+    QTreeWidgetItemIterator it(this);
+    for (; *it; ++it) {
+        obj::Item* item = obj::Item::cast(*it);
+        if (item && !item->isTopNode()) {
+            updateItemVisibilityAppearance(*it, (*it)->checkState(kItemColumn) == Qt::Checked);
+        }
+    }
+
     core::ObjectNode* representNode = findSelectingRepresentNode();
     onSelectionChanged(representNode);
 }

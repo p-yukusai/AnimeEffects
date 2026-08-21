@@ -26,8 +26,8 @@ namespace tool {
 
     void BonePanel::applyIcons() {
         mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("plus") << mResources.icon("minus") << mResources.icon("move")
-                             << mResources.icon("bind") << mResources.icon("influence") << mResources.icon("paint-brush")
+            QVector<QIcon>() << mResources.icon("plus-bold") << mResources.icon("minus-bold") << mResources.icon("navigation-arrow")
+                             << mResources.icon("link") << mResources.icon("broadcast") << mResources.icon("paint-brush")
                              << mResources.icon("eraser")
         , QSize(18, 18));
     }

@@ -44,17 +44,28 @@ PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent, core:
     this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     aProject = &mProject;
 
-    mButtons.push_back(createButton("rewind", false, 0, tr("Return to initial frame")));
+    mButtons.push_back(createButton("skip-back", false, 0, tr("Return to initial frame")));
     mButtons.push_back(createButton("step-back", false, 1, tr("One frame back")));
     mButtons.push_back(createButton("play", true, 2, tr("Play")));
-    mButtons.push_back(createButton("step", false, 3, tr("One frame forward")));
-    mButtons.push_back(createButton("fast", false, 4, tr("Advance to final frame")));
-    mButtons.push_back(createButton("loop", true, 5, tr("Loop animation")));
+    mButtons.push_back(createButton("step-forward", false, 3, tr("One frame forward")));
+    mButtons.push_back(createButton("skip-forward", false, 4, tr("Advance to final frame")));
+    mButtons.push_back(createButton("arrows-clockwise", true, 5, tr("Loop animation")));
     mButtons.back()->setChecked(mDoesLoop);
     mButtons.push_back(createButton("faders-horizontal", false, 6, tr("Animation settings")));
-    mButtons.push_back(createButton("audio", false, 7, tr("Audio track")));
+    mButtons.push_back(createButton("speaker-high", false, 7, tr("Audio track")));
+    // Frame nudge buttons repeat on hold: fire once on press, then every
+    // 50ms after a 400ms hold (QAbstractButton re-emits pressed()).
+    for (const int column : {1, 3}) {
+        QPushButton* b = mButtons.at(column);
+        b->setAutoRepeat(true);
+        b->setAutoRepeatDelay(400);
+        b->setAutoRepeatInterval(50);
+    }
     audioWidget->setupUi(audioUI, &mediaPlayer, aConf);
     mGUIResources.onThemeChanged.connect(this, &PlayBackWidget::onThemeUpdated);
+    // The audio window's speaker glyph is a runtime-tinted icon; refresh it
+    // (and let the ToolSlider repaint) on theme changes.
+    mGUIResources.onThemeChanged.connect(audioWidget, &AudioPlaybackWidget::onThemeUpdated);
 }
 
 void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
@@ -183,6 +194,10 @@ PlayBackWidget::createButton(const QString& aName, bool aIsCheckable, int aColum
     button->setHoverIcon(mGUIResources.iconActive(aName));
     button->setIconSize(QSize(kIconSize, kIconSize));
     button->setCheckable(aIsCheckable);
+    if (aIsCheckable) {
+        // active-state button: press reads as hover, not the sunken press
+        button->setProperty("activeButton", true);
+    }
     button->setToolTip(aToolTip);
     button->setFocusPolicy(Qt::NoFocus);
     // The QSS width/height rule pins the box; geometry alone is not enough

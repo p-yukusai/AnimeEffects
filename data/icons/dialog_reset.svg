@@ -1,9 +1,8 @@
-<svg height="100" width="80">
-  <g stroke="none" stroke-width="1" transform="scale(5)">
-    <g fill="currentColor" fill-rule="evenodd" transform="translate(-424.000000, -463.000000)">
-      <g transform="translate(424.000000, 464.000000)">
-        <path d="M8,3 L8,-0.5 L3,4.5 L8,9.5 L8,5 C11.3,5 14,7.7 14,11 C14,14.3 11.3,17 8,17 C4.7,17 2,14.3 2,11 L0,11 C0,15.4 3.6,19 8,19 C12.4,19 16,15.4 16,11 C16,6.6 12.4,3 8,3 L8,3 Z"/>
-      </g>
-    </g>
-  </g>
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <style type="text/css" id="current-color-scheme">
+        .ColorScheme-Text {
+            color:#232629;
+        }
+    </style>
+    <path d="m6 4v24h15.5c2.493 0 4.5-2.007 4.5-4.5s-2.007-4.5-4.5-4.5h-2.792969l2.5-2.5-.707031-.707031-3.707031 3.707031 3.707031 3.707031.707031-.707031-2.5-2.5h2.792969c1.939 0 3.5 1.561 3.5 3.5s-1.561 3.5-3.5 3.5h-14.5v-22h11v7h7v7h1v-8l-7-7z" class="ColorScheme-Text" fill="currentColor"/>
 </svg>

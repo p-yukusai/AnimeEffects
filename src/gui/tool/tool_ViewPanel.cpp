@@ -27,6 +27,10 @@ namespace tool {
         button->setIconSize(QSize(kIconSize, kIconSize));
         button->setFixedSize(kButtonSize, kButtonSize);
         button->setCheckable(aCheckable);
+        if (aCheckable) {
+            // active-state button: press reads as hover, not the sunken press
+            button->setProperty("activeButton", true);
+        }
         button->setToolTip(aToolTip);
         button->setFocusPolicy(Qt::NoFocus);
 

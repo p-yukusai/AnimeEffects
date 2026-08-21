@@ -139,7 +139,7 @@ void TargetWidget::openAnimationSettings() {
                 projectPtr->attribute().setMaxFrame(newMaxFrame);
                 mPlayBack->checkLoop(newLoop);
                 mTimeLine->setPlayBackLoop(newLoop);
-                auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
+                auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
                 projectPtr->onProjectAttributeModified(event, false);
                 this->refreshAnimationSettings();
             },
@@ -148,7 +148,7 @@ void TargetWidget::openAnimationSettings() {
                 projectPtr->attribute().setMaxFrame(curMaxFrame);
                 mPlayBack->checkLoop(curLoop);
                 mTimeLine->setPlayBackLoop(curLoop);
-                auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
+                auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
                 projectPtr->onProjectAttributeModified(event, true);
                 this->refreshAnimationSettings();
             }

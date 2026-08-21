@@ -25,7 +25,7 @@ AnimationSettingDialog::AnimationSettingDialog(core::Project& aProject, bool aCu
         mLoopBox = new QCheckBox();
         mLoopBox->setChecked(aCurLoop);
         layout->addWidget(mLoopBox);
-        form->addRow(tr("Loop animation :"), layout);
+        form->addRow(tr("Loop animation"), layout);
     }
     {
         auto layout = new QHBoxLayout();
@@ -33,7 +33,7 @@ AnimationSettingDialog::AnimationSettingDialog(core::Project& aProject, bool aCu
         mMaxFrameBox->setRange(1, 0x7fffffff);
         mMaxFrameBox->setValue(curMaxFrame);
         layout->addWidget(mMaxFrameBox);
-        form->addRow(tr("Maximum frame count :"), layout);
+        form->addRow(tr("Maximum frame count"), layout);
     }
     {
         auto layout = new QHBoxLayout();
@@ -41,12 +41,10 @@ AnimationSettingDialog::AnimationSettingDialog(core::Project& aProject, bool aCu
         mFPSBox->setRange(1, 0x7fffffff);
         mFPSBox->setValue(curFPS);
         layout->addWidget(mFPSBox);
-        form->addRow(tr("Frames per second :"), layout);
+        form->addRow(tr("Frames per second"), layout);
     }
 
-    auto group = new QGroupBox(tr("Parameters"));
-    group->setLayout(form);
-    this->setMainWidget(group);
+    this->setMainLayout(form);
 
     this->setOkCancel([=](int aIndex) -> bool {
         if (aIndex == 0) {

@@ -105,7 +105,11 @@ namespace time {
         const util::Range frames = frameRange();
 
         for (const TimeLineRow& line : mRows) {
-            if (!line.rect.intersects(box))
+            // The box gathers rows by their vertical band; the horizontal
+            // extent of the box is never bounded by the frame range (the
+            // frame window below handles key culling), so out-of-range keys
+            // select normally.
+            if (box.bottom() < line.rect.top() || line.rect.bottom() < box.top())
                 continue;
 
             ObjectNode::Iterator nodeItr(line.node);

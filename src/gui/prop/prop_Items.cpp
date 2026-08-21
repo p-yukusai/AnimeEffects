@@ -185,7 +185,8 @@ namespace prop {
     }
 
     //-------------------------------------------------------------------------------------------------
-    EasingItem::EasingItem(QWidget* aParent, const GUIResources* mGUIResources): mLayout(), mBox(), mDBox(), mStamp(), mSignal(true) {
+    EasingItem::EasingItem(QWidget* aParent, GUIResources* mGUIResources):
+        mLayout(), mBox(), mDBox(), mStamp(), mGUIResources(mGUIResources), mSignal(true) {
         mLayout = new QGridLayout();
         // The stylesheet makes the default grid spacing collapse to 0; keep
         // the 2px gap the other multi-field rows use (Combo2DItem).
@@ -235,6 +236,13 @@ namespace prop {
         mCustomEasing->setIcon(mGUIResources->icon("ease"));
         mCustomEasing->setText(QCoreApplication::tr("Custom"));
         mCustomEasing->setToolTip(QCoreApplication::tr("Bezier editor"));
+
+        // The "Custom" glyph is a runtime-tinted icon (same mechanism as the
+        // tool panels / speaker: onThemeChanged -> re-fetch). Without this the
+        // button keeps the old theme's pixmap cache after a switch.
+        mThemeSlot = mGUIResources->onThemeChanged.connect([this](theme::Theme&) {
+            refreshIcon();
+        });
         mCustomEasing->connect(mCustomEasing, &QToolButton::clicked, [=]() {
             mBox[0]->setCurrentIndex(util::Easing::Type_Custom);
             auto* splineWidgetClass = new Ui_splineWidget();
@@ -249,6 +257,22 @@ namespace prop {
         });
 
         mStamp = value();
+    }
+
+    EasingItem::~EasingItem() {
+        // The item outlives its widgets in the KeyGroup teardown, but the
+        // GUIResources signer outlives the whole dock; drop the slot so a
+        // later theme change never reaches a destroyed item.
+        if (mGUIResources) {
+            mGUIResources->onThemeChanged.disconnect(mThemeSlot);
+        }
+    }
+
+    void EasingItem::refreshIcon() {
+        // loadIcons() rebuilt the icon map with freshly tinted glyphs;
+        // assign a new QIcon so the SVG engine re-renders from the new file.
+        mCustomEasing->setIcon(mGUIResources->icon("ease"));
+        mCustomEasing->update();
     }
 
     void EasingItem::onEditingFinished() {

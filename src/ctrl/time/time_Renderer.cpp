@@ -29,14 +29,24 @@ namespace time {
             const QRect rect = row.rect;
             const QPoint cpos(mMargin, rect.bottom());
 
-            if (!aCullRect.intersects(rect))
+            // Rows are culled by their vertical band only: the horizontal
+            // view extent is never bounded by the frame range, so lanes stay
+            // visible (fills, keys and all) even when the view floats
+            // entirely outside it.
+            if (rect.bottom() < aCullRect.top() || aCullRect.bottom() < rect.top())
                 continue;
+
+            // The lane fills, separators and hairlines span the visible width
+            // (the camera rect), not just the frame range: when the content is
+            // narrower than the viewport, the lanes reach the panel edges.
+            // There is no performance reason to bound them to the content.
+            const QRect band(QPoint(aCameraRect.left(), rect.top()), QPoint(aCameraRect.right(), rect.bottom()));
 
             // draw line (fill only — the 1px border is one hairline per seam
             // below; per-row outlines would double the shared boundary)
             mPainter.setPen(Qt::NoPen);
             mPainter.setBrush(row.selecting ? kBrushBodySelect : kBrushBody);
-            mPainter.drawRect(rect);
+            mPainter.drawRect(band);
 
             if (!row.node || !row.node->timeLine())
                 continue;
@@ -48,8 +58,8 @@ namespace time {
                 for (int i = 1; i < sepa; ++i) {
                     const float h = static_cast<float>(rect.height()) / sepa;
                     const float y = rect.top() + i * h;
-                    const QPointF v0(rect.left(), y);
-                    const QPointF v1(rect.right(), y);
+                    const QPointF v0(band.left(), y);
+                    const QPointF v1(band.right(), y);
                     mPainter.drawLine(v0, v1);
                 }
 
@@ -82,21 +92,47 @@ namespace time {
 
         // 1px borders: one hairline per seam (each row's top) plus the last
         // row's bottom, so adjacent rows' 1px outlines can't stack into a 2px
-        // border. AA off keeps each line exactly one pixel.
+        // border. AA off keeps each line exactly one pixel. The hairlines span
+        // the visible width like the fills above.
         mPainter.setRenderHint(QPainter::Antialiasing, false);
         mPainter.setPen(QPen(kBrushEdge, 1));
         mPainter.setBrush(Qt::NoBrush);
         for (const TimeLineRow& row : aRows) {
-            if (!aCullRect.intersects(row.rect)) continue;
-            mPainter.drawLine(row.rect.left(), row.rect.top(), row.rect.right(), row.rect.top());
+            if (row.rect.bottom() < aCullRect.top() || aCullRect.bottom() < row.rect.top()) continue;
+            mPainter.drawLine(aCameraRect.left(), row.rect.top(), aCameraRect.right(), row.rect.top());
         }
         if (!aRows.isEmpty()) {
             const TimeLineRow& last = aRows.back();
-            if (aCullRect.intersects(last.rect)) {
-                mPainter.drawLine(last.rect.left(), last.rect.bottom(), last.rect.right(), last.rect.bottom());
+            if (!(last.rect.bottom() < aCullRect.top() || aCullRect.bottom() < last.rect.top())) {
+                mPainter.drawLine(aCameraRect.left(), last.rect.bottom(), aCameraRect.right(), last.rect.bottom());
             }
         }
         mPainter.setRenderHint(QPainter::Antialiasing);
+    }
+
+    void Renderer::renderRangeMarkers(const QRect& aCameraRect) {
+        // Vertical hairlines at the first and last frame: continue the ruler's
+        // boundary ticks down through the track area. The ruler already marks
+        // the range ends (frame 0's tick, and the specially-labeled last
+        // frame's tick), so the lines start where those ticks end — at the
+        // ruler's bottom hairline — and run to the bottom of the viewport.
+        const int top = aCameraRect.top() + ctrl::TimeLineEditor::kHeaderHeight;
+        const int x0 = mMargin;
+        const int x1 = mMargin + mScale->maxPixelWidth();
+        // A degenerate 0-frame range collapses both markers onto the same
+        // pixel (x0 == x1); drawing twice would darken the line.
+        if (x0 == x1)
+            return;
+
+        mPainter.setRenderHint(QPainter::Antialiasing, false);
+        // The design system's 1px section-separator token — the same line
+        // family as the ruler hairline the markers start from and the row
+        // seams they cross — at 40% opacity so the guides recede behind the
+        // track content.
+        mPainter.setPen(QPen(withAlpha(theme::Colors::current().hairline, 102), 1));
+        mPainter.setBrush(Qt::NoBrush);
+        mPainter.drawLine(x0, top, x0, aCameraRect.bottom());
+        mPainter.drawLine(x1, top, x1, aCameraRect.bottom());
     }
 
     void Renderer::renderHeader(int aHeight, int aFps) {
@@ -134,14 +170,18 @@ namespace time {
             // The project's last frame owns the end of the ruler: when it is
             // in view but not on a scale multiple, it reads as a major tick
             // with its number, and any numbered neighbor whose label would
-            // overlap it yields instead.
+            // overlap it yields instead. The label occupies its slot in view
+            // regardless of grid alignment — the loop draws it when the frame
+            // falls on a scale multiple, the end block below otherwise — so
+            // the yield rule must not depend on which path drew it (alignment
+            // changes with zoom; gating on it made neighbor labels pop in and
+            // out with the view).
             const int lastFrame = mScale->maxFrame();
             const auto lastAttr = mScale->attribute(lastFrame);
-            const bool lastLabelActive = lastFrame >= mRange.min() && lastFrame <= mRange.max() &&
-                                         lastAttr.grid.y() < 10;
+            const bool endLabelInView = lastFrame >= mRange.min() && lastFrame <= mRange.max();
+            const bool lastLabelActive = endLabelInView && lastAttr.grid.y() < 10;
             const int lastLabelCenter = lt.x() + lastAttr.grid.x();
-            const QString lastNumber =
-                lastLabelActive ? timeFormat.frameToString(lastFrame, timeFormatVar) : QString();
+            const QString lastNumber = timeFormat.frameToString(lastFrame, timeFormatVar);
             const int lastNumberWidth = numberWidth * lastNumber.size();
 
             for (int i = mRange.min(); i <= mRange.max(); ++i) {
@@ -152,10 +192,17 @@ namespace time {
 
                 // Fade the tick tiers so minor blips recede and even the
                 // numbered major ticks stay a step below full brightness.
-                const qreal alpha = attr.grid.y() >= 10 ? 0.85
-                                  : attr.grid.y() >= 8  ? 0.65
-                                  : attr.grid.y() >= 6  ? 0.45
-                                                        : 0.25;
+                qreal alpha = attr.grid.y() >= 10 ? 0.85
+                            : attr.grid.y() >= 8  ? 0.65
+                            : attr.grid.y() >= 6  ? 0.45
+                                                  : 0.25;
+                // Ticks outside the frame range [0, lastFrame] recede further:
+                // the tier structure stays, but a fixed extra dim makes the
+                // range edge read at a glance. The boundary frames themselves
+                // keep full tier brightness.
+                const bool inRange = i >= 0 && i <= lastFrame;
+                if (!inRange)
+                    alpha *= 0.4;
                 QColor tickColor = kBrush.color();
                 tickColor.setAlphaF(alpha);
                 mPainter.setPen(QPen(tickColor, 1));
@@ -165,12 +212,21 @@ namespace time {
                     QString number = timeFormat.frameToString(i, timeFormatVar);
                     const int width = static_cast<int>(numberWidth * number.size());
                     // A neighbor label never overlaps the end label: the last
-                    // frame's number always wins the space.
-                    if (lastLabelActive && i < lastFrame) {
-                        if (pos.x() + (width >> 1) >= lastLabelCenter - (lastNumberWidth >> 1))
+                    // frame's number always wins the space it occupies. The
+                    // test is symmetric — a label yields only when it actually
+                    // crosses the end label's span, on either side (a
+                    // one-sided test would swallow every label past the end).
+                    if (endLabelInView && i != lastFrame) {
+                        const int left = pos.x() - (width >> 1);
+                        const int endRight = lastLabelCenter + (lastNumberWidth >> 1);
+                        const int endLeft = lastLabelCenter - (lastNumberWidth >> 1);
+                        if (left < endRight && pos.x() + (width >> 1) > endLeft)
                             continue;
                     }
-                    mPainter.setPen(QPen(kBrush, 1));
+                    QColor numberColor = kBrush.color();
+                    if (!inRange)
+                        numberColor.setAlphaF(0.4);
+                    mPainter.setPen(QPen(numberColor, 1));
                     const int left = pos.x() - (width >> 1);
                     const int top = lt.y() + ctrl::TimeLineEditor::kNumberTop;
                     const QRect rect(

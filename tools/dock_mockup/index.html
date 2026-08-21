@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tools dock — option 3 prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+/* ---- design tokens, from src/gui/theme/Colors.h (dark, neutral row) ---- */
+:root {
+  --base: #262626;
+  --recessed: #171717;
+  --raised: #404040;
+  --hairline: #404040;
+  --text: #f5f5f5;
+  --text-muted: #a3a3a3;
+  --text-disabled: #737373;
+  --icon: #e5e5e5;
+  --active: #737373;          /* neutral checked fill (view toggles) */
+}
+/* accent = dark col 7 of the accent row; selectable in the app */
+body[data-accent="indigo"]  { --accent: #4338ca; }
+body[data-accent="violet"]  { --accent: #6d28d9; }
+body[data-accent="orange"]  { --accent: #c2410c; }
+body[data-accent="emerald"] { --accent: #047857; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--recessed);
+  color: var(--text);
+  font: 400 13px/1.45 "Geist", -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.page-head {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+.page-head h1 { font-size: 15px; font-weight: 600; }
+.page-head .hint { color: var(--text-muted); font-size: 12px; }
+
+.swatches { display: flex; gap: 6px; align-items: center; }
+.swatches span { color: var(--text-muted); font-size: 12px; margin-right: 4px; }
+.swatch {
+  width: 16px; height: 16px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.18);
+  cursor: pointer;
+}
+.swatch.sel { outline: 2px solid var(--text-muted); outline-offset: 2px; }
+
+.row { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; }
+
+.case { display: flex; flex-direction: column; gap: 10px; }
+.case > .caption {
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.case > .caption small {
+  display: block; font-weight: 400; color: var(--text-muted);
+  max-width: 180px;
+}
+
+/* ---- the dock ---- */
+.dock {
+  width: 172px;
+  background: var(--base);
+  border: 1px solid #1b1b1b;
+  border-radius: 6px;
+  padding: 3px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dock-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 6px 6px 8px;
+  font-weight: 600;
+}
+.dock-title .wins { display: flex; gap: 2px; color: var(--text-muted); }
+.dock-title .wins i { font-size: 12px; padding: 3px; border-radius: 4px; cursor: pointer; }
+.dock-title .wins i:hover { background: var(--hairline); }
+
+.section-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 6px 6px;
+}
+
+.btnrow { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 3px; }
+
+button.tool {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: none; border-radius: 4px;
+  color: var(--icon);
+  font-size: 18px;
+  cursor: pointer;
+}
+button.tool:hover { background: var(--hairline); }
+/* Press matches the app: active-state (checkable) buttons read as their
+   hover while pressed; checked+pressed reads as the checked fill. */
+button.tool:active { background: var(--hairline); }
+button.tool.on:active { background: var(--active); }
+button.tool.on { background: var(--active); color: var(--text); }
+.btnrow.tools button.tool.on { background: var(--accent); color: #fff; }
+/* subtool (mode) rows inside the tool panels: neutral active fill (the
+   generic .on rule), same as the View settings rows; only the toolbox
+   (.btnrow.tools) keeps the accent */
+.btnrow.subs { padding: 0 3px 4px; }
+
+.hairline { border-bottom: 1px solid var(--hairline); margin: 10px 0 0; }
+.hairline.inset { margin: 10px 8px 0; }
+.gap { height: 12px; }
+
+/* mock tool-settings panel */
+.settings { padding: 8px 6px 6px; display: flex; flex-direction: column; gap: 8px; }
+.settings .s-label { color: var(--text-muted); font-size: 12px; padding: 0 2px; }
+.s-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.s-row .name { width: 44px; flex: none; padding-left: 2px; }
+.slider { flex: 1; height: 3px; background: var(--recessed); border-radius: 2px; position: relative; }
+.slider::after {
+  content: ""; position: absolute; top: 50%; left: 55%;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); transform: translate(-50%, -50%);
+}
+.check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); }
+.box { width: 13px; height: 13px; border-radius: 3px; background: var(--raised); border: 1px solid #525252; }
+.box.on { background: var(--accent); border-color: var(--accent); }
+
+/* ================= VARIANT TREATMENTS ================= */
+
+/* --- A: unlabeled whisper row, emphasis by size --- */
+.vA .view-row button.tool { width: 22px; height: 22px; font-size: 16px; color: var(--text-muted); }
+.vA .view-row { padding: 2px 3px 0; }
+.vA .view-row button.tool.on { background: var(--hairline); color: var(--icon); }
+.vA .btnrow.tools { padding: 2px 3px; width: 96px; }
+.vA .btnrow.tools button.tool { width: 28px; height: 28px; font-size: 20px; }
+
+/* --- B: micro-labels, hierarchy through label scale --- */
+.vB .micro-label {
+  font-size: 9.5px; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-disabled);
+  padding: 6px 6px 4px;
+}
+.vB .view-row button.tool { color: var(--text-muted); }
+.vB .view-row button.tool.on { background: var(--hairline); color: var(--icon); }
+.vB .section-label { font-size: 12px; padding-top: 4px; }
+
+/* --- C: unlabeled view row, toolbox on a raised card --- */
+.vC .view-row button.tool { color: var(--text-muted); }
+.vC .view-row button.tool.on { background: var(--hairline); color: var(--icon); }
+.vC .card {
+  background: #2e2e2e;
+  border: 1px solid #363636;
+  border-radius: 6px;
+  margin: 0 1px;
+  padding: 3px 0;
+}
+.vC .card .btnrow { padding: 0 3px; }
+
+/* --- C2: the whole tool unit on one raised card, accent reserved --- */
+.vC2 .view-row button.tool { color: var(--text-muted); }
+.vC2 .view-row button.tool.on { background: var(--hairline); color: var(--icon); }
+.vC2 .card {
+  background: var(--raised);
+  border: 1px solid #4d4d4d;
+  border-radius: 6px;
+  margin: 0 1px;
+  padding: 4px 0 2px;
+}
+.vC2 .card .btnrow { padding: 0 2px; }
+.vC2 .card .settings { padding: 4px 2px 2px; }
+/* subtool selection uses the neutral active fill: only the active tool
+   gets the accent, so there is exactly one accent per dock */
+.vC2 .btnrow.subs { padding-bottom: 2px; }
+.vC2 .btnrow.subs button.tool.on { background: var(--active); color: var(--text); }
+
+/* --- D: structural — view settings leave the dock; subtools become a
+       segmented control; one surface, one accent, one left edge --- */
+.vD .btnrow.tools { padding: 0 3px 4px; }
+.vD .settings { padding: 2px 3px 6px; }
+.vD .btnrow.subs { padding: 0 0 4px; }
+.vD .btnrow.subs.segmented {
+  gap: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.vD .btnrow.subs.segmented .tool {
+  flex: 1;
+  height: 22px;
+  font-size: 15px;
+  border-radius: 0;
+  color: var(--text-muted);
+}
+.vD .btnrow.subs.segmented .tool + .tool { border-left: 1px solid var(--hairline); }
+.vD .btnrow.subs.segmented .tool.on { background: var(--active); color: var(--text); }
+
+/* canvas mock: where the view controls could live instead */
+.canvas-mock {
+  width: 220px; height: 190px;
+  background: #1b1b1b;
+  border: 1px solid #111;
+  border-radius: 6px;
+  position: relative;
+  flex: none;
+}
+.canvas-mock .frame {
+  position: absolute; inset: 16px 28px;
+  border: 1px dashed #3a3a3a;
+}
+.canvas-strip {
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  display: flex; gap: 2px;
+  background: rgba(38,38,38,.92);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 3px;
+}
+.canvas-strip .tool { width: 22px; height: 22px; font-size: 15px; color: var(--text-muted); }
+.canvas-strip .tool.on { background: var(--hairline); color: var(--icon); }
+</style>
+</head>
+<body data-accent="violet">
+
+<div class="page-head">
+  <h1>Tools dock — option 3: same order, hierarchy by visual weight</h1>
+  <span class="hint">All rows are interactive. Click tools to switch the active mode.</span>
+  <div class="swatches">
+    <span>Accent</span>
+    <div class="swatch" data-a="indigo"  style="background:#4338ca"></div>
+    <div class="swatch sel" data-a="violet"  style="background:#6d28d9"></div>
+    <div class="swatch" data-a="orange"  style="background:#c2410c"></div>
+    <div class="swatch" data-a="emerald" style="background:#047857"></div>
+  </div>
+</div>
+
+<div class="row">
+
+  <!-- ============ CURRENT (reference) ============ -->
+  <div class="case">
+    <div class="caption">Current <small>for reference</small></div>
+    <div class="dock">
+      <div class="dock-title">Tools
+        <span class="wins"><i class="ph ph-diamond"></i><i class="ph ph-square"></i></span>
+      </div>
+      <div class="section-label">View Settings</div>
+      <div class="btnrow view-row">
+        <button class="tool" title="Show mesh"><i class="ph ph-cube"></i></button>
+        <button class="tool" title="Do not draw outside the frame"><i class="ph ph-image"></i></button>
+        <button class="tool" title="Rotate counterclockwise"><i class="ph ph-arrow-counter-clockwise"></i></button>
+        <button class="tool" title="Reset rotation"><i class="ph ph-dot"></i></button>
+        <button class="tool" title="Rotate clockwise"><i class="ph ph-arrow-clockwise"></i></button>
+        <button class="tool" title="Flip canvas"><i class="ph ph-flip-horizontal"></i></button>
+      </div>
+      <div class="hairline"></div>
+      <div class="section-label">Toolbox</div>
+      <div class="btnrow tools">
+        <button class="tool" title="Pan tool"><i class="ph ph-hand"></i></button>
+        <button class="tool on" title="Transform"><i class="ph ph-bounding-box"></i></button>
+        <button class="tool" title="Bone editor"><i class="ph ph-bone"></i></button>
+        <button class="tool" title="Pose editor"><i class="ph ph-person-arms-spread"></i></button>
+        <button class="tool" title="Mesh editor"><i class="ph ph-triangle"></i></button>
+        <button class="tool" title="Free-form deformation"><i class="ph ph-grid-four"></i></button>
+      </div>
+      <div class="settings" data-for="cursor"></div>
+    </div>
+  </div>
+
+  <!-- ============ VARIANT A ============ -->
+  <div class="case">
+    <div class="caption">A — whisper row <small>No labels at all: view row shrinks and dims to
+      background furniture; the toolbox is bigger and carries the accent. Whitespace replaces the hairline.</small></div>
+    <div class="dock vA">
+      <div class="dock-title">Tools
+        <span class="wins"><i class="ph ph-diamond"></i><i class="ph ph-square"></i></span>
+      </div>
+      <div class="btnrow view-row">
+        <button class="tool" title="Show mesh"><i class="ph ph-cube"></i></button>
+        <button class="tool" title="Do not draw outside the frame"><i class="ph ph-image"></i></button>
+        <button class="tool" title="Rotate counterclockwise"><i class="ph ph-arrow-counter-clockwise"></i></button>
+        <button class="tool" title="Reset rotation"><i class="ph ph-dot"></i></button>
+        <button class="tool" title="Rotate clockwise"><i class="ph ph-arrow-clockwise"></i></button>
+        <button class="tool" title="Flip canvas"><i class="ph ph-flip-horizontal"></i></button>
+      </div>
+      <div class="gap"></div>
+      <div class="btnrow tools">
+        <button class="tool" title="Pan tool"><i class="ph ph-hand"></i></button>
+        <button class="tool on" title="Transform"><i class="ph ph-bounding-box"></i></button>
+        <button class="tool" title="Bone editor"><i class="ph ph-bone"></i></button>
+        <button class="tool" title="Pose editor"><i class="ph ph-person-arms-spread"></i></button>
+        <button class="tool" title="Mesh editor"><i class="ph ph-triangle"></i></button>
+        <button class="tool" title="Free-form deformation"><i class="ph ph-grid-four"></i></button>
+      </div>
+      <div class="settings" data-for="cursor"></div>
+    </div>
+  </div>
+
+  <!-- ============ VARIANT B ============ -->
+  <div class="case">
+    <div class="caption">B — micro-labels <small>View row keeps a tiny uppercase caption and dimmed
+      icons; toolbox gets the full-size semibold label. Inset hairline instead of edge-to-edge.</small></div>
+    <div class="dock vB">
+      <div class="dock-title">Tools
+        <span class="wins"><i class="ph ph-diamond"></i><i class="ph ph-square"></i></span>
+      </div>
+      <div class="micro-label">View</div>
+      <div class="btnrow view-row">
+        <button class="tool" title="Show mesh"><i class="ph ph-cube"></i></button>
+        <button class="tool" title="Do not draw outside the frame"><i class="ph ph-image"></i></button>
+        <button class="tool" title="Rotate counterclockwise"><i class="ph ph-arrow-counter-clockwise"></i></button>
+        <button class="tool" title="Reset rotation"><i class="ph ph-dot"></i></button>
+        <button class="tool" title="Rotate clockwise"><i class="ph ph-arrow-clockwise"></i></button>
+        <button class="tool" title="Flip canvas"><i class="ph ph-flip-horizontal"></i></button>
+      </div>
+      <div class="hairline inset"></div>
+      <div class="section-label">Toolbox</div>
+      <div class="btnrow tools">
+        <button class="tool" title="Pan tool"><i class="ph ph-hand"></i></button>
+        <button class="tool on" title="Transform"><i class="ph ph-bounding-box"></i></button>
+        <button class="tool" title="Bone editor"><i class="ph ph-bone"></i></button>
+        <button class="tool" title="Pose editor"><i class="ph ph-person-arms-spread"></i></button>
+        <button class="tool" title="Mesh editor"><i class="ph ph-triangle"></i></button>
+        <button class="tool" title="Free-form deformation"><i class="ph ph-grid-four"></i></button>
+      </div>
+      <div class="settings" data-for="cursor"></div>
+    </div>
+  </div>
+
+  <!-- ============ VARIANT C ============ -->
+  <div class="case">
+    <div class="caption">C — elevation <small>View row unlabeled and dimmed; the toolbox sits on a
+      raised card so the primary control is the only elevated surface. No separators at all.</small></div>    <div class="dock vC">
+      <div class="dock-title">Tools
+        <span class="wins"><i class="ph ph-diamond"></i><i class="ph ph-square"></i></span>
+      </div>
+      <div class="btnrow view-row">
+        <button class="tool" title="Show mesh"><i class="ph ph-cube"></i></button>
+        <button class="tool" title="Do not draw outside the frame"><i class="ph ph-image"></i></button>
+        <button class="tool" title="Rotate counterclockwise"><i class="ph ph-arrow-counter-clockwise"></i></button>
+        <button class="tool" title="Reset rotation"><i class="ph ph-dot"></i></button>
+        <button class="tool" title="Rotate clockwise"><i class="ph ph-arrow-clockwise"></i></button>
+        <button class="tool" title="Flip canvas"><i class="ph ph-flip-horizontal"></i></button>
+      </div>
+      <div class="gap"></div>
+      <div class="card">
+        <div class="btnrow tools">
+          <button class="tool" title="Pan tool"><i class="ph ph-hand"></i></button>
+          <button class="tool on" title="Transform"><i class="ph ph-bounding-box"></i></button>
+          <button class="tool" title="Bone editor"><i class="ph ph-bone"></i></button>
+          <button class="tool" title="Pose editor"><i class="ph ph-person-arms-spread"></i></button>
+          <button class="tool" title="Mesh editor"><i class="ph ph-triangle"></i></button>
+          <button class="tool" title="Free-form deformation"><i class="ph ph-grid-four"></i></button>
+        </div>
+      </div>
+      <div class="settings" data-for="cursor"></div>
+    </div>
+  </div>
+
+  <!-- ============ VARIANT C2 (refined) ============ -->
+  <div class="case">
+    <div class="caption">C2 — refined elevation <small>The whole tool unit (toolbox + subtools +
+      settings) lives on one raised card using the theme's <code>raised</code> token. Accent is
+      reserved for the active tool; subtool selection uses the neutral active fill.</small></div>
+    <div class="dock vC2">
+      <div class="dock-title">Tools
+        <span class="wins"><i class="ph ph-diamond"></i><i class="ph ph-square"></i></span>
+      </div>
+      <div class="btnrow view-row">
+        <button class="tool" title="Show mesh"><i class="ph ph-cube"></i></button>
+        <button class="tool" title="Do not draw outside the frame"><i class="ph ph-image"></i></button>
+        <button class="tool" title="Rotate counterclockwise"><i class="ph ph-arrow-counter-clockwise"></i></button>
+        <button class="tool" title="Reset rotation"><i class="ph ph-dot"></i></button>
+        <button class="tool" title="Rotate clockwise"><i class="ph ph-arrow-clockwise"></i></button>
+        <button class="tool" title="Flip canvas"><i class="ph ph-flip-horizontal"></i></button>
+      </div>
+      <div class="gap"></div>
+      <div class="card">
+        <div class="btnrow tools">
+          <button class="tool" title="Pan tool"><i class="ph ph-hand"></i></button>
+          <button class="tool on" title="Transform"><i class="ph ph-bounding-box"></i></button>
+          <button class="tool" title="Bone editor"><i class="ph ph-bone"></i></button>
+          <button class="tool" title="Pose editor"><i class="ph ph-person-arms-spread"></i></button>
+          <button class="tool" title="Mesh editor"><i class="ph ph-triangle"></i></button>
+          <button class="tool" title="Free-form deformation"><i class="ph ph-grid-four"></i></button>
+        </div>
+        <div class="settings" data-for="cursor"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ VARIANT D (structural) ============ -->
+  <div class="case">
+    <div class="caption">D — structural <small>View settings leave the dock (canvas strip below /
+      View menu). The dock is tools-only: tools, segmented subtools, settings — one surface, one
+      accent, one left edge. No card, no separator.</small></div>
+    <div style="display:flex; gap:12px; align-items:flex-start;">
+      <div class="dock vD">
+        <div class="dock-title">Tools
+          <span class="wins"><i class="ph ph-diamond"></i><i class="ph ph-square"></i></span>
+        </div>
+        <div class="btnrow tools">
+          <button class="tool" title="Pan tool"><i class="ph ph-hand"></i></button>
+          <button class="tool on" title="Transform"><i class="ph ph-bounding-box"></i></button>
+          <button class="tool" title="Bone editor"><i class="ph ph-bone"></i></button>
+          <button class="tool" title="Pose editor"><i class="ph ph-person-arms-spread"></i></button>
+          <button class="tool" title="Mesh editor"><i class="ph ph-triangle"></i></button>
+          <button class="tool" title="Free-form deformation"><i class="ph ph-grid-four"></i></button>
+        </div>
+        <div class="settings" data-for="cursor"></div>
+      </div>
+      <div class="canvas-mock">
+        <div class="frame"></div>
+        <div class="canvas-strip view-row">
+          <button class="tool" title="Show mesh"><i class="ph ph-cube"></i></button>
+          <button class="tool" title="Do not draw outside the frame"><i class="ph ph-image"></i></button>
+          <button class="tool" title="Rotate counterclockwise"><i class="ph ph-arrow-counter-clockwise"></i></button>
+          <button class="tool" title="Reset rotation"><i class="ph ph-dot"></i></button>
+          <button class="tool" title="Rotate clockwise"><i class="ph ph-arrow-clockwise"></i></button>
+          <button class="tool" title="Flip canvas"><i class="ph ph-flip-horizontal"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// mock tool-settings content per tool mode; "subs" is the SingleOutItem
+// subtool row at the top of each panel (icons per the app's applyIcons())
+const PANELS = {
+  cursor: { subs: [], rows: [] },
+  srt: {
+    subs: ["arrows-out-cardinal", "target"],
+    subTips: ["Transform", "Move Centroid"],
+    rows: [{t:"slider",n:"Scale"},{t:"slider",n:"Rotate"},{t:"check",n:"Adjust opposite side"}],
+  },
+  bone: {
+    subs: ["plus", "minus", "arrows-out-cardinal", "link", "waves", "paint-brush", "eraser"],
+    subTips: ["Add bones", "Remove bones", "Move joints", "Bind bone to node",
+              "Adjust influence", "Paint influence", "Erase influence"],
+    rows: [{t:"slider",n:"Radius"},{t:"check",n:"Show influence"}],
+  },
+  pose: {
+    subs: ["arrows-out-cardinal", "pencil-simple", "eraser"],
+    subTips: ["Move bone", "Pull bones", "Erase bone pose"],
+    rows: [{t:"check",n:"Symmetric pose"}],
+  },
+  mesh: {
+    subs: ["plus", "minus", "pencil-simple"],
+    subTips: ["Add vertex", "Delete vertex", "Split polygon"],
+    rows: [{t:"slider",n:"Vertex size"}],
+  },
+  ffd: {
+    subs: ["arrows-out-cardinal", "pencil-simple", "eraser"],
+    subTips: ["Move vertex", "Deform mesh", "Erase deformations"],
+    rows: [{t:"hardness",n:"Hardness"},{t:"slider",n:"Divisions"}],
+  },
+};
+const TOOLS = ["cursor","srt","bone","pose","mesh","ffd"];
+const TOOL_NAMES = {cursor:"", srt:"Transform", bone:"Bone editor", pose:"Pose editor",
+                    mesh:"Mesh editor", ffd:"Free-form deformation"};
+
+function subRow(icons, tips, segmented) {
+  const row = document.createElement("div");
+  row.className = "btnrow subs" + (segmented ? " segmented" : "");
+  icons.forEach((ic, i) => {
+    const b = document.createElement("button");
+    b.className = "tool" + (i === 0 ? " on" : "");
+    b.title = tips[i];
+    b.innerHTML = `<i class="ph ph-${ic}"></i>`;
+    b.addEventListener("click", () => {
+      row.querySelectorAll(".tool").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+    });
+    row.appendChild(b);
+  });
+  return row;
+}
+
+function renderSettings(dock, tool) {
+  const host = dock.querySelector(".settings");
+  host.innerHTML = "";
+  const panel = PANELS[tool];
+  if (!panel.subs.length && !panel.rows.length) return;
+  const segmented = dock.classList.contains("vD");
+  host.appendChild(subRow(panel.subs, panel.subTips, segmented));
+  const label = document.createElement("div");
+  label.className = "s-label";
+  label.textContent = TOOL_NAMES[tool];
+  host.appendChild(label);
+  for (const r of panel.rows) {
+    if (r.t === "slider") {
+      const el = document.createElement("div");
+      el.className = "s-row";
+      el.innerHTML = `<span class="name">${r.n}</span><div class="slider"></div>`;
+      host.appendChild(el);
+    } else if (r.t === "hardness") {
+      const el = document.createElement("div");
+      el.className = "s-row";
+      el.innerHTML = `<span class="name">${r.n}</span>`;
+      el.appendChild(subRow(["record", "record", "record"], ["Soft", "Normal", "Hard"]));
+      host.appendChild(el);
+    } else {
+      const el = document.createElement("div");
+      el.className = "check";
+      el.innerHTML = `<span class="box on"></span>${r.n}`;
+      host.appendChild(el);
+    }
+  }
+}
+
+document.querySelectorAll(".dock").forEach(dock => {
+  const tools = dock.querySelectorAll(".btnrow.tools .tool");
+  tools.forEach((btn, i) => {
+    btn.addEventListener("click", () => {
+      tools.forEach(b => b.classList.remove("on"));
+      btn.classList.add("on");
+      renderSettings(dock, TOOLS[i]);
+    });
+  });
+  // checkable view toggles: mesh, frame-clip, flip (positions 0, 1, 5)
+  dock.querySelectorAll(".view-row .tool").forEach((btn, i) => {
+    if ([0, 1, 5].includes(i)) {
+      btn.addEventListener("click", () => btn.classList.toggle("on"));
+    }
+  });
+  renderSettings(dock, "srt");
+});
+
+// canvas-strip view toggles (variant D) use the same checkable set
+document.querySelectorAll(".canvas-strip .tool").forEach((btn, i) => {
+  if ([0, 1, 5].includes(i)) {
+    btn.addEventListener("click", () => btn.classList.toggle("on"));
+  }
+});
+
+// accent picker
+document.querySelectorAll(".swatch").forEach(s => {
+  s.addEventListener("click", () => {
+    document.body.dataset.accent = s.dataset.a;
+    document.querySelectorAll(".swatch").forEach(x => x.classList.toggle("sel", x === s));
+  });
+});
+</script>
+</body>
+</html>

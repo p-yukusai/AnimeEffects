@@ -18,7 +18,7 @@ namespace tool {
 
     void MeshPanel::applyIcons() {
         mTypeGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("plus") << mResources.icon("minus") << mResources.icon("pencil")
+            QVector<QIcon>() << mResources.icon("plus-bold") << mResources.icon("minus-bold") << mResources.icon("pencil-simple")
         , QSize(18, 18));
     }
 

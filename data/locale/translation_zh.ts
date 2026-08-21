@@ -375,8 +375,8 @@
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="257"/>
-        <source>Add new resource</source>
-        <translation>新增资源</translation>
+        <source>Add new asset</source>
+        <translation>添加新素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="635"/>
@@ -390,13 +390,13 @@
     </message>
     <message>
         <location filename="../../src/gui/ResourceTreeWidget.cpp" line="225"/>
-        <source>Update resource file path</source>
-        <translation>更新资源路径</translation>
+        <source>Update asset file path</source>
+        <translation>更新素材路径</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceTreeWidget.cpp" line="279"/>
-        <source>Rename resource</source>
-        <translation>重命名资源</translation>
+        <source>Rename asset</source>
+        <translation>重命名素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/TargetWidget.cpp" line="133"/>
@@ -1223,23 +1223,18 @@
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="28"/>
-        <source>Loop animation :</source>
-        <translation>循环动画 :</translation>
+        <source>Loop animation</source>
+        <translation>循环动画</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="36"/>
-        <source>Maximum frame count :</source>
-        <translation>最大帧数 :</translation>
+        <source>Maximum frame count</source>
+        <translation>最大帧数</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
-        <source>Frames per second :</source>
-        <translation>每秒帧数 :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
+        <source>Frames per second</source>
+        <translation>每秒帧数</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="56"/>
@@ -1261,8 +1256,8 @@
     <name>gui::ExportDialog</name>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="35"/>
-        <source>Export Animation...</source>
-        <translation>导出动画...</translation>
+        <source>Export Animation</source>
+        <translation>导出动画</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="70"/>
@@ -1288,33 +1283,33 @@
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="134"/>
-        <source>Image width :</source>
-        <translation>图像宽度 :</translation>
+        <source>Image width</source>
+        <translation>图像宽度</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="135"/>
-        <source>Image height :</source>
-        <translation>图像高度 :</translation>
+        <source>Image height</source>
+        <translation>图像高度</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="136"/>
-        <source>Fix aspect ratio :</source>
-        <translation>固定长宽比：</translation>
+        <source>Fix aspect ratio</source>
+        <translation>固定长宽比</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="171"/>
-        <source>Initial frame :</source>
-        <translation>初始帧数：</translation>
+        <source>Initial frame</source>
+        <translation>初始帧数</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="172"/>
-        <source>Last frame :</source>
-        <translation>最后一帧：</translation>
+        <source>Last frame</source>
+        <translation>最后一帧</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="183"/>
-        <source>FPS :</source>
-        <translation>帧数 :</translation>
+        <source>FPS</source>
+        <translation>帧数</translation>
     </message>
 </context>
 <context>
@@ -1330,13 +1325,13 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="314"/>
-        <source>Default keyframe easing :</source>
-        <translation>默认关键帧缓和：</translation>
+        <source>Default keyframe easing</source>
+        <translation>默认关键帧缓和</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="321"/>
-        <source>Default keyframe range :</source>
-        <translation>默认关键帧范围 ：</translation>
+        <source>Default keyframe range</source>
+        <translation>默认关键帧范围</translation>
     </message>
     <message>
         <source>Timeline format :</source>
@@ -1344,13 +1339,13 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="307"/>
-        <source>Language (needs restart) :</source>
-        <translation>语言（需重启） :</translation>
+        <source>Language (needs restart)</source>
+        <translation>语言（需重启）</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="328"/>
-        <source>Timeline format (needs restart) :</source>
-        <translation>时间轴格式（需重启） :</translation>
+        <source>Timeline format (needs restart)</source>
+        <translation>时间轴格式（需重启）</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
@@ -1369,53 +1364,53 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="359"/>
-        <source>Theme :</source>
-        <translation>主题 :</translation>
+        <source>Theme</source>
+        <translation>主题</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
-        <source>Accent color :</source>
-        <translation>强调色 :</translation>
+        <source>Accent color</source>
+        <translation>强调色</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="396"/>
-        <source>Automatically save your project : </source>
-        <translation>自动保存项目 : </translation>
+        <source>Automatically save your project</source>
+        <translation>自动保存项目</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="400"/>
-        <source>Time (in minutes) between autosaves : </source>
-        <translation>自动保存之间的时间间隔（以分钟为单位）：</translation>
+        <source>Time (in minutes) between autosaves</source>
+        <translation>自动保存之间的时间间隔（以分钟为单位）</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="408"/>
-        <source>Show mesh when selecting FFD : </source>
-        <translation>选择FFD时显示网格：</translation>
+        <source>Show mesh when selecting FFD</source>
+        <translation>选择FFD时显示网格</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
-        <source>On copy send keys to the clipboard : </source>
-        <translation>复制时将按键发送到剪贴板：</translation>
+        <source>On copy send keys to the clipboard</source>
+        <translation>复制时将按键发送到剪贴板</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
-        <source>Always check for FFmpeg on export : </source>
-        <translation>在导出时始终检查FFmpeg：</translation>
+        <source>Always check for FFmpeg on export</source>
+        <translation>在导出时始终检查FFmpeg</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="420"/>
-        <source>Enforce ID check on asset download : </source>
-        <translation>在下载素材时强制进行ID检查：</translation>
+        <source>Enforce ID check on asset download</source>
+        <translation>在下载素材时强制进行ID检查</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="424"/>
-        <source>Ignore export warnings :</source>
-        <translation>忽略导出警告：</translation>
+        <source>Ignore export warnings</source>
+        <translation>忽略导出警告</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="428"/>
-        <source>Allow donation menu : </source>
-        <translation>展示捐赠菜单：</translation>
+        <source>Allow donation menu</source>
+        <translation>展示捐赠菜单</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="432"/>
@@ -1447,8 +1442,8 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="449"/>
-        <source>Global keybind delay (ms) : </source>
-        <translation>全局快捷键延迟（ms） ：</translation>
+        <source>Global keybind delay (ms)</source>
+        <translation>全局快捷键延迟（ms）</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="451"/>
@@ -1669,37 +1664,27 @@ Check FFmpeg palette generation 🗸</source>
 <context>
     <name>gui::GifExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="257"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="296"/>
-        <source>Optimize palette :</source>
-        <translation>优化色板 :</translation>
+        <source>Optimize palette</source>
+        <translation>优化色板</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="297"/>
-        <source>Relay bit rate (Kbps) :</source>
-        <translation>中继比特率(Kbps) :</translation>
+        <source>Relay bit rate (Kbps)</source>
+        <translation>中继比特率(Kbps)</translation>
     </message>
 </context>
 <context>
     <name>gui::ImageExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="200"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="223"/>
-        <source>Prefix name :</source>
-        <translation>前缀名称 :</translation>
+        <source>Prefix name</source>
+        <translation>前缀名称</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="236"/>
-        <source>Quality :</source>
-        <translation>品质 :</translation>
+        <source>Quality</source>
+        <translation>品质</translation>
     </message>
 </context>
 <context>
@@ -1883,8 +1868,8 @@ Check FFmpeg palette generation 🗸</source>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="151"/>
-        <source>No other projects...</source>
-        <translation>没有其他项目...</translation>
+        <source>No other projects</source>
+        <translation>没有其他项目</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="208"/>
@@ -1893,7 +1878,7 @@ Check FFmpeg palette generation 🗸</source>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="209"/>
-        <source>Save project as...</source>
+        <source>Save project as</source>
         <translation>另存为</translation>
     </message>
     <message>
@@ -1903,7 +1888,7 @@ Check FFmpeg palette generation 🗸</source>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="211"/>
-        <source>Export project as...</source>
+        <source>Export project as</source>
         <translation>导出项目为</translation>
     </message>
     <message>
@@ -1934,8 +1919,8 @@ Check FFmpeg palette generation 🗸</source>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="235"/>
-        <source>Quickly export as...</source>
-        <translation>快速导出为...</translation>
+        <source>Quickly export as</source>
+        <translation>快速导出为</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="238"/>
@@ -1983,39 +1968,14 @@ Check FFmpeg palette generation 🗸</source>
         <translation>重置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="299"/>
-        <source>Project attributes</source>
-        <translation>项目属性</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="301"/>
-        <source>Canvas size</source>
-        <translation>画布尺寸</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="302"/>
-        <source>Maximum frame count</source>
-        <translation>最大帧数</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="303"/>
-        <source>Loop animation</source>
-        <translation>循环动画</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="304"/>
-        <source>Frames per second</source>
-        <translation>每秒帧数</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="305"/>
-        <source>Resources</source>
-        <translation>资源</translation>
+        <source>Assets</source>
+        <translation>素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="326"/>
-        <source>Options</source>
-        <translation>选项</translation>
+        <source>Preferences</source>
+        <translation>偏好设置</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="328"/>
@@ -2188,7 +2148,17 @@ If we forgot to include you please let us know or open a PR!</source>
         <source>Donate</source>
         <translation>捐赠</translation>
     </message>
-</context>
+
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Project settings</source>
+        <translation>项目设置</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>View</source>
+        <translation>视图</translation>
+    </message></context>
 <context>
     <name>gui::MainWindow</name>
     <message>
@@ -2468,23 +2438,18 @@ In the following screen you can instruct AnimeEffects to download and install it
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="26"/>
-        <source>Inverse canvas scrolling :</source>
-        <translation>反向画布滚动 ：</translation>
+        <source>Inverse canvas scrolling</source>
+        <translation>反向画布滚动</translation>
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="30"/>
-        <source>Inverse timeline scrolling :</source>
-        <translation>反转时间轴滚动 ：</translation>
+        <source>Inverse timeline scrolling</source>
+        <translation>反转时间轴滚动</translation>
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="34"/>
-        <source>Middle mouse moves canvas :</source>
-        <translation>鼠标中键移动画布：</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MouseSettingDialog.cpp" line="37"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
+        <source>Middle mouse moves canvas</source>
+        <translation>鼠标中键移动画布</translation>
     </message>
 </context>
 <context>
@@ -2501,38 +2466,33 @@ In the following screen you can instruct AnimeEffects to download and install it
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="56"/>
-        <source>Initial resource :</source>
-        <translation>初始资源 :</translation>
+        <source>Initial asset</source>
+        <translation>初始素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="67"/>
-        <source>Maximum frame count :</source>
-        <translation>最大帧数 :</translation>
+        <source>Maximum frame count</source>
+        <translation>最大帧数</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="77"/>
-        <source>Frames per second :</source>
-        <translation>每秒帧数 :</translation>
+        <source>Frames per second</source>
+        <translation>每秒帧数</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="109"/>
-        <source>Specify canvas size :</source>
-        <translation>自定义画布尺寸 :</translation>
+        <source>Specify canvas size</source>
+        <translation>自定义画布尺寸</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="110"/>
-        <source>Canvas width :</source>
-        <translation>画布宽度 :</translation>
+        <source>Canvas width</source>
+        <translation>画布宽度</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="111"/>
-        <source>Canvas height :</source>
-        <translation>画布高度 :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="114"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
+        <source>Canvas height</source>
+        <translation>画布高度</translation>
     </message>
 </context>
 <context>
@@ -2545,8 +2505,8 @@ In the following screen you can instruct AnimeEffects to download and install it
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="116"/>
-        <source>Add missing resources</source>
-        <translation>添加缺失的资源</translation>
+        <source>Add missing assets</source>
+        <translation>添加缺失的素材</translation>
     </message>
     <message>
         <source>Add new PSD</source>
@@ -2554,8 +2514,8 @@ In the following screen you can instruct AnimeEffects to download and install it
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="119"/>
-        <source>Add new resources</source>
-        <translation>添加新资源</translation>
+        <source>Add new assets</source>
+        <translation>添加新素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="122"/>
@@ -2758,16 +2718,6 @@ The log is available below.</source>
         <source>Set canvas size</source>
         <translation>设置画布尺寸</translation>
     </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="713"/>
-        <source>Size :</source>
-        <translation>尺寸 :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="715"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
-    </message>
 </context>
 <context>
     <name>gui::ProjectFPSSettingDialog</name>
@@ -2775,16 +2725,6 @@ The log is available below.</source>
         <location filename="../../src/gui/MainMenuBar.cpp" line="937"/>
         <source>Set FPS</source>
         <translation>设置FPS</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="957"/>
-        <source>Frames per second :</source>
-        <translation>每秒帧数 :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="959"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
     </message>
 </context>
 <context>
@@ -2794,16 +2734,6 @@ The log is available below.</source>
         <source>Set loop</source>
         <translation>设置循环</translation>
     </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="880"/>
-        <source>Loop animation :</source>
-        <translation>循环动画 :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="882"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
-    </message>
 </context>
 <context>
     <name>gui::ProjectMaxFrameSettingDialog</name>
@@ -2811,16 +2741,6 @@ The log is available below.</source>
         <location filename="../../src/gui/MainMenuBar.cpp" line="771"/>
         <source>Set max frames</source>
         <translation>设置最大帧数</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="786"/>
-        <source>Max frame count :</source>
-        <translation>最大帧数 :</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="788"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="813"/>
@@ -2852,8 +2772,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="141"/>
-        <source>Save As...</source>
-        <translation>另存为...</translation>
+        <source>Save As</source>
+        <translation>另存为</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="143"/>
@@ -2880,13 +2800,13 @@ The log is available below.</source>
     <name>gui::ResourceDialog</name>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="16"/>
-        <source>Project resources</source>
-        <translation>项目资源</translation>
+        <source>Project assets</source>
+        <translation>项目素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="22"/>
-        <source>Add Resources</source>
-        <translation>添加资源</translation>
+        <source>Add Assets</source>
+        <translation>添加素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="80"/>
@@ -3002,8 +2922,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="138"/>
-        <source>Change key(s) easing to...</source>
-        <translation>更改帧缓和到...</translation>
+        <source>Change key(s) easing to</source>
+        <translation>更改帧缓和到</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="140"/>
@@ -3067,8 +2987,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="165"/>
-        <source>Change key(s) range to...</source>
-        <translation>更改帧范围至...</translation>
+        <source>Change key(s) range to</source>
+        <translation>更改帧范围至</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="167"/>
@@ -3209,11 +3129,6 @@ The log is available below.</source>
 <context>
     <name>gui::VideoExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="314"/>
-        <source>Parameters</source>
-        <translation>参数</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="359"/>
         <source>This codec requires a dedicated GPU.</source>
         <translation>这个编解码器需要专用的GPU。</translation>
@@ -3230,23 +3145,23 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="440"/>
-        <source>Codec :</source>
-        <translation>解码器：</translation>
+        <source>Codec</source>
+        <translation>解码器</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="444"/>
-        <source>Color standard :</source>
-        <translation>颜色标准：</translation>
+        <source>Color standard</source>
+        <translation>颜色标准</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="446"/>
-        <source>Pixel format :</source>
-        <translation>像素格式：</translation>
+        <source>Pixel format</source>
+        <translation>像素格式</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="461"/>
-        <source>Bit rate (Kbps) :</source>
-        <translation>比特率 （Kbps） ：</translation>
+        <source>Bit rate (Kbps)</source>
+        <translation>比特率 （Kbps）</translation>
     </message>
 </context>
 <context>
@@ -3259,33 +3174,33 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>
-        <source>Easing :</source>
-        <translation>缓动 :</translation>
+        <source>Easing</source>
+        <translation>缓动</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="367"/>
-        <source>Amount :</source>
-        <translation>数量 :</translation>
+        <source>Amount</source>
+        <translation>数量</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="368"/>
-        <source>Directional: </source>
-        <translation>方向性:</translation>
+        <source>Directional</source>
+        <translation>方向性</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="369"/>
-        <source>Blur X :</source>
-        <translation>模糊 X :</translation>
+        <source>Blur X</source>
+        <translation>模糊 X</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="370"/>
-        <source>Blur Y :</source>
-        <translation>模糊 Y :</translation>
+        <source>Blur Y</source>
+        <translation>模糊 Y</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="371"/>
-        <source>Angle :</source>
-        <translation>角度 :</translation>
+        <source>Angle</source>
+        <translation>角度</translation>
     </message>
 </context>
 <context>
@@ -3351,8 +3266,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="81"/>
-        <source>Resource</source>
-        <translation>资源 :</translation>
+        <source>Asset</source>
+        <translation>素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="89"/>
@@ -3468,8 +3383,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="622"/>
-        <source>Resource</source>
-        <translation>资源 :</translation>
+        <source>Asset</source>
+        <translation>素材</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="628"/>
@@ -4204,4 +4119,32 @@ Save anyway?</source>
         <translation>自定义</translation>
     </message>
 </context>
+<context>
+    <name>gui::ProjectSettingDialog</name>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Project settings</source>
+        <translation>项目设置</translation>
+    </message>
+
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Canvas size</source>
+        <translation>画布大小</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Max frame count</source>
+        <translation>最大帧数</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Loop animation</source>
+        <translation>循环动画</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Frames per second</source>
+        <translation>每秒帧数</translation>
+    </message></context>
 </TS>

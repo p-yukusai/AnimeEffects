@@ -36,8 +36,8 @@ namespace prop {
 
         // runtime-tinted caret pair: the checked state reads expanded (caret
         // down) vs collapsed (caret right)
-        mRightIcon = aGUIResources->icon("caret-right-regular").pixmap(aIconSize, aIconSize);
-        mDownIcon = aGUIResources->icon("caret-down-regular").pixmap(aIconSize, aIconSize);
+        mRightIcon = aGUIResources->icon("caret-right").pixmap(aIconSize, aIconSize);
+        mDownIcon = aGUIResources->icon("caret-down").pixmap(aIconSize, aIconSize);
         mRightDim = dimmedPixmap(mRightIcon);
         mDownDim = dimmedPixmap(mDownIcon);
 

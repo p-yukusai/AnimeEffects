@@ -1,7 +1,7 @@
 #ifndef GUI_TIMELINEWIDGET_H
 #define GUI_TIMELINEWIDGET_H
 
-#include <QScrollArea>
+#include <QWidget>
 #include <QTreeWidgetItem>
 #include <QTimer>
 #include <QTime>
@@ -12,12 +12,12 @@
 #include "core/AbstractCursor.h"
 #include "core/Animator.h"
 #include "core/TimeLineEvent.h"
-#include "ctrl/TimeLineEditor.h"
-#include "gui/theme/TimeLine.h"
 #include "gui/TimeLineEditorWidget.h"
 #include "gui/ViaPoint.h"
 #include "gui/GUIResources.h"
 #include "gui/AudioPlaybackWidget.h"
+
+class QScrollBar;
 
 namespace gui {
 
@@ -25,12 +25,16 @@ namespace gui {
 // scrollbar singleStep so arrows behave identically on both views.
 constexpr int kVerticalStep = 24;
 
-class TimeLineWidget: public QScrollArea {
+// The timeline. A plain, viewport-fixed surface: the content widget never
+// moves — its paint translates by the view origin (see TimeLineEditorWidget's
+// paintEvent) — so the ruler, the lanes and the box-select marquee always
+// render at their viewport positions, unclipped by the frame range. The
+// horizontal scrollbar is a one-way projection of the free horizontal offset;
+// the vertical position is bound to the object tree.
+class TimeLineWidget: public QWidget {
     Q_OBJECT
 
 public:
-    // typedef std::function<void(const core::TimeInfo&)> PlayBackFunc;
-
     TimeLineWidget(GUIResources& aResources, ViaPoint& aViaPoint, core::Animator& aAnimator, QWidget* aParent);
 
     void setProject(core::Project* aProject);
@@ -48,7 +52,6 @@ public:
     // it, clamps to its own range, and syncs the actual value back
     util::Signaler<void(int)> onVerticalScrollRequested;
 
-
 public:
     void onTreeViewUpdated(QTreeWidgetItem* aTopNode);
     void onScrollUpdated(int aValue);
@@ -64,15 +67,22 @@ private:
     virtual void wheelEvent(QWheelEvent* aEvent);
     virtual void keyPressEvent(QKeyEvent* aEvent);
     virtual void resizeEvent(QResizeEvent* aEvent);
-    virtual void scrollContentsBy(int aDx, int aDy);
+    virtual QSize minimumSizeHint() const;
+    virtual QSize sizeHint() const;
+    virtual bool eventFilter(QObject* aObject, QEvent* aEvent);
 
     int getFps() const;
     double getOneFrameTime() const;
     QPoint viewportTransform() const;
-    void setScrollBarValue(const QPoint& aViewportTransform);
+    void setViewTransform(const QPoint& aViewportTransform);
+    void projectHorizontalScrollBar();
     void updateCamera();
     void updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
     void panTo(const QPoint& aTransform);
+    void beginScrollbarDrag(const QPoint& aPos);
+    void moveScrollbarDrag(const QPoint& aPos);
+    void endScrollbarDrag();
+    void scrollViewBy(int aValueDelta);
     void onPlayBackUpdated();
     void syncAudioTracks();
     void onThemeUpdated(theme::Theme&);
@@ -81,10 +91,25 @@ private:
     util::LinkPointer<core::Project> mProject;
     core::Animator& mAnimator;
     TimeLineEditorWidget* mInner;
+    QScrollBar* mHorizontalScrollBar;
     core::CameraInfo mCameraInfo;
     core::AbstractCursor mAbstractCursor;
     int mVerticalScrollValue;
-    int mHorizontalScrollValue;
+    // The horizontal view offset: content origin x in surface coordinates.
+    // Free — zoom anchoring and pan can place it anywhere, including outside
+    // the frame range. The horizontal scrollbar is a one-way projection of it
+    // and never feeds back, except through explicit user slider actions.
+    int mHorizontalOffset;
+    bool mPendingScrollbarAdopt;
+    // Custom scrollbar thumb drag: Qt remaps the mouse against the live
+    // range, which compounds (exponential gain) while the track grows; the
+    // drag is anchored instead — the value<->pixel ratio is frozen at press
+    // and the view is moved by our own math, so the drag stays constant-speed
+    // while the track still updates live.
+    bool mScrollbarDragActive;
+    double mScrollbarDragAnchorValue;
+    int mScrollbarDragAnchorX;
+    double mScrollbarDragRatio;
     bool mIsPanning;
     QPoint mPanGrabPos;
     QPoint mPanStartTransform;

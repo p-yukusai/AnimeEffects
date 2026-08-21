@@ -35,6 +35,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     KeyCommandMap.cpp KeyCommandMap.h
     LocaleDecider.cpp LocaleDecider.h
     LocaleParam.h
+    LeakSuppressions.cpp
     MSVCBackTracer.cpp MSVCBackTracer.h
     MSVCMemoryLeakDebugger.cpp MSVCMemoryLeakDebugger.h
     Main.cpp
@@ -48,7 +49,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     MouseSettingDialog.cpp MouseSettingDialog.h
     AnimationSettingDialog.cpp AnimationSettingDialog.h
     NewProjectDialog.cpp NewProjectDialog.h
-    ScrollBarStyle.cpp ScrollBarStyle.h
+    AppStyle.cpp AppStyle.h
     ObjectTreeWidget.cpp ObjectTreeWidget.h
     PlayBackWidget.cpp PlayBackWidget.h
     ProjectHook.cpp ProjectHook.h
@@ -97,6 +98,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     tool/tool_FlowLayout.cpp tool/tool_FlowLayout.h
     tool/tool_ItemTable.cpp tool/tool_ItemTable.h
     tool/tool_Items.cpp tool/tool_Items.h
+    tool/ToolSlider.cpp tool/ToolSlider.h
     tool/tool_MeshPanel.cpp tool/tool_MeshPanel.h
     tool/tool_ModePanel.cpp tool/tool_ModePanel.h
     tool/tool_PosePanel.cpp tool/tool_PosePanel.h
@@ -119,6 +121,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         AE_MINOR_VERSION=7
         AE_MICRO_VERSION=1
     USE_GL_CORE_PROFILE
+    $<$<CONFIG:Debug>:QT_DEBUG>
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

@@ -58,7 +58,7 @@ QToolTip
 QWidget
 {
     background-color: @base@;
-    selection-background-color: @selection@;
+    selection-background-color: @textSelection@;
     selection-color: @text@;
     background-clip: border;
     border-image: none;
@@ -76,39 +76,11 @@ QWidget
     dialog-apply-icon: url(@icondir@/dialog_ok.svg);
     dialog-discard-icon: url(@icondir@/dialog_discard.svg);
 
-    /* File icons */
-    filedialog-backward-icon: url(@icondir@/left_arrow.svg);
-    filedialog-contentsview-icon: url(@icondir@/file_dialog_contents.svg);
-    filedialog-detailedview-icon: url(@icondir@/file_dialog_detailed.svg);
-    filedialog-end-icon: url(@icondir@/file_dialog_end.svg);
-    filedialog-infoview-icon: url(@icondir@/file_dialog_info.svg);
-    filedialog-listview-icon: url(@icondir@/file_dialog_list.svg);
-    filedialog-new-directory-icon: url(@icondir@/folder.svg);
-    filedialog-parent-directory-icon: url(@icondir@/up_arrow.svg);
-    filedialog-start-icon: url(@icondir@/file_dialog_start.svg);
-    directory-closed-icon: url(@icondir@/folder.svg);
-    directory-icon: url(@icondir@/folder.svg);
-    directory-link-icon: url(@icondir@/folder_link.svg);
-    directory-open-icon: url(@icondir@/folder_open.svg);
-    file-icon: url(@icondir@/file.svg);
-    file-link-icon: url(@icondir@/file_link.svg);
-    home-icon: url(@icondir@/home_directory.svg);
-
     /* QMessageBox icons */
     messagebox-critical-icon: url(@icondir@/message_critical.svg);
     messagebox-information-icon: url(@icondir@/message_information.svg);
     messagebox-question-icon: url(@icondir@/message_question.svg);
     messagebox-warning-icon: url(@icondir@/message_warning.svg);
-
-    /* Computer icons */
-    computer-icon: url(@icondir@/computer.svg);
-    desktop-icon: url(@icondir@/desktop.svg);
-    cd-icon: url(@icondir@/disc_drive.svg);
-    dvd-icon: url(@icondir@/disc_drive.svg);
-    floppy-icon: url(@icondir@/floppy_drive.svg);
-    harddisk-icon: url(@icondir@/hard_drive.svg);
-    network-icon: url(@icondir@/network_drive.svg);
-    trash-icon: url(@icondir@/trash.svg);
 
     /* Arrow icons */
     uparrow-icon: url(@icondir@/up_arrow.svg);
@@ -118,22 +90,8 @@ QWidget
     backward-icon: url(@icondir@/left_arrow.svg);
     forward-icon: url(@icondir@/right_arrow.svg);
 
-    /* Titlebar icons */
-    titlebar-close-icon: url(@icondir@/window_close.svg);
-    titlebar-contexthelp-icon: url(@icondir@/help.svg);
-    titlebar-maximize-icon: url(@icondir@/maximize.svg);
-    titlebar-menu-icon: url(@icondir@/menu.svg);
-    titlebar-minimize-icon: url(@icondir@/minimize.svg);
-    titlebar-normal-icon: url(@icondir@/restore.svg);
-    titlebar-shade-icon: url(@icondir@/shade.svg);
-    titlebar-unshade-icon: url(@icondir@/unshade.svg);
-
     /* Other icons */
     dockwidget-close-icon: url(@icondir@/close.svg);
-    /**
-     *  Only available in Qt6, and causes other issues. See #62.
-     *  lineedit-clear-button-icon: url(@icondir@/clear_text.svg);
-     */
 }
 
 QWidget:disabled
@@ -185,12 +143,12 @@ QCheckBox::indicator:focus
 
 QCheckBox::indicator:checked
 {
-    image: url(@icondir@/check.svg);
+    image: url(@icondir@/check-bold.svg);
 }
 
 QCheckBox::indicator:indeterminate
 {
-    image: url(@icondir@/minus.svg);
+    image: url(@icondir@/minus-bold.svg);
 }
 
 QCheckBox::indicator:disabled
@@ -410,7 +368,7 @@ QMenu::right-arrow
        old breeze chevron was a 60x90 border-image that stretched into a
        massive arrow no matter the declared size. */
     margin: 0.23em;
-    image: url(@icondir@/caret-right-regular.svg);
+    image: url(@icondir@/caret-right.svg);
     width: 0.5em;
     height: 0.5em;
 }
@@ -486,13 +444,6 @@ QPlainTextEdit
     border: 0.04em solid transparent;
 }
 
-QSizeGrip
-{
-    border-image: url(@icondir@/sizegrip.svg);
-    width: 0.5em;
-    height: 0.5em;
-}
-
 
 
 QMenu::separator
@@ -558,26 +509,6 @@ QToolBar:horizontal
 QToolBar:vertical
 {
     background: 0.09em solid @base@;
-}
-
-QToolBar::handle:horizontal
-{
-    border-image: url(@icondir@/hmovetoolbar.svg);
-}
-
-QToolBar::handle:vertical
-{
-    border-image: url(@icondir@/vmovetoolbar.svg);
-}
-
-QToolBar::separator:horizontal
-{
-    border-image: url(@icondir@/hseptoolbar.svg);
-}
-
-QToolBar::separator:vertical
-{
-    border-image: url(@icondir@/vseptoolbar.svg);
 }
 
 QToolBar QToolButton
@@ -665,7 +596,7 @@ QPushButton:focus
 
 QPushButton:pressed
 {
-    background-color: @recessed@;
+    background-color: @active@;
     border-color: @outline@;
     color: @text@;
 }
@@ -742,11 +673,6 @@ QTreeView:hover:pressed
 QColumnView
 {
     border: 0.04em transparent @base@;
-}
-
-QColumnViewGrip
-{
-    border-image: url(@icondir@/sizegrip.svg);
 }
 
 /* Each column in the view is a QAbstractItemView. */
@@ -912,44 +838,45 @@ QAbstractSpinBox::down-arrow:off,
 QAbstractSpinBox::down-arrow:!off:!disabled:hover
 {
     border-image: none;
-    /* 0.6em x 0.375em tracks the font (icon size paired to font size):
-       ~11x6px at the 11pt system font, ~9x5px at 9pt. Centered in the 1em
-       button. Kept at this size so the glyph keeps solid core pixels -
-       smaller sizes anti-alias away the accent color at hover. */
-    width: 0.6em;
-    height: 0.375em;
+    /* 0.75em x 0.5em tracks the font (icon size paired to font size):
+       ~14x9px at the 11pt system font, ~11x7px at 9pt. Centered in the
+       1em button. Phosphor bold carets keep a solid core at this size
+       (~12 solid px at 14x9); the thin breeze wedge anti-aliased away at
+       the old 0.6em x 0.375em, killing the accent hover color. */
+    width: 0.75em;
+    height: 0.5em;
 }
 
 QAbstractSpinBox::up-arrow
 {
-    image: url(@icondir@/up_arrow.svg);
+    image: url(@icondir@/caret-up-bold.svg);
 }
 
 QAbstractSpinBox::up-arrow:disabled,
 QAbstractSpinBox::up-arrow:off
 {
-    image: url(@icondir@/up_arrow_disabled.svg);
+    image: url(@icondir@/caret-up-bold-disabled.svg);
 }
 
 QAbstractSpinBox::up-arrow:hover
 {
-    image: url(@icondir@/up_arrow_hover.svg);
+    image: url(@icondir@/caret-up-bold-hover.svg);
 }
 
 QAbstractSpinBox::down-arrow
 {
-    image: url(@icondir@/down_arrow.svg);
+    image: url(@icondir@/caret-down-bold.svg);
 }
 
 QAbstractSpinBox::down-arrow:disabled,
 QAbstractSpinBox::down-arrow:off
 {
-    image: url(@icondir@/down_arrow_disabled.svg);
+    image: url(@icondir@/caret-down-bold-disabled.svg);
 }
 
 QAbstractSpinBox::down-arrow:!off:!disabled:hover
 {
-    image: url(@icondir@/down_arrow_hover.svg);
+    image: url(@icondir@/caret-down-bold-hover.svg);
 }
 
 QDoubleSpinBox
@@ -975,16 +902,6 @@ QPrevNextCalButton
     min-width: 0.8em;
     min-height: 1.2em;
     qproperty-iconSize: 0 0;
-}
-
-QPrevNextCalButton#qt_calendar_nextmonth
-{
-    image: url(@icondir@/calendar_next.svg);
-}
-
-QPrevNextCalButton#qt_calendar_prevmonth
-{
-    image: url(@icondir@/calendar_previous.svg);
 }
 
 /**
@@ -1464,7 +1381,7 @@ QTabBar[shape="7"]::close-button
 
 QDockWidget
 {
-    color: @textMuted@;
+    color: @text@;
     font-weight: bold;
     border: none;
     background: @base@;
@@ -1570,19 +1487,6 @@ QListView:!selected
     border: 0em solid black;
 }
 
-QTreeView::branch:has-siblings
-{
-    border-image: url(@icondir@/vline.svg);
-    image: none;
-}
-
-/* These branch indicators don't scale */
-QTreeView::branch:!has-siblings
-{
-    border-image: none;
-    image: none;
-}
-
 
 QGroupBox::indicator:unchecked {
     image: url(@icondir@/caret-right.svg);
@@ -1600,52 +1504,6 @@ QTreeView#objectTree::indicator:checked {
     image: url(@icondir@/eye-open.svg);
 }
 
-QTreeView::branch:has-siblings:adjoins-item
-{
-    border-image: url(@icondir@/branch_more.svg);
-}
-
-QTreeView::branch:!has-children:!has-siblings:adjoins-item
-{
-    border-image: url(@icondir@/branch_end.svg);
-}
-
-QTreeView::branch:has-children:!has-siblings:closed,
-QTreeView::branch:closed:has-children:has-siblings
-{
-    image: url(@icondir@/branch_closed.svg);
-}
-
-QTreeView::branch:has-children:!has-siblings:closed:hover,
-QTreeView::branch:closed:has-children:has-siblings:hover
-{
-    image: url(@icondir@/branch_closed_hover.svg);
-}
-
-QTreeView::branch:has-children:!has-siblings:closed,
-QTreeView::branch:open:has-children:!has-siblings
-{
-    border-image: url(@icondir@/branch_end_arrow.svg);
-}
-
-QTreeView::branch:closed:has-children:has-siblings,
-QTreeView::branch:open:has-children:has-siblings
-{
-    border-image: url(@icondir@/branch_more_arrow.svg);
-}
-
-QTreeView::branch:open:has-children:!has-siblings,
-QTreeView::branch:open:has-children:has-siblings
-{
-    image: url(@icondir@/branch_open.svg);
-}
-
-QTreeView::branch:open:has-children:!has-siblings:hover,
-QTreeView::branch:open:has-children:has-siblings:hover
-{
-    image: url(@icondir@/branch_open_hover.svg);
-}
-
 QListView
 {
     /* Give space for elements aligned left or right. */
@@ -1657,7 +1515,10 @@ QListView::item,
 QTreeView::item
 {
     padding: 0.13em;
-    color: @text@;
+    /* No `color`: a matching ::item color would override the per-item
+       foreground brush, which is how ObjectTreeWidget dims hidden layers'
+       labels. Unbrushed items fall back to the palette Text role, which is
+       the same @text@ token. */
 }
 
 QTreeView::item
@@ -1681,7 +1542,9 @@ QTreeView::item:!selected:hover
     /* the accent hue at 10% alpha, so hover tints track the selected hue */
     background-color: @accentOverlay@;
     outline: 0;
-    color: @text@;
+    /* no `color` either: the item brush must keep winning on hover, or a
+       hidden layer's faded label would snap bright under the cursor while
+       its icon stays faded */
     padding: 0.13em;
 }
 
@@ -1758,7 +1621,7 @@ QSlider::handle:vertical:focus
 QSlider::handle:horizontal:!focus:!hover,
 QSlider::handle:vertical:!focus:!hover
 {
-    border: 0.04em solid @active@;
+    border: 0.04em solid @handleBorder@;
 }
 
 QSlider::sub-page:horizontal,
@@ -2014,21 +1877,19 @@ QTableView
     border-radius: 0em;
 }
 
-QAbstractItemView::item
-{
-    color: @text@;
-}
-
 /* Selected items render as one muted brand-tinted state for every state
-   (active, inactive, hover); the color is the selection token (@selection@),
-   the brand hue at low elevation. */
+   (active, inactive, hover); the fill is the selection token (@selection@),
+   the brand hue at low elevation. (No `color` anywhere in the ::item rules:
+   a matching QSS color would override the per-item foreground brush the
+   object tree uses to dim hidden labels, including the gentler dim it keeps
+   on a selected row. Unbrushed items draw the palette's Text role, which is
+   the same @text@ token.) */
 QAbstractItemView::item:pressed,
 QAbstractItemView::item:selected:!active,
 QAbstractItemView::item:selected:active,
 QAbstractItemView::item:selected:hover
 {
     background: @selection@;
-    color: @text@;
 }
 
 QHeaderView

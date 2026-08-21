@@ -4,85 +4,202 @@
 #include <QColor>
 #include <QString>
 
-#include <algorithm>
-#include <cmath>
+#include "TailwindPalette.h" // generated: the full Tailwind v4 table (pure data)
 
 namespace theme {
 
 // ---------------------------------------------------------------------------
-// Oklch -> sRGB. Every token below is authored in Oklch (L = perceptual
-// lightness, C = chroma, H = hue in degrees) because it is far easier to
-// reason about distance and elevation in L than in hex/RGB.
+// Design tokens are cells of the Tailwind v4 table (see TailwindPalette.h):
+// the accent setting picks the row (base color), the design tokens are
+// columns (lightness steps), and everything non-accent reads the neutral row
+// (achromatic). Cells are sRGB hex, parsed straight into QColor — no
+// conversion or gamut logic.
+//
+// This file holds the app logic the generated header deliberately excludes:
+// the token roles, the authored hue->row and token->column mappings, and the
+// token construction.
 // ---------------------------------------------------------------------------
-inline QColor oklch(double aL, double aC, double aH, double aAlpha = 1.0) {
-    const double h = aH * 3.14159265358979323846 / 180.0;
-    const double a = aC * std::cos(h);
-    const double b = aC * std::sin(h);
-    const double l_ = aL + 0.3963377774 * a + 0.2158037573 * b;
-    const double m_ = aL - 0.1055613458 * a - 0.0638541728 * b;
-    const double s_ = aL - 0.0894841775 * a - 1.2914855480 * b;
-    const double l = l_ * l_ * l_;
-    const double m = m_ * m_ * m_;
-    const double s = s_ * s_ * s_;
-    const double r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-    const double g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-    const double bb = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
-    auto toSrgb = [](double x) {
-        x = std::clamp(x, 0.0, 1.0);
-        return (float)(x <= 0.0031308 ? 12.92 * x : 1.055 * std::pow(x, 1.0 / 2.4) - 0.055);
-    };
-    return QColor::fromRgbF(toSrgb(r), toSrgb(g), toSrgb(bb), (float)aAlpha);
+
+// ---------------------------------------------------------------------------
+// Selectable accent colors: a curated subset of the Tailwind v4 rows (the
+// full table lives in TailwindPalette.h). AccentColor values are contiguous
+// 0..kAccentCount-1; kAccentRow maps each to its row index in kTailwindRows.
+// Settings persist the row name (accentName).
+// ---------------------------------------------------------------------------
+enum AccentColor {
+    kAccentRed, kAccentOrange, kAccentYellow, kAccentGreen,
+    kAccentTeal, kAccentCyan, kAccentViolet, kAccentFuchsia,
+    kAccentCount
+};
+inline constexpr AccentColor kDefaultAccent = kAccentViolet;
+
+// AccentColor -> Tailwind row index (kTailwindRows order: red, orange, amber,
+// yellow, lime, green, emerald, teal, cyan, sky, blue, violet, ...).
+static constexpr int kAccentRow[] = {0, 1, 3, 5, 7, 8, 12, 14};
+static_assert(sizeof(kAccentRow) / sizeof(kAccentRow[0]) == kAccentCount,
+              "kAccentRow must have one entry per AccentColor");
+
+inline const char* accentName(AccentColor aAccent) {
+    static constexpr const char* kNames[] = {
+        "red", "orange", "yellow", "green", "teal", "cyan", "violet", "fuchsia" };
+    static_assert(sizeof(kNames) / sizeof(kNames[0]) == kAccentCount,
+                  "kNames must have one entry per AccentColor");
+    return kNames[aAccent];
 }
 
-// Selectable accent hues (Oklch H, degrees). The user picks one of these.
-inline constexpr double kDefaultHue = 279.0;
-inline const QVector<double>& accentHues() {
-    static const QVector<double> kHues{26.0, 56.0, 90.0, 147.0, 198.0, 220.0, 279.0, 323.0};
-    return kHues;
-}
-
-// Per-hue tuning for the accent-family brand tokens (accent, focus/
-// accentBright): a lightness offset and a chroma factor per hue. Unified
-// lightness+chroma makes the warm hues (orange, yellow) render muddy and the
-// cool primaries muted in dark; the tuning lifts them so they read vivid.
-// The selection token intentionally does NOT follow this: it is the subtle
-// highlight layer (layer selection, hover pills) and must stay quiet.
-inline void hueAccentTuning(double aHue, bool aDark, double& aLightnessOffset, double& aChromaFactor) {
-    struct Entry { double hue; double darkL, lightL, darkC, lightC; };
-    static const Entry kTuning[] = {
-        { 26.0,  0.09, 0.00, 1.27, 1.15 }, // red
-        { 56.0,  0.19, 0.02, 1.33, 1.15 }, // orange
-        { 90.0,  0.27, 0.05, 1.07, 1.10 }, // yellow (high L, modest C)
-        { 147.0, 0.06, 0.00, 1.07, 1.05 }, // green
-        { 198.0, 0.11, 0.00, 1.07, 1.05 }, // teal
-        { 220.0, 0.07, 0.00, 1.20, 1.10 }, // blue (deeper so it reads blue, not cyan next to the teal)
-        { 279.0, 0.07, 0.00, 1.20, 1.10 }, // indigo
-        { 323.0, 0.09, 0.00, 1.13, 1.05 }, // magenta
-    };
-    for (const auto& e : kTuning) {
-        if (std::abs(e.hue - aHue) < 0.5) {
-            if (aDark) { aLightnessOffset = e.darkL; aChromaFactor = e.darkC; }
-            else { aLightnessOffset = e.lightL; aChromaFactor = e.lightC; }
-            return;
-        }
+// Row name (settings value) -> AccentColor; violet for unknown names.
+inline AccentColor accentFromName(const QString& aName) {
+    for (int i = 0; i < kAccentCount; ++i) {
+        if (aName == QLatin1String(accentName((AccentColor)i))) return (AccentColor)i;
     }
-    aLightnessOffset = 0.0;
-    aChromaFactor = 1.0;
+    return kDefaultAccent;
 }
 
+// Row order in the generated table: red, orange, amber, yellow, lime, green,
+// emerald, teal, cyan, sky, blue, indigo, violet, purple, fuchsia, pink,
+// rose, slate, gray, zinc, neutral, stone, mauve, olive, mist, taupe.
+inline constexpr int kTailwindNeutralRow = 20; // the achromatic neutral row
+
+// Token roles; the column maps are indexed by these.
+enum TokenRole {
+    kBase, kRecessed, kRaised, kRaisedHover, kActive, kActiveHover,
+    kHairline, kHairlineHover, kOutline, kHandleBorder, kFocus, kHover,
+    kText, kTextMuted, kTextDisabled, kIcon,
+    kSelection, kSelectionText, kTextSelection, kAccent, kAccentSwatch, kAccentBright, kAccentHover, kAccentText,
+    kFloaterBody, kFloaterEdge,
+    kRecessedGuideLine, // dashed interactive guides on the recessed canvas
+                       // (spline editor): 2 lightness steps from the recessed
+                       // column in both themes
+    kRecessedHairline, // 1px informational lines on the recessed canvas:
+                       // 1 step from the recessed column, quieter than the
+                       // guides
+    kTokenCount
+};
+
+// Token columns (lightness steps into kTailwindRows), one line per role in
+// enum order. Light reads the pale columns, dark the deep ones; higher
+// column = darker (inverse lightness). Edit by finding the role's line.
+// The size is deduced so the asserts below catch a role added to the enum
+// without a column entry (or a stray extra entry).
+static constexpr int kTailwindLight[] = {
+    /* kBase              */ 0,
+    /* kRecessed          */ 1,
+    /* kRaised            */ 2,
+    /* kRaisedHover       */ 3,
+    /* kActive            */ 2,
+    /* kActiveHover       */ 2,
+    /* kHairline          */ 2,
+    /* kHairlineHover     */ 3,
+    /* kOutline           */ 3,
+    /* kHandleBorder      */ 2,
+    /* kFocus             */ 6,
+    /* kHover             */ 4,
+    /* kText              */ 9,
+    /* kTextMuted         */ 5,
+    /* kTextDisabled      */ 4,
+    /* kIcon              */ 9,
+    /* kSelection         */ 3,
+    /* kSelectionText     */ 9,
+    /* kTextSelection     */ 3,
+    /* kAccent            */ 2,
+    /* kAccentSwatch      */ 5,
+    /* kAccentBright      */ 6,
+    /* kAccentHover       */ 3,
+    /* kAccentText        */ 9,
+    /* kFloaterBody       */ 0,
+    /* kFloaterEdge       */ 2, // popup border; tracks hairline
+    /* kRecessedGuideLine */ 3, // 2 steps from the recessed column (light
+                                 // col 1) — same distance as dark
+    /* kRecessedHairline  */ 2, // 1 step from the recessed column (light
+                                 // col 1)
+};
+static_assert(sizeof(kTailwindLight) / sizeof(kTailwindLight[0]) == kTokenCount,
+              "kTailwindLight must have one column per TokenRole");
+static constexpr int kTailwindDark[] = {
+    /* kBase              */ 8,
+    /* kRecessed          */ 9,
+    /* kRaised            */ 7,
+    /* kRaisedHover       */ 6,
+    /* kActive            */ 6,
+    /* kActiveHover       */ 6,
+    /* kHairline          */ 7,
+    /* kHairlineHover     */ 6,
+    /* kOutline           */ 6,
+    /* kHandleBorder      */ 5,
+    /* kFocus             */ 4,
+    /* kHover             */ 5,
+    /* kText              */ 1,
+    /* kTextMuted         */ 4,
+    /* kTextDisabled      */ 5,
+    /* kIcon              */ 2,
+    /* kSelection         */ 7,
+    /* kSelectionText     */ 1,
+    /* kTextSelection     */ 5,
+    /* kAccent            */ 7,
+    /* kAccentSwatch      */ 5,
+    /* kAccentBright      */ 4,
+    /* kAccentHover       */ 6,
+    /* kAccentText        */ 1,
+    /* kFloaterBody       */ 9,
+    /* kFloaterEdge       */ 8, // normal edge; the body is the sunken surface
+    /* kRecessedGuideLine */ 7, // 2 steps from the recessed column (dark
+                                 // col 9) — same distance as light
+    /* kRecessedHairline  */ 8, // 1 step from the recessed column (dark
+                                 // col 9)
+};
+static_assert(sizeof(kTailwindDark) / sizeof(kTailwindDark[0]) == kTokenCount,
+              "kTailwindDark must have one column per TokenRole");
+
+// Hex cell -> QColor, optional alpha (used by the translucent selection).
+inline QColor paletteColor(const char* aHex, double aAlpha = 1.0) {
+    QColor c(QString::fromLatin1(aHex));
+    if (aAlpha < 1.0) c.setAlphaF((float)aAlpha);
+    return c;
+}
+
+// ---------------------------------------------------------------------------
+// Per-key timeline colors: one Tailwind row per key type at a fixed column,
+// so keys read by hue and stay distinguishable at any zoom. The hues follow
+// the classic timeline rainbow (move=indigo ... blur=fuchsia); baseKey is
+// the neutral key color (the renderer's default brush) and flips polarity
+// per theme — its column is overridden in light()/dark() below.
+// ---------------------------------------------------------------------------
+enum KeyColorToken { kKeyBase, kKeyMove, kKeyRotate, kKeyScale, kKeyDepth,
+                     kKeyOpa, kKeyBone, kKeyPose, kKeyMesh, kKeyFFD,
+                     kKeyImage, kKeyHSV, kKeyBlur, kKeyCount };
+static constexpr int kKeyColorRow[] = {
+    kTailwindNeutralRow, // baseKey  (neutral)
+    11,                  // moveKey  (indigo)
+    13,                  // rotateKey (purple)
+    14,                  // scaleKey (fuchsia)
+    16,                  // depthKey (rose)
+    2,                   // opaKey   (amber)
+    4,                   // boneKey  (lime)
+    5,                   // poseKey  (green)
+    6,                   // meshKey  (emerald)
+    8,                   // FFDKey   (cyan)
+    9,                   // imageKey (sky)
+    11,                  // HSVKey   (indigo)
+    14,                  // blurKey  (fuchsia)
+};
+static_assert(sizeof(kKeyColorRow) / sizeof(kKeyColorRow[0]) == kKeyCount,
+              "kKeyColorRow must have one row per KeyColorToken");
+// Every key type shares one lightness column per theme, so the keys read at
+// the same brightness and stay distinguishable by hue alone (a mix of deep
+// and pale steps read as inconsistent). The mid-vivid steps mirror
+// kAccentBright (light 6, dark 4): a step darker on pale lanes, a step
+// lighter on dark lanes.
+static constexpr int kKeyColorColumnLight = 6;
+static constexpr int kKeyColorColumnDark = 4;
 
 // ---------------------------------------------------------------------------
 // Design tokens for an appearance (light/dark x accent hue).
 //
 // This is the single source of truth for every surface the custom-painted
 // widgets draw, for the QPalette, for the stylesheet templates, and for the
-// runtime-tinted icons. A color is a pure function of (dark, hue); it is
-// computed once per appearance change and cached (see activate/current).
-//
-// Every non-text token shares the selected hue; only chroma (and lightness)
-// varies across tokens, and lightness flips between the light and dark sets.
-// At C=0 the hue is inert, so the neutrals still render grayscale. Text stays
-// neutral (H=0) for legibility.
+// runtime-tinted icons. A token is a palette cell: the selected base-color
+// row for accents, the neutral row (achromatic) for everything else, at the
+// column (lightness step) that fits its role and theme.
 //
 // Border highlight splits by state: hover is neutral (`hover`), active/focus
 // is the accent (`focus` == accentBright).
@@ -97,6 +214,9 @@ struct Colors {
     QColor hairline;      // separators, splitter/dock lines, ruler line, row seams
     QColor hairlineHover; // one step up from hairline (hover, lane separators)
     QColor outline;       // input/button borders, scrollbar pill at rest
+    QColor handleBorder;  // slider knob rest border: a border tone, not the
+                          // strong checked-fill token (own role so it can
+                          // diverge from the border family later)
     QColor focus;         // focus ring / active border (accent hue)
     QColor hover;         // hover border, splitter drag, scrollbar pill active (neutral)
     QColor text;          // primary text
@@ -106,17 +226,33 @@ struct Colors {
                           // dimmer than `text` so the active state reads
     QColor selection;     // brand selection / highlight fill
     QColor selectionText; // text on selection
+    QColor textSelection; // text-input selection highlight (over the field,
+                          // which is lighter than the tree floor in dark)
     QColor accent;        // brand checked/active fill (active-mode, link)
+    QColor accentSwatch;  // settings accent preview: the hue at a mid
+                          // lightness so the picker reads on light and dark
     QColor accentBright;  // brand bright edge (playhead, marquee, focus ring)
     QColor accentHover;   // menu/combo popup hover fill: a stronger accent
                           // tint than `selection` (which stays quiet)
     QColor accentText;    // content on accent fills (checked icons/pill text):
                           // max-contrast (white in dark, black in light)
     QColor floaterBody;   // menu/combo popup panel: dark stays sunken, light
-                          // flips to white (the proxy draws a shadow there)
-    QColor floaterEdge;   // popup panel edge
-    // Per-key colors for easier identification.
-   // https://supercolorpalette.com/?scp=eJxl0sluwyAQBuB34fxHYjMMvnnjJaIc3EVJpbaRmuUS5d07BIwVRb7w4_lY7LmJd9Fub-JHtOJwugqIA4_m3_n7uD9eTpxP_N44bDSUgtmhgFSmo-4ayzVzDZPj-Cba89_lE-LKpdp6NBLGIMjdHVk6ZTovi8xhGkUBZGAJ1iKYCmiwg6cCcohNAUYFWIemQXAVdNRMbjlbDnFYAJfy8s4hhAoGG3qvC8ghxgVIWA3voeR6h9FPknwBOVTAS1sJoifQhziEsYAcKlBSwxCf50k4EyMtt85hFYZvoFL5E-m4Irp67xRW4i1YvZBxzDVzDZVoxb9Ov5C-600lOayE_4WRL2Tqeqokh5WQhqaV8AOx50a7pV56-C2fw8ld7sf0bdP4-zGv0pBX3YZlx1SU1SZ1EhW2IVBRWkLbwh7Td1Z70Urub97XQ5zTMT--zuL-D5svvOQ
+                          // flips to white (the proxy rounds the corners)
+    QColor floaterEdge;   // popup panel edge: light tracks the hairline token
+                          // (borders match separators), dark keeps its own
+                          // edge — the body is the sunken surface
+    QColor recessedGuideLine; // dashed interactive guides on the recessed
+                             // canvas (spline editor): equidistant from the
+                             // recessed column in both themes (2 steps), so
+                             // the guides read at the same strength on the
+                             // sunken surface of either theme
+    QColor recessedHairline; // 1px informational lines on the recessed
+                             // canvas (spline axis, preview track): 1 step
+                             // from the recessed column, quieter than the
+                             // guides
+    // Per-key colors for easier identification: one Tailwind row per key
+    // type (kKeyColorRow) at a shared per-theme column, so all keys read at
+    // the same lightness; baseKey is the neutral key color.
     QColor baseKey; // Equal to TimeKeyType_TERM
     QColor moveKey;
     QColor rotateKey;
@@ -131,118 +267,113 @@ struct Colors {
     QColor HSVKey;
     QColor blurKey;
 
-
     bool isDark; // which elevation model the tokens were computed with
-    double hue; // the accent hue these tokens were computed with
 
-    static Colors light(double aHue = kDefaultHue) {
-        double d = 0.0, cF = 1.0;
-        hueAccentTuning(aHue, false, d, cF);
+    static Colors light(AccentColor aAccent = kDefaultAccent) {
+        const auto& a = kTailwindRows[kAccentRow[aAccent]]; // accent row
+        const auto& n = kTailwindRows[kTailwindNeutralRow]; // surfaces + content
         Colors c{
-            oklch(1.00, 0, aHue),      // base
-            oklch(0.96, 0, aHue),      // recessed (same as raised)
-            oklch(0.96, 0, aHue),      // raised
-            oklch(0.94, 0, aHue),      // raisedHover
-            oklch(0.90, 0, aHue),      // active
-            oklch(0.86, 0, aHue),      // activeHover
-            oklch(0.96, 0, aHue),      // hairline
-            oklch(0.92, 0, aHue),      // hairlineHover
-            oklch(0.85, 0, aHue),      // outline
-            oklch(0.52 + d, 0.23 * cF, aHue), // focus
-            oklch(0.78, 0, aHue),      // hover
-            oklch(0.22, 0, 0),         // text (neutral)
-            oklch(0.53, 0, 0),         // textMuted (neutral)
-            oklch(0.69, 0, 0),         // textDisabled (neutral)
-            oklch(0.22, 0, 0),         // icon (resting content == text)
-            // selection: the accent itself at low opacity (40%) — a
-            // translucent overlay, not a darker color. A darker color at the
-            // same hue falls out of gamut and renders redder than the theme
-            // (the old fixed-L selection was #832100 at hue 36 for orange);
-            // the translucent accent keeps the hue and only lowers the
-            // effective lightness. The timeline already uses this pattern
-            // (accent-hue track selection at 40% alpha in dark).
-            oklch(0.90 + d, 0.15 * cF, aHue, 0.40),
-            oklch(0.22, 0, 0),         // selectionText (neutral)
-            oklch(0.90 + d, 0.15 * cF, aHue), // accent
-            oklch(0.52 + d, 0.23 * cF, aHue), // accentBright
-            oklch(0.88, 0.15 * cF * 0.9, aHue), // accentHover (popup hover:
-                                       // stronger tint, 0.02 below the
-                                       // previous L, chroma scaled per hue)
-            oklch(0.00, 0, 0),         // accentText (max-contrast content)
-            oklch(1.00, 0, aHue),      // floaterBody (white; shadow separates)
-            oklch(0.96, 0, aHue),      // floaterEdge
-            // In RGB because the oklch formula doesn't play nice with my values
-            {50, 50, 50}, // key base
-            {47, 42, 84}, // move
-            {97, 58, 112}, // rotate
-            {140, 76, 120}, // scale
-            {168, 94, 100}, // depth
-            {196, 155, 114}, // opa
-            {215, 224, 135}, // bone
-            {185, 252, 157}, // pose
-            {99, 255, 136}, // mesh
-            {168, 255, 246}, // ffd
-            {173, 214, 255}, // image
-            {186, 179, 255}, // hsv
-            {234, 184, 255} // blur
+            paletteColor(n[kTailwindLight[kBase]]),        // base
+            paletteColor(n[kTailwindLight[kRecessed]]),    // recessed
+            paletteColor(n[kTailwindLight[kRaised]]),      // raised
+            paletteColor(n[kTailwindLight[kRaisedHover]]), // raisedHover
+            paletteColor(n[kTailwindLight[kActive]]),      // active
+            paletteColor(n[kTailwindLight[kActiveHover]]), // activeHover
+            paletteColor(n[kTailwindLight[kHairline]]),    // hairline
+            paletteColor(n[kTailwindLight[kHairlineHover]]), // hairlineHover
+            paletteColor(n[kTailwindLight[kOutline]]),     // outline
+            paletteColor(n[kTailwindLight[kHandleBorder]]), // handleBorder
+            paletteColor(a[kTailwindLight[kFocus]]),       // focus (accent edge)
+            paletteColor(n[kTailwindLight[kHover]]),       // hover
+            paletteColor(n[kTailwindLight[kText]]),        // text
+            paletteColor(n[kTailwindLight[kTextMuted]]),   // textMuted
+            paletteColor(n[kTailwindLight[kTextDisabled]]), // textDisabled
+            paletteColor(n[kTailwindLight[kIcon]]),        // icon
+            // selection: the accent fill at a fixed 40% opacity — a
+            // translucent overlay, not a darker color. Every consumer
+            // (QSS, palette, timeline) draws this same token; theme
+            // differences live in the column indices, not per-widget alpha.
+            paletteColor(a[kTailwindLight[kSelection]], 0.40), // selection
+            paletteColor(n[kTailwindLight[kSelectionText]]), // selectionText
+            paletteColor(a[kTailwindLight[kTextSelection]], 0.40), // textSelection
+            paletteColor(a[kTailwindLight[kAccent]]),     // accent (pale fill)
+            paletteColor(a[kTailwindLight[kAccentSwatch]]), // accentSwatch
+            paletteColor(a[kTailwindLight[kAccentBright]]), // accentBright (edge)
+            paletteColor(a[kTailwindLight[kAccentHover]]), // accentHover
+            paletteColor(n[kTailwindLight[kAccentText]]), // accentText
+            paletteColor(n[kTailwindLight[kFloaterBody]]), // floaterBody
+            paletteColor(n[kTailwindLight[kFloaterEdge]]), // floaterEdge
+            paletteColor(n[kTailwindLight[kRecessedGuideLine]]),   // recessedGuideLine
+            paletteColor(n[kTailwindLight[kRecessedHairline]]), // recessedHairline
+            // Per-key colors: kKeyColorRow at one shared column per theme
+            // (kKeyColorColumnLight), so all keys read at the same lightness.
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnLight]), // baseKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMove]][kKeyColorColumnLight]), // moveKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyRotate]][kKeyColorColumnLight]), // rotateKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyScale]][kKeyColorColumnLight]), // scaleKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyDepth]][kKeyColorColumnLight]), // depthKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpa]][kKeyColorColumnLight]), // opaKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBone]][kKeyColorColumnLight]), // boneKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyPose]][kKeyColorColumnLight]), // poseKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMesh]][kKeyColorColumnLight]), // meshKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyFFD]][kKeyColorColumnLight]), // FFDKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnLight]), // imageKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnLight]), // HSVKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnLight]), // blurKey
         };
         c.isDark = false;
-        c.hue = aHue;
         return c;
     }
 
-    static Colors dark(double aHue = kDefaultHue) {
-        double d = 0.0, cF = 1.0;
-        hueAccentTuning(aHue, true, d, cF);
+    static Colors dark(AccentColor aAccent = kDefaultAccent) {
+        const auto& a = kTailwindRows[kAccentRow[aAccent]];
+        const auto& n = kTailwindRows[kTailwindNeutralRow];
         Colors c{
-            oklch(0.27, 0, aHue),      // base
-            oklch(0.24, 0, aHue),      // recessed
-            oklch(0.35, 0, aHue),      // raised
-            oklch(0.37, 0, aHue),      // raisedHover
-            oklch(0.50, 0, aHue),      // active
-            oklch(0.56, 0, aHue),      // activeHover
-            oklch(0.33, 0, aHue),      // hairline
-            oklch(0.45, 0, aHue),      // hairlineHover
-            oklch(0.45, 0, aHue),      // outline
-            oklch(0.56 + d, 0.23 * cF, aHue), // focus
-            oklch(0.59, 0, aHue),      // hover
-            oklch(0.96, 0, 0),         // text (neutral)
-            oklch(0.76, 0, 0),         // textMuted (neutral)
-            oklch(0.57, 0, 0),         // textDisabled (neutral)
-            oklch(0.93, 0, 0),         // icon (resting content: dimmer than text)
-            // selection: the accent at 40% opacity — a translucent overlay,
-            // not a darker color (see the light() comment; the timeline
-            // track selection uses the same 40% alpha in dark).
-            oklch(0.46 + d, 0.15 * cF, aHue, 0.40),
-            oklch(0.96, 0, 0),         // selectionText (neutral)
-            oklch(0.46 + d, 0.15 * cF, aHue), // accent
-            oklch(0.56 + d, 0.23 * cF, aHue), // accentBright
-            // popup hover: a stronger accent (L+0.03, C*1.1 relative to the
-            // accent above; 0.02 below the previous hover L). Derived from
-            // the tuned accent instead of a fixed lightness: at a fixed L
-            // the warm hues fall outside their gamut and clamp to brown/red
-            // (yellow read as #8f5600 orange, orange as red).
-            oklch(0.49 + d, 0.165 * cF, aHue),
-            oklch(1.00, 0, 0),         // accentText (max-contrast content)
-            oklch(0.24, 0, aHue),      // floaterBody (sunken)
-            oklch(0.27, 0, aHue),      // floaterEdge
-            // In RGB because the oklch formula doesn't play nice with my values
-            {232, 232, 232}, // key base
-            {47, 42, 84}, // move
-            {97, 58, 112}, // rotate
-            {140, 76, 120}, // scale
-            {168, 94, 100}, // depth
-            {196, 155, 114}, // opa
-            {215, 224, 135}, // bone
-            {185, 252, 157}, // pose
-            {99, 255, 136}, // mesh
-            {168, 255, 246}, // ffd
-            {173, 214, 255}, // image
-            {186, 179, 255}, // hsv
-            {234, 184, 255} // blur
+            paletteColor(n[kTailwindDark[kBase]]),        // base
+            paletteColor(n[kTailwindDark[kRecessed]]),    // recessed
+            paletteColor(n[kTailwindDark[kRaised]]),      // raised
+            paletteColor(n[kTailwindDark[kRaisedHover]]), // raisedHover
+            paletteColor(n[kTailwindDark[kActive]]),      // active
+            paletteColor(n[kTailwindDark[kActiveHover]]), // activeHover
+            paletteColor(n[kTailwindDark[kHairline]]),    // hairline
+            paletteColor(n[kTailwindDark[kHairlineHover]]), // hairlineHover
+            paletteColor(n[kTailwindDark[kOutline]]),     // outline
+            paletteColor(n[kTailwindDark[kHandleBorder]]), // handleBorder
+            paletteColor(a[kTailwindDark[kFocus]]),       // focus (accent edge)
+            paletteColor(n[kTailwindDark[kHover]]),       // hover
+            paletteColor(n[kTailwindDark[kText]]),        // text
+            paletteColor(n[kTailwindDark[kTextMuted]]),   // textMuted
+            paletteColor(n[kTailwindDark[kTextDisabled]]), // textDisabled
+            paletteColor(n[kTailwindDark[kIcon]]),        // icon
+            paletteColor(a[kTailwindDark[kSelection]], 0.40), // selection
+            paletteColor(n[kTailwindDark[kSelectionText]]), // selectionText
+            paletteColor(a[kTailwindDark[kTextSelection]], 0.40), // textSelection
+            paletteColor(a[kTailwindDark[kAccent]]),      // accent (solid fill)
+            paletteColor(a[kTailwindDark[kAccentSwatch]]), // accentSwatch
+            paletteColor(a[kTailwindDark[kAccentBright]]), // accentBright (edge)
+            paletteColor(a[kTailwindDark[kAccentHover]]), // accentHover
+            paletteColor(n[kTailwindDark[kAccentText]]),  // accentText
+            paletteColor(n[kTailwindDark[kFloaterBody]]), // floaterBody
+            paletteColor(n[kTailwindDark[kFloaterEdge]]), // floaterEdge
+            paletteColor(n[kTailwindDark[kRecessedGuideLine]]),   // recessedGuideLine
+            paletteColor(n[kTailwindDark[kRecessedHairline]]), // recessedHairline
+            // Per-key colors: kKeyColorRow at one shared column per theme
+            // (kKeyColorColumnDark), so all keys read at the same lightness.
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnDark]), // baseKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMove]][kKeyColorColumnDark]), // moveKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyRotate]][kKeyColorColumnDark]), // rotateKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyScale]][kKeyColorColumnDark]), // scaleKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyDepth]][kKeyColorColumnDark]), // depthKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpa]][kKeyColorColumnDark]), // opaKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBone]][kKeyColorColumnDark]), // boneKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyPose]][kKeyColorColumnDark]), // poseKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMesh]][kKeyColorColumnDark]), // meshKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyFFD]][kKeyColorColumnDark]), // FFDKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnDark]), // imageKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnDark]), // HSVKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnDark]), // blurKey
         };
         c.isDark = true;
-        c.hue = aHue;
         return c;
     }
 
@@ -251,8 +382,8 @@ struct Colors {
     // re-deriving colors per paint event.
     static const Colors& current();
 
-    // Recompute and cache the active palette for a (dark, hue) appearance.
-    static void activate(bool aDark, double aHue);
+    // Recompute and cache the active palette for a (dark, hue) set.
+    static void activate(bool aDark, AccentColor aAccent);
 
     // Fills @token@ placeholders (and @icondir@ for the runtime-tinted icon
     // directory) in a stylesheet template. The token values live only here.
@@ -267,6 +398,7 @@ struct Colors {
         aTemplate.replace("@hairline@", hairline.name());
         aTemplate.replace("@hairlineHover@", hairlineHover.name());
         aTemplate.replace("@outline@", outline.name());
+        aTemplate.replace("@handleBorder@", handleBorder.name());
         aTemplate.replace("@focus@", focus.name());
         aTemplate.replace("@hover@", hover.name());
         aTemplate.replace("@text@", text.name());
@@ -281,6 +413,11 @@ struct Colors {
         // show-decoration-selected:0, so the alpha never compounds (the
         // palette path composites once).
         aTemplate.replace("@selection@", selection.name(QColor::HexArgb));
+        // Text-input selection is its own token: it composites over the
+        // raised field (lighter than the tree floor in dark), so it needs
+        // a stronger column than the quiet item selection.
+        aTemplate.replace("@textSelection@", textSelection.name(QColor::HexArgb));
+        aTemplate.replace("@accent@", accent.name());
         aTemplate.replace("@accentHover@", accentHover.name());
         aTemplate.replace("@accentText@", accentText.name());
         // translucent accent overlay (hover tints): accentBright at 10% alpha
@@ -298,7 +435,7 @@ struct Colors {
 };
 
 inline Colors& activeColors() {
-    static Colors s = Colors::dark(kDefaultHue);
+    static Colors s = Colors::dark(kDefaultAccent);
     return s;
 }
 
@@ -306,8 +443,8 @@ inline const Colors& Colors::current() {
     return activeColors();
 }
 
-inline void Colors::activate(bool aDark, double aHue) {
-    activeColors() = aDark ? dark(aHue) : light(aHue);
+inline void Colors::activate(bool aDark, AccentColor aAccent) {
+    activeColors() = aDark ? dark(aAccent) : light(aAccent);
 }
 
 } // namespace theme

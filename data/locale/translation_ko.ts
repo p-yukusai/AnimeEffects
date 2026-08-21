@@ -357,13 +357,13 @@
     </message>
     <message>
         <location filename="../../src/gui/ResourceTreeWidget.cpp" line="225"/>
-        <source>Update resource file path</source>
-        <translation>리소스 파일 경로 업데이트</translation>
+        <source>Update asset file path</source>
+        <translation>에셋 파일 경로 업데이트</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceTreeWidget.cpp" line="279"/>
-        <source>Rename resource</source>
-        <translation>리소스 이름 바꾸기</translation>
+        <source>Rename asset</source>
+        <translation>에셋 이름 바꾸기</translation>
     </message>
     <message>
         <location filename="../../src/gui/TargetWidget.cpp" line="133"/>
@@ -382,8 +382,8 @@
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="257"/>
-        <source>Add new resource</source>
-        <translation>새 리소스 추가</translation>
+        <source>Add new asset</source>
+        <translation>새 에셋 추가</translation>
     </message>
     <message>
         <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="635"/>
@@ -1100,23 +1100,18 @@
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="28"/>
-        <source>Loop animation :</source>
-        <translation>애니메이션 반복:</translation>
+        <source>Loop animation</source>
+        <translation>애니메이션 반복</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="36"/>
-        <source>Maximum frame count :</source>
-        <translation>최대 프레임 수:</translation>
+        <source>Maximum frame count</source>
+        <translation>최대 프레임 수</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="44"/>
-        <source>Frames per second :</source>
-        <translation>초당 프레임:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/AnimationSettingDialog.cpp" line="47"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
+        <source>Frames per second</source>
+        <translation>초당 프레임</translation>
     </message>
     <message>
         <location filename="../../src/gui/AnimationSettingDialog.cpp" line="56"/>
@@ -1138,8 +1133,8 @@
     <name>gui::ExportDialog</name>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="35"/>
-        <source>Export Animation...</source>
-        <translation>애니메이션 내보내기...</translation>
+        <source>Export Animation</source>
+        <translation>애니메이션 내보내기</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="70"/>
@@ -1165,33 +1160,33 @@
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="134"/>
-        <source>Image width :</source>
-        <translation>이미지 너비:</translation>
+        <source>Image width</source>
+        <translation>이미지 너비</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="135"/>
-        <source>Image height :</source>
-        <translation>이미지 높이:</translation>
+        <source>Image height</source>
+        <translation>이미지 높이</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="136"/>
-        <source>Fix aspect ratio :</source>
-        <translation>가로세로 비율 고정:</translation>
+        <source>Fix aspect ratio</source>
+        <translation>가로세로 비율 고정</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="171"/>
-        <source>Initial frame :</source>
-        <translation>시작 프레임:</translation>
+        <source>Initial frame</source>
+        <translation>시작 프레임</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="172"/>
-        <source>Last frame :</source>
-        <translation>끝 프레임:</translation>
+        <source>Last frame</source>
+        <translation>끝 프레임</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="183"/>
-        <source>FPS :</source>
-        <translation>FPS:</translation>
+        <source>FPS</source>
+        <translation>FPS</translation>
     </message>
 </context>
 <context>
@@ -1203,23 +1198,23 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="307"/>
-        <source>Language (needs restart) :</source>
-        <translation>언어 (재시작 필요):</translation>
+        <source>Language (needs restart)</source>
+        <translation>언어 (재시작 필요)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="314"/>
-        <source>Default keyframe easing :</source>
-        <translation>기본 키프레임 이징:</translation>
+        <source>Default keyframe easing</source>
+        <translation>기본 키프레임 이징</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="321"/>
-        <source>Default keyframe range :</source>
-        <translation>기본 키프레임 범위:</translation>
+        <source>Default keyframe range</source>
+        <translation>기본 키프레임 범위</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="328"/>
-        <source>Timeline format (needs restart) :</source>
-        <translation>타임라인 형식 (재시작 필요):</translation>
+        <source>Timeline format (needs restart)</source>
+        <translation>타임라인 형식 (재시작 필요)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
@@ -1238,53 +1233,53 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="359"/>
-        <source>Theme :</source>
-        <translation>테마:</translation>
+        <source>Theme</source>
+        <translation>테마</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
-        <source>Accent color :</source>
-        <translation>강조 색:</translation>
+        <source>Accent color</source>
+        <translation>강조 색</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="396"/>
-        <source>Automatically save your project : </source>
-        <translation>프로젝트 자동 저장 : </translation>
+        <source>Automatically save your project</source>
+        <translation>프로젝트 자동 저장</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="400"/>
-        <source>Time (in minutes) between autosaves : </source>
-        <translation>자동 저장 간격(분) : </translation>
+        <source>Time (in minutes) between autosaves</source>
+        <translation>자동 저장 간격(분)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="408"/>
-        <source>Show mesh when selecting FFD : </source>
-        <translation>FFD 선택 시 메시 표시 : </translation>
+        <source>Show mesh when selecting FFD</source>
+        <translation>FFD 선택 시 메시 표시</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
-        <source>On copy send keys to the clipboard : </source>
-        <translation>복사 시 키를 클립보드로 전송 : </translation>
+        <source>On copy send keys to the clipboard</source>
+        <translation>복사 시 키를 클립보드로 전송</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
-        <source>Always check for FFmpeg on export : </source>
-        <translation>내보내기 시 항상 FFmpeg 확인 : </translation>
+        <source>Always check for FFmpeg on export</source>
+        <translation>내보내기 시 항상 FFmpeg 확인</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="420"/>
-        <source>Enforce ID check on asset download : </source>
-        <translation>에셋 다운로드 시 ID 확인 강제 : </translation>
+        <source>Enforce ID check on asset download</source>
+        <translation>에셋 다운로드 시 ID 확인 강제</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="424"/>
-        <source>Ignore export warnings :</source>
-        <translation>내보내기 경고 무시:</translation>
+        <source>Ignore export warnings</source>
+        <translation>내보내기 경고 무시</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="428"/>
-        <source>Allow donation menu : </source>
-        <translation>기부 메뉴 허용 : </translation>
+        <source>Allow donation menu</source>
+        <translation>기부 메뉴 허용</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="432"/>
@@ -1316,8 +1311,8 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="449"/>
-        <source>Global keybind delay (ms) : </source>
-        <translation>전역 키 바인딩 지연(ms) : </translation>
+        <source>Global keybind delay (ms)</source>
+        <translation>전역 키 바인딩 지연(ms)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="451"/>
@@ -1494,37 +1489,27 @@ In the following screen you can instruct AnimeEffects to download and install it
 <context>
     <name>gui::GifExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="257"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="296"/>
-        <source>Optimize palette :</source>
-        <translation>팔레트 최적화:</translation>
+        <source>Optimize palette</source>
+        <translation>팔레트 최적화</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="297"/>
-        <source>Relay bit rate (Kbps) :</source>
-        <translation>중계 비트 전송률(Kbps):</translation>
+        <source>Relay bit rate (Kbps)</source>
+        <translation>중계 비트 전송률(Kbps)</translation>
     </message>
 </context>
 <context>
     <name>gui::ImageExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="200"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="223"/>
-        <source>Prefix name :</source>
-        <translation>접두사 이름:</translation>
+        <source>Prefix name</source>
+        <translation>접두사 이름</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="236"/>
-        <source>Quality :</source>
-        <translation>품질:</translation>
+        <source>Quality</source>
+        <translation>품질</translation>
     </message>
 </context>
 <context>
@@ -1708,8 +1693,8 @@ In the following screen you can instruct AnimeEffects to download and install it
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="151"/>
-        <source>No other projects...</source>
-        <translation>다른 프로젝트가 없습니다...</translation>
+        <source>No other projects</source>
+        <translation>다른 프로젝트가 없습니다</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="208"/>
@@ -1718,8 +1703,8 @@ In the following screen you can instruct AnimeEffects to download and install it
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="209"/>
-        <source>Save project as...</source>
-        <translation>프로젝트 다른 이름으로 저장...</translation>
+        <source>Save project as</source>
+        <translation>프로젝트 다른 이름으로 저장</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="210"/>
@@ -1728,8 +1713,8 @@ In the following screen you can instruct AnimeEffects to download and install it
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="211"/>
-        <source>Export project as...</source>
-        <translation>프로젝트 내보내기...</translation>
+        <source>Export project as</source>
+        <translation>프로젝트 내보내기</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="212"/>
@@ -1759,8 +1744,8 @@ In the following screen you can instruct AnimeEffects to download and install it
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="235"/>
-        <source>Quickly export as...</source>
-        <translation>빠르게 내보내기...</translation>
+        <source>Quickly export as</source>
+        <translation>빠르게 내보내기</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="238"/>
@@ -1808,39 +1793,14 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation>다시 실행</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="299"/>
-        <source>Project attributes</source>
-        <translation>프로젝트 속성</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="301"/>
-        <source>Canvas size</source>
-        <translation>캔버스 크기</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="302"/>
-        <source>Maximum frame count</source>
-        <translation>최대 프레임 수</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="303"/>
-        <source>Loop animation</source>
-        <translation>애니메이션 반복</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="304"/>
-        <source>Frames per second</source>
-        <translation>초당 프레임</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="305"/>
-        <source>Resources</source>
-        <translation>리소스</translation>
+        <source>Assets</source>
+        <translation>에셋</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="326"/>
-        <source>Options</source>
-        <translation>옵션</translation>
+        <source>Preferences</source>
+        <translation>환경 설정</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="328"/>
@@ -2005,7 +1965,17 @@ If we forgot to include you please let us know or open a PR!</source>
         <source>Donate</source>
         <translation>후원</translation>
     </message>
-</context>
+
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Project settings</source>
+        <translation>프로젝트 설정</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>View</source>
+        <translation>보기</translation>
+    </message></context>
 <context>
     <name>gui::MainWindow</name>
     <message>
@@ -2251,23 +2221,18 @@ If we forgot to include you please let us know or open a PR!</source>
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="26"/>
-        <source>Inverse canvas scrolling :</source>
-        <translation>캔버스 스크롤 반전:</translation>
+        <source>Inverse canvas scrolling</source>
+        <translation>캔버스 스크롤 반전</translation>
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="30"/>
-        <source>Inverse timeline scrolling :</source>
-        <translation>타임라인 스크롤 반전:</translation>
+        <source>Inverse timeline scrolling</source>
+        <translation>타임라인 스크롤 반전</translation>
     </message>
     <message>
         <location filename="../../src/gui/MouseSettingDialog.cpp" line="34"/>
-        <source>Middle mouse moves canvas :</source>
-        <translation>가운데 마우스 버튼으로 캔버스 이동:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MouseSettingDialog.cpp" line="37"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
+        <source>Middle mouse moves canvas</source>
+        <translation>가운데 마우스 버튼으로 캔버스 이동</translation>
     </message>
 </context>
 <context>
@@ -2284,38 +2249,33 @@ If we forgot to include you please let us know or open a PR!</source>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="56"/>
-        <source>Initial resource :</source>
-        <translation>초기 리소스:</translation>
+        <source>Initial asset</source>
+        <translation>초기 에셋</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="67"/>
-        <source>Maximum frame count :</source>
-        <translation>최대 프레임 수:</translation>
+        <source>Maximum frame count</source>
+        <translation>최대 프레임 수</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="77"/>
-        <source>Frames per second :</source>
-        <translation>초당 프레임:</translation>
+        <source>Frames per second</source>
+        <translation>초당 프레임</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="109"/>
-        <source>Specify canvas size :</source>
-        <translation>캔버스 크기 지정:</translation>
+        <source>Specify canvas size</source>
+        <translation>캔버스 크기 지정</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="110"/>
-        <source>Canvas width :</source>
-        <translation>캔버스 너비:</translation>
+        <source>Canvas width</source>
+        <translation>캔버스 너비</translation>
     </message>
     <message>
         <location filename="../../src/gui/NewProjectDialog.cpp" line="111"/>
-        <source>Canvas height :</source>
-        <translation>캔버스 높이:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="114"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
+        <source>Canvas height</source>
+        <translation>캔버스 높이</translation>
     </message>
 </context>
 <context>
@@ -2328,13 +2288,13 @@ If we forgot to include you please let us know or open a PR!</source>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="116"/>
-        <source>Add missing resources</source>
-        <translation>누락된 리소스 추가</translation>
+        <source>Add missing assets</source>
+        <translation>누락된 에셋 추가</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="119"/>
-        <source>Add new resources</source>
-        <translation>새 리소스 추가</translation>
+        <source>Add new assets</source>
+        <translation>새 에셋 추가</translation>
     </message>
     <message>
         <location filename="../../src/gui/ObjectTreeWidget.cpp" line="122"/>
@@ -2526,16 +2486,6 @@ The log is available below.</source>
         <source>Set canvas size</source>
         <translation>캔버스 크기 설정</translation>
     </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="713"/>
-        <source>Size :</source>
-        <translation>크기:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="715"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
-    </message>
 </context>
 <context>
     <name>gui::ProjectFPSSettingDialog</name>
@@ -2543,16 +2493,6 @@ The log is available below.</source>
         <location filename="../../src/gui/MainMenuBar.cpp" line="937"/>
         <source>Set FPS</source>
         <translation>FPS 설정</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="957"/>
-        <source>Frames per second :</source>
-        <translation>초당 프레임:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="959"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
     </message>
 </context>
 <context>
@@ -2562,16 +2502,6 @@ The log is available below.</source>
         <source>Set loop</source>
         <translation>반복 설정</translation>
     </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="880"/>
-        <source>Loop animation :</source>
-        <translation>애니메이션 반복:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="882"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
-    </message>
 </context>
 <context>
     <name>gui::ProjectMaxFrameSettingDialog</name>
@@ -2579,16 +2509,6 @@ The log is available below.</source>
         <location filename="../../src/gui/MainMenuBar.cpp" line="771"/>
         <source>Set max frames</source>
         <translation>최대 프레임 설정</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="786"/>
-        <source>Max frame count :</source>
-        <translation>최대 프레임 수:</translation>
-    </message>
-    <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="788"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainMenuBar.cpp" line="813"/>
@@ -2620,8 +2540,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="141"/>
-        <source>Save As...</source>
-        <translation>다른 이름으로 저장...</translation>
+        <source>Save As</source>
+        <translation>다른 이름으로 저장</translation>
     </message>
     <message>
         <location filename="../../src/gui/ProjectTabBar.cpp" line="143"/>
@@ -2648,13 +2568,13 @@ The log is available below.</source>
     <name>gui::ResourceDialog</name>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="16"/>
-        <source>Project resources</source>
-        <translation>프로젝트 리소스</translation>
+        <source>Project assets</source>
+        <translation>프로젝트 에셋</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="22"/>
-        <source>Add Resources</source>
-        <translation>리소스 추가</translation>
+        <source>Add Assets</source>
+        <translation>에셋 추가</translation>
     </message>
     <message>
         <location filename="../../src/gui/ResourceDialog.cpp" line="80"/>
@@ -2770,8 +2690,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="138"/>
-        <source>Change key(s) easing to...</source>
-        <translation>키 이징 변경...</translation>
+        <source>Change key(s) easing to</source>
+        <translation>키 이징 변경</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="140"/>
@@ -2835,8 +2755,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="165"/>
-        <source>Change key(s) range to...</source>
-        <translation>키 범위 변경...</translation>
+        <source>Change key(s) range to</source>
+        <translation>키 범위 변경</translation>
     </message>
     <message>
         <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="167"/>
@@ -2973,11 +2893,6 @@ The log is available below.</source>
 <context>
     <name>gui::VideoExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="314"/>
-        <source>Parameters</source>
-        <translation>파라미터</translation>
-    </message>
-    <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="359"/>
         <source>This codec requires a dedicated GPU.</source>
         <translation>이 코덱은 전용 GPU가 필요합니다.</translation>
@@ -2994,23 +2909,23 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="440"/>
-        <source>Codec :</source>
-        <translation>코덱:</translation>
+        <source>Codec</source>
+        <translation>코덱</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="444"/>
-        <source>Color standard :</source>
-        <translation>색상 표준:</translation>
+        <source>Color standard</source>
+        <translation>색상 표준</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="446"/>
-        <source>Pixel format :</source>
-        <translation>픽셀 포맷:</translation>
+        <source>Pixel format</source>
+        <translation>픽셀 포맷</translation>
     </message>
     <message>
         <location filename="../../src/gui/ExportDialog.cpp" line="461"/>
-        <source>Bit rate (Kbps) :</source>
-        <translation>비트 전송률(Kbps):</translation>
+        <source>Bit rate (Kbps)</source>
+        <translation>비트 전송률(Kbps)</translation>
     </message>
 </context>
 <context>
@@ -3023,33 +2938,33 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="326"/>
-        <source>Easing :</source>
-        <translation>이징:</translation>
+        <source>Easing</source>
+        <translation>이징</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="367"/>
-        <source>Amount :</source>
-        <translation>양:</translation>
+        <source>Amount</source>
+        <translation>양</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="368"/>
-        <source>Directional: </source>
-        <translation>방향성: </translation>
+        <source>Directional</source>
+        <translation>방향성</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="369"/>
-        <source>Blur X :</source>
-        <translation>블러 X:</translation>
+        <source>Blur X</source>
+        <translation>블러 X</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="370"/>
-        <source>Blur Y :</source>
-        <translation>블러 Y:</translation>
+        <source>Blur Y</source>
+        <translation>블러 Y</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="371"/>
-        <source>Angle :</source>
-        <translation>각도:</translation>
+        <source>Angle</source>
+        <translation>각도</translation>
     </message>
 </context>
 <context>
@@ -3115,8 +3030,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="81"/>
-        <source>Resource</source>
-        <translation>리소스</translation>
+        <source>Asset</source>
+        <translation>에셋</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_DefaultKeyPanel.cpp" line="89"/>
@@ -3232,8 +3147,8 @@ The log is available below.</source>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="622"/>
-        <source>Resource</source>
-        <translation>리소스</translation>
+        <source>Asset</source>
+        <translation>에셋</translation>
     </message>
     <message>
         <location filename="../../src/gui/prop/prop_CurrentKeyPanel.cpp" line="628"/>
@@ -3946,4 +3861,32 @@ Save anyway?</source>
         <translation>사용자 정의</translation>
     </message>
 </context>
+<context>
+    <name>gui::ProjectSettingDialog</name>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Project settings</source>
+        <translation>프로젝트 설정</translation>
+    </message>
+
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Canvas size</source>
+        <translation>캔버스 크기</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Max frame count</source>
+        <translation>최대 프레임 수</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Loop animation</source>
+        <translation>애니메이션 반복</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp"/>
+        <source>Frames per second</source>
+        <translation>초당 프레임</translation>
+    </message></context>
 </TS>
