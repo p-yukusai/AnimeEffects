@@ -4,9 +4,16 @@ project(AnimeEffects VERSION 1.7.1 LANGUAGES C CXX)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-# ASan on debug builds when needed (pretty bad perf hit)
-# set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address")
-# set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
+# AddressSanitizer (with LeakSanitizer) opt-in: pretty bad perf hit.
+# The known process-lifetime caches (fontconfig/Pango/GTK3 via the Qt
+# gtk3 platform theme) are suppressed in-code via __lsan_default_suppressions()
+# (see src/gui/LeakSuppressions.cpp), so no env vars or run scripts are
+# needed — configure with -DAE_ENABLE_ASAN=ON and run the binary directly.
+option(AE_ENABLE_ASAN "Build with AddressSanitizer and LeakSanitizer" OFF)
+if(AE_ENABLE_ASAN)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+endif()
 
 include(GNUInstallDirs)
 # You need to add the Qt directory to your path, otherwise you'll have a very bad time

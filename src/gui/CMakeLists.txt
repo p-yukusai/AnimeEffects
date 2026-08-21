@@ -35,6 +35,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     KeyCommandMap.cpp KeyCommandMap.h
     LocaleDecider.cpp LocaleDecider.h
     LocaleParam.h
+    LeakSuppressions.cpp
     MSVCBackTracer.cpp MSVCBackTracer.h
     MSVCMemoryLeakDebugger.cpp MSVCMemoryLeakDebugger.h
     Main.cpp
