@@ -51,13 +51,15 @@ public:
     static constexpr qreal HIT_RADIUS = 12.0;  // grab radius: generous like timeline keys
 
     // Fixed value viewport. The Y axis maps [kMinValue, kMaxValue] onto the
-    // full widget height, so the reachable under/over range is the constant
-    // kUnderOverRange (±0.5) in both themes and at every widget size — the
-    // canvas is a fixed value window, like the timeline's model viewport.
-    // The X axis maps the CSS-required [0, 1] domain onto
-    // [POINT_RADIUS, width − POINT_RADIUS]. Anchors sit at value (0,0) and
-    // (1,1); the handles clamp in value space, so their reach always equals
-    // the viewport.
+    // widget's interior [POINT_RADIUS, height − POINT_RADIUS], so the
+    // reachable under/over range is the constant kUnderOverRange (±0.5) in
+    // both themes and at every widget size — the canvas is a fixed value
+    // window, like the timeline's model viewport. The padding (equal to the
+    // handle's visual radius) keeps a handle at the viewport boundary fully
+    // visible; the value-space clamp, not the padding, defines the range.
+    // The X axis maps the CSS-required [0, 1] domain onto the same inset.
+    // Anchors sit at value (0,0) and (1,1); handles clamp in value space,
+    // so their reach always equals the viewport.
     static constexpr qreal kUnderOverRange = 0.5; // overshoot past the 0..1 band
     static constexpr qreal kMinValue = -kUnderOverRange;
     static constexpr qreal kMaxValue = 1 + kUnderOverRange;

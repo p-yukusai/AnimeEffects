@@ -54,7 +54,7 @@ protected:
         p.setRenderHint(QPainter::Antialiasing, true);
         const theme::Colors& c = theme::Colors::current();
         const int cx = width() / 2;
-        // the track: the full viewport height (the 0..1 band is its middle
+        // the track: the full interior height (the 0..1 band is its middle
         // half); +0.5 snaps the 1px pen onto one column. The strip sits on
         // the dialog's base surface, not the recessed canvas, so it uses
         // the plain hairline token (recessedHairline would be invisible

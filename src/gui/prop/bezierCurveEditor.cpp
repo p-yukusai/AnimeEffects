@@ -20,10 +20,10 @@ qreal BezierCurveEditor::xToValue(const qreal aPixelX, const qreal aWidth) {
     return kMinX + (aPixelX - POINT_RADIUS) / (aWidth - 2 * POINT_RADIUS) * (kMaxX - kMinX);
 }
 qreal BezierCurveEditor::valueToY(const qreal aValue, const qreal aHeight) {
-    return (kMaxValue - aValue) / (kMaxValue - kMinValue) * aHeight;
+    return POINT_RADIUS + (kMaxValue - aValue) / (kMaxValue - kMinValue) * (aHeight - 2 * POINT_RADIUS);
 }
 qreal BezierCurveEditor::yToValue(const qreal aPixelY, const qreal aHeight) {
-    return kMaxValue - aPixelY / aHeight * (kMaxValue - kMinValue);
+    return kMaxValue - (aPixelY - POINT_RADIUS) / (aHeight - 2 * POINT_RADIUS) * (kMaxValue - kMinValue);
 }
 qreal BezierCurveEditor::clampX(const qreal aValue) {
     return std::clamp(aValue, kMinX, kMaxX);
@@ -168,9 +168,9 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
 
     // Value-axis hairlines at Y=0 and Y=1 — the anchors sit on these rows.
-    // The viewport maps [−0.5, 1.5] onto the full height, so they fall at
-    // fixed fractions (25%/75%) and the reachable overshoot is the constant
-    // ±kUnderOverRange, not an artifact of the widget size.
+    // The viewport maps [−0.5, 1.5] onto the interior, so they fall at
+    // fixed fractions (25%/75% of the interior) and the reachable overshoot
+    // is the constant ±kUnderOverRange, not an artifact of the widget size.
     // recessedHairline — between hairline (fades on the sunken canvas) and
     // recessedGuideLine (too strong for an informational axis). Rounded to a
     // pixel row then +0.5: an integer y with AA on straddles two rows at
