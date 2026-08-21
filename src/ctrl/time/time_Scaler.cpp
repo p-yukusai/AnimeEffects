@@ -2,12 +2,19 @@
 
 namespace {
 static const int kWheelValue = 120;
-// Wheel zoom range in notches of kWheelValue: mIndex 0..15 -> 1..16 px per
-// frame. The ceiling is unchanged since the 2016 upstream import; the floor
-// was lowered to index 0 (1 px/frame) so zoom-out can pass the startup zoom
-// (2 px/frame). No rationale for the original bounds was ever recorded.
-static const int kMinScaleRaw = 0 * kWheelValue;
-static const int kMaxScaleRaw = 15 * kWheelValue;
+// Wheel zoom range in mIndex notches: 0..15 -> 1..16 px per frame —
+// pixelWidth() scales by (mIndex + 1), so the min index is 1 px/frame,
+// never 0 px. The scale is a function of the index, not of kWheelValue,
+// which only converts wheel deltas into notches. The ceiling is unchanged
+// since the 2016 upstream import; the floor was lowered to index 0
+// (1 px/frame) so zoom-out can pass the startup zoom (2 px/frame). No
+// rationale for the original bounds was ever recorded.
+static const int kMinScaleIndex = 0;   // mIndex 0  -> 1  px/frame
+static const int kMaxScaleIndex = 15;  // mIndex 15 -> 16 px/frame
+// The raw wheel accumulator clamps in notch units: the wheel position of
+// an index is index * kWheelValue (the min index's notch is 0).
+static const int kMinScaleRaw = kMinScaleIndex * kWheelValue;
+static const int kMaxScaleRaw = kMaxScaleIndex * kWheelValue;
 
 // Least prime factor of n; n itself when prime. Trial division is fine: the
 // chain below only ever divides a value by its least prime factor, so n

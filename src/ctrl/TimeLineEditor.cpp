@@ -1,5 +1,5 @@
 #include "core/ResourceUpdatingWorkspace.h"
-#include <limits>
+#include <climits>
 #include "core/BlurKey.h"
 #include "core/TimeKeyExpans.h"
 #include "ffd/ffd_Target.h"
@@ -305,7 +305,7 @@ bool TimeLineEditor::modifyMoveKeys(const QPoint& aWorldPos) {
         // still rejected by modifyMove (occupying a frame with an existing
         // key fails).
         if (mMoveRef->modifyMove(modEvent, addFrame,
-            util::Range(std::numeric_limits<int>::min(), std::numeric_limits<int>::max()), &clampedAdd)) {
+            util::Range(INT_MIN, INT_MAX), &clampedAdd)) {
             mMoveFrame = newFrame;
             mProject->onTimeLineModified(modEvent, false);
         }
@@ -723,7 +723,7 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
     // a minimum frame in copied keys (the paste offset is measured from the
     // earliest copied key; copying out-of-range keys must not cap it at the
     // frame range's end)
-    int copiedFrame = std::numeric_limits<int>::max();
+    int copiedFrame = INT_MAX;
     for (auto target : aEvent.targets()) {
         copiedFrame = std::min(copiedFrame, target.pos.index());
     }
