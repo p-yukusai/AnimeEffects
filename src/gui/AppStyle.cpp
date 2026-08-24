@@ -4,11 +4,15 @@
 
 #include <QIcon>
 #include <QMenu>
-#include <QPainter>
-#include <QPainterPath>
-#include <QStyleOption>
 #include <QStyleOptionSlider>
 #include <QAbstractItemView>
+
+#include "ctrl/System.h"
+#ifdef Q_OS_WIN
+    #define WIN32_LEAN_AND_MEAN
+    #include <Windows.h>
+    #include <dwmapi.h>
+#endif
 
 namespace gui {
 
@@ -30,25 +34,53 @@ constexpr qreal kBranchLineOpacity = 0.4;
 // hovered/dragged); see theme/Colors.h.
 } // namespace
 
+namespace {
+    class WinResizeFilter : public QObject
+    {
+    public:
+        explicit WinResizeFilter(QObject *parent = nullptr) : QObject(parent) {}
+        bool eventFilter(QObject *watched, QEvent *event) override
+        {
+            if (event->type() == QEvent::Resize) {
+                // auto *resizeEvent = dynamic_cast<QResizeEvent*>(event);
+                const QWidget* aWidget = qobject_cast<QWidget*>(watched);
+                const auto hwnd = reinterpret_cast<HWND>(aWidget->winId());
+                const QRect rect = aWidget->rect();
+                const int width = rect.width();
+                const int height = rect.height();
+                constexpr int highFactor = (kPillRadius + kPillThickness) * 2;
+                // constexpr int lowFactor = highFactor / 2;
+                int pillRadiusW = kPillRadius; int pillRadiusH = kPillRadius;
+                pillRadiusW += highFactor; pillRadiusH += highFactor;
+                const auto hrgn = CreateRoundRectRgn(
+                    rect.topLeft().x(), rect.topLeft().y(),
+                    rect.bottomRight().x() , rect.bottomRight().y(),
+                    pillRadiusW, pillRadiusH);
+                SetWindowRgn(hwnd, hrgn, TRUE);
+            }
+            return QObject::eventFilter(watched, event);
+        }
+    };
+}
+
+
 AppStyle::AppStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
 
 void AppStyle::polish(QWidget* aWidget) {
-    // Menus are opaque OS popup windows by default (their backing is the
-    // palette Window role). For real rounded corners the popup must be an
-    // alpha window, so mark them translucent at polish time — before the
-    // platform window is created. The combo popup (QComboBoxPrivateContainer)
-    // draws the same PE_PanelMenu and needs the same treatment.
-    const bool isFloater = qobject_cast<QMenu*>(aWidget) || aWidget->inherits("QComboBoxPrivateContainer");
-    if (isFloater) {
+    // Mark as translucent so the window manager doesn't draw behind them
+    if (qobject_cast<QMenu*>(aWidget) || aWidget->inherits("QComboBoxPrivateContainer")) {
         aWidget->setAttribute(Qt::WA_TranslucentBackground);
         aWidget->setAttribute(Qt::WA_NoSystemBackground);
+#ifdef Q_OS_WIN
+        // We setup this because Windows is dumb and stupid and can't composite stuff without hand-holding
+        if (QOperatingSystemVersion::current().microVersion() > 22000) {
+            const auto hwnd = reinterpret_cast<HWND>(aWidget->winId());
+            constexpr DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+        }
+        else{ aWidget->installEventFilter(new WinResizeFilter()); }
+#endif
     }
-    // The combo popup paints its items as CE_MenuItem through Qt's
-    // QComboMenuDelegate, which builds the style option from the VIEW's
-    // palette; the QSS selection-background-color never reaches that paint
-    // path. The popup is translucent (above) and carries the QMenu-style
-    // grey on the view's palette Highlight without touching the other roles
-    // (the view's Base stays transparent so the recessed panel shows).
     // The style is re-polished on theme changes, so Colors::current() is
     // fresh.
     if (aWidget->inherits("QComboBoxPrivateContainer")) {
@@ -131,7 +163,7 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         const QRect r = aOption->rect;
         const int midX = r.left() + r.width() / 2;
         const int midY = r.top() + r.height() / 2;
-        const bool hasCaret = aOption->state & QStyle::State_Children;
+        const bool hasCaret = aOption->state & State_Children;
 
         QRect box;
         if (hasCaret) {
@@ -147,14 +179,14 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         // Vertical connector: full height when a sibling row follows, else
         // only down to the corner (last child). Split around the caret box
         // so the guide line never crosses the glyph.
-        if (aOption->state & QStyle::State_Sibling) {
+        if (aOption->state & State_Sibling) {
             if (hasCaret) {
                 aPainter->drawLine(midX, r.top(), midX, box.top() - 1);
                 aPainter->drawLine(midX, box.bottom() + 1, midX, r.bottom());
             } else {
                 aPainter->drawLine(midX, r.top(), midX, r.bottom());
             }
-        } else if (aOption->state & QStyle::State_Item) {
+        } else if (aOption->state & State_Item) {
             aPainter->drawLine(midX, r.top(), midX, hasCaret ? box.top() - 1 : midY);
         }
 
@@ -164,7 +196,7 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         // QSS images this replaces (branch_more/branch_end) included it;
         // without it the rows would hang off the trunks. LTR layout (the
         // app has no RTL locales; Qt would mirror this for RTL).
-        if (aOption->state & QStyle::State_Item) {
+        if (aOption->state & State_Item) {
             const int fromX = hasCaret ? box.right() + 1 : midX;
             aPainter->drawLine(fromX, midY, r.right(), midY);
         }
@@ -172,7 +204,7 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         if (hasCaret) {
             // No hover feedback (Figma-style): the click's state change is
             // the feedback, and hover would be inconsistent with the eye.
-            const bool open = aOption->state & QStyle::State_Open;
+            const bool open = aOption->state & State_Open;
             const QString stem = QStringLiteral("caret-%1-bold").arg(open ? QStringLiteral("down") : QStringLiteral("right"));
             QIcon icon(theme::iconDir() + QLatin1Char('/') + stem + QStringLiteral(".svg"));
             aPainter->setRenderHint(QPainter::Antialiasing, true);
@@ -210,7 +242,7 @@ void AppStyle::drawControl(ControlElement aElement, const QStyleOption* aOption,
             aPainter->restore();
             return;
         }
-        if (opt->state & QStyle::State_Selected) {
+        if (opt->state & State_Selected) {
             const theme::Colors c = theme::Colors::current();
             // 4px off the popup edge, matching the QMenu item inset (the
             // row rect itself sits ~3px in, so the pill inset is 1px)
@@ -257,7 +289,7 @@ void AppStyle::drawComplexControl(ComplexControl aControl, const QStyleOptionCom
         }
 
         const bool hot =
-            (opt->activeSubControls & SC_ScrollBarSlider) || (opt->state & QStyle::State_Sunken);
+            (opt->activeSubControls & SC_ScrollBarSlider) || (opt->state & State_Sunken);
         aPainter->save();
         aPainter->setRenderHint(QPainter::Antialiasing);
         aPainter->setPen(Qt::NoPen);

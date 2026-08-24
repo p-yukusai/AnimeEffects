@@ -146,9 +146,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         cmnd core ctrl gl img thr util
 )
 
-#[[if(WIN32)
+if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE user32 dwmapi)
-endif()]]
+endif()
 
 install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .

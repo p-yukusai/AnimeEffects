@@ -20,9 +20,9 @@ endif()
 
 include(GNUInstallDirs)
 
-#[[if(WIN32)
+if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-endif ()]]
+endif ()
 
 # You need to add the Qt directory to your path, otherwise you'll have a very bad time
 # On MacOS Tahoe please remove AGL from the framework list when linking
