@@ -274,6 +274,10 @@ QMenu
    :disabled and QWidget:disabled's @recessed@ background would win the merge
    and paint a square body. Same specificity, later in the sheet: keep it
    non-drawable so the proxy draws the rounded panel. */
+QMenu
+{
+    background: none;
+}
 QMenu:disabled
 {
     background: none;

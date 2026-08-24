@@ -101,7 +101,7 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         // (background/border/radius), or QStyleSheetStyle draws the panel
         // itself.
         const theme::Colors c = theme::Colors::current();
-        const qreal kRadius = 8;
+        constexpr qreal kRadius = 8;
         // the floater tokens: sunken body on dark, white body on light
         const QColor kBody = c.floaterBody;
         const QColor kEdge = c.floaterEdge;

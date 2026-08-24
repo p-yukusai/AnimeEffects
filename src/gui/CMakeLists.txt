@@ -124,6 +124,21 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:QT_DEBUG>
 )
 
+#[[if (WIN32)
+    include("${CMAKE_SOURCE_DIR}/src/cmake/FindWindowsSDK.cmake")
+    get_windowssdk_library_dirs(${WINDOWSSDK_LATEST_DIR} WINLIB_DIR_LIST)
+    set(n 0)
+    set(found 0)
+    foreach(item IN LISTS WINLIB_DIR_LIST)
+        if(item MATCHES "um")
+            break()
+        endif()
+        math(EXPR n "${n}+1")
+    endforeach()
+    LIST(GET WINLIB_DIR_LIST ${n} WINLIB_DIR)
+    message("Lib dir: ${WINLIB_DIR}")
+endif ()]]
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core Qt6::Core5Compat Qt6::Widgets
         Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
@@ -131,8 +146,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         cmnd core ctrl gl img thr util
 )
 
+#[[if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE user32 dwmapi)
+endif()]]
+
 install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
@@ -158,4 +178,4 @@ add_custom_target(copy_data
 )
 message("Data copied")
 add_dependencies(${PROJECT_NAME} copy_data)
-
+qt_finalize_executable(AnimeEffects)

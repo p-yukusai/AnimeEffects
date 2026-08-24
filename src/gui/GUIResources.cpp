@@ -7,6 +7,7 @@
 #include <QStyleFactory>
 #include <QStyleHints>
 
+#include "AudioPlaybackWidget.h"
 #include "gui/AppStyle.h"
 #include "theme/Icons.h"
 
@@ -66,7 +67,7 @@ QIcon GUIResources::iconActive(const QString& aName) const {
     return mIconMap.value(aName + "-active");
 }
 
-QColor GUIResources::viewportBackground() const {
+QColor GUIResources::viewportBackground() {
     // the canvas sinks below the base floor (the recessed token)
     return theme::Colors::current().recessed;
 }
@@ -82,7 +83,7 @@ void GUIResources::setTheme(const QString& aThemeId) {
     onThemeChanged(mTheme);
 }
 
-void GUIResources::setAccent(theme::AccentColor aAccent) {
+void GUIResources::setAccent(const theme::AccentColor aAccent) {
     if (mAccent == aAccent) return;
     mAccent = aAccent;
     QSettings().setValue("generalsettings/ui/accent", QLatin1String(theme::accentName(aAccent)));
