@@ -4,7 +4,6 @@
 
 #include <QIcon>
 #include <QMenu>
-#include <QStyleOptionSlider>
 #include <QAbstractItemView>
 
 #include "ctrl/System.h"
@@ -34,6 +33,7 @@ constexpr qreal kBranchLineOpacity = 0.4;
 // hovered/dragged); see theme/Colors.h.
 } // namespace
 
+#ifdef Q_OS_WIN
 namespace {
     class WinResizeFilter : public QObject
     {
@@ -62,7 +62,7 @@ namespace {
         }
     };
 }
-
+#endif
 
 AppStyle::AppStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
 
