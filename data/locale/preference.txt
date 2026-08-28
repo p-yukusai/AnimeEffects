@@ -3,4 +3,4 @@ font_family_win = Geist
 font_family_mac = Geist
 font_size = 8pt
 font_size_win = 8pt
-font_size_mac = 8pt
+font_size_mac = 12pt

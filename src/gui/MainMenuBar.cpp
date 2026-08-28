@@ -385,9 +385,6 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                 ));
             msgBox.setTextFormat(Qt::TextFormat::MarkdownText);
             msgBox.setText(msgStr);
-            QFont font = msgBox.font();
-            font.setPointSize(10);
-            msgBox.setFont(font);
             msgBox.setWindowTitle(tr("About us"));
             msgBox.setStandardButtons(QMessageBox::Ok);
             msgBox.setDefaultButton(QMessageBox::Ok);
