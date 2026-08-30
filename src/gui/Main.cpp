@@ -180,7 +180,32 @@ int entryPoint(int argc, char* argv[]) {
             QFontDatabase::addApplicationFont(fontsDir.absoluteFilePath(file));
         }
         QFont appFont(QApplication::font());
-        appFont.setFamily("Geist");
+        QSettings settings;
+        qreal fontScale = appFont.pointSizeF();
+        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0);
+        if (uiScale.isValid()) {
+            if (uiScale.toDouble() < 0.5f) { uiScale = 0.5f; }
+            if (uiScale.toDouble() > 3.0f) { uiScale = 3.0f; }
+            fontScale = uiScale.toDouble();
+        }
+        auto userFont = settings.value("generalsettings/ui/font");
+        if (uiScale.isValid()) {
+            if (QFontDatabase::hasFamily(userFont.toString())){
+                appFont = QFont(userFont.toString());
+            }
+            else {
+                bool customFont = settings.value("generalsettings/ui/customFont", false).toBool();
+                if (customFont) {
+                    settings.remove("generalsettings/ui/font");
+                    QMessageBox::warning(nullptr, QCoreApplication::translate("Main", "Warning"),
+                        QCoreApplication::translate("Main", "The specified font does not exist. Using default font."));
+                }
+            }
+        }
+        if (appFont.pixelSize() > 0)
+            appFont.setPixelSize(appFont.pixelSize() * static_cast<int>(fontScale));
+        else
+            appFont.setPointSizeF(appFont.pointSizeF() * fontScale);
         QApplication::setFont(appFont);
     }
 
@@ -201,18 +226,18 @@ int entryPoint(int argc, char* argv[]) {
 
 
     // language
-    QScopedPointer<gui::LocaleDecider> locale(new gui::LocaleDecider());
+    const QScopedPointer locale(new gui::LocaleDecider());
     if (locale->translator()) { QCoreApplication::installTranslator(locale->translator()); }
 
     {
         // load constant gui resources
-        QScopedPointer<gui::GUIResources> resources(new gui::GUIResources(resourceDir));
+        QScopedPointer resources(new gui::GUIResources(resourceDir));
 
         // create system logic core
-        QScopedPointer<ctrl::System> system(new ctrl::System(resourceDir, cacheDir));
+        QScopedPointer system(new ctrl::System(resourceDir, cacheDir));
 
         // create main window
-        QScopedPointer<gui::MainWindow> mainWindow(new gui::MainWindow(*system, *resources, locale->localeParam()));
+        QScopedPointer mainWindow(new gui::MainWindow(*system, *resources, locale->localeParam()));
 
         qDebug() << "show main window";
         // show main window

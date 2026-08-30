@@ -4,7 +4,6 @@
 #include <QSize>
 #include <QString>
 #include <QScopedPointer>
-#include <functional>
 #include "util/LifeLink.h"
 #include "util/Signaler.h"
 #include "util/NonCopyable.h"

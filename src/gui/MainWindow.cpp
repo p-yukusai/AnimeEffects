@@ -1,7 +1,5 @@
 #include <QApplication>
-#include <QClipboard>
 #include <QGuiApplication>
-#include <QRegularExpression>
 #include "GeneralSettingDialog.h"
 #include "util/IProgressReporter.h"
 #include "gl/Global.h"
@@ -13,7 +11,6 @@
 #include "gui/ProjectHook.h"
 #include "gui/menu/menu_ProgressReporter.h"
 #include "util/NetworkUtil.h"
-#include <set>
 #include <utility>
 #include <QComboBox>
 // This thing is held by duct tape and OOP hell I swear...
@@ -104,6 +101,12 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         mViaPoint.setMainMenuBar(mMainMenuBar);
         this->setMenuBar(mMainMenuBar);
     }
+
+    // initialize System pointers
+    {
+        mSystem.mainMenu = mMainMenuBar;
+    }
+
     // initialize timer
     {
         timeElapsed.start();
@@ -113,12 +116,28 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
 
     // create main display
     {
-#if defined(Q_OS_WIN)
-        constexpr float fontScale = 1.5f;
-#else
-        const float fontScale = 1.3f;
-#endif
+        QSettings settings;
+        double fontScale = 1.0f;
+        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0);
+        if (uiScale.isValid()) {
+            if (uiScale.toDouble() < 0.5f) { uiScale = 0.5f; }
+            if (uiScale.toDouble() > 3.0f) { uiScale = 3.0f; }
+            fontScale = uiScale.toDouble();
+        }
         auto font = this->font();
+        auto userFont = settings.value("generalsettings/ui/font");
+        if (uiScale.isValid()) {
+            if (QFontDatabase::hasFamily(userFont.toString())){
+                font = QFont(userFont.toString());
+            }
+            else {
+                bool customFont = settings.value("generalsettings/ui/customFont", false).toBool();
+                if (customFont) {
+                    settings.remove("generalsettings/ui/font");
+                    QMessageBox::warning(this, tr("Warning"), tr("The specified font does not exist. Using default font."));
+                }
+            }
+        }
         if (font.pixelSize() > 0)
             font.setPixelSize(font.pixelSize() * static_cast<int>(fontScale));
         else
@@ -462,29 +481,58 @@ void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
 
     const QString standard = aTheme.loadStylesheet("standard.ssa");
     if (!standard.isEmpty()) {
+        QSettings settings;
+        const double uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
+        double fontSize = qApp->font().pointSize();
+        auto hasSize = !mLocaleParam.fontSize.isEmpty();
+        if (hasSize) {
+            const QString size = mLocaleParam.fontSize.trimmed();
+            if (size.endsWith("pt", Qt::CaseInsensitive)) {
+                bool ok = false;
+                qreal pt = size.left(size.size() - 2).toDouble(&ok);
+                if (pt <= 0.0) { pt = 1.0; }
+                fontSize = pt * uiScale;
+            }
+        }
         QString fontOption;
         {
             auto hasFamily = !mLocaleParam.fontFamily.isEmpty();
-            auto hasSize = !mLocaleParam.fontSize.isEmpty();
-            fontOption = "QWidget {" + (hasFamily ? ("font-family: " + mLocaleParam.fontFamily + ";") : "") +
-                (hasSize ? ("font-size: " + mLocaleParam.fontSize + ";") : "") + " }\n";
-            // top-level section headers step up one point from the base
-            // font (QSS cannot express a relative size, so derive it from
-            // the locale's pt value; the rule lives here so it tracks the
-            // base font across locale/settings changes)
+            if (hasFamily) {
+                auto f = QFont(mLocaleParam.fontFamily.trimmed());
+                f.setPointSizeF(fontSize);
+                this->setFont(f);
+                qApp->setFont(f);
+
+            }
+            fontOption = "QWidget {" + (hasFamily ? "font-family: " + mLocaleParam.fontFamily + ";" : "") +
+                (hasSize ? "font-size: " + QString::number(fontSize, 'f', 0) + ";" : "") + " }\n";
             if (hasSize) {
-                const QString size = mLocaleParam.fontSize.trimmed();
-                if (size.endsWith("pt", Qt::CaseInsensitive)) {
-                    bool ok = false;
-                    const qreal pt = size.left(size.size() - 2).toDouble(&ok);
-                    if (ok) {
-                        fontOption += QString("QAbstractButton#propertyPanelHeader { font-size: %1pt; }\n")
-                                          .arg(QString::number(pt + 1.0, 'f', 0));
-                    }
-                }
+                fontOption += QString("QAbstractButton#propertyPanelHeader { font-size: %1pt; }\n")
+                .arg(QString::number(fontSize + 1.0, 'f', 0));
             }
         }
+        {
+            qDebug() << "customFont: " << settings.value("generalsettings/ui/customFont", false).toBool()
+            << "font: " << settings.value("generalsettings/ui/font");
+            if (settings.value("generalsettings/ui/customFont", false).toBool()) {
+                const auto font = settings.value("generalsettings/ui/font");
+                auto f = QFont(font.toString());
+                f.setPointSizeF(fontSize);
+                this->setFont(f);
+                qApp->setFont(f);
+                fontOption =
+                    "QWidget {"
+                        + ("font-family: " + font.toString() + ";"
+                        + "font-size: " + QString::number(fontSize, 'f', 0) + ";") + " }\n";
+                if (hasSize) {
+                    fontOption += QString("QAbstractButton#propertyPanelHeader { font-size: %1pt; }\n")
+                    .arg(QString::number(fontSize + 1.0, 'f', 0));
+                }
+            }
 
+        }
+        qDebug() << "fontOption: " << fontOption;
+        qApp->setStyleSheet(fontOption + standard);
         this->setStyleSheet(fontOption + standard);
     }
 

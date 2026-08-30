@@ -1,0 +1,6 @@
+font_family = NotoKO
+font_family_win = NotoKO
+font_family_mac = NotoKO
+font_size = 12pt
+font_size_win = 12pt
+font_size_mac = 14pt

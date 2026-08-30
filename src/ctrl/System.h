@@ -6,6 +6,7 @@
 #include "util/IProgressReporter.h"
 #include "gl/DeviceInfo.h"
 #include "core/Project.h"
+#include "gui/MainMenuBar.h"
 
 namespace ctrl {
 
@@ -54,7 +55,7 @@ public:
     bool hasProject() const { return !mProjects.isEmpty(); }
     int projectCount() const { return mProjects.count(); }
     bool hasModifiedProject() const;
-
+    gui::MainMenuBar* mainMenu = nullptr;
     core::Project* project(int aIndex);
     const core::Project* project(int aIndex) const;
 

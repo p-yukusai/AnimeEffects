@@ -46,8 +46,8 @@ namespace {
                 const QWidget* aWidget = qobject_cast<QWidget*>(watched);
                 const auto hwnd = reinterpret_cast<HWND>(aWidget->winId());
                 const QRect rect = aWidget->rect();
-                const int width = rect.width();
-                const int height = rect.height();
+                /*const int width = rect.width();
+                const int height = rect.height();*/
                 constexpr int highFactor = (kPillRadius + kPillThickness) * 2;
                 // constexpr int lowFactor = highFactor / 2;
                 int pillRadiusW = kPillRadius; int pillRadiusH = kPillRadius;

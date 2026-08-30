@@ -12,8 +12,8 @@ namespace ctrl {
 
 class ProjectLoader {
 public:
-    ProjectLoader();
-
+    ProjectLoader(gui::MainMenuBar* aMMB);
+    gui::MainMenuBar* mMMB;
     bool load(
         const QString& aPath,
         core::Project& aProject,

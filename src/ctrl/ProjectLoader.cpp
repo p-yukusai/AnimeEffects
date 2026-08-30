@@ -10,7 +10,9 @@
 
 namespace ctrl {
 
-ProjectLoader::ProjectLoader(): mLog(), mVersion() {}
+ProjectLoader::ProjectLoader(gui::MainMenuBar* aMMB): mLog(), mVersion() {
+    mMMB = aMMB;
+}
 
 bool ProjectLoader::load(
     const QString& aPath,
@@ -35,6 +37,7 @@ bool ProjectLoader::load(
                 "This path has been removed from your recents."
             );
             settings.sync();
+
         }
 
         mLog.push_back("Can not open the project file.");

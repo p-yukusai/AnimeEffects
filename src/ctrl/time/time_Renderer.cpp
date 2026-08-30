@@ -160,7 +160,6 @@ namespace time {
         // draw header info
         {
             const QBrush kBrush(mTheme.headerContentColor());
-            const int numberWidth = 6;
             const QPoint lt(mMargin, cameraRect.top());
             // the ticks end one row above the ruler hairline (drawn at
             // top + height) so they never draw over it
@@ -182,7 +181,7 @@ namespace time {
             const bool lastLabelActive = endLabelInView && lastAttr.grid.y() < 10;
             const int lastLabelCenter = lt.x() + lastAttr.grid.x();
             const QString lastNumber = timeFormat.frameToString(lastFrame, timeFormatVar);
-            const int lastNumberWidth = numberWidth * lastNumber.size();
+            int lastNumberWidth{};
 
             for (int i = mRange.min(); i <= mRange.max(); ++i) {
                 auto attr = mScale->attribute(i);
@@ -210,7 +209,8 @@ namespace time {
 
                 if (attr.showNumber) {
                     QString number = timeFormat.frameToString(i, timeFormatVar);
-                    const int width = static_cast<int>(numberWidth * number.size());
+                    const int width = qApp->fontMetrics().horizontalAdvance(number);
+                    lastNumberWidth = width;
                     // A neighbor label never overlaps the end label: the last
                     // frame's number always wins the space it occupies. The
                     // test is symmetric — a label yields only when it actually
@@ -248,7 +248,7 @@ namespace time {
                 // tier B/C multiple; otherwise the end number is ours.
                 if (!lastAttr.showNumber) {
                     mPainter.setPen(QPen(kBrush, 1));
-                    const int width = numberWidth * lastNumber.size();
+                    const int width = lastNumberWidth;
                     const int left = pos.x() - (width >> 1);
                     const int top = lt.y() + ctrl::TimeLineEditor::kNumberTop;
                     const QRect rect(

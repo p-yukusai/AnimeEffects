@@ -17,8 +17,8 @@
 #include "gui/MouseSettingDialog.h"
 #include "util/NetworkUtil.h"
 #include <algorithm>
+#include <utility>
 #ifdef Q_OS_WINDOWS
-#define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
@@ -116,94 +116,16 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
     // load the list of video formats from a setting file.
     loadVideoFormats();
 
-    MainWindow* mainWindow = &aMainWindow;
+    mainWindow = &aMainWindow;
+
 
     auto fileMenu = new QMenu(tr("File"), this);
     {
         auto newProject = new QAction(tr("New project"), this);
         auto openProject = new QAction(tr("Open project"), this);
-        auto openRecent = new QMenu(tr("Open recent"), this);
+        openRecent = new QMenu(tr("Open recent"), this);
         {
-            // Get settings
-            QSettings settings;
-            settings.sync();
-            recentfiles = settings.value("projectloader/recents").toStringList();
-
-            // Path placeholders
-            if (recentfiles.length() != 8) {
-                while (recentfiles.length() != 8) {
-                    recentfiles.append("Path placeholder");
-                }
-            }
-            QString firstPath = recentfiles[0];
-            QString secondPath = recentfiles[1];
-            QString thirdPath = recentfiles[2];
-            QString fourthPath = recentfiles[3];
-            QString fifthPath = recentfiles[4];
-            QString sixthPath = recentfiles[5];
-            QString seventhPath = recentfiles[6];
-            QString eigthPath = recentfiles[7];
-            QStringList list;
-            list << firstPath << secondPath << thirdPath << fourthPath << fifthPath << sixthPath << seventhPath
-                 << eigthPath;
-
-            // Path actions
-            auto placeholderAction = new QAction(tr("No other projects"), this);
-            auto firstPathAction = new QAction(firstPath);
-            auto secondPathAction = new QAction(secondPath);
-            auto thirdPathAction = new QAction(thirdPath);
-            auto fourthPathAction = new QAction(fourthPath);
-            auto fifthPathAction = new QAction(fifthPath);
-            auto sixthPathAction = new QAction(sixthPath);
-            auto seventhPathAction = new QAction(seventhPath);
-            auto eigthPathAction = new QAction(eigthPath);
-            // Path addition
-            // Better than before, but still not very DRY code.
-            for (int x = 0; x <= 7; x += 1) {
-                if (list[x] == QString("Path placeholder")) {
-                    openRecent->addAction(placeholderAction);
-                } else {
-                    switch (x) {
-                    case 0:
-                        openRecent->addAction(firstPathAction);
-                        break;
-                    case 1:
-                        openRecent->addAction(secondPathAction);
-                        break;
-                    case 2:
-                        openRecent->addAction(thirdPathAction);
-                        break;
-                    case 3:
-                        openRecent->addAction(fourthPathAction);
-                        break;
-                    case 4:
-                        openRecent->addAction(fifthPathAction);
-                        break;
-                    case 5:
-                        openRecent->addAction(sixthPathAction);
-                        break;
-                    case 6:
-                        openRecent->addAction(seventhPathAction);
-                        break;
-                    case 7:
-                        openRecent->addAction(eigthPathAction);
-                        break;
-                    default:
-                        openRecent->addAction(placeholderAction);
-                    }
-                }
-            }
-
-            // Connections
-            connect(placeholderAction, &QAction::triggered, [=]() { qDebug() << "You've earned yourself a cookie!"; });
-            connect(firstPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(firstPath); });
-            connect(secondPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(secondPath); });
-            connect(thirdPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(thirdPath); });
-            connect(fourthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fourthPath); });
-            connect(fifthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fifthPath); });
-            connect(sixthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(sixthPath); });
-            connect(seventhPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(seventhPath); });
-            connect(eigthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(eigthPath); });
+            onRecentsUpdate();
         }
         auto saveProject = new QAction(tr("Save project"), this);
         auto saveProjectAs = new QAction(tr("Save project as"), this);
@@ -317,7 +239,7 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
 
         connect(general, &QAction::triggered, [&](bool) {
             auto generalSettingsDialog = new GeneralSettingDialog(mGUIResources, this);
-            QScopedPointer<GeneralSettingDialog> dialog(generalSettingsDialog);
+            QScopedPointer dialog(generalSettingsDialog);
             if (dialog->exec() == QDialog::DialogCode::Accepted) {
                 if (generalSettingsDialog->timeFormatHasChanged())
                     this->onTimeFormatChanged();
@@ -325,17 +247,22 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                     this->mGUIResources.setTheme(generalSettingsDialog->theme());
                 if (generalSettingsDialog->accentHasChanged())
                     this->mGUIResources.setAccent(generalSettingsDialog->accent());
+                if (generalSettingsDialog->fontHasChanged() || generalSettingsDialog->uiScaleHasChanged()
+                    || generalSettingsDialog->forceThemeReload) {
+                    this->mGUIResources.triggerOnThemeChanged();
+                    generalSettingsDialog->forceThemeReload = false;
+                }
             }
         });
 
         connect(mouse, &QAction::triggered, [&](bool) {
-            QScopedPointer<MouseSettingDialog> dialog(new MouseSettingDialog(aViaPoint, this));
+            QScopedPointer dialog(new MouseSettingDialog(aViaPoint, this));
             dialog->exec();
         });
 
         connect(keyBind, &QAction::triggered, [&](bool) {
             XC_PTR_ASSERT(aViaPoint.keyCommandMap());
-            QScopedPointer<KeyBindingDialog> dialog(new KeyBindingDialog(*aViaPoint.keyCommandMap(), this));
+            QScopedPointer dialog(new KeyBindingDialog(*aViaPoint.keyCommandMap(), this));
             dialog->exec();
         });
 
@@ -581,6 +508,98 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
     setProject(nullptr);
 }
 
+void MainMenuBar::onRecentsUpdate() {
+        // Get settings
+        QSettings settings;
+        settings.sync();
+        recentfiles = settings.value("projectloader/recents").toStringList();
+        if (!actions.isEmpty()) {
+            for (const auto signal: actions) {
+                std::ignore = openRecent->disconnect(signal);
+                openRecent->removeAction(signal);
+            }
+        }
+        openRecent->clear();
+        // Path placeholders
+        if (recentfiles.length() != 8) {
+            while (recentfiles.length() != 8) {
+                recentfiles.append("Path placeholder");
+            }
+        }
+        QString firstPath = recentfiles[0];
+        QString secondPath = recentfiles[1];
+        QString thirdPath = recentfiles[2];
+        QString fourthPath = recentfiles[3];
+        QString fifthPath = recentfiles[4];
+        QString sixthPath = recentfiles[5];
+        QString seventhPath = recentfiles[6];
+        QString eigthPath = recentfiles[7];
+        QStringList list;
+        list << firstPath << secondPath << thirdPath << fourthPath << fifthPath << sixthPath << seventhPath
+             << eigthPath;
+        // Path actions
+        auto placeholderAction = new QAction(tr("No other projects"), this);
+        auto firstPathAction = new QAction(firstPath);
+        auto secondPathAction = new QAction(secondPath);
+        auto thirdPathAction = new QAction(thirdPath);
+        auto fourthPathAction = new QAction(fourthPath);
+        auto fifthPathAction = new QAction(fifthPath);
+        auto sixthPathAction = new QAction(sixthPath);
+        auto seventhPathAction = new QAction(seventhPath);
+        auto eigthPathAction = new QAction(eigthPath);
+
+        actions.clear();
+        actions.append({placeholderAction, firstPathAction, secondPathAction, thirdPathAction,
+            fourthPathAction, fifthPathAction, sixthPathAction, seventhPathAction, eigthPathAction});
+        // Path addition
+        // Better than before, but still not very DRY code.
+        for (int x = 0; x <= 7; x += 1) {
+            if (list[x] == QString("Path placeholder")) {
+                openRecent->addAction(placeholderAction);
+            } else {
+                switch (x) {
+                case 0:
+                    openRecent->addAction(firstPathAction);
+                    break;
+                case 1:
+                    openRecent->addAction(secondPathAction);
+                    break;
+                case 2:
+                    openRecent->addAction(thirdPathAction);
+                    break;
+                case 3:
+                    openRecent->addAction(fourthPathAction);
+                    break;
+                case 4:
+                    openRecent->addAction(fifthPathAction);
+                    break;
+                case 5:
+                    openRecent->addAction(sixthPathAction);
+                    break;
+                case 6:
+                    openRecent->addAction(seventhPathAction);
+                    break;
+                case 7:
+                    openRecent->addAction(eigthPathAction);
+                    break;
+                default:
+                    openRecent->addAction(placeholderAction);
+                }
+            }
+        }
+
+        // Connections
+        connect(placeholderAction, &QAction::triggered, [=]() { qDebug() << "You've earned yourself a cookie!"; });
+        connect(firstPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(firstPath); });
+        connect(secondPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(secondPath); });
+        connect(thirdPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(thirdPath); });
+        connect(fourthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fourthPath); });
+        connect(fifthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fifthPath); });
+        connect(sixthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(sixthPath); });
+        connect(seventhPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(seventhPath); });
+        connect(eigthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(eigthPath); });
+    }
+
 void MainMenuBar::setProject(core::Project* aProject) {
     mProject = aProject;
 
@@ -761,7 +780,7 @@ void MainMenuBar::onProjectSettingsTriggered() {
     auto curFPS = mProject->attribute().fps();
 
     // create dialog
-    QScopedPointer<ProjectSettingDialog> dialog(new ProjectSettingDialog(mViaPoint, *mProject, this));
+    QScopedPointer dialog(new ProjectSettingDialog(mViaPoint, *mProject, this));
 
     // execute dialog
     dialog->exec();

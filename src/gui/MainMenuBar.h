@@ -1,8 +1,6 @@
 #ifndef GUI_MAINMENUBAR_H
 #define GUI_MAINMENUBAR_H
 
-#include <QCheckBox>
-#include <QSpinBox>
 #include "core/Project.h"
 #include "ctrl/VideoFormat.h"
 #include "gui/EasyDialog.h"
@@ -22,11 +20,14 @@ class MainMenuBar: public QMenuBar {
     Q_OBJECT
 public:
     MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResources& aGUIResources, QWidget* aParent);
+    MainWindow* mainWindow = nullptr;
+    QMenu* openRecent = nullptr;
+    QVector<QAction*> actions;
+    void onRecentsUpdate();
     void setProject(core::Project* aProject);
     void setShowResourceWindow(bool aShow) const;
     QStringList recentfiles;
 
-public:
     // signals
     util::Signaler<void()> onVisualUpdated;
     util::Signaler<void()> onProjectAttributeUpdated;

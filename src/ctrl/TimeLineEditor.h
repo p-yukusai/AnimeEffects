@@ -41,7 +41,7 @@ public:
     static constexpr int kTimeLineMargin = 24;
     // Ruler number text geometry, relative to the header top.
     static constexpr int kNumberTop = -1;
-    static constexpr int kNumberHeight = 14;
+    static constexpr int kNumberHeight = 15;
 
     void setProject(core::Project* aProject);
     void setFrame(core::Frame aFrame);

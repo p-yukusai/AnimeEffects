@@ -7,8 +7,6 @@
 #include "gui/EasyDialog.h"
 #include <QSpinBox>
 #include <QTabWidget>
-#include <QComboBox>
-#include <QButtonGroup>
 
 namespace gui {
 
@@ -18,13 +16,17 @@ public:
     GeneralSettingDialog(GUIResources& aGUIResources, QWidget* aParent);
     QFormLayout* createTab(const QString& aTitle, QFormLayout* aForm);
     void selectTab(int aIndex) {
-        // General - 0 ; Project settings - 1 ; FFmpeg settings - 2 ; Animation keys - 3 ; Keybindings - 4
         mTabs->setCurrentIndex(aIndex);
     }
     bool easingHasChanged();
     bool rangeHasChanged();
     bool languageHasChanged();
     bool timeFormatHasChanged();
+
+    bool fontHasChanged();
+
+    bool uiScaleHasChanged();
+    bool forceThemeReload = false;
     bool autoSaveHasChanged();
     bool autoSaveDelayHasChanged();
     bool autoFFmpegHasChanged();
@@ -87,6 +89,12 @@ private:
 
     int mInitialTimeFormatIndex;
     QComboBox* mTimeFormatBox;
+
+    double mUiScale;
+    QDoubleSpinBox* mUiScaleBox;
+
+    QString mFont;
+    QLineEdit* mFontFamilyBox;
 
     theme::AccentColor mInitialAccent;
     QButtonGroup* mAccentGroup;

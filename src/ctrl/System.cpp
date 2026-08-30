@@ -92,10 +92,10 @@ System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util:
     gl::Global::makeCurrent();
 
     if (!aFileName.isEmpty()) {
-        std::unique_ptr<core::Project> projectScope;
+        std::unique_ptr<Project> projectScope;
         projectScope.reset(new Project(aFileName, *mAnimator, hookScope.release()));
 
-        ctrl::ProjectLoader loader;
+        ProjectLoader loader(mainMenu);
         if (loader.load(aFileName, *projectScope, gl::DeviceInfo::instance(), aReporter)) {
             mProjects.push_back(projectScope.release());
             {
@@ -137,7 +137,9 @@ System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util:
                 settings.setValue("projectloader/recents", recentfiles);
                 settings.sync();
             }
-
+            if (mainMenu != nullptr) {
+                mainMenu->onRecentsUpdate();
+            }
             return LoadResult(mProjects.back(), "Success.");
         }
 

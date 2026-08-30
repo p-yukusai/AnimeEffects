@@ -13,13 +13,11 @@
 #include <QtWidgets/QTabWidget>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidget>
-#include <QtWidgets/QSlider>
 #include <QDir>
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QtMultimedia/QMediaPlayer>
 #include <QtMultimedia/QAudioOutput>
-#include <utility>
 
 #include "gui/tool/ToolSlider.h"
 

@@ -1,6 +1,6 @@
 font_family = NotoJP
 font_family_win = NotoJP
 font_family_mac = NotoJP
-font_size = 10pt
-font_size_win = 10pt
+font_size = 12pt
+font_size_win = 12pt
 font_size_mac = 14pt

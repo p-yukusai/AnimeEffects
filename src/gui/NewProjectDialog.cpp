@@ -1,14 +1,9 @@
-#include <QSpinBox>
-#include <QGroupBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
-#include <QPushButton>
-#include <QFileDialog>
-#include <QCheckBox>
 #include "gui/NewProjectDialog.h"
 
-#include <QMessageBox>
+#include "theme/Icons.h"
 
 namespace gui {
 
@@ -42,6 +37,8 @@ QWidget* NewProjectDialog::createOption() {
         layout->addWidget(line);
 
         const auto button = new QPushButton(this);
+        QIcon icon(theme::iconDir() + "/dialog_open.svg");
+        button->setIcon(icon);
         this->connect(button, &QPushButton::clicked, [=] {
             this->mFileName = QFileDialog::getOpenFileName(
                 this, tr("Open File"), QDir::homePath(), "ImageFile (*.psd *.ora *.jpg *.jpeg *.png *.gif *.tiff *.tif *.webp)"
