@@ -3,8 +3,8 @@
 #include "gui/theme/Icons.h"
 
 #include <QIcon>
-#include <QMenu>
 #include <QAbstractItemView>
+#include <QDockWidget>
 
 #include "ctrl/System.h"
 #ifdef Q_OS_WIN
@@ -33,7 +33,7 @@ constexpr qreal kBranchLineOpacity = 0.4;
 // hovered/dragged); see theme/Colors.h.
 } // namespace
 
-#ifdef Q_OS_WIN
+/*#ifdef Q_OS_WIN
 namespace {
     class WinResizeFilter : public QObject
     {
@@ -47,22 +47,24 @@ namespace {
                 const auto hwnd = reinterpret_cast<HWND>(aWidget->winId());
                 const QRect rect = aWidget->rect();
                 /*const int width = rect.width();
-                const int height = rect.height();*/
+                const int height = rect.height();#1#
                 constexpr int highFactor = (kPillRadius + kPillThickness) * 2;
                 // constexpr int lowFactor = highFactor / 2;
                 int pillRadiusW = kPillRadius; int pillRadiusH = kPillRadius;
                 pillRadiusW += highFactor; pillRadiusH += highFactor;
+
                 const auto hrgn = CreateRoundRectRgn(
-                    rect.topLeft().x(), rect.topLeft().y(),
-                    rect.bottomRight().x() , rect.bottomRight().y(),
+                    rect.bottomLeft().x(), rect.bottomLeft().y(),
+                    rect.topRight().x() , rect.topRight().y(),
                     pillRadiusW, pillRadiusH);
                 SetWindowRgn(hwnd, hrgn, TRUE);
+
             }
             return QObject::eventFilter(watched, event);
         }
     };
 }
-#endif
+#endif*/
 
 AppStyle::AppStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
 
@@ -74,11 +76,12 @@ void AppStyle::polish(QWidget* aWidget) {
 #ifdef Q_OS_WIN
         // We setup this because Windows is dumb and stupid and can't composite stuff without hand-holding
         if (QOperatingSystemVersion::current().microVersion() > 22000) {
+            // Looks prettier
             const auto hwnd = reinterpret_cast<HWND>(aWidget->winId());
             constexpr DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
             DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
         }
-        else{ aWidget->installEventFilter(new WinResizeFilter()); }
+        else{ aWidget->setWindowFlags(Qt::FramelessWindowHint | Qt::Popup | Qt::NoDropShadowWindowHint); }
 #endif
     }
     // The style is re-polished on theme changes, so Colors::current() is

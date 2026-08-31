@@ -6,6 +6,10 @@
 #include <QFormLayout>
 #include "gui/EasyDialog.h"
 #include <QSpinBox>
+#ifndef Q_OS_WIN
+#include <QComboBox>
+#endif
+
 #include <QTabWidget>
 
 namespace gui {
@@ -15,7 +19,7 @@ class GeneralSettingDialog: public EasyDialog {
 public:
     GeneralSettingDialog(GUIResources& aGUIResources, QWidget* aParent);
     QFormLayout* createTab(const QString& aTitle, QFormLayout* aForm);
-    void selectTab(int aIndex) {
+    void selectTab(const int aIndex) const {
         mTabs->setCurrentIndex(aIndex);
     }
     bool easingHasChanged();
@@ -27,6 +31,7 @@ public:
 
     bool uiScaleHasChanged();
     bool forceThemeReload = false;
+    bool bHal = false;
     bool autoSaveHasChanged();
     bool autoSaveDelayHasChanged();
     bool autoFFmpegHasChanged();

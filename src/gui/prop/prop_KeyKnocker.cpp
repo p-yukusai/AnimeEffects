@@ -5,7 +5,7 @@
 #include <QStyle>
 #include <QPixmap>
 #include <QToolButton>
-
+#include <QSettings>
 #include "gui/prop/prop_KeyKnocker.h"
 #include "gui/GUIResources.h"
 
@@ -45,7 +45,9 @@ namespace prop {
         mPlus->setObjectName("keyKnockerPlus");
         mPlus->setFocusPolicy(Qt::NoFocus);
         mPlus->setCursor(Qt::PointingHandCursor);
-        mPlus->setIconSize(QSize(14, 14));
+        QSettings settings;
+        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
+        mPlus->setIconSize(QSize(14 * uiScale, 14 * uiScale));
         mPlus->setIcon(mPlusDim);
         // hovering the plus itself must brighten it too (the row's
         // enter/leave only fire over the label/stretch area)

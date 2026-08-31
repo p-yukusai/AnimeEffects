@@ -319,13 +319,6 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         mLanguageBox->setCurrentIndex(mInitialLanguageIndex);
         form->addRow(tr("Language (needs restart)"), mLanguageBox);
 
-        mUiScaleBox = new QDoubleSpinBox();
-        mUiScaleBox->setValue(mUiScale);
-        mUiScaleBox->setSingleStep(0.1);
-        mUiScaleBox->setMinimum(0.5);
-        mUiScaleBox->setMaximum(3.0);
-        form->addRow(tr("UI scale"), mUiScaleBox);
-
         mFontFamilyBox = new QLineEdit();
         mFontFamilyBox->setText(mFont);
         form->addRow(tr("Font"), mFontFamilyBox);
@@ -335,16 +328,23 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             QSettings settings;
             settings.remove("generalsettings/ui/font");
             settings.setValue("generalsettings/ui/customFont", false);
-            QMessageBox::information(this, tr("Font reset"), tr("The font will be reset on the next application start."));
+            QMessageBox::information(this, tr("Font reset"), tr("The font has been reset."));
         });
         form->addRow(resetFontButton);
+
+        mUiScaleBox = new QDoubleSpinBox();
+        mUiScaleBox->setValue(mUiScale);
+        mUiScaleBox->setSingleStep(0.1);
+        mUiScaleBox->setMinimum(0.5);
+        mUiScaleBox->setMaximum(3.0);
+        form->addRow(tr("UI scale"), mUiScaleBox);
 
         auto resetUIScaleButton = new QPushButton(tr("Reset UI scale"));
         connect(resetUIScaleButton, &QPushButton::clicked, [=]() {
             QSettings settings;
             settings.setValue("generalsettings/ui/uiScale", 1.0);
             settings.setValue("temp/scaleReset", true);
-            QMessageBox::information(this, tr("UI Scale reset"), tr("The UI scaling has been reset to its default size."));
+            QMessageBox::information(this, tr("UI Scale reset"), tr("The UI scaling has been reset."));
         });
         form->addRow(resetUIScaleButton);
 
@@ -957,6 +957,19 @@ void GeneralSettingDialog::saveSettings() {
     }
     if (fontHasChanged()) {
         settings.setValue("generalsettings/ui/customFont", true);
+        if (mFontFamilyBox->text().contains("Comic Sans")) {
+
+            QMessageBox message;
+            message.setIcon(QMessageBox::Critical);
+            message.setWindowTitle("SIGILL");
+            message.setText(tr("I'm sorry Dave, I'm afraid I can't do that..."));
+            message.setInformativeText("I think you know what the problem is just as well as I do.");
+            message.setStandardButtons(QMessageBox::Ok);
+            message.setDefaultButton(QMessageBox::Ok);
+            message.setWindowModality(Qt::ApplicationModal);
+            message.exec();
+            bHal = true;
+        }
         settings.setValue("generalsettings/ui/font", mFontFamilyBox->text());
     }
     if (uiScaleHasChanged()) {

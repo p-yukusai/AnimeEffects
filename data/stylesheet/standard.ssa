@@ -1388,7 +1388,7 @@ QDockWidget
     color: @text@;
     font-weight: bold;
     border: none;
-    background: @base@;
+    background-color: @base@;
     /**
      *  It doesn't seem possible to change the border of the
      *  QDockWidget without changing the content margins.

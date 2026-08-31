@@ -41,6 +41,8 @@ public:
         // rule in the QSS, the style sheet engine fills even a paintEvent-less
         // widget unless it is marked translucent
         setAttribute(Qt::WA_TranslucentBackground);
+        setAttribute(Qt::WA_NoSystemBackground);
+
         const bool horizontal = mSplitter->orientation() == Qt::Horizontal;
         setCursor(horizontal ? Qt::SplitHCursor : Qt::SplitVCursor);
         setMouseTracking(true);

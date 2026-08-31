@@ -2,6 +2,7 @@
 #include "gui/tool/tool_Items.h"
 #include "gui/tool/tool_ItemTable.h"
 #include "gui/tool/ToolSlider.h"
+#include <QSettings>
 
 namespace gui {
 namespace tool {
@@ -40,11 +41,13 @@ namespace tool {
 
     void SingleOutItem::setIcons(const QVector<QIcon*>& aIcons, const QSize& aIconSize) {
         const QSize size = aIconSize.isValid() ? aIconSize : mButtonSize;
+        QSettings settings;
+        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
         int i = 0;
         for (auto icon : aIcons) {
             if (i < mButtons.size()) {
                 mButtons.at(i)->setIcon(*icon);
-                mButtons.at(i)->setIconSize(size);
+                mButtons.at(i)->setIconSize(size * uiScale);
                 ++i;
             } else {
                 break;
@@ -54,11 +57,13 @@ namespace tool {
 
     void SingleOutItem::setIcons(const QVector<QIcon>& aIcons, const QSize& aIconSize) {
         const QSize size = aIconSize.isValid() ? aIconSize : mButtonSize;
+        QSettings settings;
+        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
         int i = 0;
         for (auto icon : aIcons) {
             if (i < mButtons.size()) {
                 mButtons.at(i)->setIcon(icon);
-                mButtons.at(i)->setIconSize(size);
+                mButtons.at(i)->setIconSize(size * uiScale);
                 ++i;
             } else {
                 break;

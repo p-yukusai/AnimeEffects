@@ -1,10 +1,12 @@
 #include "gui/tool/tool_ViewPanel.h"
 
+#include "AnimationSettingDialog.h"
+
 namespace {
 // Same button family as the toolbox: 24x24 with explicit 18px glyphs.
 // Sizes are logical pixels; Qt6 scales the whole window on high-DPI screens.
-const int kButtonSize = 24;
-const int kIconSize = 18;
+constexpr double kButtonSize = 24.0;
+constexpr double kIconSize = 18.0;
 } // namespace
 
 namespace gui {
@@ -21,11 +23,13 @@ namespace tool {
     void ViewPanel::addButton(
         const QString& aIconName, bool aCheckable, const QString& aToolTip, const PushDelegate& aDelegate
     ) {
+        QSettings settings;
+        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
         QPushButton* button = new QPushButton();
         button->setObjectName(aIconName);
         button->setIcon(mGUIResources.icon(aIconName));
-        button->setIconSize(QSize(kIconSize, kIconSize));
-        button->setFixedSize(kButtonSize, kButtonSize);
+        button->setIconSize(QSize(kIconSize * uiScale, kIconSize * uiScale));
+        button->setFixedSize(kButtonSize * uiScale, kButtonSize * uiScale);
         button->setCheckable(aCheckable);
         if (aCheckable) {
             // active-state button: press reads as hover, not the sunken press
@@ -58,8 +62,12 @@ namespace tool {
 
     void ViewPanel::onThemeUpdated(theme::Theme&) {
         if (mButtons.size() > 0) {
+            QSettings settings;
+            auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
             for (auto button : mButtons) {
                 button->setIcon(mGUIResources.icon(button->objectName()));
+                button->setIconSize(QSize(kIconSize * uiScale, kIconSize * uiScale));
+                button->setFixedSize(kButtonSize * uiScale, kButtonSize * uiScale);
             }
         }
     }

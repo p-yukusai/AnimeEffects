@@ -197,6 +197,7 @@ int entryPoint(int argc, char* argv[]) {
                 bool customFont = settings.value("generalsettings/ui/customFont", false).toBool();
                 if (customFont) {
                     settings.remove("generalsettings/ui/font");
+                    settings.setValue("generalsettings/ui/customFont", false);
                     QMessageBox::warning(nullptr, QCoreApplication::translate("Main", "Warning"),
                         QCoreApplication::translate("Main", "The specified font does not exist. Using default font."));
                 }

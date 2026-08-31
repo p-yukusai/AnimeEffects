@@ -134,6 +134,7 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
                 bool customFont = settings.value("generalsettings/ui/customFont", false).toBool();
                 if (customFont) {
                     settings.remove("generalsettings/ui/font");
+                    settings.setValue("generalsettings/ui/customFont", false);
                     QMessageBox::warning(this, tr("Warning"), tr("The specified font does not exist. Using default font."));
                 }
             }
@@ -240,7 +241,7 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
     // dock-edge sashes: 12px invisible hitboxes + 1px hairlines over the
     // zero-width native separators (see standard.ssa); resizes docks through
     // QMainWindow::resizeDocks
-    new gui::DockSash(this);
+    new DockSash(this);
 
     // create driver holder
     { mDriverHolder.reset(new DriverHolder(mViaPoint)); }

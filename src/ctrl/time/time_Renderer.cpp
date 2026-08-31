@@ -209,7 +209,11 @@ namespace time {
 
                 if (attr.showNumber) {
                     QString number = timeFormat.frameToString(i, timeFormatVar);
-                    const int width = qApp->fontMetrics().horizontalAdvance(number);
+                    QSettings settings;
+                    auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
+                    auto font = QApplication::font();
+                    font.setPointSizeF(font.pixelSize() * uiScale);
+                    const int width = static_cast<int>(QFontMetricsF(font).horizontalAdvance(number));
                     lastNumberWidth = width;
                     // A neighbor label never overlaps the end label: the last
                     // frame's number always wins the space it occupies. The

@@ -7,6 +7,14 @@
 #include <QPointer>
 #include <QTimer>
 
+#ifdef Q_OS_WIN
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <Windows.h>
+#include <dwmapi.h>
+#endif
+
+
 namespace gui {
 
 namespace {
@@ -37,8 +45,11 @@ public:
         // paint only the hairline: with a universal `QWidget { background }`
         // rule in the QSS, the style sheet engine fills even a paintEvent-less
         // widget unless it is marked translucent
-        setAttribute(Qt::WA_TranslucentBackground);
         setMouseTracking(true);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAttribute(Qt::WA_NoSystemBackground);
+        setWindowFlags(Qt::FramelessWindowHint);
+        setObjectName("DockSash");
         hide();
     }
 
@@ -65,6 +76,11 @@ public:
         default:
             break;
         }
+
+#ifdef Q_OS_WIN
+        // Fuck this, fuck the windows DWM, fuck the windows API, fuck everything.
+        SetWindowRgn(reinterpret_cast<HWND>(this->winId()), QRegion(lineRect()).toHRGN(), TRUE);
+#endif
         raise();
         show();
     }
@@ -124,9 +140,13 @@ protected:
 
 private:
     QRect lineRect() const {
+        int lineSize = 1;
+#ifdef Q_OS_WIN
+        lineSize = 2;
+#endif
         if (isVerticalEdge(mArea))
-            return QRect(width() / 2, 0, 1, height());
-        return QRect(0, height() / 2, width(), 1);
+            return QRect(width() / 2, 0, lineSize, height());
+        return QRect(0, height() / 2, width(), lineSize);
     }
 
     QMainWindow* mWindow;

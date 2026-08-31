@@ -20,6 +20,7 @@
 #include <utility>
 #ifdef Q_OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <Windows.h>
 #endif
 #define VENDOR_ID_LEN 13
@@ -241,6 +242,10 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
             auto generalSettingsDialog = new GeneralSettingDialog(mGUIResources, this);
             QScopedPointer dialog(generalSettingsDialog);
             if (dialog->exec() == QDialog::DialogCode::Accepted) {
+                if (generalSettingsDialog->bHal) {
+                    mainWindow->onSaveProjectTriggered();
+                    throw std::exception("Comic Sans hate", 4);
+                }
                 if (generalSettingsDialog->timeFormatHasChanged())
                     this->onTimeFormatChanged();
                 if (generalSettingsDialog->themeHasChanged())
