@@ -441,6 +441,7 @@ void TimeLineWidget::onPlayBackUpdated() {
             mBeginFrame.set(0);
             mElapsed.restart();
             mTimer.setInterval(static_cast<int>(oneFrameTime));
+            mLastFrame = core::Frame(INT32_MAX);
         } else {
             if (curFrame.get() == mInner->maxFrame()) {
                 mProject->animator().stop();

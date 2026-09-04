@@ -767,20 +767,19 @@ int MainWindow::confirmProjectClosing(const QString& aMessage) {
     QMessageBox msgBox;
 
     msgBox.setText(aMessage);
-
-    msgBox.addButton(tr("Save Changes"), QMessageBox::YesRole);
-    msgBox.addButton(tr("Discard Changes"), QMessageBox::NoRole);
+    msgBox.addButton(tr("Save"), QMessageBox::YesRole);
+    msgBox.addButton(tr("Discard"), QMessageBox::NoRole);
     auto cancel = msgBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
     msgBox.setDefaultButton(cancel);
     msgBox.exec();
     auto clicked = msgBox.clickedButton();
     if (clicked) {
-        auto role = msgBox.buttonRole(clicked);
+        const auto role = msgBox.buttonRole(clicked);
         if (role == QMessageBox::YesRole)
             return QMessageBox::Yes;
-        else if (role == QMessageBox::NoRole)
+        if (role == QMessageBox::NoRole)
             return QMessageBox::No;
-        else if (role == QMessageBox::RejectRole)
+        if (role == QMessageBox::RejectRole)
             return QMessageBox::Cancel;
     }
     return QMessageBox::Cancel;
@@ -1636,10 +1635,12 @@ void MainWindow::onQuickExportTriggered(const QString& aFormat) {
     if (aFormat == "png") {
         imageExport = true;
         img.format = availableImageFormats::png;
+        genParam.exportWithAudio = false;
     }
     else {
         if (aFormat.contains("gif")) {
             vid.format = availableVideoFormats::gif;
+            genParam.exportWithAudio = false;
         }
         else if (aFormat.contains("mp4")) {
             vid.format = availableVideoFormats::mp4;

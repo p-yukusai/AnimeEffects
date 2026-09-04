@@ -7,7 +7,7 @@
 #include <QStringRef>
 #include <QMessageBox>
 
-void checkConnection(const bool connection){
+static void checkConnection(const bool connection){
     if(!connection){
         QMessageBox::warning(nullptr, "Qt connection error", "Unable to connect UI component");
     }
@@ -27,9 +27,9 @@ QPixmap speakerPixmap(const QLabel& aLabel) {
 }
 
 // Target playback position of a track (in ms) while the playhead is at curFrame.
-qint64 trackPositionMs(const audioConfig& config, int curFrame, int fps) {
+qint64 trackPositionMs(const audioConfig& config, const int curFrame, const int fps) {
     constexpr float toMillis = 1000.0f;
-    return static_cast<qint64>(static_cast<float>(config.startFrame + curFrame) / static_cast<float>(fps) * toMillis);
+    return static_cast<float>(config.startFrame + curFrame) / static_cast<float>(fps) * toMillis;
 }
 
 } // namespace

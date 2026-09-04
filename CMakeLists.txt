@@ -5,6 +5,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 # AddressSanitizer (with LeakSanitizer) opt-in: pretty bad perf hit.
 # The known process-lifetime caches (fontconfig/Pango/GTK3 via the Qt
 # gtk3 platform theme) are suppressed in-code via __lsan_default_suppressions()

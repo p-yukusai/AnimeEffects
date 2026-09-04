@@ -149,9 +149,10 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
             auto* back = new QAction(tr("Back"), this);
             auto* elastic = new QAction(tr("Elastic"), this);
             auto* bounce = new QAction(tr("Bounce"), this);
+            auto* custom = new QAction(tr("Custom"), this);
 
             QVector<QAction*> easings{
-            none, linear, sine, quad, cubic, quart, quint, expo, circ, back, elastic, bounce,
+            none, linear, sine, quad, cubic, quart, quint, expo, circ, back, elastic, bounce, custom
             };
             int x = 0;
             for(auto easing: easings) {
@@ -178,6 +179,9 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
                 x++;
             }
         }
+
+        mPasteCustomEasing = new QAction(tr("Paste custom easing"), this);
+        mPasteCustomEasing->connect(mPasteCustomEasing, &QAction::triggered, [=] {onPasteCustomEasingTriggered();});
 
         mSelectSpacing = new QAction(tr("Select spacing between keys"), this);
         mSelectSpacing->connect(mSelectSpacing, &QAction::triggered, [=] {onSelectSpacingTriggered();});
@@ -408,6 +412,7 @@ void TimeLineEditorWidget::onContextMenuRequested(const QPoint& aPos) {
         menu.addAction(mSelectSpacing);
         menu.addMenu(mSelectEasing);
         menu.addMenu(mSelectRange);
+        menu.addAction(mPasteCustomEasing);
         menu.addSeparator();
         menu.addAction(mDeleteKey);
     } else {
@@ -646,71 +651,69 @@ void TimeLineEditorWidget::onPasteKeyTriggered(bool) {
     mOnPasting = false;
 }
 
+static void setEasingTo(util::Easing::Param& aEasing, int aEasingType, const bool aAssignEasing,
+                        const util::Easing::CubicBezier* aBezier) {
+    if (aAssignEasing) { aEasing.type = static_cast<util::Easing::Type>(aEasingType); }
+    else { aEasing.range = static_cast<util::Easing::Range>(aEasingType); }
+    if (aBezier) aEasing.cubicBezier = *aBezier;
+}
+
 // It's called easingType, but it can also be Range depending on the function that calls it
-void assignEasing(const util::LinkPointer<core::Project>& mProject, int easingType,
-    const core::TimeLineEvent::Target* target, const core::TimeKey* key, int frame, bool assignEasing){
+static void assignEasing(const util::LinkPointer<core::Project>& mProject, int easingType,
+                         const core::TimeLineEvent::Target* target, const core::TimeKey* key, int frame, bool assignEasing,  util::Easing::CubicBezier* bezier = nullptr){
     XC_PTR_ASSERT(key);
     switch(key->type()) {
     case core::TimeKeyType_Move: {
         auto newData =  dynamic_cast<const core::MoveKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignMoveKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Rotate: {
         auto newData =  dynamic_cast<const core::RotateKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignRotateKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Scale:{
         auto newData =  dynamic_cast<const core::ScaleKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignScaleKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Depth:{
         auto newData =  dynamic_cast<const core::DepthKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignDepthKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Opa:{
         auto newData =  dynamic_cast<const core::OpaKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignOpaKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Pose:{
         auto newData =  dynamic_cast<const core::PoseKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignPoseKeyEasing(*mProject, *target->node, frame, newData.easing());
     }
         break;
     case core::TimeKeyType_FFD: {
         auto newData =  dynamic_cast<const core::FFDKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignFFDKeyEasing(*mProject, *target->node, frame, newData.easing());
     }
         break;
     case core::TimeKeyType_HSV:{
         auto newData =  dynamic_cast<const core::HSVKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignHSVKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Blur:{
         auto newData =  dynamic_cast<const core::BlurKey*>(key)->data();
-        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
-        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
+        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
         ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *target->node, frame, newData);
     }
         break;
@@ -738,6 +741,27 @@ void TimeLineEditorWidget::onSelectRangeTriggered(int rangeType) {
             assignEasing(mProject, rangeType, &target, key, frame, false);
         }
     }
+}
+
+void TimeLineEditorWidget::onPasteCustomEasingTriggered() {
+    const QClipboard *clip = QGuiApplication::clipboard();
+    if (QStringList list = clip->text().split(","); !list.isEmpty() && list.size() == 4) {
+        util::Easing::CubicBezier bezier{};
+        bezier.x1 = list[0].toFloat();
+        bezier.y1 = list[1].toFloat();
+        bezier.x2 = list[2].toFloat();
+        bezier.y2 = list[3].toFloat();
+
+        for(auto target: mTargets.targets()) {
+            auto type = target.pos.key()->type();
+            if(type != core::TimeKeyType_Bone && type != core::TimeKeyType_Mesh && type != core::TimeKeyType_Image){
+                const int frame = target.pos.key()->frame();
+                const auto key = target.pos.line()->timeKey(target.pos.key()->type(), frame);
+                assignEasing(mProject, util::Easing::Type_Custom, &target, key, frame, true, &bezier);
+            }
+        }
+    }
+    else { QMessageBox::information(this, "Error", "Invalid clipboard data"); }
 }
 
 bool targetsAreSeparated(QList<core::TimeLineEvent::Target> &targets){

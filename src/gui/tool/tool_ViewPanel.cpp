@@ -5,8 +5,8 @@
 namespace {
 // Same button family as the toolbox: 24x24 with explicit 18px glyphs.
 // Sizes are logical pixels; Qt6 scales the whole window on high-DPI screens.
-constexpr double kButtonSize = 24.0;
-constexpr double kIconSize = 18.0;
+constexpr double kButtonSize = 24.0 * 1.2;
+constexpr double kIconSize = 18.0 * 1.2;
 } // namespace
 
 namespace gui {

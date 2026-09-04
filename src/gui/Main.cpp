@@ -17,6 +17,18 @@
 #include <QtConcurrent>
 #include <QApplication>
 
+#ifdef Q_OS_WIN
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+// This *should* set the OS to use its dedicated GPU, sure hope it works out...
+    extern "C" {
+    _declspec(dllexport) DWORD NvOptimusEnablement = 1;
+    _declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+    }
+#endif
+
 // This MSVC debugger is not useful and only serves to pain me in the ways it unexpectedly fails,
 // I'm sure it worked wonderfully before, but it sure doesn't anymore
 

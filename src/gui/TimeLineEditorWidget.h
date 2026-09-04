@@ -121,6 +121,7 @@ private:
     void onSelectSpacingTriggered();
     void onSelectEasingTriggered(int easingType);
     void onSelectRangeTriggered(int rangeType);
+    void onPasteCustomEasingTriggered();
 
     ViaPoint& mViaPoint;
     util::LinkPointer<core::Project> mProject;
@@ -140,6 +141,7 @@ private:
     QAction* mPasteKey;
     QAction* mDeleteKey;
     QAction* mSelectSpacing;
+    QAction * mPasteCustomEasing;
     QMenu* mSelectEasing;
     QMenu* mSelectRange;
     core::TimeLineEvent mTargets;

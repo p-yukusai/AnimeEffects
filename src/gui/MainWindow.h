@@ -85,7 +85,7 @@ private:
     void resetProjectRefs(core::Project* aProject);
     bool processProjectSaving(core::Project& aProject, bool aRename = false);
     int confirmProjectClosing(const QVector<core::Project*>& aProjects);
-    int confirmProjectClosing(const QString& aMessage);
+    static int confirmProjectClosing(const QString& aMessage);
     bool closeProjects(const QVector<core::Project*>& aProjects);
     void closeProjectTab(core::Project& aProject);
     void onProjectTabChanged(core::Project&);

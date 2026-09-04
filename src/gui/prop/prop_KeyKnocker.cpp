@@ -47,7 +47,7 @@ namespace prop {
         mPlus->setCursor(Qt::PointingHandCursor);
         QSettings settings;
         auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
-        mPlus->setIconSize(QSize(14 * uiScale, 14 * uiScale));
+        mPlus->setIconSize(QSize(16 * uiScale, 16 * uiScale));
         mPlus->setIcon(mPlusDim);
         // hovering the plus itself must brighten it too (the row's
         // enter/leave only fire over the label/stretch area)

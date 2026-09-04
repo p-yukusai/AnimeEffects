@@ -7,11 +7,11 @@
 #include "gui/theme/Colors.h"
 
 namespace {
-const int kButtonSize = 24;
-const int kIconSize = 18;
-const int kGap = 4;
-const int kButtonCount = 8;
-const int kLeftMargin = 4;
+constexpr double kButtonSize = 24.0 * 1.2;
+constexpr double kIconSize = 18.0 * 1.2;
+constexpr int kGap = 4;
+constexpr int kButtonCount = 8;
+constexpr int kLeftMargin = 4;
 
 // A playback button whose glyph brightens to the active (max-contrast) color
 // on hover — the icon participates in the hover feedback, not just the

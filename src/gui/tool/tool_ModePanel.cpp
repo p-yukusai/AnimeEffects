@@ -8,8 +8,8 @@ namespace {
 // playback column) with explicit 18px glyphs. Fixed size keeps the buttons
 // exactly square — the QSS padding/sizeHint math otherwise yields 24x20.
 // Sizes are logical pixels; Qt6 scales the whole window on high-DPI screens.
-constexpr int kButtonSize = 24;
-constexpr int kIconSize = 18;
+constexpr double kButtonSize = 24.0 * 1.2;
+constexpr double kIconSize = 18.0 * 1.2;
 } // namespace
 
 namespace gui {
