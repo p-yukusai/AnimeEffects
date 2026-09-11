@@ -245,7 +245,7 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
             if (dialog->exec() == QDialog::DialogCode::Accepted) {
                 if (generalSettingsDialog->bHal) {
                     mainWindow->onSaveProjectTriggered();
-                    throw std::exception("Comic Sans hate");
+                    throw std::exception();
                 }
                 if (generalSettingsDialog->timeFormatHasChanged())
                     this->onTimeFormatChanged();
