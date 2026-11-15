@@ -4,7 +4,9 @@ namespace core {
 
 TimeKeyExpans::TimeKeyExpans():
     mMasterCache(),
+    mMasterCached(false),
     mKeyCaches(),
+    mKeyCached(),
     mSRT(),
     mOpa(),
     mHSV(),
@@ -27,22 +29,33 @@ TimeKeyExpans::TimeKeyExpans():
     clearCaches();
 }
 
-void TimeKeyExpans::setMasterCache(Frame aFrame) { mMasterCache = aFrame; }
+void TimeKeyExpans::setMasterCache(Frame aFrame) {
+    mMasterCache = aFrame;
+    mMasterCached = true;
+}
 
-bool TimeKeyExpans::hasMasterCache(Frame aFrame) const { return mMasterCache >= 0 && mMasterCache == aFrame; }
+bool TimeKeyExpans::hasMasterCache(Frame aFrame) const { return mMasterCached && mMasterCache == aFrame; }
 
-void TimeKeyExpans::clearMasterCache() { mMasterCache.set(-1); }
+void TimeKeyExpans::clearMasterCache() {
+    mMasterCached = false;
+    mMasterCache.set(-1);
+}
 
-void TimeKeyExpans::setKeyCache(TimeKeyType aType, Frame aFrame) { mKeyCaches[aType] = aFrame; }
+void TimeKeyExpans::setKeyCache(TimeKeyType aType, Frame aFrame) {
+    mKeyCaches[aType] = aFrame;
+    mKeyCached[aType] = true;
+}
 
 bool TimeKeyExpans::hasKeyCache(TimeKeyType aType, Frame aFrame) const {
-    return aFrame >= 0 && mKeyCaches[aType] == aFrame;
+    return mKeyCached[aType] && mKeyCaches[aType] == aFrame;
 }
 
 void TimeKeyExpans::clearCaches() {
+    mMasterCached = false;
     mMasterCache.set(-1);
 
     for (int i = 0; i < TimeKeyType_TERM; ++i) {
+        mKeyCached[i] = false;
         mKeyCaches[i].set(-1);
     }
     mSRT.clearSplineCache();

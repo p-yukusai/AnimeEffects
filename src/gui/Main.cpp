@@ -17,18 +17,6 @@
 #include <QtConcurrent>
 #include <QApplication>
 
-#ifdef Q_OS_WIN
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
-// This *should* set the OS to use its dedicated GPU, sure hope it works out...
-    extern "C" {
-    _declspec(dllexport) DWORD NvOptimusEnablement = 1;
-    _declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
-    }
-#endif
-
 // This MSVC debugger is not useful and only serves to pain me in the ways it unexpectedly fails,
 // I'm sure it worked wonderfully before, but it sure doesn't anymore
 
@@ -192,35 +180,15 @@ int entryPoint(int argc, char* argv[]) {
             QFontDatabase::addApplicationFont(fontsDir.absoluteFilePath(file));
         }
         QFont appFont(QApplication::font());
-        QSettings settings;
-        qreal fontScale = appFont.pointSizeF();
-        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0);
-        if (uiScale.isValid()) {
-            if (uiScale.toDouble() < 0.5f) { uiScale = 0.5f; }
-            if (uiScale.toDouble() > 3.0f) { uiScale = 3.0f; }
-            fontScale = uiScale.toDouble();
-        }
-        auto userFont = settings.value("generalsettings/ui/font");
-        if (uiScale.isValid()) {
-            if (QFontDatabase::hasFamily(userFont.toString())){
-                appFont = QFont(userFont.toString());
-            }
-            else {
-                bool customFont = settings.value("generalsettings/ui/customFont", false).toBool();
-                if (customFont) {
-                    settings.remove("generalsettings/ui/font");
-                    settings.setValue("generalsettings/ui/customFont", false);
-                    QMessageBox::warning(nullptr, QCoreApplication::translate("Main", "Warning"),
-                        QCoreApplication::translate("Main", "The specified font does not exist. Using default font."));
-                }
-            }
-        }
-        if (appFont.pixelSize() > 0)
-            appFont.setPixelSize(appFont.pixelSize() * static_cast<int>(fontScale));
-        else
-            appFont.setPointSizeF(appFont.pointSizeF() * fontScale);
+        appFont.setFamily("Geist");
         QApplication::setFont(appFont);
     }
+
+    // set organization and application name for the application setting
+    // (BEFORE computing paths below: QStandardPaths::CacheLocation derives
+    // the dir from these, and QSettings uses them too)
+    QCoreApplication::setOrganizationName("AnimeEffectsProject");
+    QCoreApplication::setApplicationName("AnimeEffects");
 
     const QString stdCacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
     const QString cacheDir = !stdCacheDir.isEmpty() ? stdCacheDir : (appDir + "/cache");
@@ -233,24 +201,20 @@ int entryPoint(int argc, char* argv[]) {
     static AEErrorHandler aeErrorHandler;
     gXCErrorHandler = &aeErrorHandler;
 
-    // set organization and application name for the application setting
-    QCoreApplication::setOrganizationName("AnimeEffectsProject");
-    QCoreApplication::setApplicationName("AnimeEffects");
-
 
     // language
-    const QScopedPointer locale(new gui::LocaleDecider());
+    QScopedPointer<gui::LocaleDecider> locale(new gui::LocaleDecider());
     if (locale->translator()) { QCoreApplication::installTranslator(locale->translator()); }
 
     {
         // load constant gui resources
-        QScopedPointer resources(new gui::GUIResources(resourceDir));
+        QScopedPointer<gui::GUIResources> resources(new gui::GUIResources(resourceDir));
 
         // create system logic core
-        QScopedPointer system(new ctrl::System(resourceDir, cacheDir));
+        QScopedPointer<ctrl::System> system(new ctrl::System(resourceDir, cacheDir));
 
         // create main window
-        QScopedPointer mainWindow(new gui::MainWindow(*system, *resources, locale->localeParam()));
+        QScopedPointer<gui::MainWindow> mainWindow(new gui::MainWindow(*system, *resources, locale->localeParam()));
 
         qDebug() << "show main window";
         // show main window

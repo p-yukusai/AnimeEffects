@@ -97,7 +97,12 @@ QWidget
 QWidget:disabled
 {
     color: @textDisabled@;
-    background-color: @recessed@;
+    /* No background repaint here: disabling (e.g. the properties panel
+       while playing) must keep every surface's resting color, otherwise
+       every unnamed/transparent widget — section bodies, checkboxes,
+       plain containers — flips to @recessed@ in one go. The disabled
+       state reads through grayed text, grayed icons and the per-widget
+       :disabled rules below (buttons, indicators, menu items). */
 }
 
 QCheckBox
@@ -153,8 +158,11 @@ QCheckBox::indicator:indeterminate
 
 QCheckBox::indicator:disabled
 {
-    background-color: @recessed@;
-    border: 0.04em solid @recessed@;
+    /* Keep the resting box: disabling must not repaint surfaces (the
+       label text grays via QCheckBox:disabled), so a disabled checkbox
+       reads as its normal self without the check interaction. */
+    background-color: @raised@;
+    border: 0.04em solid @outline@;
 }
 
 QRadioButton
@@ -209,7 +217,9 @@ QRadioButton::indicator:checked:pressed
 QRadioButton::indicator:checked:disabled
 {
     outline: none;
-    border-image: url(@icondir@/radio_checked_disabled.svg);
+    /* Keep the resting accent dot: disabling must not repaint surfaces
+       (the label text grays via QRadioButton:disabled). */
+    border-image: url(@icondir@/radio_checked.svg);
 }
 
 QRadioButton::indicator:unchecked:disabled
@@ -271,13 +281,9 @@ QMenu
 }
 
 /* QMenu::paintEvent passes State_None, so the QSS treats the panel as
-   :disabled and QWidget:disabled's @recessed@ background would win the merge
-   and paint a square body. Same specificity, later in the sheet: keep it
-   non-drawable so the proxy draws the rounded panel. */
-QMenu
-{
-    background: none;
-}
+   :disabled. Keep it non-drawable so the proxy draws the rounded panel
+   (QWidget:disabled no longer paints a background, but the QMenu base
+   rule's own fill would still paint a square body over the proxy). */
 QMenu:disabled
 {
     background: none;
@@ -616,6 +622,15 @@ QComboBox
 
 QComboBox:editable
 {
+    background-color: @raised@;
+}
+
+QComboBox:disabled
+{
+    /* Non-editable combos have no background rule of their own, so the
+       default palette's disabled group (a light gray) would otherwise
+       replace the raised field when a dialog disables one (e.g. an
+       unsupported pixel format). The disabled state only grays text. */
     background-color: @raised@;
 }
 
@@ -1388,7 +1403,7 @@ QDockWidget
     color: @text@;
     font-weight: bold;
     border: none;
-    background-color: @base@;
+    background: @base@;
     /**
      *  It doesn't seem possible to change the border of the
      *  QDockWidget without changing the content margins.

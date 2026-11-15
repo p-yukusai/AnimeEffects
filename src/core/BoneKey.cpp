@@ -91,9 +91,12 @@ void BoneKey::updateCaches(Project& aProject, const QList<Cache*>& aTargets) {
             auto& node = *cache->node();
 
             const LayerMesh* mesh = TimeKeyBlender::getAreaMesh(node, time);
+            if (!mesh)
+                continue;
+
             cache->setFrameSign(mesh->frameSign());
 
-            if (!mesh || mesh->vertexCount() <= 0)
+            if (mesh->vertexCount() <= 0)
                 continue;
 
             // set world matrix
@@ -169,11 +172,15 @@ void BoneKey::updateCaches(Project& aProject, ObjectNode& aOwner, const QVector<
 void BoneKey::resetCacheListRecursive(const TimeInfo& aTime, ObjectNode& aNode, CacheList& aNewList) {
     bool useMe = true;
 
-    /// @todo The node which has zero vertex mesh should contain to cache list,
-    /// otherwise the timeline modifier should call resetCaches instead of updateCaches.
+    // A node with an area mesh — even a zero-vertex one — stays in the cache
+    // list, so an incremental updateCaches can populate it once the mesh gains
+    // vertices (otherwise only a full resetCaches would ever touch it). Nodes
+    // with no area mesh (no image/mesh key, e.g. a folder) stay excluded: they
+    // can never be a deform target, and keeping them out avoids the null-mesh
+    // deref in TimeKeyBlender::setBoneInfluenceMaps.
     {
         const LayerMesh* mesh = TimeKeyBlender::getAreaMesh(aNode, aTime);
-        if (!mesh || mesh->vertexCount() <= 0)
+        if (!mesh)
             useMe = false;
     }
 
@@ -218,8 +225,6 @@ void BoneKey::resetCaches(Project& aProject, ObjectNode& aOwner) {
         ObjectNode* node = itr.next();
         XC_PTR_ASSERT(node);
 
-        /// @todo The node which has zero vertex mesh should contain to cache list,
-        /// otherwise the timeline modifier should call resetCaches instead of updateCaches.
         {
             auto time = aProject.currentTimeInfo();
             time.frame.set(this->frame());
@@ -447,14 +452,21 @@ bool BoneKey::deserialize(Deserializer& aIn) {
     // each binding caches
     for (int i = 0; i < bindingCacheCount; ++i) {
         mBindingCaches.push_back(BindingCache());
-        BindingCache* cache = &(mBindingCaches.back());
+        const int bindingIndex = i;
 
         // node
         {
+            // Capture the index, not the pointer: QList<BindingCache> stores
+            // values inline and a later push_back() in this loop reallocates
+            // the buffer, leaving a pointer into it dangling by the time
+            // IDSolver::solve() invokes this lambda (after the whole
+            // deserialize). Resolving through mBindingCaches[bindingIndex] at
+            // solve-time is always valid: the list is fully built by then and
+            // the element order matches the push order.
             auto solver = [=](void* aPtr) {
                 ObjectNode* node = (ObjectNode*)aPtr;
                 if (node)
-                    cache->node = node;
+                    mBindingCaches[bindingIndex].node = node;
             };
             if (!aIn.orderIDData(solver)) {
                 return aIn.errored("invalid binding cache reference id");
@@ -462,10 +474,10 @@ bool BoneKey::deserialize(Deserializer& aIn) {
         }
 
         // bone index
-        aIn.read(cache->boneIndex);
+        aIn.read(mBindingCaches[bindingIndex].boneIndex);
 
         // inner matrix
-        aIn.read(cache->innerMtx);
+        aIn.read(mBindingCaches[bindingIndex].innerMtx);
 
         if (aIn.failure()) {
             return aIn.errored("stream error");

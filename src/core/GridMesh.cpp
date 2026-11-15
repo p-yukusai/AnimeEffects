@@ -298,7 +298,14 @@ void GridMesh::resetArrayedConnection(ArrayedConnectionList& aDest, const gl::Ve
     }
 }
 
-Frame GridMesh::frameSign() const { return Frame(TimeLine::kDefaultKeyIndex); }
+Frame GridMesh::frameSign() const {
+    // The base mesh's cache signature: "no mesh key". This is a serialized
+    // value (bone influence caches store it) and old files carry -1, so it
+    // must NOT track TimeKey::kDefaultKeyIndex — which moved to INT_MIN so
+    // -1 could be a real key frame. The sign is a cache-identity marker,
+    // never a frame index, so keeping it at -1 collides with nothing.
+    return Frame(-1);
+}
 
 util::ArrayBlock<gl::Vector3>
 GridMesh::createFFD(util::ArrayBlock<const gl::Vector3> aPrevFFD, const Transitions& aTrans) const {

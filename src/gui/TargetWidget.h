@@ -10,8 +10,11 @@
 #include "gui/ViaPoint.h"
 #include "core/Project.h"
 #include "core/Animator.h"
+#include "util/Range.h"
 
 namespace gui {
+
+class AnimationSettingDialog;
 
 class TargetWidget: public QWidget, public core::Animator {
 public:
@@ -40,6 +43,9 @@ private:
 
     void onPlayBackButtonPushed(PlayBackWidget::PushType aType);
     void openAnimationSettings();
+    void applyAnimChange();
+    void applyAnimState(int aFps, const util::Range& aRange, bool aLoop,
+                        int pFps, const util::Range& pRange, bool pLoop);
     void refreshAnimationSettings();
 
     core::Project* mProject;
@@ -50,6 +56,10 @@ private:
     ObjectTreeWidget* mObjTree;
     TimeLineWidget* mTimeLine;
     PlayBackWidget* mPlayBack;
+    AnimationSettingDialog* mAnimSettings = nullptr;
+    int mLastAnimFps = 0;
+    util::Range mLastAnimRange;
+    bool mLastAnimLoop = false;
     bool mIsFirstTime;
     int mSuspendCount;
 };

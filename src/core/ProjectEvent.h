@@ -9,11 +9,11 @@ namespace core {
 
 class ProjectEvent {
 public:
-    enum Type { Type_ChangeImageSize, Type_ChangeMaxFrame, Type_ChangeLoop, Type_ChangeFps, Type_TERM };
+    enum Type { Type_ChangeImageSize, Type_ChangeFrameRange, Type_ChangeLoop, Type_ChangeFps, Type_TERM };
 
     static ProjectEvent imageSizeChangeEvent(Project& aProject) { return ProjectEvent(aProject, Type_ChangeImageSize); }
 
-    static ProjectEvent maxFrameChangeEvent(Project& aProject) { return ProjectEvent(aProject, Type_ChangeMaxFrame); }
+    static ProjectEvent frameRangeChangeEvent(Project& aProject) { return ProjectEvent(aProject, Type_ChangeFrameRange); }
 
     static ProjectEvent loopChangeEvent(Project& aProject) { return ProjectEvent(aProject, Type_ChangeLoop); }
 

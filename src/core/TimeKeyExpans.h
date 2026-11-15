@@ -92,8 +92,14 @@ public:
     QVector2D imageOffset() const { return mImageOffset; }
 
 private:
+    // Frame the caches were blended for, plus explicit validity flags: the
+    // frame value alone cannot mark validity because frame -1 is a legitimate
+    // frame (negative project ranges) yet was the historical "no cache"
+    // sentinel. Negative frames are cached like any other.
     Frame mMasterCache;
+    bool mMasterCached;
     std::array<Frame, TimeKeyType_TERM> mKeyCaches;
+    std::array<bool, TimeKeyType_TERM> mKeyCached;
     SRTExpans mSRT;
     OpaKey::Data mOpa;
     HSVKey::Data mHSV;

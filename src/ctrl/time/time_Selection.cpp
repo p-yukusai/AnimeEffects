@@ -83,21 +83,51 @@ namespace time {
         }
     }
 
-    void Selection::reindex() {
-        for (Item& item : mItems) {
-            if (item.key) {
-                item.target.pos.setIndex(item.key->frame());
+    void Selection::refresh() {
+        QVector<Item> next;
+        next.reserve(mItems.size());
+        for (const Item& item : mItems) {
+            const TimeLine::MapType& map = item.target.pos.map();
+            // fast path: the recorded slot still holds the recorded key —
+            // data-only edits (easing, HSV, ...) leave every entry valid
+            auto slot = map.find(item.target.pos.index());
+            if (slot != map.end() && slot.value() == item.key) {
+                next.push_back(item);
+                continue;
             }
+            // stale index: the key moved since it was recorded. Follow it by
+            // pointer identity through its lane map; the stored pointer is
+            // only compared, never dereferenced, so removed or recreated
+            // keys are safe here.
+            bool found = false;
+            int frame = 0;
+            for (auto itr = map.begin(); itr != map.end(); ++itr) {
+                if (itr.value() == item.key) {
+                    frame = itr.key();
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                continue; // the key is gone from its lane: drop the entry
+
+            Item moved;
+            moved.target = TimeLineEvent::Target(*item.target.node, item.target.pos, frame);
+            moved.target.pos.setIndex(frame);
+            moved.key = item.key;
+            next.push_back(moved);
         }
+        mItems = next;
+        rebuildFocus();
     }
 
     void Selection::rebuildFocus() {
         mFocusLink.clear();
         for (Item& item : mItems) {
-            // resolve through the map: a vanished key (index no longer valid)
             // yields null and is skipped, so a stale item can never deref a
-            // dangling TimeKey. Only reindex() uses the stored pointer, on the
-            // one path where the key is guaranteed alive (post-move).
+            // dangling TimeKey. Only refresh() touches the stored pointer,
+            // and only by comparison against map entries -- never by
+            // dereference.
             TimeKey* key = item.target.pos.isExist() ? item.target.pos.key() : nullptr;
             if (key) {
                 key->setFocus(mFocusLink);

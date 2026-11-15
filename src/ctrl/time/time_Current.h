@@ -3,25 +3,30 @@
 
 #include <QPoint>
 #include "core/Frame.h"
-#include "ctrl/time/time_Scaler.h"
 
 namespace ctrl {
 namespace time {
 
+    class Scaler;
+
+    // The playhead. Like the scale and the keys, it is not clamped to any
+    // range — it may sit on any frame (negative, past the project end), so
+    // navigation (scrub, header seek, keyboard stepping, transport) is free
+    // and never fights the temporary playback window. The window only
+    // constrains the playback clock (TimeLineWidget::onPlayBackUpdated),
+    // which wraps and stops against the effective range on its own.
     class Current {
     public:
         Current(int aLeftMargin);
-        void setMaxFrame(int aMaxFrame);
         void setFrame(const Scaler& aScale, core::Frame aFrame);
         void setHandlePos(const Scaler& aScale, const QPoint& aPos);
         void update(const Scaler& aScale);
         core::Frame frame() const { return mFrame; }
-        const QPoint& handlePos() const { return mPos; }
+        QPoint handlePos() const { return mPos; }
         int handleRange() const { return 5; }
 
     private:
         const int mLeftMargin;
-        int mMaxFrame;
         core::Frame mFrame;
         QPoint mPos;
     };

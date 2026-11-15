@@ -1,6 +1,20 @@
 #include "Easing.h"
 #include <QtMath>
 #include "util/EasingName.h"
+#include "util/UnitBezier.h"
+
+namespace {
+// Picker display order, mirrored by the Easing::display* helpers. The enum
+// ordinal is serialization order; this is the order pickers show (stepped
+// holds first, then the analytic curves, then the bezier "Custom").
+constexpr util::Easing::Type kEasingDisplayOrder[] = {
+    util::Easing::Type_Floor, util::Easing::Type_Round, util::Easing::Type_Linear, util::Easing::Type_Sine,
+    util::Easing::Type_Quad, util::Easing::Type_Cubic, util::Easing::Type_Quart, util::Easing::Type_Quint,
+    util::Easing::Type_Expo, util::Easing::Type_Circ, util::Easing::Type_Back, util::Easing::Type_Elastic,
+    util::Easing::Type_Bounce, util::Easing::Type_Custom,
+};
+constexpr int kEasingDisplayOrderCount = int(sizeof(kEasingDisplayOrder) / sizeof(kEasingDisplayOrder[0]));
+} // namespace
 
 namespace util {
 
@@ -16,14 +30,33 @@ bool Easing::Param::isValidParam() const {
 }
 
 bool Easing::Param::operator==(const Param& aRhs) const {
-    return type == aRhs.type && range == aRhs.range && weight == aRhs.weight;
+    return type == aRhs.type && range == aRhs.range && weight == aRhs.weight &&
+        cubicBezier == aRhs.cubicBezier;
 }
+//-------------------------------------------------------------------------------------------------
+int Easing::displayIndexOf(const Type aType) {
+    for (int i = 0; i < kEasingDisplayOrderCount; ++i) {
+        if (kEasingDisplayOrder[i] == aType)
+            return i;
+    }
+    return -1;
+}
+
+Easing::Type Easing::typeAtDisplayIndex(const int aIndex) {
+    if (0 <= aIndex && aIndex < kEasingDisplayOrderCount)
+        return kEasingDisplayOrder[aIndex];
+    return Type_Linear;
+}
+
+int Easing::displayCount() { return kEasingDisplayOrderCount; }
+
+//-------------------------------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------------------------------
 QString Easing::getTypeName(const Type aType) {
     switch (aType) {
-    case Type_None:
-        return EasingName::tr("None");
+    case Type_Floor:
+        return EasingName::tr("Floor");
     case Type_Linear:
         return EasingName::tr("Linear");
     case Type_Sine:
@@ -48,6 +81,8 @@ QString Easing::getTypeName(const Type aType) {
         return EasingName::tr("Bounce");
     case Type_Custom:
         return EasingName::tr("Custom");
+    case Type_Round:
+        return EasingName::tr("Round");
     default:
         return "";
     }
@@ -75,8 +110,8 @@ Easing::Type Easing::easingToEnum(QString easing) {
     else {
         aEasing = easing;
     }
-    if (aEasing == "None")
-        return Type_None;
+    if (aEasing == "Floor" || aEasing == "None") // "None" is the legacy name
+        return Type_Floor;
     if (aEasing == "Linear")
         return Type_Linear;
     if (aEasing == "Sine")
@@ -99,6 +134,8 @@ Easing::Type Easing::easingToEnum(QString easing) {
         return Type_Elastic;
     if (aEasing == "Bounce")
         return Type_Bounce;
+    if (aEasing == "Round")
+        return Type_Round;
     if (aEasing == "Custom")
         return Type_Custom;
     return Type_Linear;
@@ -123,16 +160,6 @@ Easing::Range Easing::rangeToEnum(QString range) {
     // Default range is InOut, defined as "All" by Hidefuku
 }
 
-
-//-------------------------------------------------------------------------------------------------
-QStringList Easing::getTypeNameList() {
-    QStringList list;
-    for (int i = 0; i < Type_TERM; ++i) {
-        list.append(getTypeName((Type)i));
-    }
-    return list;
-}
-
 //-------------------------------------------------------------------------------------------------
 float Easing::calculate(
     const Type aType, const Range aRange, const float t, const float b, const float c, const float d) {
@@ -149,8 +176,12 @@ float Easing::calculate(
     }
 
     switch (aType) {
-    case Type_None:
+    case Type_Floor:
         return b;
+    case Type_Round:
+        // Stepped hold with a rounded frame: flip to the target value once
+        // the normalized progress reaches the interval midpoint.
+        return t / d < 0.5f ? b : b + c;
     case Type_Linear:
         return c * (t / d) + b;
     case Type_Sine:
@@ -178,46 +209,24 @@ float Easing::calculate(
     }
 #undef RETURN_BY_EASING_FUNCTION
 }
-// TODO: KILL THIS WITH FIRE
-// Get cubic bezier
-double cubicBezier(const double t, const double p0, const double p1, const double p2, const double p3) {
-    const double mt = 1 - t;
-    return mt * mt * mt * p0 + 3 * mt * mt * t * p1 + 3 * mt * t * t * p2 + t * t * t * p3;
-}
-
-// Get derivative for Newton-Raphson
-double cubicBezierDerivative(const double t, const double p0, const double p1, const double p2, const double p3) {
-    const double mt = 1 - t;
-    return 3 * mt * mt * (p1 - p0) + 6 * mt * t * (p2 - p1) + 3 * t * t * (p3 - p2);
-}
-
-// Solve x(t) = x using Newton-Raphson to get t
-double solveTForX(const double x, const double x1, const double x2, const double epsilon = 1e-6) {
-    double t = x; // Initial guess
-    constexpr int iter = 6; // Max iterations
-    for (int i = 0; i < iter; ++i) {
-        const double xt = cubicBezier(t, 0.0, x1, x2, 1.0);
-        const double dx = cubicBezierDerivative(t, 0.0, x1, x2, 1.0);
-        if (std::abs(dx) < 1e-8) break;
-        double tNext = t - (xt - x) / dx;
-        if (std::abs(tNext - t) < epsilon) break;
-        t = std::clamp(tNext, -2.0, 2.0);
-    }
-    return t;
-}
-
-double cubicBezierEasedPercent(const double percent, const double x1, const double y1, const double x2, const double y2) {
-    const double t = solveTForX(percent, x1, x2);
-    return cubicBezier(t, 0.0, y1, y2, 1.0);
-}
 
 float calculateBezier(const Easing::Param& aParam, const float t, const float b, const float c, const float d) {
     auto [x1, y1, x2, y2] = aParam.cubicBezier;
-    // Initial linear extrapolation
-    const float result = c * (t / d) + b * aParam.weight + (c * (t / d) + b) * (1.0f - aParam.weight);
-    // Modify linear using a custom bezier curve
-    const auto bezier = cubicBezierEasedPercent(result, x1, y1, x2, y2);
-    return static_cast<float>(bezier);
+    // Normalized progress (frame offset / duration). This is the x fed to the
+    // curve; it must NOT depend on weight.
+    const float x = t / d;
+    // The solver is built per evaluation: constructing a UnitBezier is 11 Horner
+    // evals plus a handful of multiplies, and this keeps Easing stateless (no
+    // cache, no shared mutable state on the frame path).
+    const UnitBezier bezier(x1, y1, x2, y2);
+    // The unit cubic solve returns the curve value; scale onto the key range.
+    // Weight is deliberately NOT applied here: a custom bezier is exactly the
+    // drawn curve, and its handles already span every shape weight could reach,
+    // so the control is disabled in the UI (EasingItem::weightApplicable).
+    // Keeping weight out of the math means a stale weight on a Custom key
+    // (a value left over from another easing type, or one read from a saved
+    // file) can never silently skew a drawn curve.
+    return b + c * static_cast<float>(bezier.solve(x, UnitBezier::kBezierEpsilon));
 }
 
 float Easing::calculate(const Param& aParam, const float t, const float b, const float c, const float d) {
@@ -226,7 +235,7 @@ float Easing::calculate(const Param& aParam, const float t, const float b, const
         return calculateBezier(aParam, t, b, c, d);
     }
     const float result = calculate(aParam.type, aParam.range, t, b, c, d);
-    if (aParam.type > Type_Linear) {
+    if (Type_Sine <= aParam.type && aParam.type < Type_Custom) {
         return result * aParam.weight + (c * (t / d) + b) * (1.0f - aParam.weight);
     }
     return result;

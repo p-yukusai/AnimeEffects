@@ -1,6 +1,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPainter>
+#include <QPainterPath>
 #include <QFontMetrics>
 #include <algorithm>
 #include "core/TimeKeyExpans.h"
@@ -32,10 +33,10 @@ TimeCursor::TimeCursor(QWidget* aParent):
 
 void TimeCursor::setCursorPos(const QPoint& aPos, int aHeight) {
     const QFontMetrics fm(font());
-    const int badgeWidth = fm.horizontalAdvance(mFrameText) + kBadgePadding * 2;
+    const int badgeWidth = fm.horizontalAdvance(mFrameText) + ctrl::TimeLineEditor::kPillPadding * 2;
     // The playhead line sits in the middle of the widget; widen the widget as
-    // needed so the frame-number badge fits around the line. aPos.y() is the
-    // ruler header's top, so the badge lands exactly on the numbers row.
+    // needed so the frame-number pill fits around the line. aPos.y() is the
+    // ruler header's top, so the pill lands exactly on the numbers row.
     mLineX = std::max(1, badgeWidth / 2);
 
     QRect rect;
@@ -56,20 +57,30 @@ void TimeCursor::paintEvent(QPaintEvent* aEvent) {
     QPainter painter;
     painter.begin(this);
 
-    // Playhead line: starts at the bottom of the frame-number row (the badge
+    // The playhead pill wraps the number-text row. Its top edge rides one
+    // pixel below the number text's top (kNumberTop + 1) so the pill and the
+    // ruler numbers shift together as kNumberTop moves.
+    const int pillTop = ctrl::TimeLineEditor::kNumberTop + 1;
+
+    // Playhead line: starts at the bottom of the frame-number row (the pill
     // covers the row above it) and runs down the tracks.
     painter.setPen(QPen(mEdgeColor, 1));
-    painter.drawLine(mLineX, ctrl::TimeLineEditor::kNumberHeight, mLineX, this->geometry().height());
+    painter.drawLine(mLineX, pillTop + ctrl::TimeLineEditor::kNumberHeight, mLineX, this->geometry().height());
 
-    // Frame-number badge covering only the numbers row: a solid
-    // ruler-background rect that hides the ruler's own numbers, with the
-    // current frame in the highlight color.
+    // Frame-number pill on the numbers row: an accentBright rounded pill —
+    // the playhead's identity. It must read on the plain ruler AND on the
+    // temporary playback window's band, so it is token-driven (accentBright
+    // fill + max-contrast text), not base-on-base like the old badge.
     if (!mFrameText.isEmpty()) {
         const QFontMetrics fm(font());
         const int textWidth = fm.horizontalAdvance(mFrameText);
-        const int badgeWidth = textWidth + kBadgePadding * 2;
-        const QRect badge(mLineX - badgeWidth / 2, 0, badgeWidth, ctrl::TimeLineEditor::kNumberHeight);
-        painter.fillRect(badge, mBadgeColor);
+        const int pillWidth = textWidth + ctrl::TimeLineEditor::kPillPadding * 2;
+        const QRect pill(mLineX - pillWidth / 2, pillTop, pillWidth, ctrl::TimeLineEditor::kNumberHeight);
+        QPainterPath path;
+        path.addRoundedRect(
+            QRectF(pill), ctrl::TimeLineEditor::kPillRadius, ctrl::TimeLineEditor::kPillRadius, Qt::AbsoluteSize
+        );
+        painter.fillPath(path, mBadgeColor);
         // Draw the number with the exact same rect and alignment as the ruler
         // numbers (time_Renderer::renderHeader) so it sits in the same row.
         const QRect numberRect(
@@ -116,6 +127,14 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
     this->setMouseTracking(true);
     this->setContextMenuPolicy(Qt::CustomContextMenu);
 
+    // The ruler strip: own paint and own input, over the track surface and
+    // under the playhead (raised below so its pill overlays the window pills).
+    mTimeRuler.reset(new TimeRuler(*this, this));
+    mTimeRuler->setGeometry(0, 0, this->width(), ctrl::TimeLineEditor::kHeaderHeight);
+    mTimeRuler->show();
+    mTimeCursor.raise();
+    this->connect(mTimeRuler.data(), &TimeRuler::frameChanged, this, &TimeLineEditorWidget::rulerFrameChanged);
+
     this->connect(this, &QWidget::customContextMenuRequested, this, &TimeLineEditorWidget::onContextMenuRequested);
 
     {
@@ -133,34 +152,22 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
             mCopyToClipboard, &QAction::triggered, this, &TimeLineEditorWidget::onCopyCBTriggered
         );
 
-        // This is as annoying as you think it is, but I'm too lazy to think of a better way to do this and since no
-        // other easing functions will be supported this will do.
+        // Entries bind their easing type explicitly so the menu order is free
+        // to group the stepped holds apart from the serialized enum order.
         mSelectEasing = new QMenu(tr("Change key(s) easing to"), this);
         {
-            auto* none = new QAction(tr("None"), this);
-            auto* linear = new QAction(tr("Linear"), this);
-            auto* sine = new QAction(tr("Sine"), this);
-            auto* quad = new QAction(tr("Quad"), this);
-            auto* cubic = new QAction(tr("Cubic"), this);
-            auto* quart = new QAction(tr("Quart"), this);
-            auto* quint = new QAction(tr("Quint"), this);
-            auto* expo = new QAction(tr("Expo"), this);
-            auto* circ = new QAction(tr("Circ"), this);
-            auto* back = new QAction(tr("Back"), this);
-            auto* elastic = new QAction(tr("Elastic"), this);
-            auto* bounce = new QAction(tr("Bounce"), this);
-            auto* custom = new QAction(tr("Custom"), this);
-
-            QVector<QAction*> easings{
-            none, linear, sine, quad, cubic, quart, quint, expo, circ, back, elastic, bounce, custom
-            };
-            int x = 0;
-            for(auto easing: easings) {
-                mSelectEasing->addAction(easing);
-                mSelectEasing->connect(easing, &QAction::triggered, [=] {
-                    onSelectEasingTriggered(x);
+            // The entries come from util::Easing's shared display-order table
+            // and their labels from getTypeName (one translation source).
+            // Custom is set through the spline dialog, so it is skipped here.
+            for (int i = 0; i < util::Easing::displayCount(); ++i) {
+                const auto type = util::Easing::typeAtDisplayIndex(i);
+                if (type == util::Easing::Type_Custom)
+                    continue;
+                auto* action = new QAction(util::Easing::getTypeName(type), this);
+                mSelectEasing->addAction(action);
+                mSelectEasing->connect(action, &QAction::triggered, [this, type] {
+                    onSelectEasingTriggered(static_cast<int>(type));
                 });
-                x++;
             }
         }
         mSelectRange = new QMenu(tr("Change key(s) range to"), this);
@@ -173,15 +180,12 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
             int x = 0;
             for (auto range: ranges) {
                 mSelectRange->addAction(range);
-                mSelectEasing->connect(range, &QAction::triggered, [=] {
+                mSelectRange->connect(range, &QAction::triggered, [=] {
                     onSelectRangeTriggered(x);
                 });
                 x++;
             }
         }
-
-        mPasteCustomEasing = new QAction(tr("Paste custom easing"), this);
-        mPasteCustomEasing->connect(mPasteCustomEasing, &QAction::triggered, [=] {onPasteCustomEasingTriggered();});
 
         mSelectSpacing = new QAction(tr("Select spacing between keys"), this);
         mSelectSpacing->connect(mSelectSpacing, &QAction::triggered, [=] {onSelectSpacingTriggered();});
@@ -190,31 +194,41 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
     {
         auto key = mKeyCommandMap.get("Copy");
         if (key)
-            key->invoker = [=]() {
+            key->addListener([=]() {
                 mTargets = core::TimeLineEvent();
                 mEditor->retrieveSelectionTargets(mTargets);
                 mCopyKey->trigger();
-            };
+            });
     }
     {
         auto key = mKeyCommandMap.get("Paste");
         if (key)
-            key->invoker = [=]() {
+            key->addListener([=]() {
                 if (!mCopyTargets.targets().isEmpty()) {
-                    mPastePos = this->mapFromGlobal(QCursor::pos());
+                    // Anchor keyboard paste at the playhead, not the mouse:
+                    // QCursor::pos() is a screen coordinate, and mapped into
+                    // this widget it only denotes a frame while the cursor
+                    // actually hovers the timeline. Elsewhere (viewport,
+                    // object tree) it maps to an arbitrary frame, so Ctrl+V
+                    // looked like it pasted at random. The context menu keeps
+                    // its own click-position anchor (onContextMenuRequested).
+                    const auto& scale = mEditor->timeScale();
+                    const int x =
+                        scale.pixelWidth(mEditor->currentFrame().get()) + ctrl::TimeLineEditor::kTimeLineMargin;
+                    mPastePos = QPoint(x, 0);
                     mPasteKey->trigger();
                 }
-            };
+            });
     }
     {
         auto key = mKeyCommandMap.get("Delete");
         if (key)
-            key->invoker = [=]() {
+            key->addListener([=]() {
                 mTargets = core::TimeLineEvent();
                 if (mEditor->retrieveSelectionTargets(mTargets)) {
                     mDeleteKey->trigger();
                 }
-            };
+            });
     }
 }
 
@@ -239,6 +253,11 @@ void TimeLineEditorWidget::setProject(core::Project* aProject) {
 
     mEditor->setProject(aProject);
     updateSize();
+    // The project owns the ruler's content (frame range, fps, play window):
+    // the surface repaint alone leaves the strip stale until the next
+    // camera update.
+    if (mTimeRuler)
+        mTimeRuler->update();
 }
 
 void TimeLineEditorWidget::setFrame(core::Frame aFrame) {
@@ -250,14 +269,22 @@ void TimeLineEditorWidget::setFrame(core::Frame aFrame) {
 
 core::Frame TimeLineEditorWidget::currentFrame() const { return mEditor->currentFrame(); }
 
-int TimeLineEditorWidget::maxFrame() const { return mEditor->maxFrame(); }
-
 void TimeLineEditorWidget::updateTimeCursorPos() {
     if (mCamera) {
         auto pos = mEditor->currentTimeCursorPos();
-        const core::TimeFormat format(util::Range(0, mEditor->maxFrame()), mEditor->fps());
+        const core::TimeFormat format(mEditor->frameRange(), mEditor->fps());
         const QString frameText = format.frameToString(mEditor->currentFrame().get(), mEditor->timeFormatType());
-        mTimeCursor.setHeaderInfo(frameText, mTimelineTheme.headerBackgroundColor());
+        // The playhead pill is token-driven (accentBright fill, max-contrast
+        // text, accentBright line): it must read on the plain ruler AND on
+        // the temporary window's band, and follow accent hue changes, so the
+        // QSS-substituted colors do not drive it.
+        mTimeCursor.setHeaderInfo(frameText, theme::Colors::current().accentBright);
+        mTimeCursor.setNumberColor(theme::Colors::current().accentBrightText);
+        mTimeCursor.setEdgeColor(theme::Colors::current().accentBright);
+        // The playhead pill overlays the ruler numbers, so repaint the full
+        // ruler strip (22px) each tick.
+        if (mTimeRuler)
+            mTimeRuler->update();
         // The playhead overlays the viewport: pinned to the top (on the fixed
         // ruler) and following the content horizontally.
         const QPoint viewportPos(mCamera->leftTopPos().toPoint().x() + pos.x(), 0);
@@ -269,6 +296,14 @@ void TimeLineEditorWidget::updateCamera(const core::CameraInfo& aCamera) {
     mCamera = &aCamera;
     updateSize();
     updateTimeCursorPos();
+    if (mTimeRuler)
+        mTimeRuler->setCamera(&aCamera);
+}
+
+void TimeLineEditorWidget::resizeEvent(QResizeEvent* aEvent) {
+    QWidget::resizeEvent(aEvent);
+    if (mTimeRuler)
+        mTimeRuler->setGeometry(0, 0, this->width(), ctrl::TimeLineEditor::kHeaderHeight);
 }
 
 void TimeLineEditorWidget::updateLines(QTreeWidgetItem* aTopNode) {
@@ -355,10 +390,16 @@ void TimeLineEditorWidget::updateProjectAttribute() {
 void TimeLineEditorWidget::updateTheme(theme::Theme& aTheme) {
     Q_UNUSED(aTheme) // TODO
     mTimelineTheme.reset();
+    if (mTimeRuler)
+        mTimeRuler->updateTheme();
     updateTimeCursorPos();
 }
 QSize TimeLineEditorWidget::getEditorSize() const {
     return mEditor->modelSpaceSize();
+}
+
+int TimeLineEditorWidget::frameStartPixel() const {
+    return mEditor->frameStartPixel();
 }
 
 int TimeLineEditorWidget::frameEndPixel() const {
@@ -371,19 +412,34 @@ void TimeLineEditorWidget::paintEvent(QPaintEvent* aEvent) {
     if (mCamera) {
         // The surface is viewport-fixed; the content translates by the view
         // origin. Everything then lands at its viewport position — fixed UI
-        // (ruler) included — and nothing is clipped by the frame range.
+        // included — and nothing is clipped by the frame range.
         const QPoint origin = mCamera->leftTopPos().toPoint();
         painter.translate(origin);
         mEditor->render(painter, *mCamera, mTimelineTheme, aEvent->rect().translated(-origin));
+        // The hairline under the ruler separates it from the track area. It
+        // sits on the first track row (y = kHeaderHeight), below the ruler
+        // widget, and stays fixed like the strip it frames.
+        painter.translate(-origin);
+        painter.setPen(QPen(QBrush(mTimelineTheme.rulerLineColor()), 1));
+        painter.drawLine(0, ctrl::TimeLineEditor::kHeaderHeight, this->width(), ctrl::TimeLineEditor::kHeaderHeight);
     }
     painter.end();
 }
 
-void TimeLineEditorWidget::onTimeLineModified(core::TimeLineEvent&, bool) {
+void TimeLineEditorWidget::onTimeLineModified(core::TimeLineEvent& aEvent, bool aUndo) {
     if (!mOnPasting) {
         mCopyTargets = core::TimeLineEvent();
     }
     mEditor->updateKey();
+    // Creating keys always selects its output: clear the prior selection and
+    // keep only the keys a push/copy just created. An undo/redo that REMOVES
+    // keys (aUndo=true) must not select a notification over keys that are no
+    // longer in their lane — refresh() already dropped them, so only select on
+    // a forward (exec/redo) creation.
+    if (!aUndo &&
+        (aEvent.type() == core::TimeLineEvent::Type_PushKey || aEvent.type() == core::TimeLineEvent::Type_CopyKey)) {
+        mEditor->selectCreatedKeys(aEvent);
+    }
     this->update();
 }
 
@@ -394,12 +450,46 @@ void TimeLineEditorWidget::onProjectAttributeModified(core::ProjectEvent&, bool)
 }
 
 void TimeLineEditorWidget::onContextMenuRequested(const QPoint& aPos) {
+    // The ruler's context menu is reserved for the temporary playback
+    // window: it shows only while a window is active, and only when the
+    // click is on the ruler itself — the window lives there, so its clear
+    // action sits next to it, and the track menu stays key-focused. The
+    // ruler region is the editor's predicate, the same one the gesture
+    // machinery uses.
+    if (mEditor->isOnRuler(aPos.y())) {
+        if (!mEditor->playWindow().active())
+            return;
+        QMenu menu(this);
+        auto* clearWindow = menu.addAction(tr("Clear playback window"));
+        clearWindow->connect(clearWindow, &QAction::triggered, [this]() {
+            mEditor->clearPlayWindow();
+            this->update();
+            // The window's band and pills are the ruler's paint; the surface
+            // repaint alone would leave them on screen until the next move.
+            if (mTimeRuler)
+                mTimeRuler->update();
+        });
+        menu.exec(this->mapToGlobal(aPos));
+        this->update();
+        return;
+    }
+
     QMenu menu(this);
 
-    mTargets = core::TimeLineEvent();
-    const bool clickedOnKey = mEditor->selectKeysAt(mTargets, aPos);
+    // customContextMenuRequested delivers surface coordinates, but every
+    // editor query below runs in model space: rows are pushed there
+    // (updateLinesRecursive shifts them by the view origin) and mouse
+    // events land there through AbstractCursor's toWorldPos. Feeding raw
+    // surface coordinates silently missed every key whenever the view was
+    // scrolled — no highlight, no key actions — and anchored paste at a
+    // shifted frame. The ruler check above stays in surface space on
+    // purpose: the ruler strip is pinned to the widget top.
+    const QPoint worldPos = mCamera ? mCamera->toWorldPos(QPointF(aPos)).toPoint() : aPos;
 
-    mPastePos = aPos;
+    mTargets = core::TimeLineEvent();
+    const bool clickedOnKey = mEditor->selectKeysAt(mTargets, worldPos);
+
+    mPastePos = worldPos;
     mPasteKey->setEnabled(mCopyTargets.hasAnyTargets());
 
     // The key menu applies when the click is on a key or when there is a
@@ -412,13 +502,17 @@ void TimeLineEditorWidget::onContextMenuRequested(const QPoint& aPos) {
         menu.addAction(mSelectSpacing);
         menu.addMenu(mSelectEasing);
         menu.addMenu(mSelectRange);
-        menu.addAction(mPasteCustomEasing);
         menu.addSeparator();
         menu.addAction(mDeleteKey);
     } else {
         menu.addAction(mPasteKey);
     }
     menu.exec(this->mapToGlobal(aPos));
+    // A right-click on an unselected key lent it a temporary selection for
+    // this menu only; the previous selection is not restored, so drop the
+    // temporary selection now that the interaction is over, then repaint so
+    // the highlight clears.
+    mEditor->endTemporarySelection();
     this->update();
 }
 
@@ -651,69 +745,71 @@ void TimeLineEditorWidget::onPasteKeyTriggered(bool) {
     mOnPasting = false;
 }
 
-static void setEasingTo(util::Easing::Param& aEasing, int aEasingType, const bool aAssignEasing,
-                        const util::Easing::CubicBezier* aBezier) {
-    if (aAssignEasing) { aEasing.type = static_cast<util::Easing::Type>(aEasingType); }
-    else { aEasing.range = static_cast<util::Easing::Range>(aEasingType); }
-    if (aBezier) aEasing.cubicBezier = *aBezier;
-}
-
 // It's called easingType, but it can also be Range depending on the function that calls it
-static void assignEasing(const util::LinkPointer<core::Project>& mProject, int easingType,
-                         const core::TimeLineEvent::Target* target, const core::TimeKey* key, int frame, bool assignEasing,  util::Easing::CubicBezier* bezier = nullptr){
+void assignEasing(const util::LinkPointer<core::Project>& mProject, int easingType,
+    const core::TimeLineEvent::Target* target, const core::TimeKey* key, int frame, bool assignEasing){
     XC_PTR_ASSERT(key);
     switch(key->type()) {
     case core::TimeKeyType_Move: {
         auto newData =  dynamic_cast<const core::MoveKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignMoveKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Rotate: {
         auto newData =  dynamic_cast<const core::RotateKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignRotateKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Scale:{
         auto newData =  dynamic_cast<const core::ScaleKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignScaleKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Depth:{
         auto newData =  dynamic_cast<const core::DepthKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignDepthKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Opa:{
         auto newData =  dynamic_cast<const core::OpaKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignOpaKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Pose:{
         auto newData =  dynamic_cast<const core::PoseKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignPoseKeyEasing(*mProject, *target->node, frame, newData.easing());
     }
         break;
     case core::TimeKeyType_FFD: {
         auto newData =  dynamic_cast<const core::FFDKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignFFDKeyEasing(*mProject, *target->node, frame, newData.easing());
     }
         break;
     case core::TimeKeyType_HSV:{
         auto newData =  dynamic_cast<const core::HSVKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignHSVKeyData(*mProject, *target->node, frame, newData);
     }
         break;
     case core::TimeKeyType_Blur:{
         auto newData =  dynamic_cast<const core::BlurKey*>(key)->data();
-        setEasingTo(newData.easing(), easingType, assignEasing, bezier);
+        if(assignEasing) { newData.easing().type = static_cast<util::Easing::Type>(easingType); }
+        else { newData.easing().range = static_cast<util::Easing::Range>(easingType); }
         ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *target->node, frame, newData);
     }
         break;
@@ -743,32 +839,12 @@ void TimeLineEditorWidget::onSelectRangeTriggered(int rangeType) {
     }
 }
 
-void TimeLineEditorWidget::onPasteCustomEasingTriggered() {
-    const QClipboard *clip = QGuiApplication::clipboard();
-    if (QStringList list = clip->text().split(","); !list.isEmpty() && list.size() == 4) {
-        util::Easing::CubicBezier bezier{};
-        bezier.x1 = list[0].toFloat();
-        bezier.y1 = list[1].toFloat();
-        bezier.x2 = list[2].toFloat();
-        bezier.y2 = list[3].toFloat();
-
-        for(auto target: mTargets.targets()) {
-            auto type = target.pos.key()->type();
-            if(type != core::TimeKeyType_Bone && type != core::TimeKeyType_Mesh && type != core::TimeKeyType_Image){
-                const int frame = target.pos.key()->frame();
-                const auto key = target.pos.line()->timeKey(target.pos.key()->type(), frame);
-                assignEasing(mProject, util::Easing::Type_Custom, &target, key, frame, true, &bezier);
-            }
-        }
-    }
-    else { QMessageBox::information(this, "Error", "Invalid clipboard data"); }
-}
-
 bool targetsAreSeparated(QList<core::TimeLineEvent::Target> &targets){
-    int frame = -1;
+    int frame = 0;
+    bool hasFrame = false;
     bool isDifferent = false;
     for(auto target: targets){
-        if(frame == -1){ frame = target.pos.key()->frame();}
+        if(!hasFrame){ frame = target.pos.key()->frame(); hasFrame = true; }
         if(target.pos.key()->frame() != frame){ isDifferent = true; }
     }
     return isDifferent;
@@ -858,7 +934,9 @@ void TimeLineEditorWidget::onSelectSpacingTriggered() {
     verticalLayout->addWidget(label);
 
     auto frameSpacing = new QSpinBox(diag);
-    frameSpacing->setMaximum(mProject->attribute().maxFrame());
+    // Spacing selects every Nth frame within the project's frame range: the
+    // span, not the (possibly negative) end frame, bounds it.
+    frameSpacing->setMaximum(qMax(1, mProject->attribute().frameRange().diff()));
     frameSpacing->setMinimum(1);
     frameSpacing->setValue(1);
     frameSpacing->setObjectName("frameSpacing");

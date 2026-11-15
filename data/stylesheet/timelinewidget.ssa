@@ -1,7 +1,5 @@
-/* Timeline ruler/track colors come from theme::TimeLine (theme::Colors), so
-   only the playhead badge needs qproperty overrides here. */
-
-gui--TimeCursor {
-    qproperty-numberColor: @text@;
-    qproperty-edgeColor: @accentBright@;
-}
+/* Timeline ruler/track colors come from theme::TimeLine (theme::Colors).
+   The playhead (TimeCursor) is token-driven too: updateTimeCursorPos sets
+   the accentBright pill/line and the max-contrast text from
+   theme::Colors::current(), so it reads on the plain ruler and on the
+   temporary playback window's band — no qproperty overrides needed. */

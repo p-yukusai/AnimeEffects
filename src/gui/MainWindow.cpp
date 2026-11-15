@@ -1,5 +1,7 @@
 #include <QApplication>
+#include <QClipboard>
 #include <QGuiApplication>
+#include <QRegularExpression>
 #include "GeneralSettingDialog.h"
 #include "util/IProgressReporter.h"
 #include "gl/Global.h"
@@ -11,6 +13,7 @@
 #include "gui/ProjectHook.h"
 #include "gui/menu/menu_ProgressReporter.h"
 #include "util/NetworkUtil.h"
+#include <set>
 #include <utility>
 #include <QComboBox>
 // This thing is held by duct tape and OOP hell I swear...
@@ -21,10 +24,16 @@ class EventSuspender {
     QWriteLocker mRenderingLocker;
 
 public:
-    EventSuspender(gui::MainDisplayWidget& aMainDisplay, gui::TargetWidget& aTarget):
+    EventSuspender(gui::MainDisplayWidget& aMainDisplay, gui::TargetWidget& aTarget, bool aStopPlayback = true):
         mRenderingLocker(&aMainDisplay.renderingLock()) {
-        // stop animation
-        aTarget.stop();
+        // Manual saves stop playback so the serialized state is stable. The
+        // autosave path keeps playback running: the frame timer is starved
+        // for the duration of the save anyway (single UI thread), and
+        // stopping would leave the animation paused until the user re-presses
+        // play — a surprise on every autosave tick.
+        if (aStopPlayback) {
+            aTarget.stop();
+        }
     }
 };
 
@@ -34,6 +43,7 @@ namespace gui {
 
 MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocaleParam  aLocaleParam):
     QMainWindow(nullptr),
+    autosaveTimer(nullptr),
     mSystem(aSystem),
     mGUIResources(aResources),
     mViaPoint(this),
@@ -101,12 +111,6 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         mViaPoint.setMainMenuBar(mMainMenuBar);
         this->setMenuBar(mMainMenuBar);
     }
-
-    // initialize System pointers
-    {
-        mSystem.mainMenu = mMainMenuBar;
-    }
-
     // initialize timer
     {
         timeElapsed.start();
@@ -116,29 +120,12 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
 
     // create main display
     {
-        QSettings settings;
-        double fontScale = 1.0f;
-        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0);
-        if (uiScale.isValid()) {
-            if (uiScale.toDouble() < 0.5f) { uiScale = 0.5f; }
-            if (uiScale.toDouble() > 3.0f) { uiScale = 3.0f; }
-            fontScale = uiScale.toDouble();
-        }
+#if defined(Q_OS_WIN)
+        constexpr float fontScale = 1.5f;
+#else
+        const float fontScale = 1.3f;
+#endif
         auto font = this->font();
-        auto userFont = settings.value("generalsettings/ui/font");
-        if (uiScale.isValid()) {
-            if (QFontDatabase::hasFamily(userFont.toString())){
-                font = QFont(userFont.toString());
-            }
-            else {
-                bool customFont = settings.value("generalsettings/ui/customFont", false).toBool();
-                if (customFont) {
-                    settings.remove("generalsettings/ui/font");
-                    settings.setValue("generalsettings/ui/customFont", false);
-                    QMessageBox::warning(this, tr("Warning"), tr("The specified font does not exist. Using default font."));
-                }
-            }
-        }
         if (font.pixelSize() > 0)
             font.setPixelSize(font.pixelSize() * static_cast<int>(fontScale));
         else
@@ -241,7 +228,7 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
     // dock-edge sashes: 12px invisible hitboxes + 1px hairlines over the
     // zero-width native separators (see standard.ssa); resizes docks through
     // QMainWindow::resizeDocks
-    new DockSash(this);
+    new gui::DockSash(this);
 
     // create driver holder
     { mDriverHolder.reset(new DriverHolder(mViaPoint)); }
@@ -308,92 +295,150 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
     {
         auto key = mKeyCommandMap->get("Undo");
         if (key)
-            key->invoker = [=]() { this->onUndoTriggered(); };
+            key->addListener([=]() { this->onUndoTriggered(); });
     }
     {
         auto key = mKeyCommandMap->get("Redo");
         if (key)
-            key->invoker = [=]() { this->onRedoTriggered(); };
+            key->addListener([=]() { this->onRedoTriggered(); });
     }
     {
         auto key = mKeyCommandMap->get("SaveProject");
         if (key)
-            key->invoker = [=]() { this->onSaveProjectTriggered(); };
+            key->addListener([=]() { this->onSaveProjectTriggered(); });
     }
     {
         auto key = mKeyCommandMap->get("PlayPause");
         if (key)
-            key->invoker = [=]() { this->onPlayPauseTriggered(); };
+            key->addListener([=]() { this->onPlayPauseTriggered(); });
     }
     {
         auto key = mKeyCommandMap->get("ToggleDocks");
         if (key)
-            key->invoker = [=]() { this->onDockToggle(); };
+            key->addListener([=]() { this->onDockToggle(); });
     }
     {
         auto key = mKeyCommandMap->get("ToggleRepeat");
         if (key)
-            key->invoker = [=]() { this->onLoopToggle(); };
+            key->addListener([=]() { this->onLoopToggle(); });
     }
     {
         auto key = mKeyCommandMap->get("MoveRight");
         if (key)
-            key->invoker = [=]() { this->onDisplacementTriggered(1); };
+            key->addListener([=]() { this->onDisplacementTriggered(1); });
     }
     {
         auto key = mKeyCommandMap->get("MoveLeft");
         if (key)
-            key->invoker = [=]() { this->onDisplacementTriggered(-1); };
+            key->addListener([=]() { this->onDisplacementTriggered(-1); });
     }
     {
         auto key = mKeyCommandMap->get("MoveToInit");
         if (key)
-            key->invoker = [=]() { this->onMovementTriggered("Init"); };
+            key->addListener([=]() { this->onMovementTriggered("Init"); });
     }
     {
         auto key = mKeyCommandMap->get("MoveToLast");
         if (key)
-            key->invoker = [=]() { this->onMovementTriggered("Last"); };
+            key->addListener([=]() { this->onMovementTriggered("Last"); });
     }
     {
         auto key = mKeyCommandMap->get("MoveFrameLeft");
         if(key)
-            key->invoker = [=]() {this->onMoveFrameTriggered(false);};
+            key->addListener([=]() {this->onMoveFrameTriggered(false);});
     }
     {
         auto key = mKeyCommandMap->get("MoveFrameRight");
         if(key)
-            key->invoker = [=]() {this->onMoveFrameTriggered(true);};
+            key->addListener([=]() {this->onMoveFrameTriggered(true);});
     }
 #endif
 
     // autosave
-
-    QSettings settings;
-    bool autosave = settings.value("generalsettings/projects/enableAutosave").isValid() &&
-        settings.value("generalsettings/projects/enableAutosave").toBool();
-
-    if (autosave) {
-        autosaveTimer = new QTimer(this);
-        connect(autosaveTimer, SIGNAL(timeout()), this, SLOT(autoSave()));
-        autosaveTimer->start();
-    }
+    // The settings dialog applies autosave changes live through
+    // onGeneralSettingsApplied; the timer is (re)configured centrally here.
+    mViaPoint.onGeneralSettingsChanged.connect(this, &MainWindow::onGeneralSettingsApplied);
+    updateAutosaveState();
 }
 
 MainWindow::~MainWindow() { closeAllProjects(); }
 
-void MainWindow::autoSave() {
+void MainWindow::onGeneralSettingsApplied() { updateAutosaveState(); }
+
+void MainWindow::updateAutosaveState() {
     QSettings settings;
-    int autoDelay = settings.value("generalsettings/projects/autosaveDelay").isValid()
-        ? settings.value("generalsettings/projects/autosaveDelay").toInt()
-        : 5;
-    autosaveTimer->setInterval(autoDelay * 60000);
-    if (mCurrent && !mCurrent->isNameless() && mCurrent->isModified()) {
-        mViaPoint.pushLog(
-            "Automatically saved project: " + QFileInfo(mCurrent->fileName()).fileName(), ctrl::UILogType_Info
-        );
-        // qDebug() << "Interval of " + QString(std::to_string(autoDelay*60000).c_str()) + " milliseconds has elapsed.";
-        processProjectSaving(*mCurrent);
+    // Missing key defaults ON, matching the GeneralSettingsDialog checkbox.
+    const QVariant enabledVar = settings.value("generalsettings/projects/enableAutosave");
+    const bool enabled = !enabledVar.isValid() || enabledVar.toBool();
+    const QVariant delayVar = settings.value("generalsettings/projects/autosaveDelay");
+    int delayMin = delayVar.isValid() ? delayVar.toInt() : 5;
+    if (delayMin < 1) {
+        delayMin = 1; // 0 would arm a continuously-firing timer
+    }
+
+    if (enabled) {
+        if (!autosaveTimer) {
+            autosaveTimer = new QTimer(this);
+            connect(autosaveTimer, SIGNAL(timeout()), this, SLOT(autoSave()));
+        }
+        // start() arms a fresh countdown; on a running timer it restarts it.
+        autosaveTimer->start(delayMin * 60000);
+    } else if (autosaveTimer) {
+        autosaveTimer->stop();
+    }
+}
+
+void MainWindow::autoSave() {
+    if (!autosaveTimer) {
+        return;
+    }
+
+    QSettings settings;
+    const QVariant enabledVar = settings.value("generalsettings/projects/enableAutosave");
+    if (!enabledVar.isValid() || !enabledVar.toBool()) {
+        autosaveTimer->stop();
+        return;
+    }
+
+    const QVariant delayVar = settings.value("generalsettings/projects/autosaveDelay");
+    int autoDelay = delayVar.isValid() ? delayVar.toInt() : 5;
+    if (autoDelay < 1) {
+        autoDelay = 1;
+    }
+    // Re-arm so the next autosave is a full interval after this one, not
+    // relative to app launch or the last manual save.
+    autosaveTimer->start(autoDelay * 60000);
+
+    // Save every modified project — not just the active tab. Background tabs
+    // otherwise never get autosaved, losing work on a crash.
+    for (int i = 0; i < mSystem.projectCount(); ++i) {
+        core::Project* project = mSystem.project(i);
+        if (!project || !project->isModified()) {
+            continue;
+        }
+
+        if (project->isNameless()) {
+            // Never-saved projects get a recovery copy in the app cache. The
+            // project stays unsaved (dirty flag and Save As prompt remain);
+            // the log line names the file so it can be reopened after a crash.
+            EventSuspender suspender(*mMainDisplay, *mTarget, false);
+            QString recoveryPath;
+            auto result = mSystem.saveRecoveryCopy(*project, recoveryPath);
+            if (result) {
+                mViaPoint.pushLog("Automatically saved unsaved project to: " + recoveryPath, ctrl::UILogType_Info);
+            } else {
+                mViaPoint.pushLog(
+                    "Failed to automatically save unsaved project: " + result.message, ctrl::UILogType_Warn
+                );
+            }
+        } else {
+            const QString label = QFileInfo(project->fileName()).fileName();
+            if (processProjectSaving(*project, false, true, false)) {
+                mViaPoint.pushLog("Automatically saved project: " + label, ctrl::UILogType_Info);
+            } else {
+                mViaPoint.pushLog("Failed to automatically save project: " + label, ctrl::UILogType_Warn);
+            }
+        }
     }
 }
 
@@ -415,6 +460,10 @@ void MainWindow::showWithSettings() {
 #else
     this->showMaximized();
 #endif
+
+    // Offer crash-recovery of unsaved projects from a previous session once
+    // the window is up; the prompt needs a visible parent.
+    QTimer::singleShot(0, this, [this]() { offerRecoveryCopies(); });
 }
 
 void MainWindow::saveCurrentSettings(int aResultCode) {
@@ -482,58 +531,29 @@ void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
 
     const QString standard = aTheme.loadStylesheet("standard.ssa");
     if (!standard.isEmpty()) {
-        QSettings settings;
-        const double uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
-        double fontSize = qApp->font().pointSize();
-        auto hasSize = !mLocaleParam.fontSize.isEmpty();
-        if (hasSize) {
-            const QString size = mLocaleParam.fontSize.trimmed();
-            if (size.endsWith("pt", Qt::CaseInsensitive)) {
-                bool ok = false;
-                qreal pt = size.left(size.size() - 2).toDouble(&ok);
-                if (pt <= 0.0) { pt = 1.0; }
-                fontSize = pt * uiScale;
-            }
-        }
         QString fontOption;
         {
             auto hasFamily = !mLocaleParam.fontFamily.isEmpty();
-            if (hasFamily) {
-                auto f = QFont(mLocaleParam.fontFamily.trimmed());
-                f.setPointSizeF(fontSize);
-                this->setFont(f);
-                qApp->setFont(f);
-
-            }
-            fontOption = "QWidget {" + (hasFamily ? "font-family: " + mLocaleParam.fontFamily + ";" : "") +
-                (hasSize ? "font-size: " + QString::number(fontSize, 'f', 0) + ";" : "") + " }\n";
+            auto hasSize = !mLocaleParam.fontSize.isEmpty();
+            fontOption = "QWidget {" + (hasFamily ? ("font-family: " + mLocaleParam.fontFamily + ";") : "") +
+                (hasSize ? ("font-size: " + mLocaleParam.fontSize + ";") : "") + " }\n";
+            // top-level section headers step up one point from the base
+            // font (QSS cannot express a relative size, so derive it from
+            // the locale's pt value; the rule lives here so it tracks the
+            // base font across locale/settings changes)
             if (hasSize) {
-                fontOption += QString("QAbstractButton#propertyPanelHeader { font-size: %1pt; }\n")
-                .arg(QString::number(fontSize + 1.0, 'f', 0));
-            }
-        }
-        {
-            qDebug() << "customFont: " << settings.value("generalsettings/ui/customFont", false).toBool()
-            << "font: " << settings.value("generalsettings/ui/font");
-            if (settings.value("generalsettings/ui/customFont", false).toBool()) {
-                const auto font = settings.value("generalsettings/ui/font");
-                auto f = QFont(font.toString());
-                f.setPointSizeF(fontSize);
-                this->setFont(f);
-                qApp->setFont(f);
-                fontOption =
-                    "QWidget {"
-                        + ("font-family: " + font.toString() + ";"
-                        + "font-size: " + QString::number(fontSize, 'f', 0) + ";") + " }\n";
-                if (hasSize) {
-                    fontOption += QString("QAbstractButton#propertyPanelHeader { font-size: %1pt; }\n")
-                    .arg(QString::number(fontSize + 1.0, 'f', 0));
+                const QString size = mLocaleParam.fontSize.trimmed();
+                if (size.endsWith("pt", Qt::CaseInsensitive)) {
+                    bool ok = false;
+                    const qreal pt = size.left(size.size() - 2).toDouble(&ok);
+                    if (ok) {
+                        fontOption += QString("QAbstractButton#propertyPanelHeader { font-size: %1pt; }\n")
+                                          .arg(QString::number(pt + 1.0, 'f', 0));
+                    }
                 }
             }
-
         }
-        qDebug() << "fontOption: " << fontOption;
-        qApp->setStyleSheet(fontOption + standard);
+
         this->setStyleSheet(fontOption + standard);
     }
 
@@ -728,6 +748,9 @@ void MainWindow::closeProjectTab(core::Project& aProject) {
     const auto closeProject = &aProject;
     mProjectTabBar->removeProject(*closeProject);
     resetProjectRefs(nullptr); ///@note update mCurrent
+    // A closed tab's autosave copy is stale — saved projects already cleared
+    // it, discarded ones should not linger as litter in the app cache.
+    mSystem.clearRecoveryCopy(*closeProject);
     mSystem.closeProject(*closeProject);
 
     if (mProjectTabBar->currentProject()) {
@@ -767,19 +790,20 @@ int MainWindow::confirmProjectClosing(const QString& aMessage) {
     QMessageBox msgBox;
 
     msgBox.setText(aMessage);
-    msgBox.addButton(tr("Save"), QMessageBox::YesRole);
-    msgBox.addButton(tr("Discard"), QMessageBox::NoRole);
+
+    msgBox.addButton(tr("Save Changes"), QMessageBox::YesRole);
+    msgBox.addButton(tr("Discard Changes"), QMessageBox::NoRole);
     auto cancel = msgBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
     msgBox.setDefaultButton(cancel);
     msgBox.exec();
     auto clicked = msgBox.clickedButton();
     if (clicked) {
-        const auto role = msgBox.buttonRole(clicked);
+        auto role = msgBox.buttonRole(clicked);
         if (role == QMessageBox::YesRole)
             return QMessageBox::Yes;
-        if (role == QMessageBox::NoRole)
+        else if (role == QMessageBox::NoRole)
             return QMessageBox::No;
-        if (role == QMessageBox::RejectRole)
+        else if (role == QMessageBox::RejectRole)
             return QMessageBox::Cancel;
     }
     return QMessageBox::Cancel;
@@ -806,9 +830,14 @@ void MainWindow::onPlayPauseTriggered() {
 
 void MainWindow::onMovementTriggered(const QString& frameMovement) {
     if (frameMovement == "Last") {
-        mTarget->timeLineWidget().setFrame(core::Frame(mCurrent->attribute().maxFrame()));
+        // Land on the effective playback range's end (the temporary window's
+        // end while it overrides) — the project range's max would fall short
+        // when the window extends past it.
+        mTarget->timeLineWidget().setFrame(core::Frame(mTarget->timeLineWidget().playbackRange().max()));
     } else {
-        mTarget->timeLineWidget().setFrame(core::Frame(0));
+        // Land on the effective playback range's start (the temporary
+        // window's start while it overrides); the playhead clamps into it.
+        mTarget->timeLineWidget().setFrame(core::Frame(mTarget->timeLineWidget().playbackRange().min()));
     }
 }
 
@@ -988,9 +1017,79 @@ void MainWindow::onOpenRecentTriggered(QString aFileName) {
     }
 }
 
-bool MainWindow::processProjectSaving(core::Project& aProject, bool aRename) {
+void MainWindow::offerRecoveryCopies() {
+    // Drop incomplete recovery writes first so they are never offered or
+    // re-swept each launch; nothing here is a real project file.
+    mSystem.sweepStaleRecoveryTmp();
+    const QStringList paths = mSystem.recoveryCopyPaths();
+    if (paths.isEmpty()) {
+        return;
+    }
+
+    for (const QString& path : paths) {
+        const auto answer = QMessageBox::question(
+            this,
+            tr("Recover unsaved project?"),
+            tr("AnimeEffects found an unsaved project from a previous session:\n%1\n\nOpen it?").arg(
+                QDir::toNativeSeparators(path)
+            ),
+            QMessageBox::Open | QMessageBox::Discard,
+            QMessageBox::Open
+        );
+        if (answer == QMessageBox::Open) {
+            openRecoveryCopy(path);
+        } else if (answer == QMessageBox::Discard) {
+            // Only an explicit Discard deletes the copy. Closing the prompt
+            // (window X / Alt-F4) yields NoButton, and that must leave the
+            // file so the work is still offered at the next launch.
+            mSystem.removeRecoveryCopy(path);
+        }
+    }
+}
+
+void MainWindow::openRecoveryCopy(const QString& aFilePath) {
     // stop animation and main display rendering
     EventSuspender suspender(*mMainDisplay, *mTarget);
+
+    // clear old project
+    resetProjectRefs(nullptr);
+
+    // try loading
+    ctrl::System::LoadResult result;
+    {
+        menu::ProgressReporter progress(false, this);
+        result = mSystem.openProject(aFilePath, new ProjectHook(), progress, false);
+    }
+
+    if (result) {
+        // The recovery file is a crash artifact: keep the project unsaved so
+        // Save prompts for a real location instead of writing into the cache
+        // (the tab shows "New Project" and Save As asks for a path). The
+        // images themselves are embedded in the file, so the copy reopens
+        // fully; only the file-watch/re-import path metadata degrades.
+        result.project->setFileName("");
+        resetProjectRefs(result.project);
+        mProjectTabBar->pushProject(*result.project);
+
+        mMainDisplay->resetCamera();
+        mDriverHolder->driver()->updateFrame();
+        mDriverHolder->driver()->updateProjectAttribute();
+
+        // Recovered: the copy has served its purpose.
+        mSystem.removeRecoveryCopy(aFilePath);
+    } else {
+        QMessageBox::warning(nullptr, tr("Loading Error"), result.messages());
+
+        if (mProjectTabBar->currentProject()) {
+            resetProjectRefs(mProjectTabBar->currentProject());
+        }
+        // Keep the recovery file: opening failed, the user may retry.
+    }
+}
+
+bool MainWindow::processProjectSaving(core::Project& aProject, bool aRename, bool aSilent, bool aStopPlayback) {
+    // stop animation and main display rendering
+    EventSuspender suspender(*mMainDisplay, *mTarget, aStopPlayback);
 
     if (aProject.isNameless() || aRename) {
         QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"), "", "ProjectFile (*.anie)");
@@ -1007,13 +1106,20 @@ bool MainWindow::processProjectSaving(core::Project& aProject, bool aRename) {
     }
 
     // save
-    auto result = mSystem.saveProject(aProject);
+    auto result = mSystem.saveProject(aProject, !aSilent);
     if (!result) {
-        QMessageBox::warning(nullptr, "Saving Error", result.message);
+        if (aSilent) {
+            // Autosave must never block the user with a modal dialog.
+            mViaPoint.pushLog("Failed to save project: " + result.message, ctrl::UILogType_Warn);
+        } else {
+            QMessageBox::warning(nullptr, "Saving Error", result.message);
+        }
         return false; // failed
     }
 
     mProjectTabBar->updateTabNames();
+    // The project now has (or keeps) a real file — its recovery copy is stale.
+    mSystem.clearRecoveryCopy(aProject);
     return true;
 }
 
@@ -1137,7 +1243,7 @@ void MainWindow::onExportTriggered() {
     exportUI = new ExportWidgetUI;
     // Set up UI
     exportWidget->setParent(this, Qt::Window);
-    exportUI->setupUi(exportWidget, mGUIResources, mCurrent->attribute().maxFrame());
+    exportUI->setupUi(exportWidget, mGUIResources, mCurrent->attribute().frameRange().max());
     // Initialize gpDiag
     gpDiag->setAttribute(Qt::WA_DeleteOnClose,true);
     gpDiag->setParent(exportWidget, Qt::Window);
@@ -1149,7 +1255,8 @@ void MainWindow::onExportTriggered() {
     genParam.nativeFPS = mCurrent->attribute().fps();
     // I hate you gcc
     frameExportRange fer;
-    fer.lastFrame = mCurrent->attribute().maxFrame();
+    fer.firstFrame = mCurrent->attribute().frameRange().min();
+    fer.lastFrame = mCurrent->attribute().frameRange().max();
     genParam.nativeFrameRange = fer;
     // Get generics
     QVariant aspectRatioV = settings.value("export_aspect_ratio");
@@ -1283,7 +1390,11 @@ void MainWindow::onExportTriggered() {
     exportUI->heightSpinBox->setValue(genParam.nativeHeight);
     wSB.unblock(); hSB.unblock();
     exportUI->fpsSpinBox->setValue(genParam.nativeFPS);
-    exportUI->lastFrameSpinBox->setValue(mCurrent->currentTimeInfo().frameMax);
+    exportUI->lastFrameSpinBox->setValue(mCurrent->currentTimeInfo().frameRange.max());
+    // The suggested export range starts at the project range's first frame
+    // (the last frame box was set above); frames before it are pre-roll the
+    // animation doesn't own.
+    exportUI->firstFrameSpinBox->setValue(mCurrent->currentTimeInfo().frameRange.min());
     // Connections, these below are to force a refresh and to avoid any weird bugs or memory leaks
     connect(exportWidget, &QDialog::destroyed, [=](){
         regenerateWidget();
@@ -1622,7 +1733,8 @@ void MainWindow::onQuickExportTriggered(const QString& aFormat) {
     genParam.exportWithAudio = !mCurrent->pConf->empty();
     genParam.useCustomParam = false;
     frameExportRange fer;
-    fer.lastFrame = mCurrent->attribute().maxFrame();
+    fer.firstFrame = mCurrent->attribute().frameRange().min();
+    fer.lastFrame = mCurrent->attribute().frameRange().max();
     genParam.nativeFrameRange = fer;
     genParam.exportAllFrames = true;
     genParam.exportRange = {fer};
@@ -1635,12 +1747,10 @@ void MainWindow::onQuickExportTriggered(const QString& aFormat) {
     if (aFormat == "png") {
         imageExport = true;
         img.format = availableImageFormats::png;
-        genParam.exportWithAudio = false;
     }
     else {
         if (aFormat.contains("gif")) {
             vid.format = availableVideoFormats::gif;
-            genParam.exportWithAudio = false;
         }
         else if (aFormat.contains("mp4")) {
             vid.format = availableVideoFormats::mp4;

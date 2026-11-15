@@ -14,6 +14,7 @@ add_library(${PROJECT_NAME}
         DealtList.h
         Dir4.cpp Dir4.h
         Easing.cpp Easing.h
+        UnitBezier.h
         EasingName.cpp EasingName.h
         FergusonCoonsSpline.h
         Finally.h

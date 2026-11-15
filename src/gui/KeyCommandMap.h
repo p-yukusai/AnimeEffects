@@ -20,8 +20,17 @@ public:
         QString group;
         QString label;
         ctrl::KeyBinding binding;
-        std::function<void()> invoker;
-        std::function<void()> releaser;
+        // Listeners fire on the binding's press/release, in registration
+        // order. Several widgets legitimately react to one key (MoveCanvas
+        // pans the viewport AND the timeline), so a command holds a list —
+        // a single invoker slot would silently drop the second listener.
+        QList<std::function<void()>> invokers;
+        QList<std::function<void()>> releasers;
+        void addListener(std::function<void()> aInvoker, std::function<void()> aReleaser = {}) {
+            invokers.push_back(aInvoker);
+            if (aReleaser)
+                releasers.push_back(aReleaser);
+        }
     };
 
     typedef QMap<QString, KeyCommand*> MapType;

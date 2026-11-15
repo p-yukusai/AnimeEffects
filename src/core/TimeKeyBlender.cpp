@@ -951,10 +951,14 @@ void TimeKeyBlender::setBoneInfluenceMaps(ObjectNode& aNode, const BoneKey* aKey
             if (cache) {
                 // qDebug() << "infl" << cache->node() << (&aNode) << cache->influence().vertexCount();
                 mesh = TimeKeyBlender::getAreaMesh(aNode, aTime);
-                XC_ASSERT(cache->frameSign() == mesh->frameSign());
+                if (mesh) {
+                    // A cached node may have no area mesh at this frame; leave
+                    // influence/innerMtx null so the node renders undeformed.
+                    XC_ASSERT(cache->frameSign() == mesh->frameSign());
 
-                influence = &cache->influence();
-                innerMtx = cache->innerMatrix();
+                    influence = &cache->influence();
+                    innerMtx = cache->innerMatrix();
+                }
             }
 
             auto cacheOwner = key->cacheOwner();

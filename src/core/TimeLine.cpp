@@ -150,7 +150,6 @@ bool TimeLine::overwriteMove(TimeKeyType aType, int aFrom, int aTo) {
 }
 
 cmnd::Base* TimeLine::createPusher(TimeKeyType aType, int aFrame, TimeKey* aTimeKey) {
-    XC_ASSERT(aFrame >= 0);
     return new cmnd::LambdaScalable([=](cmnd::Vector& aCommands) {
         TimeLine::MapType& map = this->mMap.at(aType);
         // remove old key
@@ -176,7 +175,6 @@ cmnd::Base* TimeLine::createRemover(TimeKeyType aType, int aFrame, bool aOptiona
 }
 
 void TimeLine::pushRemoveCommands(TimeKeyType aType, int aFrame, cmnd::Vector& aCommands) {
-    XC_ASSERT(aFrame >= 0);
     TimeLine::MapType& map = mMap.at(aType);
     TimeKey* key = map.value(aFrame);
     XC_ASSERT(key->frame() == aFrame);
@@ -326,7 +324,7 @@ bool TimeLine::deserialize(Deserializer& aIn) {
 
         // default key
         if (hasDefaultKey) {
-            if (!deserializeTimeKey(aIn, (TimeKeyType)typeIndex, -1)) {
+            if (!deserializeTimeKey(aIn, (TimeKeyType)typeIndex, TimeLine::kDefaultKeyIndex)) {
                 return false;
             }
         }
@@ -403,7 +401,7 @@ bool TimeLine::deserializeTimeKey(Deserializer& aIn, TimeKeyType aType, int aInd
         delete key;
         return false;
     }
-    if (aIndex == -1) {
+    if (aIndex == TimeLine::kDefaultKeyIndex) {
         mDefaultKeys[aType].reset(key);
     } else {
         mMap[aType].insert(aIndex, key);

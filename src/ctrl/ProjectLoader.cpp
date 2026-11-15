@@ -10,9 +10,7 @@
 
 namespace ctrl {
 
-ProjectLoader::ProjectLoader(gui::MainMenuBar* aMMB): mLog(), mVersion() {
-    mMMB = aMMB;
-}
+ProjectLoader::ProjectLoader(): mLog(), mVersion() {}
 
 bool ProjectLoader::load(
     const QString& aPath,
@@ -37,7 +35,6 @@ bool ProjectLoader::load(
                 "This path has been removed from your recents."
             );
             settings.sync();
-
         }
 
         mLog.push_back("Can not open the project file.");
@@ -173,23 +170,36 @@ bool ProjectLoader::readGlobalBlock(util::LEStreamReader& aIn, core::Project& aP
     const uint32 width = aIn.readUInt32();
     // height
     const uint32 height = aIn.readUInt32();
-    // max frame
-    const uint32 maxFrame = aIn.readUInt32();
+    // frame range end (the historical "max frame" slot)
+    uint32 frameEnd = aIn.readUInt32();
     // fps
     const uint32 fps = aIn.readUInt32();
     // loop
     const uint8 loop = aIn.readByte();
 
-    // reserved
-    if (!aIn.skipZeroArea(47))
+    // reserved: the frame range start lives in the first 4 bytes (zero in
+    // every format <= 0.10, so those files load as [0, frameEnd]); the rest
+    // stays reserved and zero.
+    uint32 frameStart = aIn.readUInt32();
+    if (!aIn.skipZeroArea(47 - 4))
         return false;
 
     if (aIn.isFailed())
         return false;
 
+    // A corrupt file may carry a start past the end (every file <= 0.10 has
+    // start 0, so only hand-edited or damaged files can invert the range);
+    // swap to a valid range rather than letting a negative range break the
+    // loop span, the row geometry and the playhead clamp.
+    if (frameStart > frameEnd) {
+        const uint32 tmp = frameStart;
+        frameStart = frameEnd;
+        frameEnd = tmp;
+    }
+
     // set values
     aProject.attribute().setImageSize(QSize((int)width, (int)height));
-    aProject.attribute().setMaxFrame(maxFrame);
+    aProject.attribute().setFrameRange(util::Range((int)frameStart, (int)frameEnd));
     aProject.attribute().setFps(fps);
     aProject.attribute().setLoop((bool)loop);
     return true;

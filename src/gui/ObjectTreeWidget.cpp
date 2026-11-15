@@ -1734,6 +1734,10 @@ void ObjectTreeWidget::updateGeometries() {
     // to the unpadded bottom and drop the slack below the last row.
     QScrollBar* bar = verticalScrollBar();
     const bool atBottom = bar && bar->maximum() > 0 && bar->value() >= bar->maximum();
+    // The pre-relayout unpadded content end: the previous padding is ours
+    // (applied whenever the content overflowed), so subtract it back.
+    const int oldContentMax = bar ? qMax(0, bar->maximum() - kBottomPadding) : 0;
+    const int oldValue = bar ? bar->value() : 0;
 
     QTreeWidget::updateGeometries();
 
@@ -1745,8 +1749,18 @@ void ObjectTreeWidget::updateGeometries() {
     // short tree stays fit without a spurious scrollbar.
     const int paddedMax = bar->maximum() + kBottomPadding;
     bar->setRange(bar->minimum(), paddedMax);
-    if (atBottom)
+    if (bar->maximum() > oldContentMax) {
+        // The content grew (a row was expanded): the viewport must not move.
+        // Qt keeps the value when the growth exceeds the padding but clamps
+        // it up by the slack when it does not; restore the exact position in
+        // both cases so expanding never scrolls.
+        if (bar->value() != oldValue)
+            bar->setValue(oldValue);
+    } else if (atBottom) {
+        // Shrink or re-range: Qt clamped the value to the unpadded maximum,
+        // dropping the slack; re-attach the bottom with its padding.
         bar->setValue(paddedMax);
+    }
 }
 
 } // namespace gui

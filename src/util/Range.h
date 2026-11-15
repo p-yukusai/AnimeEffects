@@ -14,6 +14,8 @@ public:
     bool isNegative() const { return mMin > mMax; }
     bool contains(int aValue) const { return mMin <= aValue && aValue <= mMax; }
     bool contains(float aValue) const { return mMin <= aValue && aValue <= mMax; }
+    bool operator==(const Range& aOther) const { return mMin == aOther.mMin && mMax == aOther.mMax; }
+    bool operator!=(const Range& aOther) const { return !(*this == aOther); }
 
     void setMin(int aMin) { mMin = aMin; }
     void setMax(int aMax) { mMax = aMax; }

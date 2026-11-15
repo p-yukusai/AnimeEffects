@@ -19,7 +19,8 @@
 using namespace core;
 
 namespace {
-    constexpr int kDefaultMaxFrame = 600;
+    constexpr int kDefaultFrameCount = 600;
+    const util::Range kDefaultFrameRange(1, kDefaultFrameCount);
 
 } // namespace
 
@@ -30,7 +31,7 @@ TimeLineEditor::TimeLineEditor():
     mProject(),
     mRows(),
     mSelectingRow(),
-    mTimeMax(),
+    mFrameRange(),
     mState(State_Standby),
     mFps(60),
     mTimeCurrent(kTimeLineMargin),
@@ -44,33 +45,41 @@ TimeLineEditor::TimeLineEditor():
     mMarqueeMode(Marquee_Replace),
     mPreGestureSelection(),
     mPressedTarget(),
-    mPressedTargetValid(false) {
+    mPressedTargetValid(false),
+    mSelectionTemporary(false),
+    mPlayWindow(),
+    mWindowAnchorFrame(0),
+    mWindowDragged(false) {
     mRows.reserve(64);
 
     mTimeScale.setFps(mFps);
 
-    // reset max frame
-    setMaxFrame(kDefaultMaxFrame);
+    // reset frame range
+    setFrameRange(kDefaultFrameRange);
 }
 
-void TimeLineEditor::setMaxFrame(int aValue) {
-    mTimeMax = aValue;
-    mTimeScale.setMaxFrame(mTimeMax);
-    mTimeCurrent.setMaxFrame(mTimeMax);
-    mTimeCurrent.setFrame(mTimeScale, Frame(0));
+void TimeLineEditor::setFrameRange(const util::Range& aRange) {
+    mFrameRange = aRange;
+    mTimeScale.setFrameEnd(mFrameRange.max());
+    // The playhead starts at the range's first frame (1 for the default
+    // [1, frameEnd] range — frames are user-facing and 1-indexed).
+    mTimeCurrent.setFrame(mTimeScale, Frame(mFrameRange.min()));
 }
 
 void TimeLineEditor::setProject(Project* aProject) {
     clearRows();
     mProject.reset();
+    // The window is a viewport gesture over the current project's frame
+    // range; a different project invalidates it.
+    mPlayWindow.clear();
 
     if (aProject) {
         mProject = aProject->pointee();
-        setMaxFrame(mProject->attribute().maxFrame());
+        setFrameRange(mProject->attribute().frameRange());
         mFps = mProject->attribute().fps();
         mTimeScale.setFps(mFps);
     } else {
-        setMaxFrame(kDefaultMaxFrame);
+        setFrameRange(kDefaultFrameRange);
     }
 }
 
@@ -91,6 +100,7 @@ void TimeLineEditor::clearState() {
     mPreGestureSelection = core::TimeLineEvent();
     mPressedTarget = core::TimeLineEvent::Target();
     mPressedTargetValid = false;
+    mWindowDragged = false;
 }
 
 void TimeLineEditor::clearSelection() {
@@ -99,9 +109,12 @@ void TimeLineEditor::clearSelection() {
 }
 
 void TimeLineEditor::pushRow(ObjectNode* aNode, util::Range aWorldTB, bool aClosedFolder) {
-    constexpr int left = kTimeLineMargin;
-    const int right = left + mTimeScale.maxPixelWidth();
-    const QRect rect(QPoint(left, aWorldTB.min()), QPoint(right, aWorldTB.max()));
+    // The lane's vertical band on the content axis. Only top/height are read
+    // (vertical-band culling and keyHeight); the rect's x/width are unused —
+    // the lane fill, seams and labels key off the camera rect, keys render at
+    // margin + spacing*frame, and hit-testing uses frame ranges. Keep a fixed
+    // gutter x so the rect does not read as encoding a horizontal span.
+    const QRect rect(kTimeLineMargin, aWorldTB.min(), 1, aWorldTB.diff() + 1);
     mRows.push_back(TimeLineRow(aNode, rect, aClosedFolder, aNode == mSelectingRow));
 }
 
@@ -113,24 +126,48 @@ void TimeLineEditor::updateRowSelection(const ObjectNode* aRepresent) {
 }
 
 void TimeLineEditor::updateKey() {
-    // any timeline modification can invalidate the stored targets (keys
-    // moved, removed or recreated), so the selection follows the change
-    if (!mOnUpdatingKey) {
-        clearSelection();
+    // a timeline modification can leave stored targets stale (keys moved,
+    // removed or recreated): follow the moves, drop the dead entries, and
+    // keep the rest. Data-only edits like easing changes leave every entry
+    // valid, so they keep the selection.
+    mSelection.refresh();
+}
+
+void TimeLineEditor::selectCreatedKeys(const core::TimeLineEvent& aEvent) {
+    // Only live explicit-key targets map to real timeline keys. Rebuild the
+    // event through pos.isExist() so a stale index (a notification that named a
+    // frame the key no longer occupies) can never inject a null-key entry into
+    // the selection — it is simply skipped. Default-key payloads
+    // (kDefaultKeyIndex) carry nothing selectable in the lane maps, so they
+    // leave the current selection untouched rather than clearing it.
+    core::TimeLineEvent live;
+    for (const core::TimeLineEvent::Target& target : aEvent.targets()) {
+        if (target.pos.isExist()) {
+            live.pushTarget(*target.node, target.pos);
+        }
     }
+    if (live.targets().isEmpty())
+        return;
+
+    // Replace the whole selection with the created keys, then drop gesture and
+    // temporary-selection state so a stale press/marquee target or a right-click
+    // temporary loan cannot anchor future drags on the fresh selection.
+    mSelection.set(live);
+    mSelectionTemporary = false;
+    clearState();
 }
 
 void TimeLineEditor::updateProjectAttribute() {
-    clearState(); // fps/maxFrame changes keep the targets valid
+    clearState(); // fps/range changes keep the targets valid
     if (mProject) {
-        const int newMaxFrame = mProject->attribute().maxFrame();
-        if (mTimeMax != newMaxFrame) {
-            setMaxFrame(newMaxFrame);
-
-            const int newRowRight = kTimeLineMargin + mTimeScale.maxPixelWidth();
-            for (auto& row : mRows) {
-                row.rect.setRight(newRowRight);
-            }
+        const util::Range newRange = mProject->attribute().frameRange();
+        if (mFrameRange != newRange) {
+            // The window is a viewport gesture over the current project's
+            // frame range; a range change invalidates it (like a project
+            // switch), so a stale window cannot override playback outside
+            // the newly configured range.
+            mPlayWindow.clear();
+            setFrameRange(newRange);
         }
 
         const int newFps = mProject->attribute().fps();
@@ -155,11 +192,27 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
     if (aCursor.emitsLeftPressedEvent()) {
         const QVector2D handlePos(mTimeCurrent.handlePos());
 
-        // playhead: handle or header click moves the current frame
-        if ((aCursor.screenPos() - handlePos).length() < mTimeCurrent.handleRange()) {
+        // Shift on the ruler is the temporary playback window gesture: press
+        // anchors it (nothing shows yet), the first drag materializes it, a
+        // click dismisses it. It takes precedence over the playhead handle
+        // and the header seek.
+        if (shift && isOnRuler(aCursor.screenPos().y())) {
+            // The window is clamped into the project frame range: playback
+            // previews frames the project owns, never content beyond its
+            // extent (which stays reachable through free navigation).
+            mWindowAnchorFrame = qBound(
+                mFrameRange.min(), mTimeScale.frame(worldPoint.x() - kTimeLineMargin), mFrameRange.max()
+            );
+            mWindowDragged = false;
+            mState = State_SetWindow;
+        } else if ((aCursor.screenPos() - handlePos).length() < mTimeCurrent.handleRange()) {
+            // playhead: handle or header click moves the current frame
             mState = State_MoveCurrent;
             flags |= UpdateFlag_ModView;
-        } else if (aCursor.screenPos().y() < kHeaderHeight) {
+        } else if (isOnRuler(aCursor.screenPos().y())) {
+            // Navigation is free: a header click seeks to the clicked frame
+            // even when the temporary playback window is active (the window
+            // only constrains the playback clock, not the playhead).
             mTimeCurrent.setHandlePos(mTimeScale, aCursor.worldPos().toPoint());
             mState = State_MoveCurrent;
             flags |= UpdateFlag_ModView;
@@ -209,7 +262,14 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
             }
         }
     } else if (aCursor.emitsLeftDraggedEvent()) {
-        if (mState == State_MoveCurrent) {
+        if (mState == State_SetWindow) {
+            mPlayWindow.set(
+                mWindowAnchorFrame,
+                qBound(mFrameRange.min(), mTimeScale.frame(worldPoint.x() - kTimeLineMargin), mFrameRange.max())
+            );
+            mWindowDragged = true;
+            flags |= UpdateFlag_ModView;
+        } else if (mState == State_MoveCurrent) {
             mTimeCurrent.setHandlePos(mTimeScale, aCursor.worldPos().toPoint());
             flags |= UpdateFlag_ModView;
             flags |= UpdateFlag_ModFrame;
@@ -230,11 +290,21 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
             flags |= UpdateFlag_ModView;
         }
     } else if (aCursor.emitsLeftReleasedEvent()) {
-        if (mState == State_MoveKeys) {
+        if (mState == State_SetWindow) {
+            // A shift-click (press and release without dragging) dismisses
+            // the window; a drag keeps what it set. A drag that collapses to
+            // a single frame (start == end, easy at max zoom) is likewise a
+            // click in disguise — keep it, and a 1-frame active window would
+            // gate playback to that one frame while rendering nothing.
+            if (!mWindowDragged || mPlayWindow.start == mPlayWindow.end)
+                mPlayWindow.clear();
+            mState = State_Standby;
+            flags |= UpdateFlag_ModView;
+        } else if (mState == State_MoveKeys) {
             // keys moved: re-resolve the selection to their new frames so
             // later copy/delete/move target the right keys
             if (mMoveRef) {
-                mSelection.reindex();
+                mSelection.refresh();
                 mMoveRef = nullptr;
             } else if (mPressedTargetValid) {
                 // a plain click (no drag) always leaves exactly the clicked
@@ -346,16 +416,28 @@ bool TimeLineEditor::selectKeysAt(TimeLineEvent& aEvent, const QPoint& aPos) {
     if (mSelection.contains(target)) {
         // right-click on a selected key: operate on the whole selection
         mSelection.assign(aEvent);
-    } else {
-        // right-click on an unselected key: select it and operate on it
-        TimeLineEvent single;
-        single.pushTarget(*hit.node, hit.pos);
-        mSelection.set(single);
-        mSelection.assign(aEvent);
+        return true;
     }
+
+    // right-click on an unselected key: clear the current selection and lend
+    // the clicked key a temporary selection for the lifetime of the context
+    // menu — it shows the highlight and every menu action consumes it. The
+    // previous selection is NOT restored; endTemporarySelection() drops the
+    // temporary selection once the menu closes.
+    TimeLineEvent single;
+    single.pushTarget(*hit.node, hit.pos);
+    mSelection.set(single);
+    mSelectionTemporary = true;
+    mSelection.assign(aEvent);
     return true;
 }
 
+void TimeLineEditor::endTemporarySelection() {
+    if (!mSelectionTemporary)
+        return;
+    mSelection.clear();
+    mSelectionTemporary = false;
+}
 bool TimeLineEditor::retrieveSelectionTargets(TimeLineEvent& aEvent) const {
     if (mSelection.empty())
         return false;
@@ -571,84 +653,83 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
 
     if (!keyList.empty()) {
         int pastedKeys = 0;
-        for (int x = 0; x < keyList.size(); x++) {
-            TimeKey* keyframe = keyList[x];
-            int newFrame = keyframe->frame();
-            TimeKeyType type = keyframe->type();
-            TimeLine* timeLine = objItem->node().timeLine();
-            // invalid frame
-            if (newFrame < 0) { frameLessThanZero++; }
-            else {
-                if (timeLine->hasTimeKey(type, newFrame)) { timelineHasKey++; }
+        // One undo step + one notification for the whole paste. A per-key macro
+        // fragments the undo history, and with a single-aggregate "creation
+        // selects its output" rule it would only ever select the last pasted
+        // key. The notifier names each created key at its real frame.
+        cmnd::Stack& stack = project.address->commandStack();
+        auto notifier = new TimeLineUtil::Notifier(*project.address);
+        notifier->event().setType(TimeLineEvent::Type_PushKey);
+        {
+            cmnd::ScopedMacro macro(stack, CmndName::tr("Paste clipboard keys"));
+            macro.grabListener(notifier);
+
+            for (int x = 0; x < keyList.size(); x++) {
+                TimeKey* keyframe = keyList[x];
+                int newFrame = keyframe->frame();
+                TimeKeyType type = keyframe->type();
+                TimeLine* timeLine = objItem->node().timeLine();
+                // invalid frame
+                if (newFrame < 0) { frameLessThanZero++; }
                 else {
-                    if (type == TimeKeyType_FFD) {
-                        // find area key and mesh
-                        auto [aKey, aMesh] = gui::ObjectTreeWidget::getAreaMeshImpl(objItem->node(), keyframe->frame());
-                        TimeKey* areaKey = aKey;
-                        LayerMesh* areaMesh = aMesh;
-                        timeLine->current().setFFDMesh(areaMesh);
-                        timeLine->current().setFFDMeshParent(areaKey);
-                        // connect to parent mesh
-                        aKey->children().pushBack(keyframe);
-                        /*
-                        auto imgKey = gui::ObjectTreeWidget::getImageKey(objItem->node(), keyframe->frame());
-                        if (aKey->type() != TimeKeyType_Image) {
-                            imgKey->children().pushBack(keyframe);
-                        }*/
+                    if (timeLine->hasTimeKey(type, newFrame)) { timelineHasKey++; }
+                    else {
+                        if (type == TimeKeyType_FFD) {
+                            // find area key and mesh
+                            auto [aKey, aMesh] =
+                                gui::ObjectTreeWidget::getAreaMeshImpl(objItem->node(), keyframe->frame());
+                            TimeKey* areaKey = aKey;
+                            LayerMesh* areaMesh = aMesh;
+                            timeLine->current().setFFDMesh(areaMesh);
+                            timeLine->current().setFFDMeshParent(areaKey);
+                            // connect to parent mesh
+                            aKey->children().pushBack(keyframe);
+                        }
+                        // Announce the created key at its actual frame. The old
+                        // code named the loop index x, which never matched a key
+                        // in the lane map and left follow-up consumers (and the
+                        // created-key selection) pointing at nothing.
+                        notifier->event().pushTarget(objItem->node(), TimeKeyPos(*timeLine, type, newFrame));
+
+                        QHash<const TimeKey*, TimeKey*> parentHash;
+                        struct ChildInfo {
+                            TimeKey* key;
+                            TimeKey* parent;
+                        };
+                        QList<ChildInfo> childList;
+                        auto line = timeLine;
+                        XC_PTR_ASSERT(line);
+
+                        auto copiedKey = keyframe;
+                        XC_PTR_ASSERT(copiedKey);
+                        auto parentKey = copiedKey->parent();
+
+                        TimeKey* newKey = copiedKey->createClone();
+
+                        newKey->setFrame(newFrame);
+
+                        stack.push(new cmnd::GrabNewObject<TimeKey>(newKey));
+                        stack.push(line->createPusher(type, newFrame, newKey));
+
+                        if (newKey->canHoldChild()) {
+                            parentHash[copiedKey] = newKey;
+                        }
+                        if (parentKey) {
+                            ChildInfo info = {newKey, parentKey};
+                            childList.push_back(info);
+                        }
+
+                        // connect to parents
+                        for (auto child : childList) {
+                            auto parent = child.parent;
+                            // if the parent was also copied, connect to a new parent key.
+                            auto it = parentHash.find(parent);
+                            if (it != parentHash.end())
+                                parent = it.value();
+                            stack.push(new cmnd::PushBackTree<TimeKey>(&parent->children(), child.key));
+                        }
+                        pastedKeys++;
                     }
-                    // a key already exists.
-                    // @todo something more fancy
-                    cmnd::Stack& stack = project.address->commandStack();
-                    // create notifier
-                    auto notifier = new TimeLineUtil::Notifier(*project.address);
-                    TimeLineEvent tEvnt = TimeLineEvent();
-                    tEvnt.pushTarget(objItem->node(), TimeKeyPos(*timeLine, keyframe->type(), x));
-                    tEvnt.setType(TimeLineEvent::Type_PushKey);
-                    notifier->event() = tEvnt;
-                    notifier->event().setType(TimeLineEvent::Type_PushKey);
-
-                    // push paste keys command
-                    cmnd::ScopedMacro macro(stack, CmndName::tr("Paste clipboard key"));
-                    macro.grabListener(notifier);
-
-                    QHash<const TimeKey*, TimeKey*> parentHash;
-                    struct ChildInfo {
-                        TimeKey* key;
-                        TimeKey* parent;
-                    };
-                    QList<ChildInfo> childList;
-                    auto line = timeLine;
-                    XC_PTR_ASSERT(line);
-
-                    auto copiedKey = keyframe;
-                    XC_PTR_ASSERT(copiedKey);
-                    auto parentKey = copiedKey->parent();
-
-                    TimeKey* newKey = copiedKey->createClone();
-
-                    newKey->setFrame(newFrame);
-
-                    stack.push(new cmnd::GrabNewObject<TimeKey>(newKey));
-                    stack.push(line->createPusher(type, newFrame, newKey));
-
-                    if (newKey->canHoldChild()) {
-                        parentHash[copiedKey] = newKey;
-                    }
-                    if (parentKey) {
-                        ChildInfo info = {newKey, parentKey};
-                        childList.push_back(info);
-                    }
-
-                    // connect to parents
-                    for (auto child : childList) {
-                        auto parent = child.parent;
-                        // if the parent was also copied, connect to a new parent key.
-                        auto it = parentHash.find(parent);
-                        if (it != parentHash.end())
-                            parent = it.value();
-                        stack.push(new cmnd::PushBackTree<TimeKey>(&parent->children(), child.key));
-                    }
-                    pastedKeys++;
                 }
             }
         }
@@ -746,9 +827,11 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
     {
         cmnd::Stack& stack = mProject->commandStack();
 
-        // create notifier
+        // create notifier. The notification must name the *created* keys (at
+        // their new frames), not the copied-from targets, so consumers — the
+        // "creation selects its output" rule and any modifier that follows the
+        // paste — resolve to the keys that were actually added.
         auto notifier = new TimeLineUtil::Notifier(*mProject);
-        notifier->event() = aEvent;
         notifier->event().setType(TimeLineEvent::Type_CopyKey);
 
         // push paste keys command
@@ -779,6 +862,8 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
             stack.push(new cmnd::GrabNewObject<TimeKey>(newKey));
             stack.push(line->createPusher(type, newFrame, newKey));
 
+            notifier->event().pushTarget(*target.node, type, newFrame);
+
             if (newKey->canHoldChild()) {
                 parentMap[copiedKey] = newKey;
             }
@@ -799,7 +884,6 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
     }
     mOnUpdatingKey = false;
 
-    clearSelection();
     return true;
 }
 
@@ -836,12 +920,6 @@ bool TimeLineEditor::updateWheel(int aDelta, bool aInvertScaling) {
         return false;
 
     mTimeCurrent.update(mTimeScale);
-
-    const int lineWidth = mTimeScale.maxPixelWidth();
-
-    for (TimeLineRow& row : mRows) {
-        row.rect.setWidth(lineWidth);
-    }
     return true;
 }
 
@@ -863,8 +941,15 @@ QSize TimeLineEditor::modelSpaceSize() const {
 
 QPoint TimeLineEditor::currentTimeCursorPos() const { return mTimeCurrent.handlePos(); }
 
+int TimeLineEditor::frameStartPixel() const {
+    // The range's first frame on the content axis: the left margin gutter
+    // plus its scale position. The scrollbar track adds one more margin past
+    // this, so flush-left leaves the tick and its number breathing room.
+    return kTimeLineMargin + mTimeScale.pixelWidth(mFrameRange.min());
+}
+
 int TimeLineEditor::frameEndPixel() const {
-    // The last frame's position on the content axis: the left margin gutter
+    // The range's last frame on the content axis: the left margin gutter
     // plus its scale position (the renderer's range-marker x1 uses the same
     // convention). The scrollbar track adds one more margin past this, so
     // flush-right leaves the tick and its number breathing room.
@@ -876,12 +961,12 @@ int TimeLineEditor::pixelsPerFrame() const {
 }
 
 int TimeLineEditor::anchorPixelAfterScale(int aContentPixel, int aOldSpacing) const {
-    // The zoom anchor is the content pixel under the mouse, scaled exactly (no
-    // frame rounding, no range clamp). Anchoring a frame instead would snap
-    // the edge frame to the cursor when the mouse sits outside the frame range.
+    // The zoom anchor is the content pixel under the mouse, scaled exactly
+    // (no frame rounding, no range clamp). The half-spacing bias rounds
+    // half-up for positive content and away from zero for negative.
     const int newSpacing = mTimeScale.pixelsPerFrame();
-    const qint64 scaled =
-        (static_cast<qint64>(aContentPixel) - kTimeLineMargin) * newSpacing + aOldSpacing / 2;
+    const qint64 num = (static_cast<qint64>(aContentPixel) - kTimeLineMargin) * newSpacing;
+    const qint64 scaled = num >= 0 ? num + aOldSpacing / 2 : num - aOldSpacing / 2;
     return kTimeLineMargin + static_cast<int>(scaled / aOldSpacing);
 }
 
@@ -898,16 +983,18 @@ void TimeLineEditor::render(
     const int bgn = mTimeScale.frame(cullRect.left() - margin - 5);
     const int end = mTimeScale.frame(cullRect.right() - margin + 5);
 
-    time::Renderer renderer(aPainter, aCamera, aTheme, timelineFormat);
+    time::Renderer renderer(aPainter, aCamera, aTheme);
     renderer.setMargin(margin);
     renderer.setRange(util::Range(bgn, end));
     renderer.setTimeScale(mTimeScale);
+    renderer.setProjectRange(mFrameRange);
+    renderer.setPlayWindow(mPlayWindow);
 
     renderer.renderLines(mRows, camRect, cullRect);
-    // Range hairlines paint under the header and the marquee: they mark the
-    // frame range's edges through the tracks without competing with either.
+    // Range hairlines are part of the track background: they paint over the
+    // fills and seams, but under the key graphics they must never cover.
     renderer.renderRangeMarkers(camRect);
-    renderer.renderHeader(kHeaderHeight, mFps);
+    renderer.renderKeys(mRows, cullRect);
     // renderer.renderHandle(mTimeCurrent.handlePos(), mTimeCurrent.handleRange());
 
     if (mState == State_EncloseKeys && mMarquee.isActive()) {

@@ -71,6 +71,9 @@ public:
     const MouseSetting& mouseSetting() const;
 
     util::Signaler<void()> onVisualUpdated;
+    // Fired after the General Settings dialog is accepted, so owners can
+    // re-read settings that are applied live (e.g. the autosave timer).
+    util::Signaler<void()> onGeneralSettingsChanged;
 
 private:
     QWidget* mParent;

@@ -64,7 +64,7 @@ inline constexpr int kTailwindNeutralRow = 20; // the achromatic neutral row
 enum TokenRole {
     kBase, kRecessed, kRaised, kRaisedHover, kActive, kActiveHover,
     kHairline, kHairlineHover, kOutline, kHandleBorder, kFocus, kHover,
-    kText, kTextMuted, kTextDisabled, kIcon,
+    kText, kTextMuted, kTextMutedDim, kTextDisabled, kIcon,
     kSelection, kSelectionText, kTextSelection, kAccent, kAccentSwatch, kAccentBright, kAccentHover, kAccentText,
     kFloaterBody, kFloaterEdge,
     kRecessedGuideLine, // dashed interactive guides on the recessed canvas
@@ -73,6 +73,15 @@ enum TokenRole {
     kRecessedHairline, // 1px informational lines on the recessed canvas:
                        // 1 step from the recessed column, quieter than the
                        // guides
+    kWindowBand, // temporary playback window: translucent band across the
+                 // ruler. Neutral (structural family), never accent — the
+                 // window is a workspace setting, not interactive state, and
+                 // accent is reserved for the playhead/selection/marquee.
+    kWindowEdge, // window bracket stems and label pills: a solid neutral
+                 // step above the band
+    kWindowText, // window label pill text
+    kAccentBrightText, // text on accentBright fills (the playhead pill):
+                       // max-contrast against the saturated accentBright
     kTokenCount
 };
 
@@ -96,6 +105,14 @@ static constexpr int kTailwindLight[] = {
     /* kHover             */ 4,
     /* kText              */ 9,
     /* kTextMuted         */ 5,
+    /* kTextMutedDim      */ 6, // neutral-600 (#525252): one step dimmer than
+                                // light textMuted (col 5 = #737373), so muted
+                                // picker labels/glyphs read dimmer than the
+                                // standard muted text. (In the dark theme this
+                                // token reads neutral-500 #737373 — see the
+                                // dark table — which is where the mock's
+                                // --text-muted lives; the picker is only
+                                // compared in dark.)
     /* kTextDisabled      */ 4,
     /* kIcon              */ 9,
     /* kSelection         */ 3,
@@ -112,6 +129,12 @@ static constexpr int kTailwindLight[] = {
                                  // col 1) — same distance as dark
     /* kRecessedHairline  */ 2, // 1 step from the recessed column (light
                                  // col 1)
+    /* kWindowBand        */ 3, // neutral-300: between hairline (2) and the
+                                 // muted text (4) — a visible gray wash
+    /* kWindowEdge        */ 5, // neutral-500: solid, readable on both themes
+    /* kWindowText        */ 0, // neutral-50
+    /* kAccentBrightText  */ 0, // neutral-50: lightest text on the saturated
+                                 // accentBright
 };
 static_assert(sizeof(kTailwindLight) / sizeof(kTailwindLight[0]) == kTokenCount,
               "kTailwindLight must have one column per TokenRole");
@@ -130,6 +153,10 @@ static constexpr int kTailwindDark[] = {
     /* kHover             */ 5,
     /* kText              */ 1,
     /* kTextMuted         */ 4,
+    /* kTextMutedDim      */ 5, // neutral-500 (#737373): a step dimmer than
+                                // textMuted (dark col 4 = neutral-400). The
+                                // mock's muted text is #737373, so muted
+                                // picker elements read this dim token.
     /* kTextDisabled      */ 5,
     /* kIcon              */ 2,
     /* kSelection         */ 7,
@@ -146,6 +173,13 @@ static constexpr int kTailwindDark[] = {
                                  // col 9) — same distance as light
     /* kRecessedHairline  */ 8, // 1 step from the recessed column (dark
                                  // col 9)
+    /* kWindowBand        */ 5, // neutral-500: mid gray, visible on the dark
+                                 // ruler at its fixed alpha
+    /* kWindowEdge        */ 4, // neutral-400 (same step as textMuted: a
+                                 // bright neutral for the stems and pills)
+    /* kWindowText        */ 9, // neutral-900
+    /* kAccentBrightText  */ 9, // neutral-900: darkest text on the pale
+                                 // accentBright
 };
 static_assert(sizeof(kTailwindDark) / sizeof(kTailwindDark[0]) == kTokenCount,
               "kTailwindDark must have one column per TokenRole");
@@ -221,6 +255,11 @@ struct Colors {
     QColor hover;         // hover border, splitter drag, scrollbar pill active (neutral)
     QColor text;          // primary text
     QColor textMuted;     // secondary text
+    QColor textMutedDim;  // one step dimmer than textMuted: muted picker
+                          // labels/glyphs. The mock's --text-muted is
+                          // #737373, but the dark theme's textMuted reads
+                          // cleaner (neutral-400), so muted elements that
+                          // must match the mock use this dim token.
     QColor textDisabled;  // disabled text
     QColor icon;          // resting content on buttons (icons, pill text):
                           // dimmer than `text` so the active state reads
@@ -250,6 +289,10 @@ struct Colors {
                              // canvas (spline axis, preview track): 1 step
                              // from the recessed column, quieter than the
                              // guides
+    QColor windowBand;   // temporary playback window: translucent band fill
+    QColor windowEdge;   // window bracket stems and label pills
+    QColor windowText;   // window label pill text
+    QColor accentBrightText; // text on accentBright fills (playhead pill)
     // Per-key colors for easier identification: one Tailwind row per key
     // type (kKeyColorRow) at a shared per-theme column, so all keys read at
     // the same lightness; baseKey is the neutral key color.
@@ -287,6 +330,7 @@ struct Colors {
             paletteColor(n[kTailwindLight[kHover]]),       // hover
             paletteColor(n[kTailwindLight[kText]]),        // text
             paletteColor(n[kTailwindLight[kTextMuted]]),   // textMuted
+            paletteColor(n[kTailwindLight[kTextMutedDim]]), // textMutedDim
             paletteColor(n[kTailwindLight[kTextDisabled]]), // textDisabled
             paletteColor(n[kTailwindLight[kIcon]]),        // icon
             // selection: the accent fill at a fixed 40% opacity — a
@@ -305,6 +349,10 @@ struct Colors {
             paletteColor(n[kTailwindLight[kFloaterEdge]]), // floaterEdge
             paletteColor(n[kTailwindLight[kRecessedGuideLine]]),   // recessedGuideLine
             paletteColor(n[kTailwindLight[kRecessedHairline]]), // recessedHairline
+            paletteColor(n[kTailwindLight[kWindowBand]], 0.45), // windowBand
+            paletteColor(n[kTailwindLight[kWindowEdge]]),       // windowEdge
+            paletteColor(n[kTailwindLight[kWindowText]]),       // windowText
+            paletteColor(n[kTailwindLight[kAccentBrightText]]), // accentBrightText
             // Per-key colors: kKeyColorRow at one shared column per theme
             // (kKeyColorColumnLight), so all keys read at the same lightness.
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnLight]), // baseKey
@@ -343,6 +391,7 @@ struct Colors {
             paletteColor(n[kTailwindDark[kHover]]),       // hover
             paletteColor(n[kTailwindDark[kText]]),        // text
             paletteColor(n[kTailwindDark[kTextMuted]]),   // textMuted
+            paletteColor(n[kTailwindDark[kTextMutedDim]]), // textMutedDim
             paletteColor(n[kTailwindDark[kTextDisabled]]), // textDisabled
             paletteColor(n[kTailwindDark[kIcon]]),        // icon
             paletteColor(a[kTailwindDark[kSelection]], 0.40), // selection
@@ -357,6 +406,10 @@ struct Colors {
             paletteColor(n[kTailwindDark[kFloaterEdge]]), // floaterEdge
             paletteColor(n[kTailwindDark[kRecessedGuideLine]]),   // recessedGuideLine
             paletteColor(n[kTailwindDark[kRecessedHairline]]), // recessedHairline
+            paletteColor(n[kTailwindDark[kWindowBand]], 0.30), // windowBand
+            paletteColor(n[kTailwindDark[kWindowEdge]]),       // windowEdge
+            paletteColor(n[kTailwindDark[kWindowText]]),       // windowText
+            paletteColor(n[kTailwindDark[kAccentBrightText]]), // accentBrightText
             // Per-key colors: kKeyColorRow at one shared column per theme
             // (kKeyColorColumnDark), so all keys read at the same lightness.
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBase]][kKeyColorColumnDark]), // baseKey

@@ -451,7 +451,7 @@ bool Exporter::updateTime(core::TimeInfo& aDst) {
     if (0 < mIndex && mCommonParam.frame.max() < frame) {
         return false;
     }
-    if (mOriginTimeInfo.frameMax < (int)frame) {
+    if (mOriginTimeInfo.frameRange.max() < (int)frame) {
         return false;
     }
 

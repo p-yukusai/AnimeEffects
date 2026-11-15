@@ -1,18 +1,51 @@
 #include <QApplication>
 #include <qstandardpaths.h>
+#include <algorithm>
 #include "MainWindow.h"
 #include "gui/GeneralSettingDialog.h"
 #include "util/NetworkUtil.h"
+#include "util/Easing.h"
 #include <QComboBox>
 #include <QHBoxLayout>
+#include <QPixmap>
 #include "gui/theme/Colors.h"
 
 namespace {
 
 constexpr int kLanguageTypeCount = 7;
-constexpr int kTimeFormatTypeCount = 6;
-constexpr int kEasingTypeCount = 13;
-constexpr int kRangeTypeCount = 3;
+// Timeline format picker order. Frames_From1 is dropped from the UI (with
+// frames natively 1-indexed it is identical to Frames_From0), but the enum
+// value is kept so previously saved settings still load — they map to the
+// "Frame number" entry.
+const core::TimeFormatType kTimeFormatOrder[] = {
+    core::TimeFormatType_Frames_From0,       // Frame number
+    core::TimeFormatType_Relative_FPS,       // Seconds (frame/fps)
+    core::TimeFormatType_Seconds_Frames,     // Seconds : Frame
+    core::TimeFormatType_Timecode_SMPTE,     // HH:MM:SS+FF
+    core::TimeFormatType_Timecode_HHMMSSmmm, // HH:MM:SS:mmm
+};
+const int kTimeFormatOrderCount = int(sizeof(kTimeFormatOrder) / sizeof(kTimeFormatOrder[0]));
+
+core::TimeFormatType timeFormatTypeAt(int aComboIndex) {
+    if (0 <= aComboIndex && aComboIndex < kTimeFormatOrderCount)
+        return kTimeFormatOrder[aComboIndex];
+    return core::TimeFormatType_Frames_From0;
+}
+
+int timeFormatComboIndexOf(core::TimeFormatType aType) {
+    if (aType == core::TimeFormatType_Frames_From1) // alias of Frames_From0
+        return timeFormatComboIndexOf(core::TimeFormatType_Frames_From0);
+    for (int i = 0; i < kTimeFormatOrderCount; ++i) {
+        if (kTimeFormatOrder[i] == aType)
+            return i;
+    }
+    return 0;
+}
+// The default-easing combo shows every DisplayOrder entry except Type_Custom
+// (a global default carries no bezier control points); derived from the
+// shared table so it can never drift from the picker order.
+const int kEasingTypeCount = util::Easing::displayCount() - 1;
+const int kRangeTypeCount = 3;
 
 int languageToIndex(const QString& aLanguage) {
     if (aLanguage == "Auto")
@@ -32,37 +65,6 @@ int languageToIndex(const QString& aLanguage) {
     return 0;
 }
 
-int easingToIndex(const QString& aEasing) {
-    if (aEasing == "None")
-        return 0;
-    if (aEasing == "Linear")
-        return 1;
-    if (aEasing == "Sine")
-        return 2;
-    if (aEasing == "Quad")
-        return 3;
-    if (aEasing == "Cubic")
-        return 4;
-    if (aEasing == "Quart")
-        return 5;
-    if (aEasing == "Quint")
-        return 6;
-    if (aEasing == "Expo")
-        return 7;
-    if (aEasing == "Circ")
-        return 8;
-    if (aEasing == "Back")
-        return 9;
-    if (aEasing == "Elastic")
-        return 10;
-    if (aEasing == "Bounce")
-        return 11;
-    if (aEasing == "Custom")
-        return 12;
-    return 1;
-    // Default easing is Linear
-}
-
 int rangeToIndex(const QString& aRange) {
     if (aRange == "In")
         return 0;
@@ -74,69 +76,14 @@ int rangeToIndex(const QString& aRange) {
     // Default range is InOut, it is referenced as "All" by Hidefuku
 }
 
-QString indexToEasing(int aIndex, bool translated = true) {
-    if (translated) {
-        switch (aIndex) {
-        case 0:
-            return QCoreApplication::translate("GeneralSettingsDialog", "None");
-        case 1:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Linear");
-        case 2:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Sine");
-        case 3:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Quad");
-        case 4:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Cubic");
-        case 5:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Quart");
-        case 6:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Quint");
-        case 7:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Expo");
-        case 8:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Circ");
-        case 9:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Back");
-        case 10:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Elastic");
-        case 11:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Bounce");
-        case 12:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Custom");
-        default:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Linear");
-        }
-    }
-    switch (aIndex) {
-    case 0:
-        return QString("None");
-    case 1:
-        return QString("Linear");
-    case 2:
-        return QString("Sine");
-    case 3:
-        return QString("Quad");
-    case 4:
-        return QString("Cubic");
-    case 5:
-        return QString("Quart");
-    case 6:
-        return QString("Quint");
-    case 7:
-        return QString("Expo");
-    case 8:
-        return QString("Circ");
-    case 9:
-        return QString("Back");
-    case 10:
-        return QString("Elastic");
-    case 11:
-        return QString("Bounce");
-    case 12:
-        return QString("Custom");
-    default:
-        return QString("Linear");
-    }
+QString indexToEasing(int aIndex) {
+    // The combo lists the shared display order minus Custom (a default easing
+    // carries no bezier control points); an out-of-range index falls back to
+    // Linear. The label comes from getTypeName (one translation source).
+    util::Easing::Type type = util::Easing::typeAtDisplayIndex(aIndex);
+    if (type == util::Easing::Type_Custom)
+        type = util::Easing::Type_Linear;
+    return util::Easing::getTypeName(type);
 }
 
 QString indexToRange(int aRange, bool translated = true) {
@@ -206,19 +153,19 @@ QString indexToLanguage(int aIndex, bool translated = true) {
 }
 } // namespace
 
-static QString indexToTimeFormat(const int aIndex) {
-    switch (aIndex) {
-    case core::TimeFormatType::TimeFormatType_Frames_From0:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Frame number (from 0)");
-    case core::TimeFormatType::TimeFormatType_Frames_From1:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Frame number (from 1)");
-    case core::TimeFormatType::TimeFormatType_Relative_FPS:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Relative to FPS (1.0 = 60.0)");
-    case core::TimeFormatType::TimeFormatType_Seconds_Frames:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Seconds : Frame");
-    case core::TimeFormatType::TimeFormatType_Timecode_SMPTE:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Timecode (SMPTE) (HH:MM:SS:FF)");
-    case core::TimeFormatType::TimeFormatType_Timecode_HHMMSSmmm:
+QString indexToTimeFormat(int aComboIndex) {
+    switch (timeFormatTypeAt(aComboIndex)) {
+    case core::TimeFormatType_Frames_From0:
+        return QCoreApplication::translate("GeneralSettingsDialog", "Frame number");
+    case core::TimeFormatType_Relative_FPS:
+        // Shows the frame's exact time in seconds (frame / fps), fractional.
+        return QCoreApplication::translate("GeneralSettingsDialog", "Seconds");
+    case core::TimeFormatType_Seconds_Frames:
+        // SS+FF: whole seconds + frame-within-second, at the project fps.
+        return QCoreApplication::translate("GeneralSettingsDialog", "Seconds + Frame (SS+FF)");
+    case core::TimeFormatType_Timecode_SMPTE:
+        return QCoreApplication::translate("GeneralSettingsDialog", "Timecode (SMPTE) (HH:MM:SS+FF)");
+    case core::TimeFormatType_Timecode_HHMMSSmmm:
         return QCoreApplication::translate("GeneralSettingsDialog", "Timecode (HH:MM:SS:mmm)");
     default:
         return "";
@@ -250,22 +197,30 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         }
 
         auto easing = settings.value("generalsettings/easing");
-        mInitialEasingIndex = easing.isValid() ? easingToIndex(easing.toString()) : easingToIndex("Linear");
+        if (easing.isValid()) {
+            // Saved as the enum value since the shared-table refactor; older
+            // settings stored the canonical name — accept both.
+            util::Easing::Type type = (easing.metaType().id() == QMetaType::QString)
+                ? util::Easing::easingToEnum(easing.toString())
+                : static_cast<util::Easing::Type>(easing.toInt());
+            mInitialEasingIndex = util::Easing::displayIndexOf(type);
+            if (type == util::Easing::Type_Custom || mInitialEasingIndex < 0 ||
+                mInitialEasingIndex >= kEasingTypeCount) {
+                mInitialEasingIndex = util::Easing::displayIndexOf(util::Easing::Type_Linear);
+            }
+        } else {
+            mInitialEasingIndex = util::Easing::displayIndexOf(util::Easing::Type_Linear);
+        }
 
         auto range = settings.value("generalsettings/range");
         mInitialRangeIndex = range.isValid() ? rangeToIndex(range.toString()) : rangeToIndex("All");
 
         auto timeScale = settings.value("generalsettings/ui/timeformat");
         if (timeScale.isValid()) {
-            mInitialTimeFormatIndex = timeScale.toInt();
-        }
-
-        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0);
-        mUiScale = uiScale.toDouble();
-
-        auto font = settings.value("generalsettings/ui/font", qApp->font().family());
-        if (font.isValid()) {
-            mFont = font.toString();
+            // Stored as the enum value; map it (the legacy Frames_From1
+            // included) to a picker index.
+            mInitialTimeFormatIndex =
+                timeFormatComboIndexOf(static_cast<core::TimeFormatType>(timeScale.toInt()));
         }
 
         auto theme = settings.value("generalsettings/ui/theme");
@@ -289,7 +244,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         bAutoSave = isAutoSave.isValid()? isAutoSave.toBool() : true;
 
         auto isAutoSaveDelay = settings.value("generalsettings/projects/autosaveDelay");
-        mAutoSaveDelay = isAutoSaveDelay.isValid() ? isAutoSaveDelay.toInt() : 5;
+        mAutoSaveDelay = isAutoSaveDelay.isValid() ? std::max(1, isAutoSaveDelay.toInt()) : 5;
 
         auto isAutoCbCopy = settings.value("generalsettings/keys/autocb");
         bAutoCbCopy = !isAutoCbCopy.isValid()? isAutoCbCopy.toBool() : false;
@@ -319,35 +274,31 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         mLanguageBox->setCurrentIndex(mInitialLanguageIndex);
         form->addRow(tr("Language (needs restart)"), mLanguageBox);
 
-        mFontFamilyBox = new QLineEdit();
-        mFontFamilyBox->setText(mFont);
-        form->addRow(tr("Font"), mFontFamilyBox);
+        mEasingBox = new QComboBox();
+        for (int i = 0; i < kEasingTypeCount; ++i) {
+            mEasingBox->addItem(indexToEasing(i));
+        }
+        mEasingBox->setCurrentIndex(mInitialEasingIndex);
+        form->addRow(tr("Default keyframe easing"), mEasingBox);
 
-        auto resetFontButton = new QPushButton(tr("Reset font"));
-        connect(resetFontButton, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.remove("generalsettings/ui/font");
-            settings.setValue("generalsettings/ui/customFont", false);
-            QMessageBox::information(this, tr("Font reset"), tr("The font has been reset."));
-        });
-        form->addRow(resetFontButton);
+        mRangeBox = new QComboBox();
+        for (int i = 0; i < kRangeTypeCount; ++i) {
+            mRangeBox->addItem(indexToRange(i));
+        }
+        mRangeBox->setCurrentIndex(mInitialRangeIndex);
+        form->addRow(tr("Default keyframe range"), mRangeBox);
 
-        mUiScaleBox = new QDoubleSpinBox();
-        mUiScaleBox->setValue(mUiScale);
-        mUiScaleBox->setSingleStep(0.1);
-        mUiScaleBox->setMinimum(0.5);
-        mUiScaleBox->setMaximum(3.0);
-        form->addRow(tr("UI scale"), mUiScaleBox);
+        mTimeFormatBox = new QComboBox();
+        for (int i = 0; i < kTimeFormatOrderCount; ++i) {
+            mTimeFormatBox->addItem(indexToTimeFormat(i));
+        }
+        mTimeFormatBox->setCurrentIndex(mInitialTimeFormatIndex);
+        form->addRow(tr("Timeline format"), mTimeFormatBox);
 
-        auto resetUIScaleButton = new QPushButton(tr("Reset UI scale"));
-        connect(resetUIScaleButton, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.setValue("generalsettings/ui/uiScale", 1.0);
-            settings.setValue("temp/scaleReset", true);
-            QMessageBox::information(this, tr("UI Scale reset"), tr("The UI scaling has been reset."));
-        });
-        form->addRow(resetUIScaleButton);
 
+        // Theme: a segmented control on a recessed track; the active choice
+        // is an accent-filled pill (no per-segment borders — those read as
+        // "connected buttons", which is the dated look).
         mThemeGroup = new QButtonGroup(this);
         mThemeGroup->setExclusive(true);
         {
@@ -357,7 +308,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             auto* themeLayout = new QHBoxLayout(themeRow);
             themeLayout->setContentsMargins(2, 2, 2, 2);
             themeLayout->setSpacing(0);
-            const QStringList themeList = gui::GUIResources::themeList();
+            const QStringList themeList = mGUIResources.themeList();
             const QStringList themeLabels{tr("System"), tr("Light"), tr("Dark")};
             for (int i = 0; i < themeList.size(); ++i) {
                 auto* b = new QPushButton(themeLabels.at(i));
@@ -376,6 +327,9 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             form->addRow(tr("Theme"), themeRow);
         }
 
+        // Accent color: a row of square colored boxes. Border on hover, a
+        // contrast ring on the active choice. No hue numbers — the user
+        // picks the color, not a degree value.
         mAccentGroup = new QButtonGroup(this);
         mAccentGroup->setExclusive(true);
         {
@@ -385,10 +339,14 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             accentLayout->setContentsMargins(0, 0, 0, 0);
             accentLayout->setSpacing(6);
             for (int i = 0; i < theme::kAccentCount; ++i) {
-                const auto acc = static_cast<theme::AccentColor>(i);
+                const theme::AccentColor acc = (theme::AccentColor)i;
                 auto* b = new QPushButton();
                 b->setCheckable(true);
                 b->setProperty("accent", i);
+                // Preview the accent hue at a mid lightness (accentSwatch):
+                // the fill token itself is theme-tuned (pale in light, deep
+                // in dark) and reads poorly as a bare swatch on the dialog
+                // background; the swatch shows the recognizable hue.
                 const QColor accent = (c.isDark ? theme::Colors::dark(acc) : theme::Colors::light(acc)).accentSwatch;
                 b->setStyleSheet(
                     QString("QPushButton { width: 20px; height: 20px; background-color: %1; border: 2px solid transparent; padding: 0; min-height: 0; min-width: 0; }"
@@ -404,51 +362,16 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         }
     }
 
-    auto project = new QFormLayout();
+    auto projectSaving = new QFormLayout();
     {
         mAutoSave = new QCheckBox();
         mAutoSave->setChecked(bAutoSave);
-        project->addRow(tr("Automatically save your project"), mAutoSave);
+        projectSaving->addRow(tr("Automatically save your project"), mAutoSave);
 
         mAutoSaveDelayBox = new QSpinBox();
+        mAutoSaveDelayBox->setRange(1, 999); // 0 would make the timer fire continuously
         mAutoSaveDelayBox->setValue(mAutoSaveDelay);
-        project->addRow(tr("Time (in minutes) between autosaves"), mAutoSaveDelayBox);
-
-        mForceSolverLoad = new QCheckBox();
-        mForceSolverLoad->setChecked(bForceSolverLoad);
-        project->addRow(tr("Force project to load"), mForceSolverLoad);
-
-        mAutoFFmpegBox = new QCheckBox();
-        mAutoFFmpegBox->setChecked(mAutoFFmpegCheck);
-        project->addRow(tr("Always check for FFmpeg on export"), mAutoFFmpegBox);
-
-        mIgnoreWarnings = new QCheckBox();
-        mIgnoreWarnings->setChecked(bIgnoreWarnings);
-        project->addRow(tr("Ignore export warnings"), mIgnoreWarnings);
-    }
-
-    auto qualityOfLife = new QFormLayout();
-    {
-        mEasingBox = new QComboBox();
-        for (int i = 0; i < kEasingTypeCount; ++i) {
-            mEasingBox->addItem(indexToEasing(i));
-        }
-        mEasingBox->setCurrentIndex(mInitialEasingIndex);
-        qualityOfLife->addRow(tr("Default keyframe easing"), mEasingBox);
-
-        mRangeBox = new QComboBox();
-        for (int i = 0; i < kRangeTypeCount; ++i) {
-            mRangeBox->addItem(indexToRange(i));
-        }
-        mRangeBox->setCurrentIndex(mInitialRangeIndex);
-        qualityOfLife->addRow(tr("Default keyframe range"), mRangeBox);
-
-        mTimeFormatBox = new QComboBox();
-        for (int i = 0; i < kTimeFormatTypeCount; ++i) {
-            mTimeFormatBox->addItem(indexToTimeFormat(i));
-        }
-        mTimeFormatBox->setCurrentIndex(mInitialTimeFormatIndex);
-        qualityOfLife->addRow(tr("Timeline format (needs restart)"), mTimeFormatBox);
+        projectSaving->addRow(tr("Time (in minutes) between autosaves"), mAutoSaveDelayBox);
 
         mAutoShowMesh = new QCheckBox();
         mAutoShowMesh->setChecked(bAutoShowMesh);
@@ -456,19 +379,31 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             QSettings settings;
             settings.setValue("generalsettings/tools/autoshowmesh", mAutoShowMesh->isChecked());
         });
-        qualityOfLife->addRow(tr("Show mesh when selecting FFD"), mAutoShowMesh);
+        projectSaving->addRow(tr("Show mesh when selecting FFD"), mAutoShowMesh);
 
         mAutoCbCopy = new QCheckBox();
         mAutoCbCopy->setChecked(bAutoCbCopy);
-        qualityOfLife->addRow(tr("On copy send keys to the clipboard"), mAutoCbCopy);
+        projectSaving->addRow(tr("On copy send keys to the clipboard"), mAutoCbCopy);
+
+        mAutoFFmpegBox = new QCheckBox();
+        mAutoFFmpegBox->setChecked(mAutoFFmpegCheck);
+        projectSaving->addRow(tr("Always check for FFmpeg on export"), mAutoFFmpegBox);
 
         bResIDBox = new QCheckBox();
         bResIDBox->setChecked(bResIDCheck);
-        qualityOfLife->addRow(tr("Enforce ID check on asset download"), bResIDBox);
+        projectSaving->addRow(tr("Enforce ID check on asset download"), bResIDBox);
+
+        mIgnoreWarnings = new QCheckBox();
+        mIgnoreWarnings->setChecked(bIgnoreWarnings);
+        projectSaving->addRow(tr("Ignore export warnings"), mIgnoreWarnings);
 
         mDonationAllowed = new QCheckBox();
         mDonationAllowed->setChecked(bDonationAllowed);
-        qualityOfLife->addRow(tr("Allow donation menu"), mDonationAllowed);
+        projectSaving->addRow(tr("Allow donation menu"), mDonationAllowed);
+
+        mForceSolverLoad = new QCheckBox();
+        mForceSolverLoad->setChecked(bForceSolverLoad);
+        projectSaving->addRow(tr("Force project to load"), mForceSolverLoad);
 
         mResetButton = new QPushButton(tr("Reset recent files list"));
         mResetButton->setToolTip(tr("Deletes all project entries from your recents"));
@@ -476,12 +411,8 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
             QSettings settings;
             settings.remove("projectloader/recents");
             MainWindow::showInfoPopup(tr("Success"), tr("All entries have been successfully removed"), "Info");
-            auto mmb = qobject_cast<MainMenuBar*>(this->parent());
-            mmb->onRecentsUpdate();
         });
-        qualityOfLife->addRow(mResetButton);
-
-
+        projectSaving->addRow(mResetButton);
     }
 
     auto keybindingSettings = new QFormLayout();
@@ -715,15 +646,14 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
     }
 
     createTab(tr("General"), form);
-    createTab(tr("Project"), project);
-    createTab(tr("QoL"), qualityOfLife);
+    createTab(tr("QoL"), projectSaving);
     createTab(tr("FFmpeg"), ffmpegSettings);
     createTab(tr("Keybindings"), keybindingSettings);
 
 
     this->setMainWidget(mTabs, false);
 
-    this->setOkCancel([=](const int aResult) -> bool {
+    this->setOkCancel([=](int aResult) -> bool {
         if (aResult == 0) {
             this->saveSettings();
         }
@@ -756,18 +686,6 @@ bool GeneralSettingDialog::rangeHasChanged() { return mInitialRangeIndex != mRan
 
 bool GeneralSettingDialog::timeFormatHasChanged() { return mInitialTimeFormatIndex != mTimeFormatBox->currentIndex(); }
 
-bool GeneralSettingDialog::fontHasChanged() { return mFont != mFontFamilyBox->text(); }
-
-bool GeneralSettingDialog::uiScaleHasChanged() {
-    QSettings settings;
-    if (settings.value("temp/scaleReset", false).toBool()) {
-        settings.remove("temp/scaleReset");
-        forceThemeReload = true;
-        return false;
-    }
-    return mUiScale != mUiScaleBox->value();
-}
-
 bool GeneralSettingDialog::themeHasChanged() { return mInitialThemeKey != theme(); }
 
 bool GeneralSettingDialog::donationHasChanged() {return bDonationAllowed != mDonationAllowed->isChecked(); }
@@ -785,8 +703,6 @@ bool GeneralSettingDialog::autoFFmpegHasChanged() { return mAutoFFmpegCheck != m
 bool GeneralSettingDialog::resIDCheckHasChanged() { return bResIDCheck != bResIDBox->isChecked(); }
 
 bool GeneralSettingDialog::cbCopyHasChanged() { return bAutoCbCopy != mAutoCbCopy->isChecked(); }
-
-bool GeneralSettingDialog::keyDelayHasChanged() { return mKeyDelay != mKeyDelayBox->value(); }
 
 QString GeneralSettingDialog::theme() {
     return mThemeGroup->checkedButton() ? mThemeGroup->checkedButton()->property("themeId").toString() : mInitialThemeKey;
@@ -941,39 +857,28 @@ bool GeneralSettingDialog::ffmpegCheck(const QString& ffmpeg, GeneralSettingDial
     return true;
 }
 
+
+bool GeneralSettingDialog::keyDelayHasChanged() { return mKeyDelay != mKeyDelayBox->value(); }
+
 void GeneralSettingDialog::saveSettings() {
     QSettings settings;
     if (languageHasChanged())
         settings.setValue("generalsettings/language", indexToLanguage(mLanguageBox->currentIndex(), false));
 
     if (easingHasChanged()) {
-        settings.setValue("generalsettings/easing", indexToEasing(mEasingBox->currentIndex(), false));
+        // Store the enum value (locale-independent, and backward-compatible:
+        // older name strings still load via easingToEnum).
+        settings.setValue(
+            "generalsettings/easing", int(util::Easing::typeAtDisplayIndex(mEasingBox->currentIndex()))
+        );
     }
     if (rangeHasChanged()) {
         settings.setValue("generalsettings/range", indexToRange(mRangeBox->currentIndex(), false));
     }
     if (timeFormatHasChanged()) {
-        settings.setValue("generalsettings/ui/timeformat", mTimeFormatBox->currentIndex());
-    }
-    if (fontHasChanged()) {
-        settings.setValue("generalsettings/ui/customFont", true);
-        if (mFontFamilyBox->text().contains("Comic Sans")) {
-
-            QMessageBox message;
-            message.setIcon(QMessageBox::Critical);
-            message.setWindowTitle("SIGILL");
-            message.setText(tr("I'm sorry Dave, I'm afraid I can't do that..."));
-            message.setInformativeText("I think you know what the problem is just as well as I do.");
-            message.setStandardButtons(QMessageBox::Ok);
-            message.setDefaultButton(QMessageBox::Ok);
-            message.setWindowModality(Qt::ApplicationModal);
-            message.exec();
-            bHal = true;
-        }
-        settings.setValue("generalsettings/ui/font", mFontFamilyBox->text());
-    }
-    if (uiScaleHasChanged()) {
-        settings.setValue("generalsettings/ui/uiScale", mUiScaleBox->value());
+        // Store the enum value (not the picker index) so a saved format is
+        // stable even if the picker order changes; load maps it back.
+        settings.setValue("generalsettings/ui/timeformat", int(timeFormatTypeAt(mTimeFormatBox->currentIndex())));
     }
     if (themeHasChanged()) {
         settings.setValue("generalsettings/ui/theme", theme());
@@ -981,7 +886,7 @@ void GeneralSettingDialog::saveSettings() {
     if (donationHasChanged()){
         settings.setValue("generalsettings/ui/donationAllowed", mDonationAllowed->isChecked());
     }
-    // TODO: Bandaid fix, maybe solved, requires investigation
+    // TODO: Bandaid fix, needs solving
     if (forceSolverLoadHasChanged()) {
         settings.setValue("forceSolverLoad", mForceSolverLoad->isChecked());
     }

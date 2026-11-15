@@ -17,12 +17,11 @@
 #include "gui/MouseSettingDialog.h"
 #include "util/NetworkUtil.h"
 #include <algorithm>
-#include <utility>
-#include <exception>
+#include <limits>
 #ifdef Q_OS_WINDOWS
-#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
-#include <Windows.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #endif
 #define VENDOR_ID_LEN 13
 
@@ -118,16 +117,94 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
     // load the list of video formats from a setting file.
     loadVideoFormats();
 
-    mainWindow = &aMainWindow;
-
+    MainWindow* mainWindow = &aMainWindow;
 
     auto fileMenu = new QMenu(tr("File"), this);
     {
         auto newProject = new QAction(tr("New project"), this);
         auto openProject = new QAction(tr("Open project"), this);
-        openRecent = new QMenu(tr("Open recent"), this);
+        auto openRecent = new QMenu(tr("Open recent"), this);
         {
-            onRecentsUpdate();
+            // Get settings
+            QSettings settings;
+            settings.sync();
+            recentfiles = settings.value("projectloader/recents").toStringList();
+
+            // Path placeholders
+            if (recentfiles.length() != 8) {
+                while (recentfiles.length() != 8) {
+                    recentfiles.append("Path placeholder");
+                }
+            }
+            QString firstPath = recentfiles[0];
+            QString secondPath = recentfiles[1];
+            QString thirdPath = recentfiles[2];
+            QString fourthPath = recentfiles[3];
+            QString fifthPath = recentfiles[4];
+            QString sixthPath = recentfiles[5];
+            QString seventhPath = recentfiles[6];
+            QString eigthPath = recentfiles[7];
+            QStringList list;
+            list << firstPath << secondPath << thirdPath << fourthPath << fifthPath << sixthPath << seventhPath
+                 << eigthPath;
+
+            // Path actions
+            auto placeholderAction = new QAction(tr("No other projects"), this);
+            auto firstPathAction = new QAction(firstPath);
+            auto secondPathAction = new QAction(secondPath);
+            auto thirdPathAction = new QAction(thirdPath);
+            auto fourthPathAction = new QAction(fourthPath);
+            auto fifthPathAction = new QAction(fifthPath);
+            auto sixthPathAction = new QAction(sixthPath);
+            auto seventhPathAction = new QAction(seventhPath);
+            auto eigthPathAction = new QAction(eigthPath);
+            // Path addition
+            // Better than before, but still not very DRY code.
+            for (int x = 0; x <= 7; x += 1) {
+                if (list[x] == QString("Path placeholder")) {
+                    openRecent->addAction(placeholderAction);
+                } else {
+                    switch (x) {
+                    case 0:
+                        openRecent->addAction(firstPathAction);
+                        break;
+                    case 1:
+                        openRecent->addAction(secondPathAction);
+                        break;
+                    case 2:
+                        openRecent->addAction(thirdPathAction);
+                        break;
+                    case 3:
+                        openRecent->addAction(fourthPathAction);
+                        break;
+                    case 4:
+                        openRecent->addAction(fifthPathAction);
+                        break;
+                    case 5:
+                        openRecent->addAction(sixthPathAction);
+                        break;
+                    case 6:
+                        openRecent->addAction(seventhPathAction);
+                        break;
+                    case 7:
+                        openRecent->addAction(eigthPathAction);
+                        break;
+                    default:
+                        openRecent->addAction(placeholderAction);
+                    }
+                }
+            }
+
+            // Connections
+            connect(placeholderAction, &QAction::triggered, [=]() { qDebug() << "You've earned yourself a cookie!"; });
+            connect(firstPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(firstPath); });
+            connect(secondPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(secondPath); });
+            connect(thirdPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(thirdPath); });
+            connect(fourthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fourthPath); });
+            connect(fifthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fifthPath); });
+            connect(sixthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(sixthPath); });
+            connect(seventhPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(seventhPath); });
+            connect(eigthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(eigthPath); });
         }
         auto saveProject = new QAction(tr("Save project"), this);
         auto saveProjectAs = new QAction(tr("Save project as"), this);
@@ -241,34 +318,28 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
 
         connect(general, &QAction::triggered, [&](bool) {
             auto generalSettingsDialog = new GeneralSettingDialog(mGUIResources, this);
-            QScopedPointer dialog(generalSettingsDialog);
+            QScopedPointer<GeneralSettingDialog> dialog(generalSettingsDialog);
             if (dialog->exec() == QDialog::DialogCode::Accepted) {
-                if (generalSettingsDialog->bHal) {
-                    mainWindow->onSaveProjectTriggered();
-                    throw std::exception();
-                }
                 if (generalSettingsDialog->timeFormatHasChanged())
                     this->onTimeFormatChanged();
                 if (generalSettingsDialog->themeHasChanged())
                     this->mGUIResources.setTheme(generalSettingsDialog->theme());
                 if (generalSettingsDialog->accentHasChanged())
                     this->mGUIResources.setAccent(generalSettingsDialog->accent());
-                if (generalSettingsDialog->fontHasChanged() || generalSettingsDialog->uiScaleHasChanged()
-                    || generalSettingsDialog->forceThemeReload) {
-                    this->mGUIResources.triggerOnThemeChanged();
-                    generalSettingsDialog->forceThemeReload = false;
-                }
+                // Autosave enable/delay are applied live (start/stop/re-arm
+                // the timer) rather than waiting for the next app launch.
+                mViaPoint.onGeneralSettingsChanged();
             }
         });
 
         connect(mouse, &QAction::triggered, [&](bool) {
-            QScopedPointer dialog(new MouseSettingDialog(aViaPoint, this));
+            QScopedPointer<MouseSettingDialog> dialog(new MouseSettingDialog(aViaPoint, this));
             dialog->exec();
         });
 
         connect(keyBind, &QAction::triggered, [&](bool) {
             XC_PTR_ASSERT(aViaPoint.keyCommandMap());
-            QScopedPointer dialog(new KeyBindingDialog(*aViaPoint.keyCommandMap(), this));
+            QScopedPointer<KeyBindingDialog> dialog(new KeyBindingDialog(*aViaPoint.keyCommandMap(), this));
             dialog->exec();
         });
 
@@ -318,6 +389,9 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                 ));
             msgBox.setTextFormat(Qt::TextFormat::MarkdownText);
             msgBox.setText(msgStr);
+            QFont font = msgBox.font();
+            font.setPointSize(10);
+            msgBox.setFont(font);
             msgBox.setWindowTitle(tr("About us"));
             msgBox.setStandardButtons(QMessageBox::Ok);
             msgBox.setDefaultButton(QMessageBox::Ok);
@@ -514,98 +588,6 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
     setProject(nullptr);
 }
 
-void MainMenuBar::onRecentsUpdate() {
-        // Get settings
-        QSettings settings;
-        settings.sync();
-        recentfiles = settings.value("projectloader/recents").toStringList();
-        if (!actions.isEmpty()) {
-            for (const auto signal: actions) {
-                std::ignore = openRecent->disconnect(signal);
-                openRecent->removeAction(signal);
-            }
-        }
-        openRecent->clear();
-        // Path placeholders
-        if (recentfiles.length() != 8) {
-            while (recentfiles.length() != 8) {
-                recentfiles.append("Path placeholder");
-            }
-        }
-        QString firstPath = recentfiles[0];
-        QString secondPath = recentfiles[1];
-        QString thirdPath = recentfiles[2];
-        QString fourthPath = recentfiles[3];
-        QString fifthPath = recentfiles[4];
-        QString sixthPath = recentfiles[5];
-        QString seventhPath = recentfiles[6];
-        QString eigthPath = recentfiles[7];
-        QStringList list;
-        list << firstPath << secondPath << thirdPath << fourthPath << fifthPath << sixthPath << seventhPath
-             << eigthPath;
-        // Path actions
-        auto placeholderAction = new QAction(tr("No other projects"), this);
-        auto firstPathAction = new QAction(firstPath);
-        auto secondPathAction = new QAction(secondPath);
-        auto thirdPathAction = new QAction(thirdPath);
-        auto fourthPathAction = new QAction(fourthPath);
-        auto fifthPathAction = new QAction(fifthPath);
-        auto sixthPathAction = new QAction(sixthPath);
-        auto seventhPathAction = new QAction(seventhPath);
-        auto eigthPathAction = new QAction(eigthPath);
-
-        actions.clear();
-        actions.append({placeholderAction, firstPathAction, secondPathAction, thirdPathAction,
-            fourthPathAction, fifthPathAction, sixthPathAction, seventhPathAction, eigthPathAction});
-        // Path addition
-        // Better than before, but still not very DRY code.
-        for (int x = 0; x <= 7; x += 1) {
-            if (list[x] == QString("Path placeholder")) {
-                openRecent->addAction(placeholderAction);
-            } else {
-                switch (x) {
-                case 0:
-                    openRecent->addAction(firstPathAction);
-                    break;
-                case 1:
-                    openRecent->addAction(secondPathAction);
-                    break;
-                case 2:
-                    openRecent->addAction(thirdPathAction);
-                    break;
-                case 3:
-                    openRecent->addAction(fourthPathAction);
-                    break;
-                case 4:
-                    openRecent->addAction(fifthPathAction);
-                    break;
-                case 5:
-                    openRecent->addAction(sixthPathAction);
-                    break;
-                case 6:
-                    openRecent->addAction(seventhPathAction);
-                    break;
-                case 7:
-                    openRecent->addAction(eigthPathAction);
-                    break;
-                default:
-                    openRecent->addAction(placeholderAction);
-                }
-            }
-        }
-
-        // Connections
-        connect(placeholderAction, &QAction::triggered, [=]() { qDebug() << "You've earned yourself a cookie!"; });
-        connect(firstPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(firstPath); });
-        connect(secondPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(secondPath); });
-        connect(thirdPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(thirdPath); });
-        connect(fourthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fourthPath); });
-        connect(fifthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fifthPath); });
-        connect(sixthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(sixthPath); });
-        connect(seventhPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(seventhPath); });
-        connect(eigthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(eigthPath); });
-    }
-
 void MainMenuBar::setProject(core::Project* aProject) {
     mProject = aProject;
 
@@ -697,12 +679,13 @@ ProjectSettingDialog::ProjectSettingDialog(ViaPoint& aViaPoint, core::Project& a
     mProject(aProject),
     mWidthBox(),
     mHeightBox(),
-    mMaxFrameBox(),
+    mStartBox(),
+    mEndBox(),
     mLoopBox(),
     mFPSBox() {
     // create inner widgets
     auto curSize = mProject.attribute().imageSize();
-    auto curMaxFrame = mProject.attribute().maxFrame();
+    auto curRange = mProject.attribute().frameRange();
     auto curLoop = mProject.attribute().loop();
     auto curFPS = mProject.attribute().fps();
 
@@ -730,11 +713,30 @@ ProjectSettingDialog::ProjectSettingDialog(ViaPoint& aViaPoint, core::Project& a
         }
         form->addRow(tr("Canvas size"), sizeLayout);
 
-        // maximum frame count
-        mMaxFrameBox = new QSpinBox();
-        mMaxFrameBox->setRange(1, 0x7FFFFFFF);
-        mMaxFrameBox->setValue(curMaxFrame);
-        form->addRow(tr("Max frame count"), mMaxFrameBox);
+        // frame range: two linked spinboxes (start, end); either bound may
+        // be negative (pre-roll frames before 0 are a valid project extent)
+        {
+            auto layout = new QHBoxLayout();
+            mStartBox = new QSpinBox();
+            mStartBox->setRange(std::numeric_limits<int>::min(), 0x7FFFFFFF);
+            mStartBox->setValue(curRange.min());
+            layout->addWidget(mStartBox);
+
+            mEndBox = new QSpinBox();
+            mEndBox->setRange(std::numeric_limits<int>::min(), 0x7FFFFFFF);
+            mEndBox->setValue(curRange.max());
+            layout->addWidget(mEndBox);
+
+            mStartBox->setMaximum(mEndBox->value());
+            mEndBox->setMinimum(mStartBox->value());
+            mStartBox->connect(mStartBox, &QSpinBox::valueChanged, [=](int aValue) {
+                mEndBox->setMinimum(aValue);
+            });
+            mEndBox->connect(mEndBox, &QSpinBox::valueChanged, [=](int aValue) {
+                mStartBox->setMaximum(aValue);
+            });
+            form->addRow(tr("Frame range"), layout);
+        }
 
         // loop animation
         mLoopBox = new QCheckBox();
@@ -752,28 +754,18 @@ ProjectSettingDialog::ProjectSettingDialog(ViaPoint& aViaPoint, core::Project& a
 
     this->setOkCancel([=](int aIndex) -> bool {
         if (aIndex == 0) {
-            return this->confirmMaxFrameUpdating(this->mMaxFrameBox->value());
+            return this->confirmFrameRangeUpdating(this->frameRange());
         }
         return true;
     });
     this->fixSize();
 }
 
-bool ProjectSettingDialog::confirmMaxFrameUpdating(int aNewMaxFrame) const {
-    XC_ASSERT(aNewMaxFrame > 0);
-
-    auto curMaxFrame = mProject.attribute().maxFrame();
-    if (curMaxFrame <= aNewMaxFrame)
-        return true;
-
-    if (!core::ObjectNodeUtil::thereAreSomeKeysExceedingFrame(mProject.objectTree().topNode(), aNewMaxFrame)) {
-        return true;
-    }
-
-    auto message1 = tr("Frame value cannot be set.");
-    auto message2 = tr("One or more keys exceed the specified frame value.");
-    QMessageBox::warning(nullptr, tr("Operation Error"), message1 + "\n" + message2);
-    return false;
+bool ProjectSettingDialog::confirmFrameRangeUpdating(const util::Range& aNewRange) const {
+    XC_ASSERT(aNewRange.min() <= aNewRange.max()); // the linked spinboxes keep start <= end
+    // Keys may live outside the frame range — the range is a playback/export
+    // bound, not a constraint on key positions — so every range change is valid.
+    return true;
 }
 
 void MainMenuBar::onProjectSettingsTriggered() {
@@ -781,12 +773,12 @@ void MainMenuBar::onProjectSettingsTriggered() {
         return;
 
     auto curSize = mProject->attribute().imageSize();
-    auto curMaxFrame = mProject->attribute().maxFrame();
+    auto curRange = mProject->attribute().frameRange();
     auto curLoop = mProject->attribute().loop();
     auto curFPS = mProject->attribute().fps();
 
     // create dialog
-    QScopedPointer dialog(new ProjectSettingDialog(mViaPoint, *mProject, this));
+    QScopedPointer<ProjectSettingDialog> dialog(new ProjectSettingDialog(mViaPoint, *mProject, this));
 
     // execute dialog
     dialog->exec();
@@ -821,24 +813,23 @@ void MainMenuBar::onProjectSettingsTriggered() {
             mProject->commandStack().push(command);
         }
 
-        // max frame count
-        const int newMaxFrame = dialog->maxFrame();
-        XC_ASSERT(newMaxFrame > 0);
-        if (curMaxFrame != newMaxFrame) {
-            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the max frame"));
+        // frame range
+        const util::Range newRange = dialog->frameRange();
+        if (curRange != newRange) {
+            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the frame range"));
 
             core::Project* projectPtr = mProject;
             auto command = new cmnd::Delegatable(
                 [=]() {
-                    projectPtr->attribute().setMaxFrame(newMaxFrame);
-                    auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
+                    projectPtr->attribute().setFrameRange(newRange);
+                    auto event = core::ProjectEvent::frameRangeChangeEvent(*projectPtr);
                     projectPtr->onProjectAttributeModified(event, false);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 },
                 [=]() {
-                    projectPtr->attribute().setMaxFrame(curMaxFrame);
-                    auto event = core::ProjectEvent::maxFrameChangeEvent(*projectPtr);
+                    projectPtr->attribute().setFrameRange(curRange);
+                    auto event = core::ProjectEvent::frameRangeChangeEvent(*projectPtr);
                     projectPtr->onProjectAttributeModified(event, true);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();

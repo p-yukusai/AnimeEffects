@@ -62,32 +62,32 @@ ToolWidget::ToolWidget(
         {
             auto key = mViaPoint.keyCommandMap()->get("SelectCursor");
             if (key)
-                key->invoker = [=]() { this->mModePanel->pushButton(ctrl::ToolType_Cursor); };
+                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Cursor); });
         }
         {
             auto key = mViaPoint.keyCommandMap()->get("SelectSRT");
             if (key)
-                key->invoker = [=]() { this->mModePanel->pushButton(ctrl::ToolType_SRT); };
+                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_SRT); });
         }
         {
             auto key = mViaPoint.keyCommandMap()->get("SelectBone");
             if (key)
-                key->invoker = [=]() { this->mModePanel->pushButton(ctrl::ToolType_Bone); };
+                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Bone); });
         }
         {
             auto key = mViaPoint.keyCommandMap()->get("SelectPose");
             if (key)
-                key->invoker = [=]() { this->mModePanel->pushButton(ctrl::ToolType_Pose); };
+                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Pose); });
         }
         {
             auto key = mViaPoint.keyCommandMap()->get("SelectMesh");
             if (key)
-                key->invoker = [=]() { this->mModePanel->pushButton(ctrl::ToolType_Mesh); };
+                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Mesh); });
         }
         {
             auto key = mViaPoint.keyCommandMap()->get("SelectFFD");
             if (key)
-                key->invoker = [=]() { this->mModePanel->pushButton(ctrl::ToolType_FFD); };
+                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_FFD); });
         }
     }
 }

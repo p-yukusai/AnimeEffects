@@ -48,6 +48,10 @@ tests/golden/.scratch_real/
 # PSD verification harness against a private real-file corpus (local-only tooling)
 tools/verify_blend/
 
+# Windows cross-build (mingw-w64) output
+xwin-dist/
+AnimeEffects-windows-*.zip
+
 # local working notes (not part of any PR)
 SCRATCHPAD_ARCHIVED.md
 SCRATCHPAD.md

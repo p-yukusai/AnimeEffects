@@ -13,6 +13,7 @@
 #include <QFileInfo>
 #include <QPlainTextEdit>
 #include <QFontMetrics>
+#include <limits>
 #include "MainMenuBar.h"
 #include "util/SelectArgs.h"
 #include "gui/ExportDialog.h"
@@ -46,11 +47,11 @@ ExportDialog::ExportDialog(core::Project& aProject, const QString& aPath, QWidge
     XC_ASSERT(mCommonParam.size.height() > 0);
 
     auto time = mProject.currentTimeInfo();
-    mCommonParam.frame = util::Range(0, time.frameMax);
+    mCommonParam.frame = time.frameRange;
     mCommonParam.fps = time.fps;
 
     mSize = mProject.attribute().imageSize();
-    mFrameMax = mProject.currentTimeInfo().frameMax;
+    mFrameMax = time.frameRange.max();
 }
 
 void ExportDialog::pushSizeBox(QFormLayout& aLayout) {
@@ -138,15 +139,15 @@ void ExportDialog::pushSizeBox(QFormLayout& aLayout) {
 }
 
 void ExportDialog::pushFrameBox(QFormLayout& aLayout) {
-    // start frame
+    // start frame (negative allowed: a project may start before frame 0)
     auto start = new QSpinBox();
-    start->setRange(0, mFrameMax);
+    start->setRange(std::numeric_limits<int>::min(), mFrameMax);
     start->setValue(mCommonParam.frame.min());
     setMinMaxOptionWidth(start);
 
     // end frame
     auto end = new QSpinBox();
-    end->setRange(0, mFrameMax);
+    end->setRange(std::numeric_limits<int>::min(), mFrameMax);
     end->setValue(mCommonParam.frame.max());
     setMinMaxOptionWidth(end);
 

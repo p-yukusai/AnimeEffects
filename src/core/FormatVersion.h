@@ -12,8 +12,11 @@
 //   0.8 -> 0.9   Blur filter introduced (BlurKey layout, src/core/BlurKey.h)
 //   0.9 -> 0.10  folder blend mode 4CC in the FolderNd object block
 //                (src/core/FolderNode.cpp, read under minor >= 10)
+//   0.10 -> 0.11 the global block carries the frame range start (the first 4
+//                bytes of its reserve region; older files default to 0, so
+//                they load as [0, maxFrame])
 #define AE_PROJECT_FORMAT_MAJOR_VERSION 0
-#define AE_PROJECT_FORMAT_MINOR_VERSION 10
+#define AE_PROJECT_FORMAT_MINOR_VERSION 11
 
 #define AE_PROJECT_FORMAT_OLDEST_MAJOR_VERSION 0
 #define AE_PROJECT_FORMAT_OLDEST_MINOR_VERSION 4

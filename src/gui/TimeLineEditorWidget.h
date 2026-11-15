@@ -8,6 +8,7 @@
 #include "ctrl/TimeLineEditor.h"
 #include "gui/ViaPoint.h"
 #include "gui/GUIResources.h"
+#include "gui/TimeRuler.h"
 #include "KeyCommandMap.h"
 
 namespace gui {
@@ -30,8 +31,6 @@ public:
     void setEdgeColor(const QColor& edgeColor);
 
 private:
-    static constexpr int kBadgePadding = 3;
-
     QColor mNumberColor;
     QColor mEdgeColor;
     QString mFrameText;
@@ -58,6 +57,10 @@ class TimeLineEditorWidget: public QWidget {
 public:
     TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent);
 
+    // Ruler gestures (seek / playback-window drag) move the current frame;
+    // TimeLineWidget forwards this to its onFrameUpdated signal.
+    Q_SIGNAL void rulerFrameChanged();
+
     void setProject(core::Project* aProject);
     void setFrame(core::Frame aFrame);
 
@@ -69,15 +72,29 @@ public:
     void updateProjectAttribute();
     void updateTheme(theme::Theme&);
 
-    // The frame range's end on the content axis (px): the left margin gutter
-    // plus the last frame's scale position. Frame 0's tick sits at the
-    // margin; the range spans [0, frameEndPixel].
+    // The frame range's extent on the content axis (px): the left margin
+    // gutter plus the scale position of the range's start/end frames.
+    int frameStartPixel() const;
     int frameEndPixel() const;
 
     QSize getEditorSize() const;
 
     core::Frame currentFrame() const;
-    int maxFrame() const;
+    // The controller the surface renders; TimeRuler drives it through the
+    // same updateCursor entry point as the track input path.
+    ctrl::TimeLineEditor* editor() const { return mEditor.data(); }
+    // The MoveCanvas key (space by default) is held: the ruler lets a
+    // left-press propagate to the timeline's pan instead of seeking.
+    void setPanKeyHeld(bool aHeld) {
+        if (mTimeRuler)
+            mTimeRuler->setPanKeyHeld(aHeld);
+    }
+    // The effective playback range (project range or the temporary window
+    // override); TimeLineWidget's playback tick and the playhead clamp use it.
+    util::Range playbackRange() const { return mEditor->playbackRange(); }
+    // The temporary playback window (see ctrl::TimeLineEditor::PlayWindow);
+    // the renderer draws its band and brackets.
+    const ctrl::TimeLineEditor::PlayWindow& playWindow() const { return mEditor->playWindow(); }
 
     QColor headerContentColor() const;
     void setHeaderContentColor(const QColor& headerContentColor);
@@ -110,6 +127,7 @@ private:
     void updateSize();
     void updateLinesRecursive(QTreeWidgetItem* aItem);
     virtual void paintEvent(QPaintEvent* aEvent);
+    virtual void resizeEvent(QResizeEvent* aEvent);
     void onTimeLineModified(core::TimeLineEvent& aEvent, bool aUndo);
     void onTreeRestructured(core::ObjectTreeEvent& aEvent, bool aUndo);
     void onProjectAttributeModified(core::ProjectEvent& aEvent, bool aUndo);
@@ -121,7 +139,6 @@ private:
     void onSelectSpacingTriggered();
     void onSelectEasingTriggered(int easingType);
     void onSelectRangeTriggered(int rangeType);
-    void onPasteCustomEasingTriggered();
 
     ViaPoint& mViaPoint;
     util::LinkPointer<core::Project> mProject;
@@ -131,6 +148,9 @@ private:
     QScopedPointer<ctrl::TimeLineEditor> mEditor;
     const core::CameraInfo* mCamera;
     TimeCursor mTimeCursor;
+    // The ruler strip: a real widget with its own paint and input, layered
+    // under the playhead (TimeCursor) and over the track surface.
+    QScopedPointer<TimeRuler> mTimeRuler;
 
     //@todo Implement deserializer to put timeevent data into a bytebuffer or plain text
 
@@ -141,7 +161,6 @@ private:
     QAction* mPasteKey;
     QAction* mDeleteKey;
     QAction* mSelectSpacing;
-    QAction * mPasteCustomEasing;
     QMenu* mSelectEasing;
     QMenu* mSelectRange;
     core::TimeLineEvent mTargets;

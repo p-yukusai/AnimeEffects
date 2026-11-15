@@ -33,6 +33,8 @@ const QHash<QString, IconRole>& roleTable() {
         {QStringLiteral("close"), IconRole::Muted},
         {QStringLiteral("close_hover"), IconRole::Muted},
         {QStringLiteral("close_pressed"), IconRole::Accent},
+        {QStringLiteral("x"), IconRole::Muted}, // phosphor x (popover close)
+        {QStringLiteral("x_hover"), IconRole::Text},
         {QStringLiteral("hand"), IconRole::Text},
         {QStringLiteral("dialog_cancel"), IconRole::Text},
         {QStringLiteral("dialog_close"), IconRole::Text},

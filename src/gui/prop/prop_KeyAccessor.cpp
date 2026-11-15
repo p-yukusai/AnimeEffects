@@ -1,3 +1,5 @@
+#include "cmnd/ScopedMacro.h"
+#include "cmnd/BasicCommands.h"
 #include "core/TimeKeyExpans.h"
 #include "core/BlurKey.h"
 #include "ctrl/TimeLineUtil.h"
@@ -5,63 +7,76 @@
 
 namespace {
 
-const core::MoveKey::Data& getMoveKeyData(const core::ObjectNode& aTarget, int aFrame) {
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_Move, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::MoveKey*)key)->data();
+// Centralised, null-tolerant key-data accessor shared by every key type: reads
+// the explicit key at aFrame, falls back to the default key, and only then to a
+// static empty Data. This keeps all getters consistent (a stale/unkeyed frame
+// must never hard-assert) without duplicating the logic per key type.
+template<class TKey, core::TimeKeyType TType>
+const typename TKey::Data& getKeyData(const core::ObjectNode& aTarget, int aFrame) {
+    const core::TimeLine& timeLine = *aTarget.timeLine();
+    auto key = timeLine.timeKey(TType, aFrame);
+    if (!key) {
+        key = timeLine.defaultKey(TType);
+    }
+    if (key) {
+        return static_cast<const TKey*>(key)->data();
+    }
+    static const typename TKey::Data sEmpty;
+    return sEmpty;
 }
 
-const core::RotateKey::Data& getRotateKeyData(const core::ObjectNode& aTarget, int aFrame) {
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_Rotate, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::RotateKey*)key)->data();
+// Seed a freshly auto-created key from the timeline's live (interpolated) value
+// at the edited frame, so editing one channel on an unkeyed frame doesn't snap
+// the other channels to zero — the same seeding the "add a key" buttons use.
+void seedKey(core::MoveKey* aKey, const core::TimeKeyExpans& aCurrent) {
+    aKey->setPos(aCurrent.srt().pos());
+    aKey->setCentroid(aCurrent.srt().centroid());
+}
+void seedKey(core::RotateKey* aKey, const core::TimeKeyExpans& aCurrent) {
+    aKey->setRotate(aCurrent.srt().rotate());
+}
+void seedKey(core::ScaleKey* aKey, const core::TimeKeyExpans& aCurrent) {
+    aKey->setScale(aCurrent.srt().scale());
+}
+void seedKey(core::DepthKey* aKey, const core::TimeKeyExpans& aCurrent) {
+    aKey->setDepth(aCurrent.depth());
+}
+void seedKey(core::OpaKey* aKey, const core::TimeKeyExpans& aCurrent) {
+    aKey->data() = aCurrent.opa();
+}
+void seedKey(core::HSVKey* aKey, const core::TimeKeyExpans& aCurrent) {
+    aKey->data() = aCurrent.hsv();
+}
+void seedKey(core::BlurKey* aKey, const core::TimeKeyExpans& aCurrent) {
+    aKey->data().setBlurX(aCurrent.blurX());
+    aKey->data().setBlurY(aCurrent.blurY());
+    aKey->data().setAngleDeg(aCurrent.angleDeg());
 }
 
-const core::ScaleKey::Data& getScaleKeyData(const core::ObjectNode& aTarget, int aFrame) {
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_Scale, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::ScaleKey*)key)->data();
+// Shared "ensure an explicit key of the given type exists at aFrame before
+// writing" helper. If the key is absent it auto-creates one so a stale/unkeyed
+// frame can be edited instead of dereferencing a missing key; if present it is a
+// no-op. Used uniformly by every key type's writers.
+template<class TKey, core::TimeKeyType TType>
+void ensureKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame) {
+    core::TimeLine& timeLine = *aTarget.timeLine();
+    if (timeLine.hasTimeKey(TType, aFrame)) {
+        return;
+    }
+    auto* newKey = new TKey();
+    seedKey(newKey, timeLine.current());
+    newKey->setFrame(aFrame);
+    {
+        cmnd::ScopedMacro macro(aProject.commandStack(), QStringLiteral("Add new key"));
+        auto* notifier = new ctrl::TimeLineUtil::Notifier(aProject);
+        notifier->event().setType(core::TimeLineEvent::Type_PushKey);
+        notifier->event().pushTarget(aTarget, TType, aFrame);
+        macro.grabListener(notifier);
+        auto& stack = aProject.commandStack();
+        stack.push(new cmnd::GrabNewObject<TKey>(newKey));
+        stack.push(timeLine.createPusher(TType, aFrame, newKey));
+    }
 }
-
-const core::DepthKey::Data& getDepthKeyData(const core::ObjectNode& aTarget, int aFrame) {
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_Depth, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::DepthKey*)key)->data();
-}
-
-const core::OpaKey::Data& getOpaKeyData(const core::ObjectNode& aTarget, int aFrame) {
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_Opa, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::OpaKey*)key)->data();
-}
-
-const core::HSVKey::Data& getHSVKeyData(const core::ObjectNode& aTarget, int aFrame) {
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_HSV, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::HSVKey*)key)->data();
-}
-
-const core::BlurKey::Data& getBlurKeyData(const core::ObjectNode& aTarget, int aFrame) {
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_Blur, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::BlurKey*)key)->data();
-}
-
-#if 0
-const core::PoseKey::Data& getPoseKeyData(const core::ObjectNode& aTarget, int aFrame)
-{
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_Pose, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::PoseKey*)key)->data();
-}
-
-const core::FFDKey::Data& getFFDKeyData(const core::ObjectNode& aTarget, int aFrame)
-{
-    auto key = aTarget.timeLine()->timeKey(core::TimeKeyType_FFD, aFrame);
-    XC_PTR_ASSERT(key);
-    return ((const core::FFDKey*)key)->data();
-}
-#endif
 
 } // namespace
 
@@ -129,7 +144,8 @@ namespace prop {
         ASSERT_AND_RETURN_INVALID_TARGET();
         XC_ASSERT(aNext.isValidParam());
         const int frame = getFrame();
-        auto newData = getMoveKeyData(*mTarget, frame);
+        ensureKey<core::MoveKey, core::TimeKeyType_Move>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::MoveKey, core::TimeKeyType_Move>(*mTarget, frame);
         newData.easing() = aNext;
 
         ctrl::TimeLineUtil::assignMoveKeyData(*mProject, *mTarget, frame, newData);
@@ -139,7 +155,8 @@ namespace prop {
         ASSERT_AND_RETURN_INVALID_TARGET();
         XC_ASSERT(0 <= aNext && aNext < core::MoveKey::SplineType_TERM);
         const int frame = getFrame();
-        auto newData = getMoveKeyData(*mTarget, frame);
+        ensureKey<core::MoveKey, core::TimeKeyType_Move>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::MoveKey, core::TimeKeyType_Move>(*mTarget, frame);
         newData.setSpline((core::MoveKey::SplineType)aNext);
 
         ctrl::TimeLineUtil::assignMoveKeyData(*mProject, *mTarget, frame, newData);
@@ -148,7 +165,8 @@ namespace prop {
     void KeyAccessor::assignMovePosition(const QVector2D& aNewPos) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getMoveKeyData(*mTarget, frame);
+        ensureKey<core::MoveKey, core::TimeKeyType_Move>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::MoveKey, core::TimeKeyType_Move>(*mTarget, frame);
         newData.setPos(aNewPos);
 
         ctrl::TimeLineUtil::assignMoveKeyData(*mProject, *mTarget, frame, newData);
@@ -157,7 +175,8 @@ namespace prop {
     void KeyAccessor::assignMoveCentroid(const QVector2D& aNewCentroid) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getMoveKeyData(*mTarget, frame);
+        ensureKey<core::MoveKey, core::TimeKeyType_Move>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::MoveKey, core::TimeKeyType_Move>(*mTarget, frame);
         newData.setCentroid(aNewCentroid);
 
         ctrl::TimeLineUtil::assignMoveKeyData(*mProject, *mTarget, frame, newData);
@@ -168,7 +187,8 @@ namespace prop {
         ASSERT_AND_RETURN_INVALID_TARGET();
         XC_ASSERT(aNext.isValidParam());
         const int frame = getFrame();
-        auto newData = getRotateKeyData(*mTarget, frame);
+        ensureKey<core::RotateKey, core::TimeKeyType_Rotate>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::RotateKey, core::TimeKeyType_Rotate>(*mTarget, frame);
         newData.easing() = aNext;
 
         ctrl::TimeLineUtil::assignRotateKeyData(*mProject, *mTarget, frame, newData);
@@ -177,7 +197,8 @@ namespace prop {
     void KeyAccessor::assignRotateAngle(float aAngle) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getRotateKeyData(*mTarget, frame);
+        ensureKey<core::RotateKey, core::TimeKeyType_Rotate>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::RotateKey, core::TimeKeyType_Rotate>(*mTarget, frame);
         newData.setRotate(aAngle);
 
         ctrl::TimeLineUtil::assignRotateKeyData(*mProject, *mTarget, frame, newData);
@@ -188,7 +209,8 @@ namespace prop {
         ASSERT_AND_RETURN_INVALID_TARGET();
         XC_ASSERT(aNext.isValidParam());
         const int frame = getFrame();
-        auto newData = getScaleKeyData(*mTarget, frame);
+        ensureKey<core::ScaleKey, core::TimeKeyType_Scale>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::ScaleKey, core::TimeKeyType_Scale>(*mTarget, frame);
         newData.easing() = aNext;
         ctrl::TimeLineUtil::assignScaleKeyData(*mProject, *mTarget, frame, newData);
     }
@@ -196,7 +218,8 @@ namespace prop {
     void KeyAccessor::assignScaleRate(const QVector2D& aNewScale) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getScaleKeyData(*mTarget, frame);
+        ensureKey<core::ScaleKey, core::TimeKeyType_Scale>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::ScaleKey, core::TimeKeyType_Scale>(*mTarget, frame);
         newData.setScale(aNewScale);
 
         ctrl::TimeLineUtil::assignScaleKeyData(*mProject, *mTarget, frame, newData);
@@ -207,7 +230,8 @@ namespace prop {
         ASSERT_AND_RETURN_INVALID_TARGET();
         XC_ASSERT(aNext.isValidParam());
         const int frame = getFrame();
-        auto newData = getDepthKeyData(*mTarget, frame);
+        ensureKey<core::DepthKey, core::TimeKeyType_Depth>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::DepthKey, core::TimeKeyType_Depth>(*mTarget, frame);
         newData.easing() = aNext;
 
         ctrl::TimeLineUtil::assignDepthKeyData(*mProject, *mTarget, frame, newData);
@@ -216,7 +240,8 @@ namespace prop {
     void KeyAccessor::assignDepthPosition(float aNext) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getDepthKeyData(*mTarget, frame);
+        ensureKey<core::DepthKey, core::TimeKeyType_Depth>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::DepthKey, core::TimeKeyType_Depth>(*mTarget, frame);
         newData.setDepth(aNext);
 
         ctrl::TimeLineUtil::assignDepthKeyData(*mProject, *mTarget, frame, newData);
@@ -226,7 +251,8 @@ namespace prop {
     void KeyAccessor::assignOpacity(float aOpacity) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getOpaKeyData(*mTarget, frame);
+        ensureKey<core::OpaKey, core::TimeKeyType_Opa>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::OpaKey, core::TimeKeyType_Opa>(*mTarget, frame);
         newData.setOpacity(aOpacity);
 
         ctrl::TimeLineUtil::assignOpaKeyData(*mProject, *mTarget, frame, newData);
@@ -235,7 +261,8 @@ namespace prop {
     void KeyAccessor::assignHSV(int aValue, QString aType) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getHSVKeyData(*mTarget, frame);
+        ensureKey<core::HSVKey, core::TimeKeyType_HSV>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::HSVKey, core::TimeKeyType_HSV>(*mTarget, frame);
         if (aType == "hue") {
             newData.setHue(aValue);
         } else if (aType == "sat") {
@@ -253,7 +280,8 @@ namespace prop {
         ASSERT_AND_RETURN_INVALID_TARGET();
         XC_ASSERT(aNext.isValidParam());
         const int frame = getFrame();
-        auto newData = getOpaKeyData(*mTarget, frame);
+        ensureKey<core::OpaKey, core::TimeKeyType_Opa>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::OpaKey, core::TimeKeyType_Opa>(*mTarget, frame);
         newData.easing() = aNext;
 
         ctrl::TimeLineUtil::assignOpaKeyData(*mProject, *mTarget, frame, newData);
@@ -263,7 +291,8 @@ namespace prop {
         ASSERT_AND_RETURN_INVALID_TARGET();
         XC_ASSERT(aNext.isValidParam());
         const int frame = getFrame();
-        auto newData = getHSVKeyData(*mTarget, frame);
+        ensureKey<core::HSVKey, core::TimeKeyType_HSV>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::HSVKey, core::TimeKeyType_HSV>(*mTarget, frame);
         newData.easing() = aNext;
 
         ctrl::TimeLineUtil::assignHSVKeyData(*mProject, *mTarget, frame, newData);
@@ -359,7 +388,8 @@ namespace prop {
     void KeyAccessor::assignBlur(float aAmount) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getBlurKeyData(*mTarget, frame);
+        ensureKey<core::BlurKey, core::TimeKeyType_Blur>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::BlurKey, core::TimeKeyType_Blur>(*mTarget, frame);
         newData.setAmount(aAmount);
 
         ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *mTarget, frame, newData);
@@ -369,13 +399,27 @@ namespace prop {
         if (!isValid()) {
             return core::BlurKey::Data();
         }
-        return getBlurKeyData(*mTarget, getFrame());
+        const int frame = getFrame();
+        const core::TimeLine& timeLine = *mTarget->timeLine();
+        if (!timeLine.hasTimeKey(core::TimeKeyType_Blur, frame)) {
+            // No explicit blur key at this frame: report the live (blended)
+            // value so editing one axis doesn't reset the others. The blended
+            // value is the panel's "current" read when between keys.
+            core::BlurKey::Data data;
+            const core::TimeKeyExpans& current = timeLine.current();
+            data.setBlurX(current.blurX());
+            data.setBlurY(current.blurY());
+            data.setAngleDeg(current.angleDeg());
+            return data;
+        }
+        return getKeyData<core::BlurKey, core::TimeKeyType_Blur>(*mTarget, frame);
     }
 
     void KeyAccessor::assignBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getBlurKeyData(*mTarget, frame);
+        ensureKey<core::BlurKey, core::TimeKeyType_Blur>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::BlurKey, core::TimeKeyType_Blur>(*mTarget, frame);
         newData.setBlurX(aBlurX);
         newData.setBlurY(aBlurY);
         newData.setAngleDeg(aAngleDeg);
@@ -386,7 +430,8 @@ namespace prop {
     void KeyAccessor::assignBlurDirectional(bool aIsDirectional) {
         ASSERT_AND_RETURN_INVALID_TARGET();
         const int frame = getFrame();
-        auto newData = getBlurKeyData(*mTarget, frame);
+        ensureKey<core::BlurKey, core::TimeKeyType_Blur>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::BlurKey, core::TimeKeyType_Blur>(*mTarget, frame);
         newData.setDirectional(aIsDirectional);
         // opening the directional mode keeps the current size as the initial X/Y radius
         if (aIsDirectional) {
@@ -400,7 +445,8 @@ namespace prop {
         ASSERT_AND_RETURN_INVALID_TARGET();
         XC_ASSERT(aNext.isValidParam());
         const int frame = getFrame();
-        auto newData = getBlurKeyData(*mTarget, frame);
+        ensureKey<core::BlurKey, core::TimeKeyType_Blur>(*mProject, *mTarget, frame);
+        auto newData = getKeyData<core::BlurKey, core::TimeKeyType_Blur>(*mTarget, frame);
         newData.easing() = aNext;
 
         ctrl::TimeLineUtil::assignBlurKeyData(*mProject, *mTarget, frame, newData);

@@ -2,7 +2,6 @@
 #define UTIL_EASING
 
 #include <QString>
-#include <QStringList>
 #include <QSettings>
 
 namespace util {
@@ -10,7 +9,10 @@ namespace util {
 class Easing {
 public:
     enum Type {
-        Type_None,
+        // Stepped holds: no interpolation between keys. Floor keeps the
+        // previous key's value up to the next key's frame; Round flips to
+        // the next key's value at the interval midpoint (rounded frame).
+        Type_Floor,
         Type_Linear,
         Type_Sine,
         Type_Quad,
@@ -23,6 +25,9 @@ public:
         Type_Elastic,
         Type_Bounce,
         Type_Custom,
+        // Appended after Custom: existing ids 0-12 are serialized as-is and
+        // must never shift.
+        Type_Round,
         Type_TERM,
     };
 
@@ -37,6 +42,11 @@ public:
         float y1 = 0.0f;
         float x2 = 1.0f / 3.0f;
         float y2 = 1.0f;
+        // Control points are compared by value (set/read via the editor or
+        // serialization), so a plain float compare is the right test.
+        bool operator==(const CubicBezier& aRhs) const {
+            return x1 == aRhs.x1 && y1 == aRhs.y1 && x2 == aRhs.x2 && y2 == aRhs.y2;
+        }
     };
 
     struct Param {
@@ -55,7 +65,13 @@ public:
 
     static QString getTypeName(Type aType);
     static QString getRangeName(Range aRange);
-    static QStringList getTypeNameList();
+    // Picker display order: the stepped holds lead, then the analytic curves,
+    // then the bezier "Custom" entry. Distinct from the enum ordinal (which is
+    // serialization order and must not shift), so pickers build their layouts
+    // from these helpers instead of assuming index == enum ordinal.
+    static int displayIndexOf(Type aType);      // -1 when aType is not listed
+    static Type typeAtDisplayIndex(int aIndex); // Type_Linear fallback
+    static int displayCount();                  // number of pickable entries
 
     static float calculate(Type, Range, float t, float b, float c, float d);
     static float calculate(const Param&, float t, float b, float c, float d);

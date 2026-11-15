@@ -5,12 +5,12 @@
 namespace gui {
 
 //-------------------------------------------------------------------------------------------------
-KeyCommandMap::KeyCommand::KeyCommand(): key(), group(), label(), binding(), invoker(), releaser() {}
+KeyCommandMap::KeyCommand::KeyCommand(): key(), group(), label(), binding(), invokers(), releasers() {}
 
 KeyCommandMap::KeyCommand::KeyCommand(
     const QString& aKey, const QString& aGroup, const QString& aLabel, const ctrl::KeyBinding& aBinding
 ):
-    key(aKey), group(aGroup), label(aLabel), binding(aBinding), invoker(), releaser() {}
+    key(aKey), group(aGroup), label(aLabel), binding(aBinding), invokers(), releasers() {}
 
 //-------------------------------------------------------------------------------------------------
 KeyCommandMap::KeyCommandMap(QWidget& aParent):

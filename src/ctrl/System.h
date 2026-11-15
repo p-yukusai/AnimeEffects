@@ -6,7 +6,6 @@
 #include "util/IProgressReporter.h"
 #include "gl/DeviceInfo.h"
 #include "core/Project.h"
-#include "gui/MainMenuBar.h"
 
 namespace ctrl {
 
@@ -44,9 +43,22 @@ public:
     );
 
     LoadResult
-    openProject(const QString& aFileName, core::Project::Hook* aHookGrabbed, util::IProgressReporter& aReporter);
+    openProject(const QString& aFileName, core::Project::Hook* aHookGrabbed, util::IProgressReporter& aReporter, bool aRecordRecent = true);
 
-    SaveResult saveProject(core::Project& aProject);
+    SaveResult saveProject(core::Project& aProject, bool aInteractive = true);
+    // Writes a crash-recovery copy of an unsaved (nameless) project into the
+    // app cache. Does NOT touch the project's fileName or dirty flag: the
+    // project stays unsaved and Save As still prompts.
+    SaveResult saveRecoveryCopy(core::Project& aProject, QString& aOutFilePath);
+    void clearRecoveryCopy(core::Project& aProject);
+    // Stale autosave copies of never-saved projects, newest first — offered
+    // to the user at startup for crash recovery.
+    QStringList recoveryCopyPaths() const;
+    void removeRecoveryCopy(const QString& aFilePath);
+    // Removes leftover `AnimeEffects_unsaved_*.anie.tmp` files: incomplete
+    // recovery writes from a crash between saver.save and safeRename. Only
+    // ever called at startup, before any autosave can create a fresh one.
+    void sweepStaleRecoveryTmp();
 
     bool closeProject(core::Project& aProject);
 
@@ -55,7 +67,7 @@ public:
     bool hasProject() const { return !mProjects.isEmpty(); }
     int projectCount() const { return mProjects.count(); }
     bool hasModifiedProject() const;
-    gui::MainMenuBar* mainMenu = nullptr;
+
     core::Project* project(int aIndex);
     const core::Project* project(int aIndex) const;
 

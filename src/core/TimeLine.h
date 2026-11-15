@@ -24,7 +24,9 @@ namespace core {
 
 class TimeLine {
 public:
-    enum { kDefaultKeyIndex = -1 };
+    // The default key's frame marker; see TimeKey::kDefaultKeyIndex (moved
+    // off -1 so negative frames are ordinary frames).
+    enum { kDefaultKeyIndex = TimeKey::kDefaultKeyIndex };
 
     typedef QMap<int, TimeKey*> MapType;
 

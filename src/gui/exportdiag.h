@@ -263,7 +263,7 @@ public:
         firstFrameSpinBox = new QSpinBox(globalParamScrollContents);
         firstFrameSpinBox->setObjectName(QString::fromUtf8("firstFrameSpinBox"));
         firstFrameSpinBox->setMaximum(INT32_MAX);
-        firstFrameSpinBox->setMinimum(0);
+        firstFrameSpinBox->setMinimum(INT32_MIN); // projects may start before frame 0
         QSizePolicy sizePolicy3(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
         sizePolicy3.setHorizontalStretch(0);
         sizePolicy3.setVerticalStretch(0);
@@ -427,7 +427,7 @@ public:
         lastFrameSpinBox = new QSpinBox(globalParamScrollContents);
         lastFrameSpinBox->setObjectName(QString::fromUtf8("lastFrameSpinBox"));
         lastFrameSpinBox->setMaximum(INT32_MAX);
-        lastFrameSpinBox->setMinimum(0);
+        lastFrameSpinBox->setMinimum(INT32_MIN); // projects may end before frame 0
         sizePolicy3.setHeightForWidth(lastFrameSpinBox->sizePolicy().hasHeightForWidth());
         lastFrameSpinBox->setSizePolicy(sizePolicy3);
 
@@ -829,9 +829,9 @@ public:
         auto* newFirstRange = new QSpinBox;
         auto* newLastRange = new QSpinBox;
         newFirstRange->setMaximum(INT32_MAX);
-        newFirstRange->setMinimum(0);
+        newFirstRange->setMinimum(INT32_MIN); // projects may start before frame 0
         newLastRange->setMaximum(INT32_MAX);
-        newLastRange->setMinimum(0);
+        newLastRange->setMinimum(INT32_MIN); // projects may end before frame 0
         int FRIndex = gridLayout_2->indexOf(initialFrames->last());
         int LRIndex = gridLayout_2->indexOf(lastFrames->last());
         int unused;

@@ -1,5 +1,7 @@
 #include "ctrl/time/time_Scaler.h"
 
+#include <QtGlobal> // qint64, qAbs
+
 namespace {
 static const int kWheelValue = 120;
 // Wheel zoom range in mIndex notches: 0..15 -> 1..16 px per frame —
@@ -32,11 +34,13 @@ namespace ctrl {
 namespace time {
 
     //-------------------------------------------------------------------------------------------------
-    Scaler::Scaler(): mMaxFrame(), mFps(60), mLadder(), mWheel(kWheelValue), mIndex(1) {
+    Scaler::Scaler(): mFrameEnd(), mFps(60), mLadder(), mWheel(kWheelValue), mIndex(1) {
         setFps(mFps);
     }
 
-    void Scaler::setMaxFrame(int aMaxFrame) { mMaxFrame = aMaxFrame; }
+    // The last frame of the project frame range; the scale maps every frame
+    // linearly (keys may live anywhere), the end only sizes the content.
+    void Scaler::setFrameEnd(int aFrameEnd) { mFrameEnd = aFrameEnd; }
 
     void Scaler::setFps(int aFps) {
         mFps = std::max(1, aFps);
@@ -105,53 +109,51 @@ namespace time {
         return (mIndex + 1) * aFrame;
     }
 
-    int Scaler::maxPixelWidth() const { return pixelWidth(mMaxFrame); }
+    int Scaler::maxPixelWidth() const { return pixelWidth(mFrameEnd); }
 
     int Scaler::frame(int aPixelWidth) const {
         // Unbounded inverse of pixelWidth: a mouse position outside the frame
         // range maps to an out-of-range frame, so keys can be created, moved
         // and selected beyond the range. The playback range (Current) clamps
-        // its own values; this scale never does.
-        return (aPixelWidth + ((mIndex + 1) >> 1)) / (mIndex + 1);
+        // its own values; this scale never does. Rounding is symmetric around
+        // 0: the positive half-up rule (p + s/2)/s truncates toward zero for
+        // negative pixels, mapping frame -2's tick (px -4, spacing 2) to -1;
+        // negative pixels round away from zero instead.
+        const int s = mIndex + 1;
+        return aPixelWidth >= 0 ? (aPixelWidth + (s >> 1)) / s : (aPixelWidth - (s >> 1)) / s;
     }
 
-    int Scaler::maxFrame() const { return mMaxFrame; }
+    int Scaler::frameEnd() const { return mFrameEnd; }
 
     Scaler::Attribute Scaler::attribute(int aFrame) const {
         Attribute attr;
         const int spacing = mIndex + 1; // on-screen pixels per frame
-        attr.grid.setX(spacing * aFrame);
+        attr.pos = spacing * aFrame;
 
         // One intermediate level: the largest proper divisor of the major
         // step (step / least prime factor) — the rung directly below the
         // major in the divisor chain: 24 -> 12, 30 -> 15, 15 -> 5, 49 -> 7.
         // It sits at roughly half the major's on-screen spacing (majors stay
-        // at 72-128px, so the rung lands 36-64px, near the 48px target), it
-        // divides the major step by construction so ticks always align (a
-        // truncated half, 15 -> 7, would misalign with 0, 7, 14, 15), and an
-        // even major beyond 128px cannot occur — its own half-rung would be a
-        // closer major candidate. Prime steps have no intermediate; the
-        // per-frame tier below is the only other minor level (two minors max).
+        // at 72-128px, so the rung lands 36-64px, near the 48px target) and
+        // divides the major step by construction, so ticks always align.
+        // Prime steps have no intermediate; the per-frame tier below is the
+        // only other minor level (two minors max).
         const int step = majorStep(spacing);
         const int tier = step / leastPrimeFactor(step);
 
         if (aFrame % step == 0) {
-            attr.grid.setY(10);
+            attr.level = TickLevel::Major;
             attr.showNumber = true;
         } else if (tier > 1 && aFrame % tier == 0 &&
                    static_cast<qint64>(spacing) * tier >= 16) {
-            attr.grid.setY(8);
-            // Same room-to-read rule as the per-frame tier: an 8px tick needs
-            // >= 2x its height of gap, or it smears into a band (square-ish
-            // FPS like 121 -> 11-frame rung would otherwise be unreadable).
-            // Number a tick tier only once it has room on screen, so zooming in
-            // reveals progressively finer frame numbers.
+            // Number the intermediate tier only once it has room on screen,
+            // so zooming in reveals progressively finer frame numbers.
+            attr.level = TickLevel::Intermediate;
             attr.showNumber = (static_cast<qint64>(spacing) * tier >= kNumberSpacing);
         } else {
             // Per-frame minor ticks only once frames have room to read as
-            // distinct lines (gap >= tick height); any closer and they smear
-            // into a solid band.
-            attr.grid.setY(spacing >= 6 ? 3 : 0);
+            // distinct lines; any closer and they smear into a solid band.
+            attr.level = spacing >= 6 ? TickLevel::Minor : TickLevel::None;
             attr.showNumber = false;
         }
         return attr;

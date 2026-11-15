@@ -43,6 +43,11 @@ public:
     void setPlayBackLoop(bool aDoesLoop);
     void setFrame(core::Frame aFrame);
     core::Frame currentFrame() const;
+    // The effective playback range (project frame range, or the temporary
+    // playback window while it overrides): transport shortcuts land on its
+    // bounds, not the project range's, so they stay consistent with the
+    // window even when it extends past the project range.
+    util::Range playbackRange() const { return mInner->playbackRange(); }
 
     util::Signaler<void()> onCursorUpdated;
     util::Signaler<void()> onFrameUpdated;
@@ -88,6 +93,7 @@ private:
     void onThemeUpdated(theme::Theme&);
 
     GUIResources& mGUIResources;
+    ViaPoint& mViaPoint;
     util::LinkPointer<core::Project> mProject;
     core::Animator& mAnimator;
     TimeLineEditorWidget* mInner;
@@ -111,6 +117,10 @@ private:
     int mScrollbarDragAnchorX;
     double mScrollbarDragRatio;
     bool mIsPanning;
+    // The MoveCanvas key (space by default, configurable like the viewport's
+    // pan) is held: left-drag pans instead of selecting/scrubbing. Mirrors
+    // MainDisplayWidget's mMovingCanvasByKey.
+    bool mPanByKey;
     QPoint mPanGrabPos;
     QPoint mPanStartTransform;
 

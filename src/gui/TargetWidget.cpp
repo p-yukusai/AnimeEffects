@@ -97,9 +97,15 @@ void TargetWidget::onPlayBackButtonPushed(PlayBackWidget::PushType aType) {
     } else if (aType == PlayBackWidget::PushType_StepBack) {
         mTimeLine->setFrame(currentFrame().added(-1));
     } else if (aType == PlayBackWidget::PushType_Rewind) {
-        mTimeLine->setFrame(core::Frame(0));
+        // Land on the effective playback range's start (the temporary
+        // window's start while it overrides) — Frame(0) would stay at 0 when
+        // the window starts negative.
+        mTimeLine->setFrame(core::Frame(mTimeLine->playbackRange().min()));
     } else if (aType == PlayBackWidget::PushType_Fast) {
-        mTimeLine->setFrame(core::Frame(mProject->attribute().maxFrame()));
+        // Land on the effective playback range's end (the temporary window's
+        // end while it overrides) — the project range's max would fall short
+        // when the window extends past it.
+        mTimeLine->setFrame(core::Frame(mTimeLine->playbackRange().max()));
     } else if (aType == PlayBackWidget::PushType_Options) {
         openAnimationSettings();
     } else if (aType == PlayBackWidget::PushType_Loop) {
@@ -112,49 +118,70 @@ void TargetWidget::openAnimationSettings() {
         return;
 
     const int curFPS = mProject->attribute().fps();
-    const int curMaxFrame = mProject->attribute().maxFrame();
+    const util::Range curRange = mProject->attribute().frameRange();
     const bool curLoop = mPlayBack->isLoopChecked();
 
-    QScopedPointer<AnimationSettingDialog> dialog(new AnimationSettingDialog(*mProject, curLoop, this));
-    dialog->exec();
-    if (dialog->result() != QDialog::Accepted)
-        return;
-
-    const int newFPS = dialog->fps();
-    const int newMaxFrame = dialog->maxFrame();
-    const bool newLoop = dialog->isLoopChecked();
-    if (curFPS == newFPS && curMaxFrame == newMaxFrame && curLoop == newLoop)
-        return;
-
-    // One undo step covers every change made in the dialog, matching the
-    // project attribute dialogs. Loop is the live playback flag, not a project
-    // attribute, so it rides along in the same command.
-    {
-        cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change animation settings"));
-
-        core::Project* projectPtr = mProject;
-        auto command = new cmnd::Delegatable(
-            [=]() {
-                projectPtr->attribute().setFps(newFPS);
-                projectPtr->attribute().setMaxFrame(newMaxFrame);
-                mPlayBack->checkLoop(newLoop);
-                mTimeLine->setPlayBackLoop(newLoop);
-                auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, false);
-                this->refreshAnimationSettings();
-            },
-            [=]() {
-                projectPtr->attribute().setFps(curFPS);
-                projectPtr->attribute().setMaxFrame(curMaxFrame);
-                mPlayBack->checkLoop(curLoop);
-                mTimeLine->setPlayBackLoop(curLoop);
-                auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
-                projectPtr->onProjectAttributeModified(event, true);
-                this->refreshAnimationSettings();
-            }
-        );
-        mProject->commandStack().push(command);
+    // Show the settings as a Qt::Popup anchored to the playback options button
+    // (the EasingPickWidget idiom). The dialog is a pure view created ONCE and
+    // reused for every open: it shows/hides (a popup auto-hides on an outside
+    // click) and is never destroyed/recreated, so its QML scene is not torn
+    // down per-open (which is what produced the repeated
+    // "Cannot read property 'X' of null" teardown errors). The current
+    // project/loop state is passed in to showAt() on each open.
+    if (!mAnimSettings) {
+        mAnimSettings = new AnimationSettingDialog(this);
+        connect(mAnimSettings, &AnimationSettingDialog::changed,
+                this, &TargetWidget::applyAnimChange);
     }
+    mLastAnimFps = curFPS;
+    mLastAnimRange = curRange;
+    mLastAnimLoop = curLoop;
+
+    const QWidget* btn = mPlayBack->optionsButton();
+    const QPoint anchor = btn ? btn->mapToGlobal(QPoint(0, btn->height())) : QPoint();
+    mAnimSettings->showAt(anchor, curRange, curFPS, curLoop);
+}
+
+void TargetWidget::applyAnimChange() {
+    if (!mAnimSettings || !mProject)
+        return;
+    const int fps = mAnimSettings->fps();
+    const util::Range range = mAnimSettings->frameRange();
+    const bool loop = mAnimSettings->isLoopChecked();
+    if (fps == mLastAnimFps && range == mLastAnimRange && loop == mLastAnimLoop)
+        return;
+    applyAnimState(fps, range, loop, mLastAnimFps, mLastAnimRange, mLastAnimLoop);
+    mLastAnimFps = fps;
+    mLastAnimRange = range;
+    mLastAnimLoop = loop;
+}
+
+void TargetWidget::applyAnimState(int aFps, const util::Range& aRange, bool aLoop,
+                                  int pFps, const util::Range& pRange, bool pLoop) {
+    // One undoable command per applied change (undo reverts to the previous
+    // committed state). The side effects match the original dialog's batch.
+    cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change animation settings"));
+    core::Project* projectPtr = mProject;
+    auto* command = new cmnd::Delegatable(
+        [=]() {
+            projectPtr->attribute().setFps(aFps);
+            projectPtr->attribute().setFrameRange(aRange);
+            mPlayBack->checkLoop(aLoop);
+            mTimeLine->setPlayBackLoop(aLoop);
+            auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
+            projectPtr->onProjectAttributeModified(event, false);
+            this->refreshAnimationSettings();
+        },
+        [=]() {
+            projectPtr->attribute().setFps(pFps);
+            projectPtr->attribute().setFrameRange(pRange);
+            mPlayBack->checkLoop(pLoop);
+            mTimeLine->setPlayBackLoop(pLoop);
+            auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
+            projectPtr->onProjectAttributeModified(event, true);
+            this->refreshAnimationSettings();
+        });
+    projectPtr->commandStack().push(command);
 }
 
 void TargetWidget::refreshAnimationSettings() {

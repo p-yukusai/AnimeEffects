@@ -38,8 +38,12 @@ namespace time {
         void toggle(const core::TimeLineEvent::Target& aTarget);
         void assign(core::TimeLineEvent& aOut) const; // copy targets into aOut
 
-        // Re-resolve each target to its key's current frame (after a move).
-        void reindex();
+        // Reconcile the set with the timeline after a modification: follow
+        // keys that moved to their current frames and drop entries whose key
+        // no longer sits in its lane map (removed or recreated). Safe against
+        // dangling keys: a stored key pointer is only compared against map
+        // entries, never dereferenced.
+        void refresh();
 
         const QVector<Item>& items() const { return mItems; }
 

@@ -29,6 +29,9 @@ public:
     PlayBackWidget(GUIResources& aResources, QWidget* aParent, core::Project& aProject);
 
     void setPushDelegate(const PushDelegate& aDelegate);
+
+    // The options button (index 6); used to anchor the animation-settings popup.
+    QPushButton* optionsButton() const { return mButtons.at(6); }
     bool isLoopChecked();
     void checkLoop(bool checkStatus);
     void PlayPause();

@@ -2,16 +2,17 @@
 #include "gui/theme/Colors.h"
 #include "gui/theme/Icons.h"
 
-#include <QIcon>
+#include <algorithm>
 #include <QAbstractItemView>
-#include <QDockWidget>
-
-#include "ctrl/System.h"
-#ifdef Q_OS_WIN
-    #define WIN32_LEAN_AND_MEAN
-    #include <Windows.h>
-    #include <dwmapi.h>
-#endif
+#include <QBitmap>
+#include <QEvent>
+#include <QIcon>
+#include <QLinearGradient>
+#include <QMenu>
+#include <QPainter>
+#include <QPainterPath>
+#include <QStyleOption>
+#include <QStyleOptionSlider>
 
 namespace gui {
 
@@ -19,6 +20,11 @@ namespace {
 constexpr int kTrackThickness = 12; // hit area / extent (invisible)
 constexpr int kPillThickness = 4;
 constexpr int kPillRadius = 2;
+// Easing blend slider (a QSlider with no QSS so it routes through CC_Slider):
+// a 4px gradient track and a round accent-bright knob, matching the mock.
+constexpr int kSliderGrooveThickness = 4;
+constexpr int kSliderKnobRadius = 7;     // 14px thumb (border-box, border inside)
+constexpr qreal kSliderFillRadius = 5.0; // white fill inside the 2px border
 // Object-tree branch caret: the QIcon box the caret is rendered into
 // (glyph inside is ~0.73 of the box at phosphor's 256 canvas).
 constexpr int kBranchCaretSize = 14;
@@ -33,57 +39,66 @@ constexpr qreal kBranchLineOpacity = 0.4;
 // hovered/dragged); see theme/Colors.h.
 } // namespace
 
-/*#ifdef Q_OS_WIN
-namespace {
-    class WinResizeFilter : public QObject
-    {
-    public:
-        explicit WinResizeFilter(QObject *parent = nullptr) : QObject(parent) {}
-        bool eventFilter(QObject *watched, QEvent *event) override
-        {
-            if (event->type() == QEvent::Resize) {
-                // auto *resizeEvent = dynamic_cast<QResizeEvent*>(event);
-                const QWidget* aWidget = qobject_cast<QWidget*>(watched);
-                const auto hwnd = reinterpret_cast<HWND>(aWidget->winId());
-                const QRect rect = aWidget->rect();
-                /*const int width = rect.width();
-                const int height = rect.height();#1#
-                constexpr int highFactor = (kPillRadius + kPillThickness) * 2;
-                // constexpr int lowFactor = highFactor / 2;
-                int pillRadiusW = kPillRadius; int pillRadiusH = kPillRadius;
-                pillRadiusW += highFactor; pillRadiusH += highFactor;
-
-                const auto hrgn = CreateRoundRectRgn(
-                    rect.bottomLeft().x(), rect.bottomLeft().y(),
-                    rect.topRight().x() , rect.topRight().y(),
-                    pillRadiusW, pillRadiusH);
-                SetWindowRgn(hwnd, hrgn, TRUE);
-
-            }
-            return QObject::eventFilter(watched, event);
-        }
-    };
-}
-#endif*/
-
 AppStyle::AppStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
 
-void AppStyle::polish(QWidget* aWidget) {
-    // Mark as translucent so the window manager doesn't draw behind them
-    if (qobject_cast<QMenu*>(aWidget) || aWidget->inherits("QComboBoxPrivateContainer")) {
-        aWidget->setAttribute(Qt::WA_TranslucentBackground);
-        aWidget->setAttribute(Qt::WA_NoSystemBackground);
-#ifdef Q_OS_WIN
-        // We setup this because Windows is dumb and stupid and can't composite stuff without hand-holding
-        if (QOperatingSystemVersion::current().microVersion() > 22000) {
-            // Looks prettier
-            const auto hwnd = reinterpret_cast<HWND>(aWidget->winId());
-            constexpr DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
-            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+bool AppStyle::eventFilter(QObject* aWatched, QEvent* aEvent) {
+    if (aWatched && aWatched->isWidgetType()) {
+        auto* w = static_cast<QWidget*>(aWatched);
+        // Only QMenu gets the rounded mask. The combo drop-down
+        // (QComboBoxPrivateContainer) must NOT: Qt's
+        // QComboBoxPrivateContainer::paintEvent draws the popup panel
+        // (PE_PanelMenu → the rounded floaterBody) only when mask().isEmpty()
+        // is true. Stamp a mask on it and QMenu-like panel paint is skipped,
+        // leaving the drop-down transparent. Its own rounded corners come from
+        // the translucent window + the rounded PE_PanelMenu path — the same
+        // mechanism QMenu uses — so the combo needs no mask.
+        if ((aEvent->type() == QEvent::Resize || aEvent->type() == QEvent::Show)
+            && qobject_cast<QMenu*>(w)) {
+            // Rounded mask fallback for compositors that don't composite true
+            // translucency on Qt::Popup (notably Windows). Cheap QBitmap mask;
+            // also serves as offscreen/test fallback. Radius matches
+            // PE_PanelMenu (8px).
+            constexpr qreal kRadius = 8.0;
+            QBitmap mask(w->size());
+            mask.fill(Qt::color0);
+            QPainter p(&mask);
+            p.setRenderHint(QPainter::Antialiasing, true);
+            p.setBrush(Qt::color1);
+            p.setPen(Qt::NoPen);
+            p.drawRoundedRect(QRect(QPoint(0, 0), w->size()), kRadius, kRadius);
+            w->setMask(mask);
         }
-        else{ aWidget->setWindowFlags(Qt::FramelessWindowHint | Qt::Popup | Qt::NoDropShadowWindowHint); }
-#endif
     }
+    return QProxyStyle::eventFilter(aWatched, aEvent);
+}
+
+void AppStyle::polish(QWidget* aWidget) {
+    // Menus are opaque OS popup windows by default (their backing is the
+    // palette Window role). For real rounded corners the popup must be an
+    // alpha window, so mark them translucent at polish time — before the
+    // platform window is created. The combo popup (QComboBoxPrivateContainer)
+    // draws the same PE_PanelMenu and needs the same treatment.
+    // On Windows Qt6 WA_TranslucentBackground only composites when
+    // FramelessWindowHint is also set (otherwise the corner cut is filled
+    // black) — see QTBUG and the Breeze/PortProton fixes.
+    const bool isFloater = qobject_cast<QMenu*>(aWidget) || aWidget->inherits("QComboBoxPrivateContainer");
+    if (isFloater) {
+        // Keep Qt::Popup behavior (auto-close on outside click, grab) —
+        // FramelessWindowHint alone would make it a normal top-level. OR
+        // with existing flags rather than replacing, so Qt::Popup is kept.
+        aWidget->setWindowFlags(aWidget->windowFlags() | Qt::FramelessWindowHint);
+        aWidget->setAttribute(Qt::WA_TranslucentBackground, true);
+        aWidget->setAttribute(Qt::WA_NoSystemBackground, true);
+        // Mask must track resizes/shows — install filter on the popup itself.
+        aWidget->removeEventFilter(this);
+        aWidget->installEventFilter(this);
+    }
+    // The combo popup paints its items as CE_MenuItem through Qt's
+    // QComboMenuDelegate, which builds the style option from the VIEW's
+    // palette; the QSS selection-background-color never reaches that paint
+    // path. The popup is translucent (above) and carries the QMenu-style
+    // grey on the view's palette Highlight without touching the other roles
+    // (the view's Base stays transparent so the recessed panel shows).
     // The style is re-polished on theme changes, so Colors::current() is
     // fresh.
     if (aWidget->inherits("QComboBoxPrivateContainer")) {
@@ -136,7 +151,7 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         // (background/border/radius), or QStyleSheetStyle draws the panel
         // itself.
         const theme::Colors c = theme::Colors::current();
-        constexpr qreal kRadius = 8;
+        const qreal kRadius = 8;
         // the floater tokens: sunken body on dark, white body on light
         const QColor kBody = c.floaterBody;
         const QColor kEdge = c.floaterEdge;
@@ -166,7 +181,7 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         const QRect r = aOption->rect;
         const int midX = r.left() + r.width() / 2;
         const int midY = r.top() + r.height() / 2;
-        const bool hasCaret = aOption->state & State_Children;
+        const bool hasCaret = aOption->state & QStyle::State_Children;
 
         QRect box;
         if (hasCaret) {
@@ -182,14 +197,14 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         // Vertical connector: full height when a sibling row follows, else
         // only down to the corner (last child). Split around the caret box
         // so the guide line never crosses the glyph.
-        if (aOption->state & State_Sibling) {
+        if (aOption->state & QStyle::State_Sibling) {
             if (hasCaret) {
                 aPainter->drawLine(midX, r.top(), midX, box.top() - 1);
                 aPainter->drawLine(midX, box.bottom() + 1, midX, r.bottom());
             } else {
                 aPainter->drawLine(midX, r.top(), midX, r.bottom());
             }
-        } else if (aOption->state & State_Item) {
+        } else if (aOption->state & QStyle::State_Item) {
             aPainter->drawLine(midX, r.top(), midX, hasCaret ? box.top() - 1 : midY);
         }
 
@@ -199,7 +214,7 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         // QSS images this replaces (branch_more/branch_end) included it;
         // without it the rows would hang off the trunks. LTR layout (the
         // app has no RTL locales; Qt would mirror this for RTL).
-        if (aOption->state & State_Item) {
+        if (aOption->state & QStyle::State_Item) {
             const int fromX = hasCaret ? box.right() + 1 : midX;
             aPainter->drawLine(fromX, midY, r.right(), midY);
         }
@@ -207,7 +222,7 @@ void AppStyle::drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOpt
         if (hasCaret) {
             // No hover feedback (Figma-style): the click's state change is
             // the feedback, and hover would be inconsistent with the eye.
-            const bool open = aOption->state & State_Open;
+            const bool open = aOption->state & QStyle::State_Open;
             const QString stem = QStringLiteral("caret-%1-bold").arg(open ? QStringLiteral("down") : QStringLiteral("right"));
             QIcon icon(theme::iconDir() + QLatin1Char('/') + stem + QStringLiteral(".svg"));
             aPainter->setRenderHint(QPainter::Antialiasing, true);
@@ -245,7 +260,7 @@ void AppStyle::drawControl(ControlElement aElement, const QStyleOption* aOption,
             aPainter->restore();
             return;
         }
-        if (opt->state & State_Selected) {
+        if (opt->state & QStyle::State_Selected) {
             const theme::Colors c = theme::Colors::current();
             // 4px off the popup edge, matching the QMenu item inset (the
             // row rect itself sits ~3px in, so the pill inset is 1px)
@@ -292,7 +307,7 @@ void AppStyle::drawComplexControl(ComplexControl aControl, const QStyleOptionCom
         }
 
         const bool hot =
-            (opt->activeSubControls & SC_ScrollBarSlider) || (opt->state & State_Sunken);
+            (opt->activeSubControls & SC_ScrollBarSlider) || (opt->state & QStyle::State_Sunken);
         aPainter->save();
         aPainter->setRenderHint(QPainter::Antialiasing);
         aPainter->setPen(Qt::NoPen);
@@ -301,6 +316,70 @@ void AppStyle::drawComplexControl(ComplexControl aControl, const QStyleOptionCom
         aPainter->restore();
         return;
     }
+    if (aControl == CC_Slider) {
+        // The Easing blend slider (and any non-QSS QSlider): a 4px gradient
+        // track (recessed -> accent-bright) and a round accent-bright knob.
+        const auto* opt = qstyleoption_cast<const QStyleOptionSlider*>(aOption);
+        if (!opt)
+            return;
+        const theme::Colors& c = theme::Colors::current();
+        const QRect groove =
+            QProxyStyle::subControlRect(CC_Slider, opt, SC_SliderGroove, aWidget);
+
+        // Position the knob from the track and the thumb size, NOT the base
+        // style's SC_SliderHandle rect — that handle's length comes from the
+        // style's PM_SliderHandleLength metric, which differs from our 14px
+        // thumb, so it left the knob offset from the track ends (not flush at
+        // 100%). Using the thumb's own radius (kSliderKnobRadius = 7px) makes
+        // it automatic: 0% -> flush left, 100% -> flush right.
+        const int span = opt->maximum - opt->minimum;
+        const double frac = span != 0
+            ? std::clamp(double(opt->sliderPosition - opt->minimum) / double(span), 0.0, 1.0)
+            : 0.0;
+        const qreal kr = kSliderKnobRadius;
+
+        QRect track;
+        QPointF knob;
+        if (opt->orientation == Qt::Horizontal) {
+            const int y = groove.center().y() - kSliderGrooveThickness / 2;
+            track = QRect(groove.left(), y, groove.width(), kSliderGrooveThickness);
+            knob = QPointF(track.left() + kr + frac * (track.width() - 2.0 * kr),
+                           groove.center().y());
+        } else {
+            const int x = groove.center().x() - kSliderGrooveThickness / 2;
+            track = QRect(x, groove.top(), kSliderGrooveThickness, groove.height());
+            knob = QPointF(groove.center().x(),
+                           track.top() + kr + frac * (track.height() - 2.0 * kr));
+        }
+
+        aPainter->save();
+        aPainter->setRenderHint(QPainter::Antialiasing);
+        // 4px recessed -> accent-bright gradient track (the mock's range
+        // input track is a linear-gradient(90deg, recessed, accent-bright)),
+        // not a flat fill.
+        QLinearGradient grad(track.topLeft(), track.topRight());
+        grad.setColorAt(0.0, c.recessed);
+        grad.setColorAt(1.0, c.accentBright);
+        aPainter->setPen(Qt::NoPen);
+        aPainter->setBrush(grad);
+        aPainter->drawRoundedRect(track, kSliderGrooveThickness / 2, kSliderGrooveThickness / 2);
+
+        // Mock thumb is 14px with a 2px accent-bright border INSIDE (border-box)
+        // and a white fill. Draw the fill (r=5, 10px) then the border centered
+        // on r=6 (spans 5..7 = 2px) so the knob is exactly 14px — the previous
+        // pen-on-r7 made a 16px knob (larger than the mock's).
+        aPainter->setPen(Qt::NoPen);
+        aPainter->setBrush(c.text);
+        aPainter->drawEllipse(knob, kSliderFillRadius, kSliderFillRadius);
+        QPen pen(c.accentBright);
+        pen.setWidthF(2.0);
+        aPainter->setPen(pen);
+        aPainter->setBrush(Qt::NoBrush);
+        aPainter->drawEllipse(knob, kSliderKnobRadius - 1.0, kSliderKnobRadius - 1.0);
+        aPainter->restore();
+        return;
+    }
+
     QProxyStyle::drawComplexControl(aControl, aOption, aPainter, aWidget);
 }
 

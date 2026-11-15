@@ -1,5 +1,7 @@
 #include "gui/tool/tool_ViewPanel.h"
 
+#include <QSettings>
+
 #include "AnimationSettingDialog.h"
 
 namespace {

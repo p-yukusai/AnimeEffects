@@ -1,7 +1,14 @@
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <algorithm>
 #include <memory>
 #include <qstandardpaths.h>
+#ifdef Q_OS_WINDOWS
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include "gl/Global.h"
 #include "gl/DeviceInfo.h"
 #include "ctrl/System.h"
@@ -16,7 +23,17 @@ using namespace core;
 
 namespace {
 static const int kStandardFps = 24;
+
+// Recovery copies of never-saved projects land in a dedicated subdir of the
+// app cache (same per-user transient area as lastproject.cache). The filename
+// is the project's own UUID: stable per project across repeated autosaves
+// (the same file is overwritten) and unique across projects and app sessions
+// — no pid/address reuse, no ASLR address in a user-visible name.
+QString recoveryDirName() { return QStringLiteral("autosave"); }
+QString recoveryFileName(const core::Project& aProject) {
+    return QStringLiteral("AnimeEffects_unsaved_%1.anie").arg(aProject.id().toString(QUuid::WithoutBraces));
 }
+} // namespace
 
 namespace ctrl {
 //-------------------------------------------------------------------------------------------------
@@ -83,7 +100,9 @@ System::LoadResult System::newProject(
 }
 
 System::LoadResult
-System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util::IProgressReporter& aReporter) {
+System::openProject(
+    const QString& aFileName, Project::Hook* aHookGrabbed, util::IProgressReporter& aReporter, bool aRecordRecent
+) {
     std::unique_ptr<core::Project::Hook> hookScope(aHookGrabbed);
 
     XC_ASSERT(mAnimator);
@@ -92,10 +111,10 @@ System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util:
     gl::Global::makeCurrent();
 
     if (!aFileName.isEmpty()) {
-        std::unique_ptr<Project> projectScope;
+        std::unique_ptr<core::Project> projectScope;
         projectScope.reset(new Project(aFileName, *mAnimator, hookScope.release()));
 
-        ProjectLoader loader(mainMenu);
+        ctrl::ProjectLoader loader;
         if (loader.load(aFileName, *projectScope, gl::DeviceInfo::instance(), aReporter)) {
             mProjects.push_back(projectScope.release());
             {
@@ -121,25 +140,28 @@ System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util:
                 }
             }
             // Get settings
-            QSettings settings;
-            QStringList recentfiles = settings.value("projectloader/recents").toStringList();
+            // Recovery copies are transient (the file is deleted after a
+            // successful recovery open), so they must not pollute the
+            // recent-files list with a path that will not exist tomorrow.
+            if (aRecordRecent) {
+                QSettings settings;
+                QStringList recentfiles = settings.value("projectloader/recents").toStringList();
 
-            // Check file length
-            if (recentfiles.length() != 8) {
-                recentfiles.append(aFileName);
+                // Check file length
+                if (recentfiles.length() != 8) {
+                    recentfiles.append(aFileName);
+                }
+                // If length eight remove first
+                else if (recentfiles.length() >= 8) {
+                    recentfiles.pop_front();
+                }
+                // Save
+                if (!settings.value("projectloader/recents").toStringList().contains(aFileName)) {
+                    settings.setValue("projectloader/recents", recentfiles);
+                    settings.sync();
+                }
             }
-            // If length eight remove first
-            else if (recentfiles.length() >= 8) {
-                recentfiles.pop_front();
-            }
-            // Save
-            if (!settings.value("projectloader/recents").toStringList().contains(aFileName)) {
-                settings.setValue("projectloader/recents", recentfiles);
-                settings.sync();
-            }
-            if (mainMenu != nullptr) {
-                mainMenu->onRecentsUpdate();
-            }
+
             return LoadResult(mProjects.back(), "Success.");
         }
 
@@ -166,7 +188,7 @@ bool isAllAscii(const std::string& str)
                 });
 }
 
-System::SaveResult System::saveProject(core::Project& aProject) {
+System::SaveResult System::saveProject(core::Project& aProject, bool aInteractive) {
     const int index = mProjects.indexOf(&aProject);
 
     if (index < 0 || mProjects.count() <= index) {
@@ -193,19 +215,27 @@ System::SaveResult System::saveProject(core::Project& aProject) {
         // ensure only ascii is used
         std::string filename = QFileInfo(outputPath).completeBaseName().toStdString();
         if (!isAllAscii(filename)) {
-            QMessageBox confirmation;
-            confirmation.setText(QCoreApplication::translate(
-                "projectSave", "Non ascii characters detected, this may cause issues.\nSave anyway?", nullptr
-            ));
-            confirmation.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
-            confirmation.setDefaultButton(QMessageBox::Cancel);
-            confirmation.setWindowTitle(
-                QCoreApplication::translate("projectSave", "Unicode on filename detected", nullptr)
-            );
-            if (confirmation.exec() != QMessageBox::Yes) {
-                return SaveResult(false, "Please only utilize ASCII characters for naming .anie files.");
+            // The confirmation is interactive-only: an autosave must never
+            // block the user. A non-ASCII project was already saved (and the
+            // override accepted) once to reach this path, so re-saving it is
+            // no new risk — proceed silently.
+            if (!aInteractive) {
+                saver.log().append("ASCII override.");
+            } else {
+                QMessageBox confirmation;
+                confirmation.setText(QCoreApplication::translate(
+                    "projectSave", "Non ascii characters detected, this may cause issues.\nSave anyway?", nullptr
+                ));
+                confirmation.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
+                confirmation.setDefaultButton(QMessageBox::Cancel);
+                confirmation.setWindowTitle(
+                    QCoreApplication::translate("projectSave", "Unicode on filename detected", nullptr)
+                );
+                if (confirmation.exec() != QMessageBox::Yes) {
+                    return SaveResult(false, "Please only utilize ASCII characters for naming .anie files.");
+                }
+                saver.log().append("ASCII override.");
             }
-            saver.log().append("ASCII override.");
         }
 
         if (!saver.save(cachePath, *project)) {
@@ -222,6 +252,74 @@ System::SaveResult System::saveProject(core::Project& aProject) {
     }
 
     return SaveResult(false, "Invalid operation.");
+}
+
+System::SaveResult System::saveRecoveryCopy(core::Project& aProject, QString& aOutFilePath) {
+    const int index = mProjects.indexOf(&aProject);
+    if (index < 0) {
+        return SaveResult(false, "Invalid project reference.");
+    }
+
+    const QString dir = mCacheDir + "/" + recoveryDirName();
+    if (!makeSureCacheDirectory(dir)) {
+        return SaveResult(false, "Failed to create the autosave directory.");
+    }
+
+    const QString path = QDir(dir).filePath(recoveryFileName(aProject));
+    const QString tmpPath = path + ".tmp";
+
+    ctrl::ProjectSaver saver;
+    if (!saver.save(tmpPath, aProject)) {
+        return SaveResult(false, "Failed to save the recovery copy. (" + saver.log() + ")");
+    }
+    if (!safeRename(tmpPath, path)) {
+        return SaveResult(false, "Failed to finalize the recovery copy.");
+    }
+
+    aOutFilePath = path;
+    return SaveResult(true, "Success.");
+}
+
+void System::clearRecoveryCopy(core::Project& aProject) {
+    const QString path = QDir(mCacheDir + "/" + recoveryDirName()).filePath(recoveryFileName(aProject));
+    removeRecoveryCopy(path);
+}
+
+QStringList System::recoveryCopyPaths() const {
+    const QDir dir(mCacheDir + "/" + recoveryDirName());
+    if (!dir.exists()) {
+        return {};
+    }
+
+    QStringList paths;
+    const auto names = dir.entryList({QStringLiteral("AnimeEffects_unsaved_*.anie")}, QDir::Files);
+    for (const auto& name : names) {
+        paths << dir.filePath(name);
+    }
+
+    // Newest first: the most recent work is offered first.
+    std::sort(paths.begin(), paths.end(), [](const QString& a, const QString& b) {
+        return QFileInfo(a).lastModified() > QFileInfo(b).lastModified();
+    });
+    return paths;
+}
+
+void System::removeRecoveryCopy(const QString& aFilePath) {
+    QFile::remove(aFilePath);
+}
+void System::sweepStaleRecoveryTmp() {
+    // The autosave dir is dedicated to these files: the only writer is
+    // saveRecoveryCopy, whose `<name>.anie.tmp` is either renamed to
+    // `<name>.anie` or left behind by a crash. Sweeping just the `.tmp`
+    // pattern (never the finished `<name>.anie`) removes that litter; it can
+    // never touch a real project file, which lives outside this dir.
+    const QDir dir(mCacheDir + "/" + recoveryDirName());
+    if (!dir.exists())
+        return;
+    const auto names = dir.entryList({QStringLiteral("AnimeEffects_unsaved_*.anie.tmp")}, QDir::Files);
+    for (const auto& name : names) {
+        QFile::remove(dir.filePath(name));
+    }
 }
 
 bool System::closeProject(core::Project& aProject) {
@@ -275,18 +373,40 @@ bool System::safeRename(const QString& aSrc, const QString& aDst) {
         return false;
     }
 
+#ifdef Q_OS_WINDOWS
+    // MoveFileExW with MOVEFILE_REPLACE_EXISTING replaces the destination in
+    // one step on the same volume — no delete-then-rename window where a
+    // crash destroys the project file. (QFile::rename on Windows refuses to
+    // overwrite; don't depend on Qt internals for that.)
+    if (::MoveFileExW(reinterpret_cast<const wchar_t*>(aSrc.utf16()),
+                      reinterpret_cast<const wchar_t*>(aDst.utf16()),
+                      MOVEFILE_REPLACE_EXISTING)) {
+        return true;
+    }
+#else
+    // Unix: QFile::rename maps to rename(2), which replaces an existing
+    // destination atomically.
+    if (QFile::rename(aSrc, aDst)) {
+        return true;
+    }
+#endif
+
+    // Last resort: remove + rename. The remove runs only when the destination
+    // exists; the rename itself is attempted unconditionally, so a missing
+    // destination (or a transient platform-branch/atomic failure) still gets
+    // a plain rename instead of a spurious failure.
     if (QFile::exists(aDst)) {
         if (!QFile::remove(aDst)) {
             qDebug() << "failed to remove a project file.";
             return false;
         }
     }
-
-    if (!QFile::rename(aSrc, aDst)) {
-        qDebug() << "failed to rename a project file.";
-        return false;
+    if (QFile::rename(aSrc, aDst)) {
+        return true;
     }
-    return true;
+
+    qDebug() << "failed to rename a project file.";
+    return false;
 }
 
 } // namespace ctrl

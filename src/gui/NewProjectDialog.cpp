@@ -1,9 +1,14 @@
+#include <QSpinBox>
+#include <QGroupBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QPushButton>
+#include <QFileDialog>
+#include <QCheckBox>
 #include "gui/NewProjectDialog.h"
 
-#include "theme/Icons.h"
+#include <QMessageBox>
 
 namespace gui {
 
@@ -11,7 +16,7 @@ NewProjectDialog::NewProjectDialog(QWidget* aParent):
     EasyDialog(tr("New Project Dialog"), aParent), mFileName(), mAttribute(), mSpecifiesCanvasSize() {
     // initialize attribute
     {
-        mAttribute.setMaxFrame(60 * 10);
+        mAttribute.setFrameRange(util::Range(1, 60 * 10));
         mAttribute.setImageSize(QSize(512, 512));
     }
 
@@ -37,8 +42,6 @@ QWidget* NewProjectDialog::createOption() {
         layout->addWidget(line);
 
         const auto button = new QPushButton(this);
-        QIcon icon(theme::iconDir() + "/dialog_open.svg");
-        button->setIcon(icon);
         this->connect(button, &QPushButton::clicked, [=] {
             this->mFileName = QFileDialog::getOpenFileName(
                 this, tr("Open File"), QDir::homePath(), "ImageFile (*.psd *.ora *.jpg *.jpeg *.png *.gif *.tiff *.tif *.webp)"
@@ -57,11 +60,14 @@ QWidget* NewProjectDialog::createOption() {
     {
         auto frame = new QSpinBox();
         frame->setRange(1, std::numeric_limits<int>::max());
-        frame->setValue(mAttribute.maxFrame());
+        frame->setValue(mAttribute.frameRange().max());
 
-        this->connect(frame, &QSpinBox::editingFinished, [=]() { this->mAttribute.setMaxFrame(frame->value()); });
+        this->connect(frame, &QSpinBox::editingFinished, [=]() {
+            // 1-indexed: the frame-count value N is frames 1..N.
+            this->mAttribute.setFrameRange(util::Range(1, frame->value()));
+        });
 
-        form->addRow(tr("Maximum frame count"), frame);
+        form->addRow(tr("Frame count"), frame);
     }
     // fps
     {

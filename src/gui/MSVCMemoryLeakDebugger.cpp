@@ -196,7 +196,7 @@ void operator delete[](void* aPtr) {
 }
 
     //-------------------------------------------------------------------------------------------------
-    #include <Windows.h>
+    #include <windows.h>
 int myAllocHook(
     int aAllocType, void* aData, size_t aSize, int aBlockUse, long aRequest, const unsigned char* aFileName, int aLine
 ) {

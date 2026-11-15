@@ -6,18 +6,19 @@
 namespace {
 const int kParaThreadCount = 4;
 const int kStandardFps = 24;
-const int kDefaultMaxFrame = 60 * 10;
+const int kDefaultFrameCount = 60 * 10;
 } // namespace
 
 namespace core {
 //-------------------------------------------------------------------------------------------------
-Project::Attribute::Attribute(): mImageSize(), mMaxFrame(kDefaultMaxFrame), mFps(kStandardFps), mLoop(false) {}
+Project::Attribute::Attribute(): mImageSize(), mFrameRange(1, kDefaultFrameCount), mFps(kStandardFps), mLoop(false) {}
 
 //-------------------------------------------------------------------------------------------------
 Project::Project(QString aFileName, Animator& aAnimator, Hook* aHookGrabbed):
     mLifeLink(),
     mFileName(aFileName),
     mAttribute(),
+    mId(QUuid::createUuid()),
     mParalleler(new thr::Paralleler(kParaThreadCount)),
     mResourceHolder(),
     mCommandStack(),
@@ -72,7 +73,7 @@ void Project::setFileName(const QString& aFileName) {
 
 TimeInfo Project::currentTimeInfo() const {
     TimeInfo time;
-    time.frameMax = mAttribute.maxFrame();
+    time.frameRange = mAttribute.frameRange();
     time.fps = mAttribute.fps();
     time.loop = mAttribute.loop();
     time.frame = mAnimator.currentFrame();

@@ -464,9 +464,19 @@
 <context>
     <name>GeneralSettingsDialog</name>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="80"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="83"/>
         <source>None</source>
-        <translation>なし</translation>
+        <translation type="vanished">なし</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="83"/>
+        <source>Floor</source>
+        <translation>切り捨て</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="85"/>
+        <source>Round</source>
+        <translation>四捨五入</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="82"/>
@@ -578,28 +588,28 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="207"/>
-        <source>Frame number (from 0)</source>
-        <translation>フレーム番号（0から）</translation>
+        <source>Frame number</source>
+        <translation>フレーム番号</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="209"/>
         <source>Frame number (from 1)</source>
-        <translation>フレーム番号（1から）</translation>
+        <translation type="vanished">フレーム番号（1から）</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="211"/>
-        <source>Relative to FPS (1.0 = 60.0)</source>
-        <translation>FPSに対する相対値（1.0＝60.0）</translation>
+        <source>Seconds</source>
+        <translation>秒数</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="213"/>
-        <source>Seconds : Frame</source>
-        <translation>秒数：フレーム</translation>
+        <source>Seconds + Frame (SS+FF)</source>
+        <translation>秒数 + フレーム (SS+FF)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
-        <source>Timecode (SMPTE) (HH:MM:SS:FF)</source>
-        <translation>タイムコード(SMPTE) (時:分:秒:フレーム)</translation>
+        <source>Timecode (SMPTE) (HH:MM:SS+FF)</source>
+        <translation>タイムコード(SMPTE) (時:分:秒+フレーム)</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
@@ -1344,8 +1354,8 @@
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="328"/>
-        <source>Timeline format (needs restart)</source>
-        <translation>タイムライン形式（要リブート）</translation>
+        <source>Timeline format</source>
+        <translation>タイムライン形式</translation>
     </message>
     <message>
         <location filename="../../src/gui/GeneralSettingDialog.cpp" line="344"/>
@@ -4090,7 +4100,17 @@ Save anyway?</source>
     <message>
         <location filename="../../src/util/Easing.cpp" line="26"/>
         <source>None</source>
-        <translation>なし</translation>
+        <translation type="vanished">なし</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="26"/>
+        <source>Floor</source>
+        <translation>切り捨て</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="52"/>
+        <source>Round</source>
+        <translation>四捨五入</translation>
     </message>
     <message>
         <location filename="../../src/util/Easing.cpp" line="28"/>

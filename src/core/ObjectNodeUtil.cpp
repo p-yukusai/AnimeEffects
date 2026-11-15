@@ -140,26 +140,6 @@ namespace ObjectNodeUtil {
         return gdepth;
     }
 
-    bool thereAreSomeKeysExceedingFrame(const ObjectNode* aRootNode, int aMaxFrame) {
-        ObjectNode::ConstIterator nodeItr(aRootNode);
-        while (nodeItr.hasNext()) {
-            const ObjectNode* node = nodeItr.next();
-            XC_PTR_ASSERT(node);
-            if (!node->timeLine())
-                continue;
-
-            for (int i = 0; i < TimeKeyType_TERM; ++i) {
-                auto& map = node->timeLine()->map((TimeKeyType)i);
-                for (auto keyItr = map.begin(); keyItr != map.end(); ++keyItr) {
-                    if (aMaxFrame < keyItr.key()) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
     void collectRenderClippees(
         ObjectNode& aNode, std::vector<Renderer::SortUnit>& aDest, const TimeCacheAccessor& aAccessor,
         const TimeInfo& aTime

@@ -3,7 +3,6 @@
 
 #include <array>
 #include <vector>
-#include <QPoint>
 
 namespace ctrl {
 namespace time {
@@ -14,14 +13,22 @@ namespace time {
         // tier before the scale labels it.
         static constexpr int kNumberSpacing = 64;
 
+        // The prominence tier of a frame's tick. This is the Scaler's output:
+        // which frames get a tick, and how prominent it is, is a property of
+        // the FPS divisor chain and the zoom level. How a tier is *drawn*
+        // (its length and alpha) is an appearance concern and lives with the
+        // painter — the Scaler only classifies.
+        enum class TickLevel { None, Minor, Intermediate, Major };
+
         struct Attribute {
-            bool showNumber;
-            QPoint grid;
+            TickLevel level = TickLevel::None;
+            int pos = 0;          // on-screen x (content-axis) offset of the frame
+            bool showNumber = false;
         };
 
         Scaler();
 
-        void setMaxFrame(int aMaxFrame);
+        void setFrameEnd(int aFrameEnd);
         void setFps(int aFps);
         // Applies a wheel delta; returns false when the zoom is already
         // clamped at the floor or ceiling and the delta had no room to act.
@@ -32,13 +39,13 @@ namespace time {
         int pixelWidth(int aFrame) const;
         int maxPixelWidth() const;
         int frame(int aPixelWidth) const;
-        int maxFrame() const;
+        int frameEnd() const;
         Attribute attribute(int aFrame) const;
 
     private:
         int majorStep(int aSpacing) const;
 
-        int mMaxFrame;
+        int mFrameEnd;
         int mFps;
         std::vector<int> mLadder;
         int mWheel;

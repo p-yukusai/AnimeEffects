@@ -141,7 +141,7 @@ void BoneKeyUpdater::onResourceModified(ResourceEvent& aEvent) {
 void BoneKeyUpdater::onProjectAttributeModified(ProjectEvent& aEvent) {
     auto topNode = aEvent.project().objectTree().topNode();
     if (topNode) {
-        if (aEvent.type() == ProjectEvent::Type_ChangeMaxFrame || aEvent.type() == ProjectEvent::Type_ChangeLoop) {
+        if (aEvent.type() == ProjectEvent::Type_ChangeFrameRange || aEvent.type() == ProjectEvent::Type_ChangeLoop) {
             resetInfluenceCachesOfChildren(aEvent.project(), *topNode);
         }
     }

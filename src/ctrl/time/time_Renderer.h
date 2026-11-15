@@ -8,6 +8,7 @@
 #include "core/CameraInfo.h"
 #include "core/ObjectNode.h"
 #include "core/TimeFormat.h"
+#include "ctrl/TimeLineEditor.h"
 #include "ctrl/TimeLineRow.h"
 #include "ctrl/time/time_Scaler.h"
 #include "gui/theme/TimeLine.h"
@@ -23,16 +24,27 @@ namespace time {
 
     class Renderer {
     public:
-        Renderer(QPainter& aPainter, const core::CameraInfo& aCamera, const theme::TimeLine& aTheme,
-            const core::TimeFormatType& timeFormat);
+        Renderer(QPainter& aPainter, const core::CameraInfo& aCamera, const theme::TimeLine& aTheme);
 
         void setMargin(int aMargin) { mMargin = aMargin; }
         void setRange(const util::Range& aRange) { mRange = aRange; }
         void setTimeScale(const Scaler& aScale) { mScale = &aScale; }
+        // The project frame range: the range markers sit at its first and
+        // last frame's ticks. The temporary window dims the markers while it
+        // overrides; it does not move them.
+        void setProjectRange(const util::Range& aRange) { mProjectRange = aRange; }
+        // The temporary playback window (see ctrl::TimeLineEditor::PlayWindow);
+        // the range markers dim while it is active.
+        void setPlayWindow(const ctrl::TimeLineEditor::PlayWindow& aWindow) { mPlayWindow = aWindow; }
 
+        // The track background: fills, lane separators, type labels and the
+        // row seams. Keys are a separate pass (renderKeys) so background
+        // layers like the range markers can paint between them.
         void renderLines(const QVector<TimeLineRow>& aRows, const QRect& aCameraRect, const QRect& aCullRect);
         void renderRangeMarkers(const QRect& aCameraRect);
-        void renderHeader(int aHeight, int aFps);
+        // Key graphics for every row: child-key summaries on closed folders
+        // and the per-lane key shapes.
+        void renderKeys(const QVector<TimeLineRow>& aRows, const QRect& aCullRect);
         void renderHandle(const QPoint& aPoint, int aRange);
         void renderSelectionRange(const QRect& aRect);
 
@@ -45,9 +57,10 @@ namespace time {
         const core::CameraInfo& mCamera;
         const theme::TimeLine& mTheme;
         int mMargin;
-        util::Range mRange;
+        util::Range mRange;        // the visible frame range (culling)
+        util::Range mProjectRange; // the project frame range (range markers)
         const Scaler* mScale;
-        const core::TimeFormatType timeFormatVar;
+        ctrl::TimeLineEditor::PlayWindow mPlayWindow;
     };
 
 } // namespace time

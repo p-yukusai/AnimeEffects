@@ -1,6 +1,7 @@
 #ifndef CORE_TIMEKEY_H
 #define CORE_TIMEKEY_H
 
+#include <limits>
 #include "util/LifeLink.h"
 #include "util/TreeNodeBase.h"
 #include "util/TreeIterator.h"
@@ -14,6 +15,13 @@ namespace core {
 
 class TimeKey: public util::TreeNodeBase<TimeKey>, public cmnd::SleepableObject, private util::NonCopyable {
 public:
+    // The default key's frame marker. Historically -1, but negative project
+    // ranges make every int a legitimate key/playhead frame, so the marker
+    // moved to INT_MIN — a frame no real project can reach. It is never
+    // serialized (map keys write their index; the default key's frame is
+    // set on load), so files are byte-compatible.
+    static constexpr int kDefaultKeyIndex = std::numeric_limits<int>::min();
+
     typedef util::TreeNodeBase<TimeKey>::Children ChildrenType;
     typedef util::TreeIterator<TimeKey, ChildrenType::Iterator> Iterator;
     typedef util::TreeIterator<const TimeKey, ChildrenType::ConstIterator> ConstIterator;
@@ -31,7 +39,7 @@ public:
     int frame() const { return mFrame; }
     void setFrame(int aFrame) { mFrame = aFrame; }
 
-    bool isDefaultKey() const { return mFrame == -1; }
+    bool isDefaultKey() const { return mFrame == kDefaultKeyIndex; }
 
     bool isFocused() const { return mFocus.isLinking(); }
     void setFocus(util::LifeLink& aLink) { mFocus = aLink; }

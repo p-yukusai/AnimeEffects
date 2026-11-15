@@ -29,6 +29,7 @@ public:
     void drawPrimitive(PrimitiveElement aElement, const QStyleOption* aOption, QPainter* aPainter,
                        const QWidget* aWidget = nullptr) const override;
     void polish(QWidget* aWidget) override;
+    bool eventFilter(QObject* aWatched, QEvent* aEvent) override;
 };
 
 } // namespace gui

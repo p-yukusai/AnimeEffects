@@ -49,7 +49,11 @@ TimeKeyGatherer::TimeKeyGatherer(
     }
 
     const int count = aMap.size();
-    const int frameMax = aTimeInfo.frameMax;
+    // The loop wraps by the frame range's span: the animation repeats over
+    // [start, end], so a wrapped key sits one span ahead/behind the current
+    // frame. For the default [0, maxFrame] range this is maxFrame + 1, the
+    // historical period.
+    const int loopSpan = aTimeInfo.frameRange.diff() + 1;
     const int loop = aTimeInfo.loop;
 
     auto forward = aMap.upperBound(mFrame);
@@ -63,7 +67,7 @@ TimeKeyGatherer::TimeKeyGatherer(
         if (backward == aMap.begin()) {
             if (loop && count > 1) {
                 backward = aMap.end();
-                baseFrame.add(frameMax + 1);
+                baseFrame.add(loopSpan);
                 isLooped = true;
             } else {
                 break;
@@ -112,7 +116,7 @@ TimeKeyGatherer::TimeKeyGatherer(
         if (forward == aMap.end()) {
             if (loop && count > 1) {
                 forward = aMap.begin();
-                baseFrame.add(-frameMax - 1);
+                baseFrame.add(-loopSpan);
                 isLooped = true;
             } else {
                 break;

@@ -3,6 +3,7 @@
 #include <QStyle>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QSettings>
 #include "gui/TimeLineWidget.h"
 #include "gui/theme/Colors.h"
 
@@ -98,6 +99,7 @@ TimeLineWidget::TimeLineWidget(
 ):
     QWidget(aParent),
     mGUIResources(aResources),
+    mViaPoint(aViaPoint),
     mProject(),
     mAnimator(aAnimator),
     mInner(),
@@ -112,6 +114,7 @@ TimeLineWidget::TimeLineWidget(
     mScrollbarDragAnchorX(0),
     mScrollbarDragRatio(0),
     mIsPanning(false),
+    mPanByKey(false),
     mPanGrabPos(),
     mPanStartTransform(),
     mTimer(),
@@ -150,6 +153,31 @@ TimeLineWidget::TimeLineWidget(
         updateCamera();
     });
     mHorizontalScrollBar->installEventFilter(this);
+
+    // The ruler drives the same cursor machinery as the track surface; its
+    // frame changes (header seek / playhead drag) must notify the playback
+    // chain like the surface's do.
+    this->connect(mInner, &TimeLineEditorWidget::rulerFrameChanged, this, [this]() { onFrameUpdated(); });
+
+    // Pan by key: the same configurable MoveCanvas binding the viewport pans
+    // with (space by default). Holding it and left-dragging pans the timeline
+    // like middle-drag does; the ruler is told too, so a space+left press on
+    // the strip pans instead of seeking.
+    {
+        auto key = mViaPoint.keyCommandMap()->get("MoveCanvas");
+        if (key) {
+            key->addListener(
+                [this]() {
+                    mPanByKey = true;
+                    mInner->setPanKeyHeld(true);
+                },
+                [this]() {
+                    mPanByKey = false;
+                    mInner->setPanKeyHeld(false);
+                }
+            );
+        }
+    }
 
     mGUIResources.onThemeChanged.connect(this, &TimeLineWidget::onThemeUpdated);
 
@@ -225,13 +253,14 @@ void TimeLineWidget::setViewTransform(const QPoint& aViewportTransform) {
 }
 
 void TimeLineWidget::projectHorizontalScrollBar() {
-    // One axis everywhere: content pixels, 1 unit = 1 px. Frame 0's tick sits
-    // at the left margin gutter (kTimeLineMargin); the last frame's tick and
-    // range marker sit at margin + its scale position (frameEndPixel, the
-    // renderer's range-marker x1 convention). The view's scroll position
-    // v = -offset is the content position at the view's left edge.
+    // One axis everywhere: content pixels, 1 unit = 1 px. The range's first
+    // frame's tick sits at the left margin gutter (kTimeLineMargin); the last
+    // frame's tick and range marker sit at margin + its scale position
+    // (frameEndPixel, the renderer's range-marker x1 convention). The view's
+    // scroll position v = -offset is the content position at the view's left
+    // edge.
     //
-    //   frameRange = [frameStart, frameEnd]     = [0, frameEndPixel]
+    //   frameRange = [frameStartPixel, frameEndPixel]
     //   viewport   = [viewportStart, viewportEnd] = [v, v + W]
     //   track = [min(frameStart, viewportStart), max(frameEnd, viewportEnd)]
     //   value = viewportStart;  pageStep = viewportEnd - viewportStart
@@ -242,10 +271,11 @@ void TimeLineWidget::projectHorizontalScrollBar() {
     // TimelineScrollBar), so it is flush left when viewportStart <=
     // frameStart and flush right when viewportEnd >= frameEnd — symmetric.
     // frameEnd is the last frame's position PLUS the trailing margin: a
-    // fixed 24px, the same token as the left gutter before frame 0's tick,
-    // so flush-right leaves a full margin of empty track after the last
-    // frame (the centered number overhangs it slightly; that is accepted).
-    const int frameStart = 0;
+    // fixed 24px, the same token as the leading gutter before the first
+    // frame's tick, so flush-right leaves a full margin of empty track after
+    // the last frame (the centered number overhangs it slightly; that is
+    // accepted).
+    const int frameStart = mInner->frameStartPixel();
     const int frameEnd = mInner->frameEndPixel() + ctrl::TimeLineEditor::kTimeLineMargin;
     const int windowWidth = mInner->width();
 
@@ -434,16 +464,32 @@ void TimeLineWidget::onPlayBackUpdated() {
     if (!mAnimator.isSuspended()) {
         const double oneFrameTime = getOneFrameTime();
         const core::Frame curFrame = currentFrame();
+
+        // The effective playback range (the temporary window overrides the
+        // project frame range while active): the playback clock stays inside
+        // [playStart, playEnd]. Navigation is free (the playhead never
+        // clamps), so the tick clamps its own result.
+        const util::Range range = mInner->playbackRange();
+        const int playStart = range.min();
+        const int playEnd = range.max();
+
         double nextFrame = static_cast<double>(curFrame.getDecimal()) + 1.0;
 
-        if (mDoesLoop && nextFrame > mInner->maxFrame()) {
-            nextFrame = 0.0;
-            mBeginFrame.set(0);
+        if (nextFrame < playStart) {
+            // Playback may start outside the window (or with the window set
+            // mid-flight): jump to the window start.
+            nextFrame = playStart;
+            mBeginFrame.set(playStart);
             mElapsed.restart();
             mTimer.setInterval(static_cast<int>(oneFrameTime));
-            mLastFrame = core::Frame(INT32_MAX);
+        } else if (mDoesLoop && nextFrame > playEnd) {
+            nextFrame = playStart;
+            mBeginFrame.set(playStart);
+            mElapsed.restart();
+            mTimer.setInterval(static_cast<int>(oneFrameTime));
         } else {
-            if (curFrame.get() == mInner->maxFrame()) {
+            // >= (not ==) so a playhead scrubbed past the end still stops.
+            if (curFrame.get() >= playEnd) {
                 mProject->animator().stop();
             }
             if (mLastFrame == curFrame) {
@@ -461,8 +507,12 @@ void TimeLineWidget::onPlayBackUpdated() {
             }
         }
 
-        setFrame(core::Frame(static_cast<int>(nextFrame)));
-        mLastFrame = core::Frame(static_cast<int>(nextFrame));
+        // The clock is the one path bound by the effective range: clamp the
+        // result (a timer that ran late may compute past playEnd) so the
+        // playhead never visibly overshoots the window.
+        const int clamped = qBound(playStart, static_cast<int>(nextFrame), playEnd);
+        setFrame(core::Frame(clamped));
+        mLastFrame = core::Frame(clamped);
     }
 }
 
@@ -473,12 +523,24 @@ void TimeLineWidget::onThemeUpdated(theme::Theme& aTheme) {
 
 void TimeLineWidget::onProjectAttributeUpdated() {
     mInner->updateProjectAttribute();
-    // maxFrame may have changed: the union track and page step follow the
-    // frame range's extent, so re-project (updateSize is repaint-only now).
+    // The frame range may have changed: the union track and page step follow
+    // its extent, so re-project (updateSize is repaint-only now).
     projectHorizontalScrollBar();
 }
 
 void TimeLineWidget::triggerOnTimeFormatChanged() {
+    // The setting is applied live rather than on the next launch: re-read it
+    // into the editor so the ruler, playhead pill and window pills all
+    // re-render with the new representation.
+    if (mInner) {
+        if (auto* editor = mInner->editor()) {
+            QSettings settings;
+            const auto format = static_cast<core::TimeFormatType>(
+                settings.value("generalsettings/ui/timeformat", int(core::TimeFormatType_Frames_From0)).toInt()
+            );
+            editor->setTimeFormatType(format);
+        }
+    }
     onTimeFormatChanged();
     updateCamera();
 }
@@ -502,7 +564,12 @@ void TimeLineWidget::mouseMoveEvent(QMouseEvent* aEvent) {
 }
 
 void TimeLineWidget::mousePressEvent(QMouseEvent* aEvent) {
-    if (aEvent->button() == Qt::MiddleButton) {
+    // Middle-drag always pans; holding the MoveCanvas key (space by default,
+    // configurable) makes left-drag pan too — the same keybind the viewport
+    // uses, so the timeline follows the user's pan preference.
+    const bool panPress =
+        aEvent->button() == Qt::MiddleButton || (mPanByKey && aEvent->button() == Qt::LeftButton);
+    if (panPress) {
         mPanGrabPos = aEvent->position().toPoint();
         mPanStartTransform = viewportTransform();
         mIsPanning = true;
@@ -516,7 +583,7 @@ void TimeLineWidget::mousePressEvent(QMouseEvent* aEvent) {
 }
 
 void TimeLineWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
-    if (mIsPanning && aEvent->button() == Qt::MiddleButton) {
+    if (mIsPanning && (aEvent->button() == Qt::MiddleButton || aEvent->button() == Qt::LeftButton)) {
         mIsPanning = false;
         unsetCursor();
         aEvent->accept();

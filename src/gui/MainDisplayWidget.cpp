@@ -54,16 +54,18 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
         {
             auto key = mViaPoint.keyCommandMap()->get("MoveCanvas");
             if (key) {
-                key->invoker = [=]() {
-                    mAbstractCursor.suspendEvent([=]() { updateCursor(); });
-                    mMovingCanvasByKey = true;
-                    mCanvasMover.setDragAndMove(mMovingCanvasByKey || mMovingCanvasByTool);
-                };
-                key->releaser = [=]() {
-                    mMovingCanvasByKey = false;
-                    mCanvasMover.setDragAndMove(mMovingCanvasByKey || mMovingCanvasByTool);
-                    mAbstractCursor.resumeEvent();
-                };
+                key->addListener(
+                    [=]() {
+                        mAbstractCursor.suspendEvent([=]() { updateCursor(); });
+                        mMovingCanvasByKey = true;
+                        mCanvasMover.setDragAndMove(mMovingCanvasByKey || mMovingCanvasByTool);
+                    },
+                    [=]() {
+                        mMovingCanvasByKey = false;
+                        mCanvasMover.setDragAndMove(mMovingCanvasByKey || mMovingCanvasByTool);
+                        mAbstractCursor.resumeEvent();
+                    }
+                );
             }
         }
 
@@ -71,14 +73,16 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
         {
             auto key = mViaPoint.keyCommandMap()->get("RotateCanvas");
             if (key) {
-                key->invoker = [=]() {
-                    mAbstractCursor.suspendEvent([=]() { updateCursor(); });
-                    mCanvasMover.setDragAndRotate(true);
-                };
-                key->releaser = [=]() {
-                    mCanvasMover.setDragAndRotate(false);
-                    mAbstractCursor.resumeEvent();
-                };
+                key->addListener(
+                    [=]() {
+                        mAbstractCursor.suspendEvent([=]() { updateCursor(); });
+                        mCanvasMover.setDragAndRotate(true);
+                    },
+                    [=]() {
+                        mCanvasMover.setDragAndRotate(false);
+                        mAbstractCursor.resumeEvent();
+                    }
+                );
             }
         }
 
@@ -87,10 +91,10 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
             auto key = mViaPoint.keyCommandMap()->get("RotateCanvas15Clockwise");
             if (key) {
 
-                key->invoker = [=]() {
+                key->addListener([=]() {
                     mCanvasMover.rotate(qDegreesToRadians(15.0f));
                     updateRender();
-                };
+                });
             }
         }
 
@@ -99,10 +103,10 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
             auto key = mViaPoint.keyCommandMap()->get("RotateCanvas15AntiClockwise");
             if (key) {
 
-                key->invoker = [=]() {
+                key->addListener([=]() {
                     mCanvasMover.rotate(qDegreesToRadians(-15.0f));
                     updateRender();
-                };
+                });
             }
         }
 
@@ -110,11 +114,11 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
         {
             auto key = mViaPoint.keyCommandMap()->get("ResetCanvasAngle");
             if (key) {
-                key->invoker = [=]() {
+                key->addListener([=]() {
                     mViaPoint.mainViewSetting().resetRotateView = true;
                     onViewSettingChanged(mViaPoint.mainViewSetting());
                     mViaPoint.mainViewSetting().resetRotateView = false;
-                };
+                });
             }
         }
     }

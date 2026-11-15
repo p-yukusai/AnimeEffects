@@ -2,15 +2,16 @@
 #define CORE_TIMEINFO_H
 
 #include "core/Frame.h"
+#include "util/Range.h"
 
 namespace core {
 
 class TimeInfo {
 public:
-    TimeInfo(): fps(0), frameMax(0), loop(false), frame() {}
+    TimeInfo(): fps(0), frameRange(), loop(false), frame() {}
 
     int fps;
-    int frameMax;
+    util::Range frameRange; // the project's frame range (inclusive)
     bool loop;
     Frame frame;
 };
