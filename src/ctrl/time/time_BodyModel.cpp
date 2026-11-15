@@ -13,6 +13,7 @@
 #include "core/TimeLine.h"
 #include "ctrl/TimeLineEditor.h"
 #include "ctrl/TimeLineRow.h"
+#include "ctrl/graph/graph_Channel.h"
 #include "ctrl/time/time_Scaler.h"
 #include "gui/theme/Colors.h"
 
@@ -156,20 +157,86 @@ Lines buildLines(
 
             if (row.node && row.node->timeLine() && !row.node->isSlimmedDown()) {
                 const core::TimeLine& timeLine = *(row.node->timeLine());
-                const int sepa = timeLine.validTypeCount();
+                const int sepa = timeLine.validChannelCount();
                 const float h = sepa > 0 ? static_cast<float>(own.height()) / sepa : 0.0f;
 
-                for (int i = 1; i < sepa; ++i) {
-                    const QPointF v0(band.left(), own.top() + i * h);
-                    const QPointF v1(band.right(), own.top() + i * h);
-                    lane.separators.append({int(v0.x()), int(v1.x()), v0.y()});
-                }
+                const auto addTypeBoundary = [&](int aLaneIndex) {
+                    if (aLaneIndex <= 0) {
+                        return;
+                    }
+                    const double y = own.top() + aLaneIndex * h;
+                    lane.separators.append({band.left(), band.right(), y});
+                };
 
                 int i = 0;
                 for (int typei = 0; typei < core::TimeKeyType_TERM; ++typei) {
                     const core::TimeKeyType type = core::TimeLine::getTimeKeyTypeInOrderOfOperations(typei);
+
+                    if (type == core::TimeKeyType_Image) {
+                        // Structural ImageKey lane first (resource/grid/FFD), then
+                        // the two step-held offset channel lanes.
+                        addTypeBoundary(i);
+                        if (!timeLine.isEmpty(type)) {
+                            Label label;
+                            label.box = QRect(
+                                textLeft, own.top() + static_cast<int>(i * h), kLabelWidth,
+                                static_cast<int>(h)
+                            );
+                            label.text = core::TimeLine::getTimeKeyDisplayName(type);
+                            label.ink = withAlpha(keyColor(type), kLabelAlpha);
+                            lane.labels.append(label);
+                            ++i;
+                        }
+                        for (const core::TimeLine::ChannelLane& channelLane :
+                             timeLine.channelLanes(type)) {
+                            Label label;
+                            label.box = QRect(
+                                textLeft, own.top() + static_cast<int>(i * h), kLabelWidth,
+                                static_cast<int>(h)
+                            );
+                            label.text = core::TimeLine::getTimeKeyDisplayName(type);
+                            label.text += QLatin1Char(' ')
+                                + ctrl::graph::Channel(type, channelLane.component)
+                                      .componentName();
+                            label.ink = withAlpha(keyColor(type), kLabelAlpha);
+                            lane.labels.append(label);
+                            ++i;
+                        }
+                        continue;
+                    }
+
+                    if (core::TimeLine::usesChannelTracks(type)) {
+                        const QVector<core::TimeLine::ChannelLane> lanes =
+                            timeLine.channelLanes(type);
+                        if (lanes.isEmpty()) {
+                            continue;
+                        }
+                        // A split property has several channel lanes but ONE type:
+                        // no separator between them, so they read as one property.
+                        addTypeBoundary(i);
+                        for (const core::TimeLine::ChannelLane& channelLane : lanes) {
+                            Label label;
+                            label.box = QRect(
+                                textLeft, own.top() + static_cast<int>(i * h), kLabelWidth,
+                                static_cast<int>(h)
+                            );
+                            label.text = core::TimeLine::getTimeKeyDisplayName(type);
+                            if (!channelLane.grouped
+                                && core::propertyChannelCount(type) > 1) {
+                                label.text += QLatin1Char(' ')
+                                    + ctrl::graph::Channel(type, channelLane.component)
+                                          .componentName();
+                            }
+                            label.ink = withAlpha(keyColor(type), kLabelAlpha);
+                            lane.labels.append(label);
+                            ++i;
+                        }
+                        continue;
+                    }
+
                     if (timeLine.isEmpty(type))
                         continue;
+                    addTypeBoundary(i);
                     Label label;
                     label.box = QRect(
                         textLeft, own.top() + static_cast<int>(i * h), kLabelWidth, static_cast<int>(h)
@@ -249,13 +316,247 @@ KeyPass buildKeys(
         return pass;
 
     const core::TimeLine& timeLine = *(aNode->timeLine());
-    const int validNum = timeLine.validTypeCount();
+    const int validNum = timeLine.validChannelCount();
     const int left = aMargin;
     const bool isSlimmed = aNode->isSlimmedDown();
     int validIndex = 0;
 
+    // A migrated property has one map per channel; draw each non-empty channel
+    // as its own lane at the same keyHeight index the legacy type loop uses.
     for (int i = 0; i < core::TimeKeyType_TERM; ++i) {
         const core::TimeKeyType type = core::TimeLine::getTimeKeyTypeInOrderOfOperations(i);
+        if (core::TimeLine::usesChannelTracks(type)) {
+            const core::PropertyTrack* prop = timeLine.property(type);
+            if (!prop) {
+                continue;
+            }
+            const QVector<core::TimeLine::ChannelLane> lanes = timeLine.channelLanes(type);
+            const bool grouped = timeLine.channelsGrouped(type);
+
+            // The marker shape/ink is shared by a channel lane and a grouped
+            // property lane: only the key set and the proportional/focus
+            // aggregation differ.
+            const auto appendMark = [&](const QPointF& pos, const QColor& hue, bool focused,
+                                        bool proportional) {
+                const QColor fill = focused ? mixTowardText(hue) : hue;
+                KeyMark mark;
+                mark.centre = pos;
+                mark.fill = fill;
+                if (isSlimmed) {
+                    mark.shape = KeyShape::Polygon;
+                    QPolygonF base;
+                    base << pos + QPointF(keyRadius * -1, keyRadiusSlim * -1)
+                         << pos + QPointF(keyRadius, keyRadiusSlim * -1)
+                         << pos + QPointF(keyRadius, keyRadiusSlim)
+                         << pos + QPointF(keyRadius * -1, keyRadiusSlim);
+                    mark.polygon = roundedPolygon(base, kKeyCornerRadius);
+                } else {
+                    mark.shape = KeyShape::Ellipse;
+                    mark.radiusX = keyRadius;
+                    mark.radiusY = keyRadius;
+                }
+                if (proportional) {
+                    mark.hollow = true;
+                    mark.holeInk = aLaneInk;
+                    mark.hollowRadius = mark.radiusX - kProportionalHoleInset;
+                }
+                if (focused) {
+                    mark.hasRing = true;
+                    mark.ringRadius = kSelectRingRadiusModel;
+                    mark.ring = withAlpha(hue, kSelectRingAlpha);
+                }
+                pass.marks.append(mark);
+            };
+
+            const auto appendLinkedFrames = [&](const core::ChannelTrack& aFirst, float aY) {
+                const QColor hue = keyColor(type);
+                auto itr = aFirst.keys().lowerBound(aRange.min());
+                while (itr != aFirst.keys().end() && itr.key() <= aRange.max()) {
+                    if (!timeLine.isFrameLinked(type, itr.key())) {
+                        ++itr;
+                        continue;
+                    }
+                    bool focused = false;
+                    bool allProportional = true;
+                    for (int c = 0; c < prop->channelCount(); ++c) {
+                        const core::ChannelTrack* track = prop->channel(c);
+                        if (!track || !track->spec().graphable) {
+                            continue;
+                        }
+                        const core::ChannelKey* key = track->keyAt(itr.key());
+                        if (!key) {
+                            allProportional = false;
+                            continue;
+                        }
+                        focused = focused || key->isFocused();
+                        allProportional = allProportional && key->isProportional();
+                    }
+                    const QPointF pos(left + aScale.attribute(itr.key()).pos + 0.5, aY);
+                    appendMark(pos, hue, focused, allProportional);
+                    ++itr;
+                }
+            };
+
+            const core::ChannelTrack* first = nullptr;
+            for (int c = 0; c < prop->channelCount() && !first; ++c) {
+                const core::ChannelTrack* track = prop->channel(c);
+                if (track && track->spec().graphable && !track->isEmpty()) {
+                    first = track;
+                }
+            }
+
+            if (!grouped && first) {
+                // A split property still shows its LINKED frames as one property
+                // marker at the centre of the property block; only split/partial
+                // frames fall into the channel lanes below. No horizontal
+                // separator is drawn between those lanes (see buildLines).
+                const QRect own = aRow.ownRect();
+                appendLinkedFrames(*first, own.top() + 0.5f * own.height() + 0.5f);
+            }
+
+            for (const core::TimeLine::ChannelLane& channelLane : lanes) {
+                const float height = aRow.keyHeight(validIndex, validNum);
+                ++validIndex;
+
+                if (channelLane.grouped) {
+                    if (first) {
+                        appendLinkedFrames(*first, height + 0.5f);
+                    }
+                    continue;
+                }
+
+                const core::ChannelTrack* track = prop->channel(channelLane.component);
+                if (!track || track->isEmpty()) {
+                    continue;
+                }
+                auto itr = track->keys().lowerBound(aRange.min());
+                while (itr != track->keys().end() && itr.key() <= aRange.max()) {
+                    // Linked frames were drawn once at the property centre.
+                    if (!grouped && timeLine.isFrameLinked(type, itr.key())) {
+                        ++itr;
+                        continue;
+                    }
+                    const QColor hue = keyColor(itr.value()->type());
+                    const QPointF pos(left + aScale.attribute(itr.key()).pos + 0.5, height + 0.5f);
+                    appendMark(pos, hue, itr.value()->isFocused(), itr.value()->isProportional());
+                    ++itr;
+                }
+            }
+
+            // STATE KEYS ARE PART OF THE PROPERTY KEY, not channel keys. A linked
+            // frame already draws the property marker; a state-only or split-frame
+            // state change gets a small diamond at the property centre, so a
+            // directional/absolute/spline/shape change is visible and not lost
+            // behind the channel markers. (Its selection/removal is the property
+            // dot's job; the marker is the timeline's evidence that it exists.)
+            const QRect own = aRow.ownRect();
+            const float stateY = own.top() + 0.5f * own.height() + 0.5f;
+            for (const core::TimeKey* stateKey : prop->state().keys()) {
+                const int frame = stateKey->frame();
+                if (frame < aRange.min() || aRange.max() < frame) {
+                    continue;
+                }
+                if (timeLine.isFrameLinked(type, frame)) {
+                    continue; // the property marker at this frame already represents it
+                }
+                const QPointF centre(left + aScale.attribute(frame).pos + 0.5, stateY);
+                KeyMark mark;
+                mark.shape = KeyShape::Polygon;
+                mark.centre = centre;
+                const double arm = 3.4;
+                mark.polygon << centre + QPointF(0.0, -arm)
+                             << centre + QPointF(arm, 0.0)
+                             << centre + QPointF(0.0, arm)
+                             << centre + QPointF(-arm, 0.0);
+                mark.fill = keyColor(type);
+                if (stateKey->isFocused()) {
+                    mark.hasRing = true;
+                    mark.ringRadius = kSelectRingRadiusModel;
+                    mark.ring = withAlpha(keyColor(type), kSelectRingAlpha);
+                }
+                pass.marks.append(mark);
+            }
+            continue;
+        }
+
+        if (type == core::TimeKeyType_Image) {
+            const auto appendImageMarker = [&](const core::TimeKey* aKey, float aHeight) {
+                if (!aKey) {
+                    return;
+                }
+                const bool focused = aKey->isFocused();
+                const QColor hue = keyColor(type);
+                const QPointF pos(
+                    left + aScale.attribute(aKey->frame()).pos + 0.5, aHeight + 0.5f
+                );
+                KeyMark mark;
+                mark.centre = pos;
+                mark.fill = focused ? mixTowardText(hue) : hue;
+                if (isSlimmed) {
+                    mark.shape = KeyShape::Polygon;
+                    QPolygonF base;
+                    base << pos + QPointF(keyRadius * -1, keyRadiusSlim * -1)
+                         << pos + QPointF(keyRadius, keyRadiusSlim * -1)
+                         << pos + QPointF(keyRadius, keyRadiusSlim)
+                         << pos + QPointF(keyRadius * -1, keyRadiusSlim);
+                    mark.polygon = roundedPolygon(base, kKeyCornerRadius);
+                } else if (aKey->canHoldChild()) {
+                    mark.shape = KeyShape::Polygon;
+                    QPolygonF base;
+                    base << pos + QPointF(0.0, -kHolderArm) << pos + QPointF(kHolderArm, 0.0)
+                         << pos + QPointF(0.0, kHolderArm) << pos + QPointF(-kHolderArm, 0.0);
+                    mark.polygon = roundedPolygon(base, kKeyCornerRadius);
+                } else {
+                    mark.shape = KeyShape::Ellipse;
+                    mark.radiusX = keyRadius;
+                    mark.radiusY = keyRadius;
+                }
+                if (aKey->isProportional()) {
+                    mark.hollow = true;
+                    mark.holeInk = aLaneInk;
+                    if (mark.shape == KeyShape::Ellipse) {
+                        mark.hollowRadius = mark.radiusX - kProportionalHoleInset;
+                    } else {
+                        mark.hollowPolygon =
+                            insetPolygon(mark.polygon, mark.centre, kProportionalPolygonInset);
+                        mark.hollowHolePolygon =
+                            insetPolygon(mark.polygon, mark.centre, kProportionalPolygonHoleInset);
+                    }
+                }
+                if (focused) {
+                    mark.hasRing = true;
+                    mark.ringRadius = kSelectRingRadiusModel;
+                    mark.ring = withAlpha(hue, kSelectRingAlpha);
+                }
+                pass.marks.append(mark);
+            };
+
+            const core::TimeLine::MapType& imageMap = timeLine.map(type);
+            if (!imageMap.isEmpty()) {
+                const float height = aRow.keyHeight(validIndex, validNum);
+                ++validIndex;
+                auto itr = imageMap.lowerBound(aRange.min());
+                while (itr != imageMap.end() && itr.key() <= aRange.max()) {
+                    appendImageMarker(itr.value(), height);
+                    ++itr;
+                }
+            }
+            for (const core::TimeLine::ChannelLane& channelLane : timeLine.channelLanes(type)) {
+                const float height = aRow.keyHeight(validIndex, validNum);
+                ++validIndex;
+                const core::ChannelTrack* track = timeLine.channelTrack(type, channelLane.component);
+                if (!track) {
+                    continue;
+                }
+                auto itr = track->keys().lowerBound(aRange.min());
+                while (itr != track->keys().end() && itr.key() <= aRange.max()) {
+                    appendImageMarker(itr.value(), height);
+                    ++itr;
+                }
+            }
+            continue;
+        }
+
         const core::TimeLine::MapType& map = timeLine.map(type);
         if (map.isEmpty())
             continue;
@@ -346,8 +647,28 @@ KeyPass buildChildKeys(
 
             for (int i = 0; i < core::TimeKeyType_TERM; ++i) {
                 const core::TimeKeyType type = core::TimeLine::getTimeKeyTypeInOrderOfOperations(i);
-                const core::TimeLine::MapType& map = timeLine.map(type);
+                if (core::TimeLine::usesChannelTracks(type)) {
+                    const core::PropertyTrack* prop = timeLine.property(type);
+                    if (!prop) {
+                        continue;
+                    }
+                    for (int c = 0; c < prop->channelCount(); ++c) {
+                        const core::ChannelTrack* track = prop->channel(c);
+                        if (!track) {
+                            continue;
+                        }
+                        auto trackItr = track->keys().lowerBound(aRange.min());
+                        while (trackItr != track->keys().end() && trackItr.key() <= aRange.max()) {
+                            frames.insert(trackItr.key());
+                            if (trackItr.value()->isFocused())
+                                focusedFrames.insert(trackItr.key());
+                            ++trackItr;
+                        }
+                    }
+                    continue;
+                }
 
+                const core::TimeLine::MapType& map = timeLine.map(type);
                 auto itr = map.lowerBound(aRange.min());
                 while (itr != map.end() && itr.key() <= aRange.max()) {
                     frames.insert(itr.key());

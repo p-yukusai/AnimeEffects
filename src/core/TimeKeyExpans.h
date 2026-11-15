@@ -7,7 +7,7 @@
 #include "core/MoveKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/HsvKey.h"
 #include "core/WaveKey.h"
 #include "core/MaskKey.h"
@@ -50,8 +50,8 @@ public:
     SRTExpans& srt() { return mSRT; }
     const SRTExpans& srt() const { return mSRT; }
 
-    OpaKey::Data& opa() { return mOpa; }
-    const OpaKey::Data& opa() const { return mOpa; }
+    OpacityKey::Data& opacity() { return mOpacity; }
+    const OpacityKey::Data& opacity() const { return mOpacity; }
 
     HSVKey::Data& hsv() { return mHSV; }
     const HSVKey::Data& hsv() const { return mHSV; }
@@ -134,7 +134,7 @@ private:
     std::array<Frame, TimeKeyType_TERM> mKeyCaches;
     std::array<bool, TimeKeyType_TERM> mKeyCached;
     SRTExpans mSRT;
-    OpaKey::Data mOpa;
+    OpacityKey::Data mOpacity;
     HSVKey::Data mHSV;
     WaveKey::Data mWave;
     MaskKey::Data mMask;

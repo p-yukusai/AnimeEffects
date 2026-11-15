@@ -1,5 +1,5 @@
-#ifndef CORE_OPAKEY_H
-#define CORE_OPAKEY_H
+#ifndef CORE_OPACITYKEY_H
+#define CORE_OPACITYKEY_H
 
 #include <array>
 #include "XC.h"
@@ -9,9 +9,9 @@
 
 namespace core {
 
-class OpaKey: public TimeKey {
+class OpacityKey: public TimeKey {
 public:
-    static constexpr int kComponents = easingComponentCount(TimeKeyType_Opa);
+    static constexpr int kComponents = easingComponentCount(TimeKeyType_Opacity);
 
     class Data {
         std::array<util::Easing::Param, kComponents> mEasings;
@@ -39,7 +39,7 @@ public:
         bool isZero() const;
     };
 
-    OpaKey();
+    OpacityKey();
 
     Data& data() { return mData; }
     const Data& data() const { return mData; }
@@ -47,7 +47,7 @@ public:
     void setOpacity(float aOpacity) { mData.setOpacity(aOpacity); }
     const float& opacity() const { return mData.opacity(); }
 
-    virtual TimeKeyType type() const { return TimeKeyType_Opa; }
+    virtual TimeKeyType type() const { return TimeKeyType_Opacity; }
     virtual TimeKey* createClone();
     virtual bool serialize(Serializer& aOut) const;
     virtual bool deserialize(Deserializer& aIn);
@@ -58,4 +58,4 @@ private:
 
 } // namespace core
 
-#endif // CORE_OPAKEY_H
+#endif // CORE_OPACITYKEY_H

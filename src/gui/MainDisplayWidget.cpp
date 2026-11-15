@@ -85,6 +85,7 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
     mViewportBackground(),
     mUsingTablet(false),
     mViewSetting(),
+    mMeshPreviewTarget(),
     mCanvasMover(),
     mMovingCanvasByTool(false),
     mMovingCanvasByKey(false),
@@ -202,6 +203,7 @@ MainDisplayWidget::~MainDisplayWidget() {
 }
 
 void MainDisplayWidget::setProject(core::Project* aProject) {
+    mMeshPreviewTarget.reset();
     mProject.reset();
 
     mRenderInfo = nullptr;
@@ -220,6 +222,7 @@ void MainDisplayWidget::setProject(core::Project* aProject) {
 }
 
 void MainDisplayWidget::setDriver(ctrl::Driver* aDriver) {
+    mMeshPreviewTarget.reset();
     mDriver = aDriver;
 
     // The driver owns the graph editor (and is created per project), so a NEW
@@ -531,6 +534,17 @@ void MainDisplayWidget::resetCamera() {
 
 void MainDisplayWidget::setProjectTabBar(ProjectTabBar* aTabBar) { mProjectTabBar = aTabBar; }
 
+void MainDisplayWidget::setMeshPreviewTarget(core::ObjectNode* aNode) {
+    core::ObjectNode* next = aNode;
+    if (mMeshPreviewTarget.get() == next)
+        return;
+    if (next)
+        mMeshPreviewTarget = next->pointee();
+    else
+        mMeshPreviewTarget.reset();
+    requestFrame();
+}
+
 void MainDisplayWidget::setViewportBackground(const QColor& aColor) {
     if (mViewportBackground != aColor) {
         mViewportBackground = aColor;
@@ -778,7 +792,12 @@ void MainDisplayWidget::paintGL() {
 
     if (mDriver) {
         XC_PTR_ASSERT(mRenderInfo);
-        auto gridTarget = mViewSetting.showLayerMesh ? mDriver->currentTarget() : nullptr;
+        // The transient spacing preview wins over the persistent view toggle:
+        // it is the field's own "show me this node's mesh" request. If the
+        // persistent toggle is on a different target, one overlay is enough.
+        auto gridTarget = mMeshPreviewTarget.get();
+        if (!gridTarget && mViewSetting.showLayerMesh)
+            gridTarget = mDriver->currentTarget();
         mDriver->renderGL(*mRenderInfo, gridTarget);
         GL_CHECK_ERROR();
     }

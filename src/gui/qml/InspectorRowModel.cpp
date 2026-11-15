@@ -1,5 +1,12 @@
 #include "gui/qml/InspectorRowModel.h"
 
+#include "cmnd/BasicCommands.h"
+#include "cmnd/ScopedMacro.h"
+#include "cmnd/Stack.h"
+#include "core/ChannelKey.h"
+#include "core/TimeKeyPos.h"
+#include "ctrl/TimeLineUtil.h"
+
 #include <QCoreApplication>
 #include <QVector2D>
 
@@ -8,7 +15,8 @@
 #include "core/FFDKey.h"
 #include "core/ImageKey.h"
 #include "core/MoveKey.h"
-#include "core/OpaKey.h"
+#include "core/MoveStateKey.h"
+#include "core/OpacityKey.h"
 #include "core/PoseKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
@@ -45,7 +53,7 @@ QString InspectorRowModel::label() const {
     case Kind::Rotate: return QCoreApplication::translate("gui::prop::RotateKeyGroup", "Rotation");
     case Kind::Scale: return QCoreApplication::translate("gui::prop::ScaleKeyGroup", "Scale");
     case Kind::Depth: return QCoreApplication::translate("gui::prop::DepthKeyGroup", "Depth");
-    case Kind::Opacity: return QCoreApplication::translate("gui::prop::OpaKeyGroup", "Opacity");
+    case Kind::Opacity: return QCoreApplication::translate("gui::prop::OpacityKeyGroup", "Opacity");
     case Kind::Image: return QCoreApplication::translate("gui::prop::ImageKeyGroup", "Image");
     case Kind::Pose: return QCoreApplication::translate("gui::prop::PoseKeyGroup", "Pose");
     case Kind::FFD: return QCoreApplication::translate("gui::prop::FFDKeyGroup", "FFD");
@@ -59,7 +67,7 @@ core::TimeKeyType InspectorRowModel::type() const {
     case Kind::Rotate: return core::TimeKeyType_Rotate;
     case Kind::Scale: return core::TimeKeyType_Scale;
     case Kind::Depth: return core::TimeKeyType_Depth;
-    case Kind::Opacity: return core::TimeKeyType_Opa;
+    case Kind::Opacity: return core::TimeKeyType_Opacity;
     case Kind::Image: return core::TimeKeyType_Image;
     case Kind::Pose: return core::TimeKeyType_Pose;
     case Kind::FFD: return core::TimeKeyType_FFD;
@@ -68,11 +76,43 @@ core::TimeKeyType InspectorRowModel::type() const {
 }
 
 void InspectorRowModel::readMove(core::TimeLine& aLine, int aFrame) {
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Move)) {
+        const auto* x = aLine.channelKey(core::TimeKeyType_Move, 0, aFrame);
+        const auto* y = aLine.channelKey(core::TimeKeyType_Move, 1, aFrame);
+        const auto* cx = aLine.channelKey(core::TimeKeyType_Move, 2, aFrame);
+        const auto* cy = aLine.channelKey(core::TimeKeyType_Move, 3, aFrame);
+        if (x || y || cx || cy) {
+            const auto& srt = aLine.current().srt();
+            mX = x ? x->value() : srt.pos().x();
+            mY = y ? y->value() : srt.pos().y();
+            mCentroidX = cx ? cx->value() : srt.centroid().x();
+            mCentroidY = cy ? cy->value() : srt.centroid().y();
+        } else if (aLine.hasChannelKeys(core::TimeKeyType_Move, 0)
+                   || aLine.hasChannelKeys(core::TimeKeyType_Move, 1)) {
+            const auto& srt = aLine.current().srt();
+            mX = srt.pos().x();
+            mY = srt.pos().y();
+            mCentroidX = srt.centroid().x();
+            mCentroidY = srt.centroid().y();
+        } else {
+            mX = aLine.channelBaseValue(core::TimeKeyType_Move, 0);
+            mY = aLine.channelBaseValue(core::TimeKeyType_Move, 1);
+            mCentroidX = aLine.channelBaseValue(core::TimeKeyType_Move, 2);
+            mCentroidY = aLine.channelBaseValue(core::TimeKeyType_Move, 3);
+        }
+        const core::PropertyTrack* prop = aLine.property(core::TimeKeyType_Move);
+        const auto* state = prop
+            ? static_cast<const core::MoveStateKey*>(prop->state().sampleState(aFrame))
+            : nullptr;
+        mSmooth = state && state->spline() == core::MoveKey::SplineType_CatmullRom;
+        return;
+    }
+
     const core::MoveKey::Data* data = nullptr;
     if (const auto* key = aLine.timeKey(core::TimeKeyType_Move, aFrame)) {
         data = &static_cast<const core::MoveKey*>(key)->data();
     } else if (!aLine.map(core::TimeKeyType_Move).isEmpty()) {
-        if (const auto* def = aLine.defaultKey(core::TimeKeyType_Move)) {
+        if (const auto* def = aLine.baseValue(core::TimeKeyType_Move)) {
             mSmooth = static_cast<const core::MoveKey*>(def)->data().spline() == core::MoveKey::SplineType_CatmullRom;
         }
         const auto& srt = aLine.current().srt();
@@ -81,7 +121,7 @@ void InspectorRowModel::readMove(core::TimeLine& aLine, int aFrame) {
         mCentroidX = srt.centroid().x();
         mCentroidY = srt.centroid().y();
         return;
-    } else if (const auto* def = aLine.defaultKey(core::TimeKeyType_Move)) {
+    } else if (const auto* def = aLine.baseValue(core::TimeKeyType_Move)) {
         data = &static_cast<const core::MoveKey*>(def)->data();
     }
 
@@ -100,7 +140,7 @@ void InspectorRowModel::readImage(core::TimeLine& aLine, int aFrame) {
         key = static_cast<const core::ImageKey*>(exact);
     } else if (!aLine.map(core::TimeKeyType_Image).isEmpty()) {
         key = aLine.current().areaImageKey();
-    } else if (const auto* def = aLine.defaultKey(core::TimeKeyType_Image)) {
+    } else if (const auto* def = aLine.baseValue(core::TimeKeyType_Image)) {
         key = static_cast<const core::ImageKey*>(def);
     }
     if (!key)
@@ -108,8 +148,21 @@ void InspectorRowModel::readImage(core::TimeLine& aLine, int aFrame) {
 
     const core::ImageKey::Data& data = key->data();
     mAssetName = data.resource() ? data.resource()->identifier() : QString();
-    mCenterX = -data.imageOffset().x();
-    mCenterY = -data.imageOffset().y();
+    QVector2D offset = data.imageOffset();
+    if (const core::PropertyTrack* prop = aLine.property(core::TimeKeyType_Image)) {
+        const auto valueAt = [&](int aComponent, float aFallback) {
+            const core::ChannelTrack* track = prop->channel(aComponent);
+            if (!track) {
+                return aFallback;
+            }
+            const core::ChannelKey* before = track->keyBeforeOrAt(aFrame);
+            return before ? before->value() : track->baseValue();
+        };
+        offset.setX(valueAt(0, offset.x()));
+        offset.setY(valueAt(1, offset.y()));
+    }
+    mCenterX = -offset.x();
+    mCenterY = -offset.y();
     mCellSize = data.gridMesh().cellSize();
 }
 
@@ -144,12 +197,21 @@ void InspectorRowModel::refresh() {
     QColor keyColor;
     if (line) {
         const core::TimeKeyType keyType = type();
-        if (line->map(keyType).isEmpty())
-            keyState = QStringLiteral("static");
-        else if (line->hasTimeKey(keyType, frame))
-            keyState = QStringLiteral("keyed");
-        else
-            keyState = QStringLiteral("animated");
+        if (core::TimeLine::usesChannelTracks(keyType)) {
+            if (!line->hasChannelKeys(keyType, 0))
+                keyState = QStringLiteral("static");
+            else if (line->hasChannelKey(keyType, 0, frame))
+                keyState = QStringLiteral("keyed");
+            else
+                keyState = QStringLiteral("animated");
+        } else {
+            if (line->map(keyType).isEmpty())
+                keyState = QStringLiteral("static");
+            else if (line->hasTimeKey(keyType, frame))
+                keyState = QStringLiteral("keyed");
+            else
+                keyState = QStringLiteral("animated");
+        }
         keyColor = theme::keyTypeColor(theme::Colors::current(), keyType);
     }
 
@@ -176,18 +238,50 @@ void InspectorRowModel::refresh() {
             readMove(*line, frame);
             break;
         case Kind::Rotate: {
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Rotate)) {
+                if (const core::ChannelKey* key =
+                        line->channelKey(core::TimeKeyType_Rotate, 0, frame)) {
+                    mAngle = util::MathUtil::getDegreeFromRadian(key->value());
+                } else if (line->hasChannelKeys(core::TimeKeyType_Rotate, 0)) {
+                    mAngle = util::MathUtil::getDegreeFromRadian(line->current().srt().rotate());
+                } else {
+                    mAngle = util::MathUtil::getDegreeFromRadian(
+                        line->channelBaseValue(core::TimeKeyType_Rotate, 0)
+                    );
+                }
+                break;
+            }
+
             const core::RotateKey::Data* data = nullptr;
             if (const auto* key = line->timeKey(core::TimeKeyType_Rotate, frame))
                 data = &static_cast<const core::RotateKey*>(key)->data();
             else if (!line->map(core::TimeKeyType_Rotate).isEmpty())
                 mAngle = util::MathUtil::getDegreeFromRadian(line->current().srt().rotate());
-            else if (const auto* def = line->defaultKey(core::TimeKeyType_Rotate))
+            else if (const auto* def = line->baseValue(core::TimeKeyType_Rotate))
                 data = &static_cast<const core::RotateKey*>(def)->data();
             if (data)
                 mAngle = util::MathUtil::getDegreeFromRadian(data->rotate());
             break;
         }
         case Kind::Scale: {
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Scale)) {
+                const core::ChannelKey* x = line->channelKey(core::TimeKeyType_Scale, 0, frame);
+                const core::ChannelKey* y = line->channelKey(core::TimeKeyType_Scale, 1, frame);
+                if (x || y) {
+                    mScaleX = x ? x->value() : line->current().srt().scale().x();
+                    mScaleY = y ? y->value() : line->current().srt().scale().y();
+                } else if (line->hasChannelKeys(core::TimeKeyType_Scale, 0)
+                           || line->hasChannelKeys(core::TimeKeyType_Scale, 1)) {
+                    const QVector2D scale = line->current().srt().scale();
+                    mScaleX = scale.x();
+                    mScaleY = scale.y();
+                } else {
+                    mScaleX = line->channelBaseValue(core::TimeKeyType_Scale, 0);
+                    mScaleY = line->channelBaseValue(core::TimeKeyType_Scale, 1);
+                }
+                break;
+            }
+
             const core::ScaleKey::Data* data = nullptr;
             if (const auto* key = line->timeKey(core::TimeKeyType_Scale, frame))
                 data = &static_cast<const core::ScaleKey*>(key)->data();
@@ -195,7 +289,7 @@ void InspectorRowModel::refresh() {
                 const QVector2D scale = line->current().srt().scale();
                 mScaleX = scale.x();
                 mScaleY = scale.y();
-            } else if (const auto* def = line->defaultKey(core::TimeKeyType_Scale)) {
+            } else if (const auto* def = line->baseValue(core::TimeKeyType_Scale)) {
                 data = &static_cast<const core::ScaleKey*>(def)->data();
             }
             if (data) {
@@ -205,25 +299,49 @@ void InspectorRowModel::refresh() {
             break;
         }
         case Kind::Depth: {
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Depth)) {
+                if (const core::ChannelKey* key =
+                        line->channelKey(core::TimeKeyType_Depth, 0, frame)) {
+                    mDepth = key->value();
+                } else if (line->hasChannelKeys(core::TimeKeyType_Depth, 0)) {
+                    mDepth = line->current().depth();
+                } else {
+                    mDepth = line->channelBaseValue(core::TimeKeyType_Depth, 0);
+                }
+                break;
+            }
+
             const core::DepthKey::Data* data = nullptr;
             if (const auto* key = line->timeKey(core::TimeKeyType_Depth, frame))
                 data = &static_cast<const core::DepthKey*>(key)->data();
             else if (!line->map(core::TimeKeyType_Depth).isEmpty())
                 mDepth = line->current().depth();
-            else if (const auto* def = line->defaultKey(core::TimeKeyType_Depth))
+            else if (const auto* def = line->baseValue(core::TimeKeyType_Depth))
                 data = &static_cast<const core::DepthKey*>(def)->data();
             if (data)
                 mDepth = data->depth();
             break;
         }
         case Kind::Opacity: {
-            const core::OpaKey::Data* data = nullptr;
-            if (const auto* key = line->timeKey(core::TimeKeyType_Opa, frame))
-                data = &static_cast<const core::OpaKey*>(key)->data();
-            else if (!line->map(core::TimeKeyType_Opa).isEmpty())
-                mOpacity = line->current().opa().opacity();
-            else if (const auto* def = line->defaultKey(core::TimeKeyType_Opa))
-                data = &static_cast<const core::OpaKey*>(def)->data();
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Opacity)) {
+                if (const core::ChannelKey* key =
+                        line->channelKey(core::TimeKeyType_Opacity, 0, frame)) {
+                    mOpacity = key->value();
+                } else if (line->hasChannelKeys(core::TimeKeyType_Opacity, 0)) {
+                    mOpacity = line->current().opacity().opacity();
+                } else {
+                    mOpacity = line->channelBaseValue(core::TimeKeyType_Opacity, 0);
+                }
+                break;
+            }
+
+            const core::OpacityKey::Data* data = nullptr;
+            if (const auto* key = line->timeKey(core::TimeKeyType_Opacity, frame))
+                data = &static_cast<const core::OpacityKey*>(key)->data();
+            else if (!line->map(core::TimeKeyType_Opacity).isEmpty())
+                mOpacity = line->current().opacity().opacity();
+            else if (const auto* def = line->baseValue(core::TimeKeyType_Opacity))
+                data = &static_cast<const core::OpacityKey*>(def)->data();
             if (data)
                 mOpacity = data->opacity();
             break;
@@ -270,6 +388,108 @@ void InspectorRowModel::knock() {
     }
 }
 
+bool InspectorRowModel::channelKeyExists(int aComponent) const {
+    if (!mOwner.hasTarget()
+        || (!core::TimeLine::usesChannelTracks(type()) && type() != core::TimeKeyType_Image)) {
+        return false;
+    }
+    return mOwner.timeLine()->hasChannelKey(type(), aComponent, mOwner.frame());
+}
+
+QString InspectorRowModel::channelKeyAction(int aComponent) const {
+    if (!mOwner.hasTarget()
+        || (!core::TimeLine::usesChannelTracks(type()) && type() != core::TimeKeyType_Image)) {
+        return QString();
+    }
+    QString name;
+    switch (mKind) {
+    case Kind::Move:
+        name = aComponent < 2 ? (aComponent == 0 ? QStringLiteral("X") : QStringLiteral("Y"))
+                              : (aComponent == 2 ? QStringLiteral("Centroid X") : QStringLiteral("Centroid Y"));
+        break;
+    case Kind::Scale:
+        name = aComponent == 0 ? QStringLiteral("X") : QStringLiteral("Y");
+        break;
+    case Kind::Rotate:
+        name = QStringLiteral("Angle");
+        break;
+    case Kind::Depth:
+        name = QStringLiteral("Depth");
+        break;
+    case Kind::Opacity:
+        name = QStringLiteral("Opacity");
+        break;
+    case Kind::Image:
+        name = aComponent == 0 ? QStringLiteral("Center X") : QStringLiteral("Center Y");
+        break;
+    default:
+        return QString();
+    }
+    return channelKeyExists(aComponent) ? QStringLiteral("Remove %1 Key").arg(name)
+                                        : QStringLiteral("Add %1 Key").arg(name);
+}
+
+float InspectorRowModel::channelValue(int aComponent) const {
+    switch (mKind) {
+    case Kind::Move:
+        if (aComponent == 0) return float(mX);
+        if (aComponent == 1) return float(mY);
+        if (aComponent == 2) return float(mCentroidX);
+        return float(mCentroidY);
+    case Kind::Scale:
+        return aComponent == 0 ? float(mScaleX) : float(mScaleY);
+    case Kind::Rotate:
+        return float(mAngle * 3.14159265358979323846 / 180.0);
+    case Kind::Depth:
+        return float(mDepth);
+    case Kind::Opacity:
+        return float(mOpacity);
+    case Kind::Image:
+        return aComponent == 0 ? float(-mCenterX) : float(-mCenterY);
+    default:
+        return 0.0f;
+    }
+}
+
+void InspectorRowModel::toggleChannelKey(int aComponent) {
+    if (!mOwner.hasTarget() || !mOwner.project()
+        || (!core::TimeLine::usesChannelTracks(type()) && type() != core::TimeKeyType_Image)) {
+        return;
+    }
+    core::TimeLine& line = *mOwner.timeLine();
+    const int frame = mOwner.frame();
+    const core::TimeKeyType keyType = type();
+    if (aComponent < 0 || core::propertyChannelCount(keyType) <= aComponent) {
+        return;
+    }
+
+    cmnd::Stack& stack = mOwner.project()->commandStack();
+    cmnd::ScopedMacro macro(stack, QStringLiteral("Toggle channel key"));
+    auto* notifier = new ctrl::TimeLineUtil::Notifier(*mOwner.project());
+    const bool exists = line.hasChannelKey(keyType, aComponent, frame);
+    notifier->event().setType(
+        exists ? core::TimeLineEvent::Type_RemoveKey : core::TimeLineEvent::Type_PushKey
+    );
+    notifier->event().pushTarget(
+        *mOwner.target(), core::TimeKeyPos(line, keyType, frame, aComponent)
+    );
+    macro.grabListener(notifier);
+
+    if (exists) {
+        stack.push(line.createChannelRemover(keyType, aComponent, frame, true));
+    } else {
+        auto* key = new core::ChannelKey(keyType, aComponent);
+        key->setFrame(frame);
+        core::ChannelTrack* track = line.channelTrack(keyType, aComponent);
+        key->setValue(track ? track->clamp(track->quantize(channelValue(aComponent)))
+                            : channelValue(aComponent));
+        key->easing() = util::Easing::defaultParam();
+        stack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        stack.push(line.createChannelPusher(keyType, aComponent, frame, key));
+    }
+    refresh();
+}
+
 void InspectorRowModel::toggleKey() {
     if (!mOwner.hasTarget() || !mKeyEnabled)
         return;
@@ -285,28 +505,28 @@ void InspectorRowModel::browseAsset() { mOwner.browseImageAsset(); }
 void InspectorRowModel::setX(double aValue) {
     if (mKind != Kind::Move || !mOwner.hasTarget())
         return;
-    mOwner.accessor().assignMovePosition(QVector2D(float(aValue), float(mY)));
+    mOwner.accessor().assignMovePosition(QVector2D(float(aValue), float(mY)), 0);
     mOwner.refreshKeys();
 }
 
 void InspectorRowModel::setY(double aValue) {
     if (mKind != Kind::Move || !mOwner.hasTarget())
         return;
-    mOwner.accessor().assignMovePosition(QVector2D(float(mX), float(aValue)));
+    mOwner.accessor().assignMovePosition(QVector2D(float(mX), float(aValue)), 1);
     mOwner.refreshKeys();
 }
 
 void InspectorRowModel::setCentroidX(double aValue) {
     if (mKind != Kind::Move || !mOwner.hasTarget())
         return;
-    mOwner.accessor().assignMoveCentroid(QVector2D(float(aValue), float(mCentroidY)));
+    mOwner.accessor().assignMoveCentroid(QVector2D(float(aValue), float(mCentroidY)), 2);
     mOwner.refreshKeys();
 }
 
 void InspectorRowModel::setCentroidY(double aValue) {
     if (mKind != Kind::Move || !mOwner.hasTarget())
         return;
-    mOwner.accessor().assignMoveCentroid(QVector2D(float(mCentroidX), float(aValue)));
+    mOwner.accessor().assignMoveCentroid(QVector2D(float(mCentroidX), float(aValue)), 3);
     mOwner.refreshKeys();
 }
 
@@ -328,14 +548,14 @@ void InspectorRowModel::setAngle(double aValue) {
 void InspectorRowModel::setScaleX(double aValue) {
     if (mKind != Kind::Scale || !mOwner.hasTarget())
         return;
-    mOwner.accessor().assignScaleRate(QVector2D(float(aValue), float(mScaleY)));
+    mOwner.accessor().assignScaleRate(QVector2D(float(aValue), float(mScaleY)), 0);
     mOwner.refreshKeys();
 }
 
 void InspectorRowModel::setScaleY(double aValue) {
     if (mKind != Kind::Scale || !mOwner.hasTarget())
         return;
-    mOwner.accessor().assignScaleRate(QVector2D(float(mScaleX), float(aValue)));
+    mOwner.accessor().assignScaleRate(QVector2D(float(mScaleX), float(aValue)), 1);
     mOwner.refreshKeys();
 }
 
@@ -356,14 +576,14 @@ void InspectorRowModel::setOpacity(double aValue) {
 void InspectorRowModel::setCenterX(double aValue) {
     if (mKind != Kind::Image || !mOwner.hasTarget())
         return;
-    mOwner.accessor().assignImageOffset(QVector2D(float(-aValue), float(-mCenterY)));
+    mOwner.accessor().assignImageOffset(QVector2D(float(-aValue), float(-mCenterY)), 0);
     mOwner.refreshKeys();
 }
 
 void InspectorRowModel::setCenterY(double aValue) {
     if (mKind != Kind::Image || !mOwner.hasTarget())
         return;
-    mOwner.accessor().assignImageOffset(QVector2D(float(-mCenterX), float(-aValue)));
+    mOwner.accessor().assignImageOffset(QVector2D(float(-mCenterX), float(-aValue)), 1);
     mOwner.refreshKeys();
 }
 

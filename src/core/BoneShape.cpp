@@ -52,6 +52,7 @@ BoneShape::BoneShape():
     mRadius(),
     mBounding(),
     mPolygon(),
+    mPolygonIndex(),
     mRootBendRange(),
     mTailBendRange() {}
 
@@ -80,6 +81,7 @@ void BoneShape::setRadius(const QVector2D& aRoot, const QVector2D& aTail) {
 void BoneShape::setPolygon(const QPolygonF& aPolygon) {
     mPolygon = aPolygon;
     mBounding = aPolygon.boundingRect();
+    mPolygonIndex.build(aPolygon);
 }
 
 void BoneShape::setBendRange(const BendRange& aRoot, const BendRange& aTail) {
@@ -130,12 +132,38 @@ float BoneShape::influence(const QVector2D& aPos) const {
     if (mIsValid) {
         const QPointF pos = aPos.toPointF();
         if (mBounding.contains(pos)) {
-            if (mPolygon.containsPoint(pos, Qt::OddEvenFill)) {
+            if (mPolygonIndex.contains(pos)) {
                 return getBoneWeight(aPos);
             }
         }
     }
     return 0.0f;
+}
+
+bool BoneShape::hasSameAuthoredGeometry(const BoneShape& aRhs) const {
+    // Derived fields (mIsValid, mVUnit, mLength, mVDirAngle, mBounding,
+    // mPolygonIndex) are functions of these, so comparing them would be noise.
+    if (mSegment.start != aRhs.mSegment.start || mSegment.dir != aRhs.mSegment.dir) {
+        return false;
+    }
+    for (int i = 0; i < 2; ++i) {
+        if (mRadius[i] != aRhs.mRadius[i]) {
+            return false;
+        }
+        if (mRootBendRange.angle[i] != aRhs.mRootBendRange.angle[i]
+            || mTailBendRange.angle[i] != aRhs.mTailBendRange.angle[i]) {
+            return false;
+        }
+    }
+    if (mPolygon.size() != aRhs.mPolygon.size()) {
+        return false;
+    }
+    for (int i = 0; i < mPolygon.size(); ++i) {
+        if (mPolygon.at(i) != aRhs.mPolygon.at(i)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 float BoneShape::getBoneEllipseWeight(
@@ -227,25 +255,31 @@ float BoneShape::getBoneWeight(const QVector2D& aPoint) const {
     float twistWeight = 1.0f;
 
     #if 1
-    // root
-    const QVector2D start2point = aPoint - mSegment.start;
-    if (!start2point.isNull()) {
-        const float angle = util::MathUtil::getAngleRad(start2point);
-        const float diff = util::MathUtil::getAngleDifferenceRad(mVDirAngle, angle);
-        // const float outress = 1.0f - std::max(std::abs(diff) - kWing, 0.0f) / kWingInv;
-        // twistWeight *= outress * outress;
-        const float outress = mRootBendRange.getWeight(diff);
-        twistWeight *= outress * outress;
+    // An invalid bend range makes getWeight() return exactly 1.0, so the whole
+    // angle computation (atan2) and the multiply by 1.0*1.0 can be skipped
+    // without changing a bit. A leaf bone has no tail bend range.
+    if (mRootBendRange.isValid()) {
+        const QVector2D start2point = aPoint - mSegment.start;
+        if (!start2point.isNull()) {
+            const float angle = util::MathUtil::getAngleRad(start2point);
+            const float diff = util::MathUtil::getAngleDifferenceRad(mVDirAngle, angle);
+            // const float outress = 1.0f - std::max(std::abs(diff) - kWing, 0.0f) / kWingInv;
+            // twistWeight *= outress * outress;
+            const float outress = mRootBendRange.getWeight(diff);
+            twistWeight *= outress * outress;
+        }
     }
 
-    const QVector2D end2point = aPoint - mSegment.end();
-    if (!end2point.isNull()) {
-        const float angle = util::MathUtil::getAngleRad(end2point);
-        const float diff = util::MathUtil::getAngleDifferenceRad(mVDirAngle + M_PI, angle);
-        // const float outress = 1.0f - std::max(std::abs(diff) - kWing, 0.0f) / kWingInv;
-        // twistWeight *= outress * outress;
-        const float outress = mTailBendRange.getWeight(diff);
-        twistWeight *= outress * outress;
+    if (mTailBendRange.isValid()) {
+        const QVector2D end2point = aPoint - mSegment.end();
+        if (!end2point.isNull()) {
+            const float angle = util::MathUtil::getAngleRad(end2point);
+            const float diff = util::MathUtil::getAngleDifferenceRad(mVDirAngle + M_PI, angle);
+            // const float outress = 1.0f - std::max(std::abs(diff) - kWing, 0.0f) / kWingInv;
+            // twistWeight *= outress * outress;
+            const float outress = mTailBendRange.getWeight(diff);
+            twistWeight *= outress * outress;
+        }
     }
     #endif
 
@@ -391,6 +425,7 @@ void BoneShape::deserializeFromJson(QJsonObject json) {
     mTailBendRange.angle[1] = shape["TailBendRange1"].toDouble();
     mBounding = objToRect(shape, "Bounding");
     mPolygon = objToPoly(shape, "Polygon");
+    mPolygonIndex.build(mPolygon);
 }
 
 QJsonObject BoneShape::serializeToJson() const {
@@ -426,6 +461,9 @@ bool BoneShape::deserialize(Deserializer& aIn) {
     aIn.read(mTailBendRange.angle[1]);
     aIn.read(mBounding);
     aIn.read(mPolygon);
+
+    // The containment index is derived from mPolygon, never serialized.
+    mPolygonIndex.build(mPolygon);
 
     return aIn.checkStream();
 }

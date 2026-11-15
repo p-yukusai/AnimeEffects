@@ -2,9 +2,14 @@
 
 #include "gui/KeyCommandMap.h"
 #include "gui/QmlHost.h"
+#include "gui/qml/FilterNames.h"
 #include "gui/qml/QmlTheme.h"
 #include "gui/qml/ToolViewModel.h"
 #include "gui/theme/Colors.h"
+
+#include "core/MaskKey.h"
+#include "core/TimeKeyExpans.h"
+#include "ctrl/TimeLineUtil.h"
 
 #include <QQuickWidget>
 #include <QQmlContext>
@@ -43,7 +48,6 @@ ToolWidget::ToolWidget(ViaPoint& aViaPoint,
     setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
     mModel = new ToolViewModel(this);
-    mModel->setViewSetting(&mViaPoint.mainViewSetting());
     // Ctrl+I with the Mask tool in hand asks for the matte's edit; the properties dock owns it
     mModel->onInvertMaskRequested.connect([this]() { onInvertMaskRequested(); });
     mTheme = new QmlTheme(this);
@@ -56,9 +60,6 @@ ToolWidget::ToolWidget(ViaPoint& aViaPoint,
         auto* key = aKeyCommandMap.get(QString::fromLatin1(aName));
         return key ? key->binding.text() : QString();
     };
-    hints.rotateCounterClockwise = text("RotateCanvas15AntiClockwise");
-    hints.resetRotation = text("ResetCanvasAngle");
-    hints.rotateClockwise = text("RotateCanvas15Clockwise");
     hints.brushSizeDecrease = text("BrushSizeDecrease");
     hints.brushSizeIncrease = text("BrushSizeIncrease");
     hints.brushHardnessDecrease = text("BrushHardnessDecrease");
@@ -95,11 +96,11 @@ ToolWidget::ToolWidget(ViaPoint& aViaPoint,
     // Mask tool that is already up), so the "already painting this matte" state has its own signal
     connect(mModel, &ToolViewModel::maskChanged, this, [this]() { onMaskTargetChanged(); });
     connect(mModel, &ToolViewModel::changed, this, &ToolWidget::onParamUpdated);
-    connect(mModel, &ToolViewModel::viewSettingsChanged, this, [this]() { onViewSettingChanged(viewSetting()); });
     connect(mModel, &ToolViewModel::clearMaskRequested, this, [this]() {
         if (mDriver)
             mDriver->clearMask();
     });
+    connect(mModel, &ToolViewModel::weightsActionRequested, this, &ToolWidget::onWeightsAction);
 
     // ---- key bindings -------------------------------------------------------
     // The tool-selection bindings press the toolbox's own buttons through the model, so
@@ -160,17 +161,146 @@ ToolWidget::~ToolWidget() {
 }
 
 void ToolWidget::setDriver(ctrl::Driver* aDriver) {
+    // NO DISCONNECT THROUGH THE OLD POINTER: DriverHolder::create destroys the
+    // previous driver before this call, so `mDriver` here may already be freed
+    // (the crash this code first shipped: setDriver -> Signaler::disconnect on a
+    // deleted Driver). The slot was a function inside that driver's own Signaler
+    // and died with it; the id is simply replaced.
+    mWeightsSlot = util::SlotId();
+
     mDriver = aDriver;
     mDriverTool = ctrl::ToolType_TERM;
     mModel->setDriverActive(aDriver != nullptr);
+    refreshMaskTargets();
 
     if (mDriver) {
+        // Connected before setTool: creating the Bone editor already announces
+        // its (empty) selection.
+        mWeightsSlot = mDriver->onBoneWeightsStateChanged.connect([this]() { syncWeightsState(); });
         // The tool the model remembers (the dock keeps it across projects, which is what
         // the widget did) is what the new driver starts on.
         mDriverTool = ctrl::ToolType(mModel->tool());
         mDriver->setTool(mDriverTool);
         pushParam();
+        syncWeightsState();
+        refreshMaskTargets();
+    } else {
+        mModel->setWeightsState(ctrl::bone::WeightState());
     }
+}
+
+void ToolWidget::onSelectionChanged(core::ObjectNode*) { refreshMaskTargets(); }
+
+void ToolWidget::onFrameUpdated() { refreshMaskTargets(); }
+
+void ToolWidget::refreshMaskTargets() {
+    core::Project* project = mViaPoint.project();
+    core::ObjectNode* target = mDriver ? mDriver->currentTarget() : nullptr;
+    core::TimeLine* line = target ? target->timeLine() : nullptr;
+    const int frame = project ? project->animator().currentFrame().get() : 0;
+    const QSize canvas = project ? project->attribute().imageSize() : QSize();
+
+    QVector<MaskField> fields;
+    QString empty = QCoreApplication::translate(
+        "gui::ToolViewModel", "Select a layer to paint a mask."
+    );
+    if (target && line) {
+        const bool hasContent = target->type() == core::ObjectType_Layer
+                                    ? !line->current().areaTextureSize().isEmpty()
+                                    : !canvas.isEmpty();
+        if (!hasContent) {
+            empty = QCoreApplication::translate(
+                "gui::ToolViewModel", "This layer has no image or canvas to mask."
+            );
+        } else {
+            bool hasFilter = false;
+            bool hasEnabledFilter = false;
+            for (const core::FilterEntry& entry : line->filters()) {
+                if (!core::isFilterType(entry.type))
+                    continue;
+                hasFilter = true;
+                if (!entry.enabled)
+                    continue;
+                hasEnabledFilter = true;
+                const QString lane = filterDisplayName(entry.type);
+                if (lane.isEmpty())
+                    continue;
+                MaskField amount;
+                amount.kind = ctrl::MaskTargetKind_FilterInput;
+                amount.lane = entry.type;
+                amount.channel = core::FilterMaskChannel_Amount;
+                amount.label = QCoreApplication::translate("gui::ToolViewModel", "%1 amount").arg(lane);
+                fields.append(amount);
+                // The value is generic; the CONSUMER is not. Wave is the only filter
+                // that reads a time-offset field today (LayerNode/FolderNode).
+                if (entry.type == core::TimeKeyType_Wave) {
+                    MaskField offset = amount;
+                    offset.channel = core::FilterMaskChannel_TimeOffset;
+                    offset.label = QCoreApplication::translate("gui::ToolViewModel", "%1 time offset").arg(lane);
+                    fields.append(offset);
+                }
+            }
+
+            // A matte is paintable only where a key exists to write (the base value,
+            // or a key at this frame). Between keys the field is blended and read-only.
+            if (core::MaskKey* key = ctrl::TimeLineUtil::maskKeyForPaint(*target, frame)) {
+                if (key->data().isValid()) {
+                    MaskField matte;
+                    matte.kind = ctrl::MaskTargetKind_LayerMask;
+                    matte.lane = core::TimeKeyType_TERM;
+                    matte.channel = core::FilterMaskChannel_Amount;
+                    matte.label = QCoreApplication::translate("gui::ToolViewModel", "Layer mask");
+                    fields.append(matte);
+                }
+            }
+
+            if (!fields.isEmpty()) {
+                empty.clear();
+            } else if (line->baseValue(core::TimeKeyType_Mask)
+                       || !line->map(core::TimeKeyType_Mask).isEmpty()) {
+                empty = QCoreApplication::translate(
+                    "gui::ToolViewModel", "Key the mask at this frame to paint it."
+                );
+            } else if (hasFilter && !hasEnabledFilter) {
+                empty = QCoreApplication::translate(
+                    "gui::ToolViewModel", "Enable a filter to paint its mask."
+                );
+            } else if (hasFilter) {
+                empty = QCoreApplication::translate(
+                    "gui::ToolViewModel", "There is no mask to paint on this layer at this frame."
+                );
+            } else {
+                empty = QCoreApplication::translate(
+                    "gui::ToolViewModel", "Add a filter or a mask in Properties first."
+                );
+            }
+        }
+    }
+    mModel->setMaskFields(fields, empty);
+}
+
+void ToolWidget::syncWeightsState() {
+    ctrl::bone::WeightState state;
+    if (mDriver && mDriver->boneEditor()) {
+        state = mDriver->boneEditor()->weightsState();
+    }
+    mModel->setWeightsState(state);
+}
+
+void ToolWidget::onWeightsAction(int aAction) {
+    if (!mDriver)
+        return;
+
+    QString error;
+    switch (ToolViewModel::WeightAction(aAction)) {
+    case ToolViewModel::WeightAction_Bake: mDriver->bakeBoneWeights(false, &error); break;
+    case ToolViewModel::WeightAction_Rebake: mDriver->bakeBoneWeights(true, &error); break;
+    case ToolViewModel::WeightAction_Revert: mDriver->revertBoneWeights(&error); break;
+    case ToolViewModel::WeightAction_Clear: mDriver->clearBoneWeights(&error); break;
+    default: return;
+    }
+    syncWeightsState();
+    onVisualUpdated();
 }
 
 void ToolWidget::onModelToolChanged(int aOldType, int aNewType) {
@@ -205,6 +335,7 @@ void ToolWidget::onModelToolChanged(int aOldType, int aNewType) {
     // "push it again after the switch" rule the widget version needed for the mask
     // editor, and it applies to every tool for the same reason.
     pushParam();
+    syncWeightsState();
     onVisualUpdated();
 }
 
@@ -213,7 +344,14 @@ void ToolWidget::showHideMesh(bool aShow) {
         return;
     if (aShow)
         meshFromFunction = true;
-    mModel->setShowMesh(aShow);
+    // The view setting is the window's state now (ViewSettingsModel), but this
+    // convenience belongs to the FFD tool: it turns the mesh on when the tool is
+    // picked and off again when it leaves. Write the one setting, then announce it
+    // through the same signal the viewport has always consumed.
+    if (viewSetting().showLayerMesh == aShow)
+        return;
+    viewSetting().showLayerMesh = aShow;
+    onViewSettingChanged(viewSetting());
 }
 
 void ToolWidget::beginMaskPaint(core::TimeKeyType aLane, core::FilterMaskChannel aChannel) {
@@ -230,6 +368,16 @@ void ToolWidget::beginMaskPaint(core::TimeKeyType aLane, core::FilterMaskChannel
 
 bool ToolWidget::maskPaintingLayerMask() const {
     return mModel ? mModel->maskPaintingLayerMask() : false;
+}
+
+bool ToolWidget::maskToolActive() const { return mModel && mModel->maskToolActive(); }
+
+core::TimeKeyType ToolWidget::maskLane() const {
+    return mModel ? mModel->maskLane() : core::TimeKeyType_TERM;
+}
+
+core::FilterMaskChannel ToolWidget::maskChannel() const {
+    return mModel ? mModel->maskChannel() : core::FilterMaskChannel_Amount;
 }
 
 void ToolWidget::beginLayerMaskPaint() {
@@ -259,6 +407,7 @@ void ToolWidget::setMaskValue(float aValue) {
 
 void ToolWidget::onParamUpdated() {
     pushParam();
+    syncWeightsState();
     onVisualUpdated();
 }
 

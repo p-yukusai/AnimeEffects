@@ -23,6 +23,11 @@ class QmlTheme : public QObject {
 public:
     explicit QmlTheme(QObject* aParent = nullptr);
 
+    // The one desktop timing, also mirrored into QStyleHints at startup so widget
+    // tooltips (QToolTip) and the QML AeToolTip agree. Milliseconds.
+    static constexpr int kToolTipDelayMs = 500;
+    static constexpr int kToolTipTimeoutMs = 10000;
+
     // Re-emit themeChanged() so every bound property is re-read from the current
     // theme. Call on each open of a reused scene (and after a theme switch).
     void refresh();
@@ -62,6 +67,15 @@ public:
     Q_PROPERTY(QColor maskKey READ maskKey NOTIFY themeChanged)
     Q_PROPERTY(QColor warning READ warning NOTIFY themeChanged)
     Q_PROPERTY(QUrl closeIcon READ closeIcon NOTIFY themeChanged)
+    // The ONE tooltip timing. AeToolTip and every QML ToolTip call site read
+    // these instead of repeating 500/10000, and the mesh-spacing hover preview
+    // uses the same delay as the tooltip it shares a row with.
+    Q_PROPERTY(int toolTipDelay READ toolTipDelay CONSTANT)
+    Q_PROPERTY(int toolTipTimeout READ toolTipTimeout CONSTANT)
+    // The Tools dock's one field height. A combo, a number field and a slider's
+    // value field all share it, so the combo cannot fall back to its 28px dialog
+    // height and stand taller than the row beside it.
+    Q_PROPERTY(int toolFieldHeight READ toolFieldHeight CONSTANT)
 
     QColor base() const;
     QColor raised() const;
@@ -89,6 +103,12 @@ public:
     QColor danger() const;
     QColor maskKey() const;
     QColor warning() const;
+    // The conventional desktop tooltip delay/timeout (see AeToolTip's timing
+    // note). CONSTANT: a theme refresh must not restart a revealed tooltip.
+    int toolTipDelay() const { return kToolTipDelayMs; }
+    int toolTipTimeout() const { return kToolTipTimeoutMs; }
+    int toolFieldHeight() const { return 24; }
+
     // The tinted phosphor x close glyph (theme::iconDir()/x.svg), for a
     // popover close button in QML.
     QUrl closeIcon() const;

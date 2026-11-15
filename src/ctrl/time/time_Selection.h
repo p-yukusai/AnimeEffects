@@ -129,6 +129,9 @@ namespace time {
         // Identity of a target is (line, type, frame); the map is unique per
         // line+type, so comparing map addresses is the exact and cheap check.
         static bool sameKey(const core::TimeLineEvent::Target& aLhs, const core::TimeLineEvent::Target& aRhs);
+        // The entry level a target writes: one component when its frame is split,
+        // else the whole key (kKeyLevel).
+        static int entryComponent(const core::TimeLineEvent::Target& aTarget);
         // True when two lists name the same entries, in the same order.
         static bool sameEntries(const QVector<Item>& aLhs, const QVector<Item>& aRhs);
         // True when anItem names aMarker (see containsMarker's rule).

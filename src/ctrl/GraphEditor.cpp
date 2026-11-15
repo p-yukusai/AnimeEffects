@@ -20,7 +20,7 @@
 #include "core/ImageKey.h"
 #include "core/MoveKey.h"
 #include "core/ObjectNode.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/Project.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
@@ -61,6 +61,20 @@ constexpr int kFrameWheelScrollPixels = 50;
 // where the panel's plot clip removes it. 16 is the order of
 // Curve::buildPolyline's drawing rate, so the fit sees what is drawn.
 constexpr int kFitSamplesPerSegment = 16;
+
+// The graph names a key by (type, component, frame). A track-backed property
+// stores it in its channel map; a legacy bundle key in the type map. This is the
+// one lookup every reader/writer below uses, so the two storage models cannot
+// be resolved differently at different call sites.
+core::TimeKey* editKey(
+    core::TimeLine& aLine, core::TimeKeyType aType, int aComponent, int aFrame
+) {
+    if (core::TimeLine::usesChannelTracks(aType)) {
+        return aLine.channelKey(aType, aComponent >= 0 ? aComponent : 0, aFrame);
+    }
+    return aLine.timeKey(aType, aFrame);
+}
+
 
 // THE MARQUEE'S CLICK SLOP, in pixels - the TIMELINE's own rule, adopted whole:
 // its box is `QRect(anchor, current).normalized()` and its release treats the box
@@ -293,7 +307,9 @@ namespace ctrl {
                 continue;
 
             const graph::Channel channel(target.type, target.component);
-            const core::TimeLine::MapType& map = target.line->map(target.type);
+            const core::TimeLine::MapType& map = core::TimeLine::usesChannelTracks(target.type)
+                ? target.line->channelMap(target.type, target.component)
+                : target.line->map(target.type);
             const core::TimeLine::MapType::const_iterator self = map.find(target.key->frame());
             if (self == map.end() || self.value() != target.key)
                 continue;
@@ -1194,7 +1210,7 @@ namespace ctrl {
                     // The entry's own line: the map its curve draws.
                     core::TimeLine* line = entry.line;
                     const core::TimeKeyType type = entry.channel.type();
-                    core::TimeKey* key = line->timeKey(type, hit.keyFrame.get());
+                    core::TimeKey* key = editKey(*line, type, entry.channel.component(), hit.keyFrame.get());
 
                     int outIndex = -1;
                     int inIndex = -1;
@@ -1211,7 +1227,7 @@ namespace ctrl {
                     util::Easing::Param* outParam = key ? graph::Curve::easingOf(*key, type, entry.channel.component()) : nullptr;
                     core::TimeKey* prevKey =
                         (inIndex >= 0)
-                        ? line->timeKey(type, entry.curve.segment(inIndex).from->frame())
+                        ? editKey(*line, type, entry.channel.component(), entry.curve.segment(inIndex).from->frame())
                         : nullptr;
                     util::Easing::Param* inParam =
                         prevKey ? graph::Curve::easingOf(*prevKey, type, entry.channel.component()) : nullptr;
@@ -2126,13 +2142,17 @@ namespace ctrl {
                 continue;
 
             for (core::TimeKeyType type : graph::Channel::graphableTypes()) {
+                const bool trackStorage = core::TimeLine::usesChannelTracks(type);
                 // A type whose map is empty has no curve: every sample would come
-                // from the default key, i.e. a value no key ever wrote, drawn as
-                // a dead flat line through the panel.
-                if (timeLine->map(type).isEmpty())
+                // from the base value, i.e. a value no key ever wrote, drawn as
+                // a dead flat line through the panel. A track-backed property has
+                // no bundle map; ask its channel instead.
+                if (!trackStorage && timeLine->map(type).isEmpty())
                     continue;
 
                 for (const graph::Channel& channel : graph::Channel::channelsOf(type)) {
+                    if (trackStorage && !timeLine->hasChannelKeys(type, channel.component()))
+                        continue;
                     if (!isChannelVisible(*node, channel))
                         continue;
 
@@ -2363,10 +2383,37 @@ namespace ctrl {
         const core::TimeKeyType type = aChannel.type();
         const int frame = aFrame.get();
 
+        if (core::TimeLine::usesChannelTracks(type)) {
+            const core::ChannelTrack* track = aLine.channelTrack(type, aChannel.component());
+            if (!track) {
+                return false;
+            }
+            const float value = sampledChannelValue(aLine, type, aChannel.component(), aFrame);
+            const core::ChannelKey* before = track->keyBeforeOrAt(frame - 1);
+
+            auto* key = new core::ChannelKey(type, aChannel.component());
+            key->setFrame(frame);
+            key->setValue(track->clamp(track->quantize(value)));
+            key->easing() = before ? before->easing() : util::Easing::defaultParam();
+
+            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Add new key"));
+            auto* notifier = new TimeLineUtil::Notifier(*mProject);
+            notifier->event().setType(core::TimeLineEvent::Type_PushKey);
+            notifier->event().pushTarget(
+                aTarget, core::TimeKeyPos(aLine, type, frame, aChannel.component())
+            );
+            macro.grabListener(notifier);
+
+            auto& stack = mProject->commandStack();
+            stack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+            stack.push(aLine.createChannelPusher(type, aChannel.component(), frame, key));
+            return true;
+        }
+
         // The key playback is on at this frame, and where the payload and the
         // easing come from: the last key at or before the frame, else the first
         // key of the map (playback holds the first key before the first key), else
-        // the timeline's default key. A shown curve always has at least one key -
+        // the timeline's base value. A shown curve always has at least one key -
         // buildEntries skips a type whose map is empty - so the last fallback is
         // the guard for a caller that reached here some other way.
         core::TimeKey* played = nullptr;
@@ -2381,7 +2428,7 @@ namespace ctrl {
             }
         }
         if (!played)
-            played = aLine.defaultKey(type);
+            played = aLine.baseValue(type);
         if (!played)
             return false;
 
@@ -2430,10 +2477,10 @@ namespace ctrl {
             TimeLineUtil::pushNewDepthKey(*mProject, aTarget, frame, static_cast<core::DepthKey*>(seed.release()));
             break;
         }
-        case core::TimeKeyType_Opa: {
-            auto* key = static_cast<core::OpaKey*>(seed.get());
+        case core::TimeKeyType_Opacity: {
+            auto* key = static_cast<core::OpacityKey*>(seed.get());
             key->setOpacity(sampledChannelValue(aLine, type, 0, aFrame));
-            TimeLineUtil::pushNewOpaKey(*mProject, aTarget, frame, static_cast<core::OpaKey*>(seed.release()));
+            TimeLineUtil::pushNewOpacityKey(*mProject, aTarget, frame, static_cast<core::OpacityKey*>(seed.release()));
             break;
         }
         case core::TimeKeyType_Blur: {
@@ -2527,7 +2574,7 @@ namespace ctrl {
             // owner key lives in the entry's own line, the map its curve draws.
             core::TimeLine* line = entry.line;
             core::TimeKey* ownerKey =
-                line->timeKey(entry.channel.type(), (grabbedSecond ? segment.to : segment.from)->frame());
+                editKey(*line, entry.channel.type(), entry.channel.component(), (grabbedSecond ? segment.to : segment.from)->frame());
             util::Easing::Param* ownerParam =
                 ownerKey
                 ? graph::Curve::easingOf(*ownerKey, entry.channel.type(), entry.channel.component())
@@ -2566,7 +2613,7 @@ namespace ctrl {
         const Entry& entry = aItems[aHit.item];
         // The key lives in the entry's own line; the node is what the events name.
         core::TimeLine* line = entry.line;
-        const core::TimeKey* key = line->timeKey(entry.channel.type(), aHit.keyFrame.get());
+        const core::TimeKey* key = editKey(*line, entry.channel.type(), entry.channel.component(), aHit.keyFrame.get());
         if (!key)
             return; // the key the hit-test named is gone already: nothing to hold
 
@@ -2635,16 +2682,33 @@ namespace ctrl {
             // A NON-const copy: pos.line()'s non-const overload is how the map
             // owner comes back writable, and the selection hands out const items.
             core::TimeLineEvent::Target target = item.target;
+            if (core::TimeLine::usesChannelTracks(target.pos.type())
+                && target.pos.component() < 0) {
+                target.pos.setComponent(0);
+            }
             core::TimeLine* memberLine = target.pos.line();
             if (!memberLine)
                 continue;
-            core::TimeKey* memberKey = memberLine->timeKey(target.pos.type(), target.pos.index());
+            core::TimeKey* memberKey = nullptr;
+            if (core::TimeLine::usesChannelTracks(target.pos.type())) {
+                const int component = target.pos.component() >= 0 ? target.pos.component() : 0;
+                memberKey = memberLine->channelKey(target.pos.type(), component, target.pos.index());
+            } else {
+                memberKey = memberLine->timeKey(target.pos.type(), target.pos.index());
+            }
             if (!memberKey)
                 continue;
 
             bool keyHeld = false;
             for (const MoveKey& held : mMoveKeys) {
-                if (held.key == memberKey) {
+                // A track-backed key is (line, type, frame); its channels hold
+                // different ChannelKey objects, but the FRAME half moves the key
+                // once.
+                const bool sameIdentity = core::TimeLine::usesChannelTracks(target.pos.type())
+                    && held.target.node == target.node
+                    && held.target.pos.type() == target.pos.type()
+                    && held.target.pos.index() == target.pos.index();
+                if (held.key == memberKey || sameIdentity) {
                     keyHeld = true;
                     break;
                 }
@@ -2713,7 +2777,13 @@ namespace ctrl {
         // no longer in the document (an undo removed it, or another view did), the
         // move has nothing to measure against and the member that names it would
         // refuse every step - so close the edit and say why.
-        core::TimeKey* key = line->timeKey(mMoveType, mMoveFrame.get());
+        core::TimeKey* key = nullptr;
+        if (core::TimeLine::usesChannelTracks(mMoveType)) {
+            const int component = mMoveComponent >= 0 ? mMoveComponent : 0;
+            key = line->channelKey(mMoveType, component, mMoveFrame.get());
+        } else {
+            key = line->timeKey(mMoveType, mMoveFrame.get());
+        }
         if (!key) {
             mLogger.pushLog(
                 QObject::tr("The animation graph stopped moving: the dragged key changed."), UILogType_Info
@@ -2962,7 +3032,7 @@ namespace ctrl {
         // The key the drag edits lives in the entry's own line, the map its curve
         // draws.
         core::TimeLine* line = entry.line;
-        core::TimeKey* key = line->timeKey(entry.channel.type(), mDragKey->frame());
+        core::TimeKey* key = editKey(*line, entry.channel.type(), entry.channel.component(), mDragKey->frame());
         util::Easing::Param* easing =
             key ? graph::Curve::easingOf(*key, entry.channel.type(), entry.channel.component()) : nullptr;
         if (!easing)
@@ -3070,7 +3140,7 @@ namespace ctrl {
         // `to` for handle 1.
         util::Easing::Param* ownerEasing = nullptr;
         if (draggedIsSecond) {
-            core::TimeKey* ownerKey = line->timeKey(entry.channel.type(), segment.to->frame());
+            core::TimeKey* ownerKey = editKey(*line, entry.channel.type(), entry.channel.component(), segment.to->frame());
             ownerEasing =
                 ownerKey ? graph::Curve::easingOf(*ownerKey, entry.channel.type(), entry.channel.component()) : nullptr;
         } else {
@@ -3120,7 +3190,7 @@ namespace ctrl {
             mirrorFrame = segment.to->frame();
         } else if (hasPartnerSegment) {
             const graph::Curve::Segment neighbour = entry.curve.segment(neighbourIndex);
-            core::TimeKey* neighbourKey = line->timeKey(entry.channel.type(), neighbour.from->frame());
+            core::TimeKey* neighbourKey = editKey(*line, entry.channel.type(), entry.channel.component(), neighbour.from->frame());
             mirrorEasing =
                 neighbourKey
                 ? graph::Curve::easingOf(*neighbourKey, entry.channel.type(), entry.channel.component())
@@ -3366,7 +3436,7 @@ namespace ctrl {
         for (int i = 0; i < items.size(); ++i) {
             core::TimeLineEvent::Target target = items[i].target; // non-const: pos.line() writable
             core::TimeLine* line = target.pos.line();
-            if (!line || !line->timeKey(target.pos.type(), target.pos.index()))
+            if (!line || !editKey(*line, target.pos.type(), target.pos.component(), target.pos.index()))
                 continue;
             bool alreadyCounted = false;
             for (int j = 0; j < i; ++j) {
@@ -3431,7 +3501,12 @@ namespace ctrl {
         if (!line)
             return target; // a folder, or a node kind that holds no keys: nothing to name
         target.node = &aNode;
-        target.pos = core::TimeKeyPos(*line, aChannel.type(), aFrame.get());
+        // Only a track-backed property has per-channel maps; a legacy bundle key
+        // is addressed by its type map (component -1).
+        const int component = core::TimeLine::usesChannelTracks(aChannel.type())
+            ? aChannel.component()
+            : -1;
+        target.pos = core::TimeKeyPos(*line, aChannel.type(), aFrame.get(), component);
         target.subIndex = aFrame.get();
         return target;
     }
@@ -3466,8 +3541,14 @@ namespace ctrl {
             const core::TimeLine* line = target.pos.line();
             if (!line)
                 continue;
-            if (!line->hasTimeKey(target.pos.type(), target.pos.index()))
+            if (core::TimeLine::usesChannelTracks(target.pos.type())) {
+                const int component = target.pos.component() >= 0 ? target.pos.component() : 0;
+                if (!line->hasChannelKey(target.pos.type(), component, target.pos.index())) {
+                    continue;
+                }
+            } else if (!line->hasTimeKey(target.pos.type(), target.pos.index())) {
                 continue;
+            }
             removals.append(i);
         }
 
@@ -3494,10 +3575,21 @@ namespace ctrl {
                 // non-const pos.
                 core::TimeLineEvent::Target& target = selection.targets()[index];
                 core::TimeLine* line = target.pos.line();
-                notifier->event().pushTarget(*target.node, target.pos.type(), target.pos.index());
-                mProject->commandStack().push(
-                    line->createRemover(target.pos.type(), target.pos.index(), true)
-                );
+                if (core::TimeLine::usesChannelTracks(target.pos.type())) {
+                    const int component = target.pos.component() >= 0 ? target.pos.component() : 0;
+                    notifier->event().pushTarget(
+                        *target.node,
+                        core::TimeKeyPos(*line, target.pos.type(), target.pos.index(), component)
+                    );
+                    mProject->commandStack().push(
+                        line->createChannelRemover(target.pos.type(), component, target.pos.index(), true)
+                    );
+                } else {
+                    notifier->event().pushTarget(*target.node, target.pos.type(), target.pos.index());
+                    mProject->commandStack().push(
+                        line->createRemover(target.pos.type(), target.pos.index(), true)
+                    );
+                }
             }
         }
 
@@ -3545,7 +3637,7 @@ namespace ctrl {
                 continue; // a hand-made target with no owner: nothing to address
 
             const core::TimeKeyType type = target.pos.type();
-            core::TimeKey* key = line->timeKey(type, target.pos.index());
+            core::TimeKey* key = editKey(*line, type, target.pos.component(), target.pos.index());
             if (!key)
                 continue; // a stale selection names a frame that holds nothing
 
@@ -3605,7 +3697,7 @@ namespace ctrl {
             // The key must BE there. A selection can outlive the key it names (an
             // undo, or another view's edit), and a stale one must not push a
             // command against a frame that holds nothing.
-            core::TimeKey* key = line->timeKey(type, target.pos.index());
+            core::TimeKey* key = editKey(*line, type, target.pos.component(), target.pos.index());
             if (!key)
                 continue;
 
@@ -3780,8 +3872,8 @@ namespace ctrl {
         // The MUTABLE keys of the segment: Curve hands out const ones (it only
         // reads the document), while this action writes through the map the
         // timeline owns - the same (type, frame) lookup the drag uses.
-        core::TimeKey* fromKey = line->timeKey(aTarget.channel.type(), segment.from->frame());
-        core::TimeKey* toKey = line->timeKey(aTarget.channel.type(), segment.to->frame());
+        core::TimeKey* fromKey = editKey(*line, aTarget.channel.type(), aTarget.channel.component(), segment.from->frame());
+        core::TimeKey* toKey = editKey(*line, aTarget.channel.type(), aTarget.channel.component(), segment.to->frame());
         if (!fromKey || !toKey)
             return false; // the segment moved under the menu
 

@@ -77,7 +77,11 @@
 #include <vector>
 
 #include <QApplication>
+#include <QByteArrayView>
+#include <QCryptographicHash>
 #include <QDir>
+#include <QElapsedTimer>
+#include <QFile>
 #include <QFileInfo>
 #include <QFont>
 #include <QImage>
@@ -91,10 +95,12 @@
 #include <QString>
 #include <QStringList>
 #include <QSurfaceFormat>
+#include <QTextStream>
 #include <QVector2D>
 
 #include "XC.h"
 #include "core/Animator.h"
+#include "core/BoneKey.h"
 #include "core/CameraInfo.h"
 #include "core/ClippingFrame.h"
 #include "core/DestinationTexturizer.h"
@@ -104,8 +110,10 @@
 #include "core/ImageKey.h"
 #include "core/Project.h"
 #include "core/LayerNode.h"
+#include "core/PosePalette.h"
 #include "core/RenderInfo.h"
 #include "core/TimeInfo.h"
+#include "core/TimeLine.h"
 #include "core/VirtualTexture.h"
 #include "ctrl/Driver.h"
 #include "ctrl/DriverResources.h"
@@ -153,7 +161,15 @@ const char* kUsage =
     "  --list-layers print each layer's name, size, shared-image id and filter/mask/deform\n"
     "                  markers, then exit\n"
     "  --require-gpu exit 4 unless GL_RENDERER looks like hardware (rejects llvmpipe,\n"
-    "                softpipe, swrast, software)\n";
+    "                softpipe, swrast, software)\n"
+    "  --dump-influence <file>\n"
+    "                write every built bone-influence map's attribute arrays as SHA-256,\n"
+    "                with the build wait time, then exit (the build's reference oracle)\n"
+    "  --bench-influence <n>\n"
+    "                force n rebuilds of every bone key's influence caches and print each\n"
+    "                wall time, then exit (the build-cost instrument; n = 1..100)\n"
+    "  --bone-stats  print every bone key's bone count against PosePalette::kMaxCount,\n"
+    "                then exit (the rig-size instrument for the skeleton cap)\n";
 
 int fail(int aCode, const QString& aMessage) {
     std::fprintf(stderr, "render_probe: %s\n", aMessage.toUtf8().constData());
@@ -236,6 +252,269 @@ public:
 };
 
 //-------------------------------------------------------------------------------------------------
+// The reference oracle for the influence build: every built cache's four
+// attribute arrays hashed, plus the wait time. A change to the build (a broad
+// phase, a chunk split) must leave this file byte-identical. The wait is taken
+// around accessor(), which is where the async build is joined.
+int dumpInfluenceMaps(core::Project& aProject, const QString& aPath) {
+    QFile file(aPath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return fail(2, QStringLiteral("cannot write '%1'").arg(aPath));
+    }
+    QTextStream out(&file);
+    core::ObjectNode* top = aProject.objectTree().topNode();
+    if (!top) {
+        return fail(2, QStringLiteral("the project has no object tree"));
+    }
+
+    const auto hash = [](const void* aData, qsizetype aBytes) -> QString {
+        if (!aData || aBytes <= 0)
+            return QStringLiteral("-");
+        const QByteArrayView view(static_cast<const char*>(aData), aBytes);
+        return QString::fromLatin1(
+            QCryptographicHash::hash(view, QCryptographicHash::Sha256).toHex()
+        );
+    };
+
+    qint64 waitNs = 0;
+    int mapCount = 0;
+    qint64 vertexCount = 0;
+    int nodeIndex = 0;
+    qint64 storedBytes = 0;
+    int slotHist[9] = {0};
+    for (core::ObjectNode::Iterator itr(top); itr.hasNext();) {
+        core::ObjectNode* node = itr.next();
+        const int thisNode = nodeIndex++;
+        if (!node || !node->timeLine())
+            continue;
+        const core::TimeLine::MapType& keys = node->timeLine()->map(core::TimeKeyType_Bone);
+        for (auto itrKey = keys.begin(); itrKey != keys.end(); ++itrKey) {
+            auto* boneKey = dynamic_cast<core::BoneKey*>(itrKey.value());
+            if (!boneKey)
+                continue;
+            int cacheIndex = 0;
+            for (const core::BoneKey::Cache* cache : boneKey->caches()) {
+                if (!cache)
+                    continue;
+                const core::BoneInfluenceMap& map = cache->influence();
+                QElapsedTimer timer;
+                timer.start();
+                const core::BoneInfluenceMap::Accessor accessor = map.accessor();
+                waitNs += timer.nsecsElapsed();
+
+                const int vertices = map.vertexCount();
+                const int slotCount = accessor.slotCount();
+                const bool dense = accessor.dense();
+                const qsizetype groupBytes =
+                    qsizetype(vertices) * core::BoneInfluenceMap::kBonePerVtxMaxEach;
+
+                // The oracle is the LOGICAL eight-slot form: a sparse map is
+                // expanded here so its line is the same line the dense writer
+                // produced. That is what makes an old dump directly diffable.
+                const auto logicalIndices = [&](int aGroup) -> QString {
+                    if (dense) {
+                        return hash(accessor.denseIndices(aGroup), groupBytes);
+                    }
+                    std::vector<core::BoneInfluenceMap::IndicesType> buf(
+                        size_t(groupBytes), core::BoneInfluenceMap::IndicesType(0)
+                    );
+                    for (int v = 0; v < vertices; ++v) {
+                        for (int k = 0; k < core::BoneInfluenceMap::kBonePerVtxMaxEach; ++k) {
+                            const int slot = aGroup * core::BoneInfluenceMap::kBonePerVtxMaxEach + k;
+                            if (slot < slotCount) {
+                                buf[size_t(v) * core::BoneInfluenceMap::kBonePerVtxMaxEach + k] =
+                                    accessor.indices(slot)[v];
+                            }
+                        }
+                    }
+                    return hash(buf.data(), qsizetype(buf.size()));
+                };
+                const auto logicalWeights = [&](int aGroup) -> QString {
+                    if (dense) {
+                        return hash(
+                            accessor.denseWeights(aGroup),
+                            groupBytes * qsizetype(sizeof(core::BoneInfluenceMap::WeightsType))
+                        );
+                    }
+                    std::vector<core::BoneInfluenceMap::WeightsType> buf(
+                        size_t(groupBytes), core::BoneInfluenceMap::WeightsType(0)
+                    );
+                    for (int v = 0; v < vertices; ++v) {
+                        for (int k = 0; k < core::BoneInfluenceMap::kBonePerVtxMaxEach; ++k) {
+                            const int slot = aGroup * core::BoneInfluenceMap::kBonePerVtxMaxEach + k;
+                            if (slot >= slotCount)
+                                continue;
+                            const size_t at =
+                                size_t(v) * core::BoneInfluenceMap::kBonePerVtxMaxEach + k;
+                            // A one-slot map's weight is the exact 1 the dense
+                            // writer stored and did not need to carry.
+                            buf[at] = slotCount == 1 ? 1.0f : accessor.weights(slot)[v];
+                        }
+                    }
+                    return hash(
+                        buf.data(), qsizetype(buf.size() * sizeof(core::BoneInfluenceMap::WeightsType))
+                    );
+                };
+
+                out << "map node=" << thisNode
+                    << " name=\"" << (cache->node() ? cache->node()->name() : QString()) << "\""
+                    << " frame=" << boneKey->frame() << " cache=" << cacheIndex
+                    << " v=" << vertices
+                    << " i0=" << logicalIndices(0)
+                    << " i1=" << logicalIndices(1)
+                    << " w0=" << logicalWeights(0)
+                    << " w1=" << logicalWeights(1)
+                    << "\n";
+                ++mapCount;
+                vertexCount += vertices;
+                storedBytes += accessor.storedBytes();
+                ++slotHist[slotCount];
+                ++cacheIndex;
+            }
+        }
+    }
+    out.flush();
+    if (file.error() != QFileDevice::NoError) {
+        return fail(2, QStringLiteral("write failed for '%1'").arg(aPath));
+    }
+    std::printf(
+        "INFLUENCE maps=%d vertices=%lld wait_ms=%.3f\n", mapCount, (long long)vertexCount,
+        double(waitNs) / 1.0e6
+    );
+    std::printf(
+        "INFLUENCE_STORAGE maps=%d vertices=%lld bytes=%lld logical_bytes=%lld"
+        " slots1=%d slots2=%d slots3=%d slots4=%d slots5=%d slots6=%d slots7=%d slots8=%d\n",
+        mapCount, (long long)vertexCount, (long long)storedBytes,
+        (long long)(vertexCount * 40), slotHist[1], slotHist[2], slotHist[3], slotHist[4],
+        slotHist[5], slotHist[6], slotHist[7], slotHist[8]
+    );
+    std::fflush(stdout);
+    return 0;
+}
+
+//-------------------------------------------------------------------------------------------------
+// Force fresh builds and time the wall clock from the first schedule to the
+// last join. resetCaches recycles each key's caches, so this runs the same
+// per-vertex work a load does; the warm-up rep is the caller's to discard.
+int benchInfluenceMaps(core::Project& aProject, int aReps) {
+    core::ObjectNode* top = aProject.objectTree().topNode();
+    if (!top) {
+        return fail(2, QStringLiteral("the project has no object tree"));
+    }
+
+    for (int rep = 0; rep < aReps; ++rep) {
+        int maps = 0;
+        qint64 vertices = 0;
+        QElapsedTimer timer;
+        QElapsedTimer split;
+        timer.start();
+
+        for (core::ObjectNode::Iterator itr(top); itr.hasNext();) {
+            core::ObjectNode* node = itr.next();
+            if (!node || !node->timeLine())
+                continue;
+            const core::TimeLine::MapType& keys = node->timeLine()->map(core::TimeKeyType_Bone);
+            for (auto itrKey = keys.begin(); itrKey != keys.end(); ++itrKey) {
+                auto* boneKey = dynamic_cast<core::BoneKey*>(itrKey.value());
+                if (boneKey)
+                    boneKey->resetCaches(aProject, *node);
+            }
+        }
+        split.start();
+
+        for (core::ObjectNode::Iterator itr(top); itr.hasNext();) {
+            core::ObjectNode* node = itr.next();
+            if (!node || !node->timeLine())
+                continue;
+            const core::TimeLine::MapType& keys = node->timeLine()->map(core::TimeKeyType_Bone);
+            for (auto itrKey = keys.begin(); itrKey != keys.end(); ++itrKey) {
+                auto* boneKey = dynamic_cast<core::BoneKey*>(itrKey.value());
+                if (!boneKey)
+                    continue;
+                for (const core::BoneKey::Cache* cache : boneKey->caches()) {
+                    if (!cache)
+                        continue;
+                    ++maps;
+                    vertices += cache->influence().vertexCount();
+                    (void)cache->influence().accessor();
+                }
+            }
+        }
+
+        std::printf(
+            "INFLUENCE_BENCH rep=%d ms=%.3f schedule_ms=%.3f wait_ms=%.3f maps=%d vertices=%lld\n",
+            rep, double(timer.nsecsElapsed()) / 1.0e6,
+            double(timer.nsecsElapsed() - split.nsecsElapsed()) / 1.0e6,
+            double(split.nsecsElapsed()) / 1.0e6, maps, (long long)vertices
+        );
+        std::fflush(stdout);
+    }
+    return 0;
+}
+
+//-------------------------------------------------------------------------------------------------
+// Bone census: how many bones each BoneKey holds against
+// PosePalette::kMaxCount, the one cap shared by the pose/binding palette and the
+// influence build (BoneKey::Cache). A key above it loses its last bones
+// silently, so the count is the first question any rig-size change has to
+// answer.
+int printBoneStats(core::Project& aProject) {
+    core::ObjectNode* top = aProject.objectTree().topNode();
+    if (!top) {
+        return fail(2, QStringLiteral("the project has no object tree"));
+    }
+
+    int keyCount = 0;
+    int overCapKeys = 0;
+    int maxBones = 0;
+    qint64 totalBones = 0;
+    int nodeIndex = 0;
+    for (core::ObjectNode::Iterator itr(top); itr.hasNext();) {
+        core::ObjectNode* node = itr.next();
+        const int thisNode = nodeIndex++;
+        if (!node || !node->timeLine())
+            continue;
+        const core::TimeLine::MapType& keys = node->timeLine()->map(core::TimeKeyType_Bone);
+        for (auto itrKey = keys.begin(); itrKey != keys.end(); ++itrKey) {
+            auto* boneKey = dynamic_cast<core::BoneKey*>(itrKey.value());
+            if (!boneKey)
+                continue;
+
+            int bones = 0;
+            for (const core::Bone2* topBone : boneKey->data().topBones()) {
+                for (core::Bone2::ConstIterator boneItr(topBone); boneItr.hasNext();) {
+                    boneItr.next();
+                    ++bones;
+                }
+            }
+
+            ++keyCount;
+            totalBones += bones;
+            maxBones = std::max(maxBones, bones);
+            const bool overCap = bones > core::PosePalette::kMaxCount;
+            if (overCap)
+                ++overCapKeys;
+
+            QString path = node->name();
+            for (core::ObjectNode* p = node->parent(); p; p = p->parent())
+                path = p->name() + QStringLiteral("/") + path;
+            std::printf(
+                "BONEKEY node=%d path=\"%s\" frame=%d bones=%d caches=%d over_cap=%d\n",
+                thisNode, path.toUtf8().constData(), boneKey->frame(), bones,
+                (int)boneKey->caches().size(), overCap ? 1 : 0
+            );
+        }
+    }
+
+    std::printf(
+        "BONE_STATS keys=%d total_bones=%lld max_bones=%d cap=%d over_cap_keys=%d\n", keyCount,
+        (long long)totalBones, maxBones, (int)core::PosePalette::kMaxCount, overCapKeys
+    );
+    std::fflush(stdout);
+    return 0;
+}
+
+//-------------------------------------------------------------------------------------------------
 // command line
 
 struct Options {
@@ -263,6 +542,16 @@ struct Options {
     // does not contain this text (the camera and the canvas stay the project's)
     QString onlyLayer;
     bool listLayers = false;
+    // write every built bone-influence map's attribute arrays to a file, as
+    // SHA-256 per set plus the wait time: the reference oracle for a change to
+    // the influence build (the arrays must stay byte-identical).
+    QString dumpInfluence;
+    // force N rebuilds of every bone key's influence caches and print the wall
+    // time of each: the build-cost instrument. 0 disables.
+    int benchInfluence = 0;
+    // count the bones in every BoneKey against PosePalette::kMaxCount: the
+    // rig-size instrument for the skeleton-bone truncation.
+    bool boneStats = false;
 };
 
 bool parseSize(const QString& aText, QSize& aOut) {
@@ -581,6 +870,31 @@ int runRender(ProbeGL& aProbe, const Options& aOptions) {
             }
             return 2;
         }
+        // Conditions that did not fail the load but change what is drawn (the
+        // skeleton cap): print them, so a probe run states the limitation it
+        // measured instead of hiding it.
+        for (const QString& warning : loader.warnings())
+            std::fprintf(stderr, "  warning: %s\n", warning.toUtf8().constData());
+    }
+
+    // The rig-size census: does any skeleton cross the one cap?
+    if (aOptions.boneStats) {
+        return printBoneStats(project);
+    }
+
+    // The influence build's reference oracle: join every cache and hash its arrays.
+    if (aOptions.benchInfluence > 0) {
+        const int code = benchInfluenceMaps(project, aOptions.benchInfluence);
+        if (code != 0)
+            return code;
+        if (aOptions.dumpInfluence.isEmpty())
+            return 0;
+    }
+    if (!aOptions.dumpInfluence.isEmpty()) {
+        const int code = dumpInfluenceMaps(project, aOptions.dumpInfluence);
+        if (code != 0)
+            return code;
+        return 0;
     }
 
     // A per-layer diagnostic: list what the project holds, or hide all but the named layers.
@@ -610,9 +924,9 @@ int runRender(ProbeGL& aProbe, const Options& aOptions) {
                             if (line->filterEnabled(type))
                                 flags += QStringLiteral("filter:%1 ").arg((int)type);
                         }
-                        // a matte can live on the default key OR on animated keys; the old test
+                        // a matte can live on the base value OR on animated keys; the old test
                         // saw only the first, so a keyed mask read as "no mask"
-                        if (line->defaultKey(core::TimeKeyType_Mask)
+                        if (line->baseValue(core::TimeKeyType_Mask)
                             || !line->map(core::TimeKeyType_Mask).isEmpty())
                             flags += QStringLiteral("mask ");
                     }
@@ -636,7 +950,7 @@ int runRender(ProbeGL& aProbe, const Options& aOptions) {
                         if (line->filterEnabled(type))
                             flags += QStringLiteral("filter:%1 ").arg((int)type);
                     }
-                    if (line->defaultKey(core::TimeKeyType_Mask)
+                    if (line->baseValue(core::TimeKeyType_Mask)
                         || !line->map(core::TimeKeyType_Mask).isEmpty())
                         flags += QStringLiteral("mask ");
                     if (!line->map(core::TimeKeyType_Bone).isEmpty()
@@ -649,7 +963,7 @@ int runRender(ProbeGL& aProbe, const Options& aOptions) {
                 int resourceId = 0;
                 if (line) {
                     if (auto* imageKey =
-                            dynamic_cast<core::ImageKey*>(line->defaultKey(core::TimeKeyType_Image))) {
+                            dynamic_cast<core::ImageKey*>(line->baseValue(core::TimeKeyType_Image))) {
                         const img::ResourceData* resource = imageKey->data().resource().get();
                         if (resource) {
                             auto found = resourceIds.find(resource);
@@ -883,6 +1197,19 @@ int main(int argc, char** argv) {
             options.metrics = true;
         } else if (arg == QLatin1String("--require-gpu")) {
             options.requireGpu = true;
+        } else if (arg == QLatin1String("--dump-influence")) {
+            if (!value(options.dumpInfluence)) return 2;
+        } else if (arg == QLatin1String("--bench-influence")) {
+            QString text;
+            if (!value(text)) return 2;
+            bool ok = false;
+            options.benchInfluence = text.toInt(&ok);
+            if (!ok || options.benchInfluence < 1 || options.benchInfluence > 100) {
+                std::fprintf(stderr, "render_probe: --bench-influence must be 1..100\n");
+                return 2;
+            }
+        } else if (arg == QLatin1String("--bone-stats")) {
+            options.boneStats = true;
         } else if (arg == QLatin1String("--help") || arg == QLatin1String("-h")) {
             std::printf("%s", kUsage);
             return 0;
@@ -893,7 +1220,9 @@ int main(int argc, char** argv) {
         }
     }
 
-    if (options.projectPath.isEmpty() || options.outDir.isEmpty()) {
+    if (options.projectPath.isEmpty()
+        || (options.outDir.isEmpty() && options.dumpInfluence.isEmpty() && options.benchInfluence <= 0
+            && !options.boneStats)) {
         std::fprintf(stderr, "render_probe: --project and --out are required\n");
         std::fprintf(stderr, "%s", kUsage);
         return 2;

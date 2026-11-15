@@ -188,21 +188,34 @@ Item {
             onClicked: root.collapsed = !root.collapsed
         }
 
-        Image {
-            id: caret
-            x: 16
+        // The InspectorRow prefix slot: 20x20 at x=13. The 14px caret is
+        // centred in it, so its ink stays at x=16..30 and the label stays at
+        // x=36, exactly where the header looked before; the slot is what
+        // aligns the header's text with every property row.
+        Item {
+            id: caretSlot
+            objectName: "filterHeaderPrefix"
+            x: 13
+            width: 20
+            height: 20
             anchors.verticalCenter: parent.verticalCenter
-            width: 14
-            height: 14
-            source: theme.iconUrl(root.collapsed ? "caret-right" : "caret-down")
-            sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
-            sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
-            smooth: true
-            fillMode: Image.PreserveAspectFit
-            opacity: headerMouse.containsMouse ? 0.9 : 0.55
+
+            Image {
+                id: caret
+                anchors.centerIn: parent
+                width: 14
+                height: 14
+                source: theme.iconUrl(root.collapsed ? "caret-right" : "caret-down")
+                sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                smooth: true
+                fillMode: Image.PreserveAspectFit
+                opacity: headerMouse.containsMouse ? 0.9 : 0.55
+            }
         }
 
         Text {
+            objectName: "filterHeaderLabel"
             x: 36
             anchors.verticalCenter: parent.verticalCenter
             text: inspector.filters.title

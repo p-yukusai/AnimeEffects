@@ -150,6 +150,16 @@ void EasyShaderProgram::setAttributeArray(const char* aName, const GLubyte* aArr
     setRawAttributeArray(aName, GL_UNSIGNED_BYTE, 1, aArray, aCount, 1);
 }
 
+void EasyShaderProgram::setAttributeArray(const char* aName, const GLubyte* aArray, int aCount, int aTuple) {
+    // Integer attributes must go through glVertexAttribIPointer, or the shader's
+    // ivec4 input would receive the float conversion instead.
+    setRawAttributeIArray(aName, GL_UNSIGNED_BYTE, sizeof(GLubyte), aArray, aCount, aTuple);
+}
+
+void EasyShaderProgram::setAttributeArray(const char* aName, const GLfloat* aArray, int aCount, int aTuple) {
+    setRawAttributeArray(aName, GL_FLOAT, sizeof(GLfloat), aArray, aCount, aTuple);
+}
+
 void EasyShaderProgram::setAttributeArray(const char* aName, const gl::Vector2I* aArray, int aCount) {
     setRawAttributeIArray(aName, GL_INT, 4, aArray, aCount, 2);
 }

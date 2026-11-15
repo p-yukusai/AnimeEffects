@@ -1,7 +1,5 @@
 #include "gui/qml/ToolViewModel.h"
 
-#include "gui/qml/FilterNames.h"
-
 #include <QCoreApplication>
 #include <QVariantMap>
 
@@ -26,7 +24,6 @@ QVariantMap entry(const QString& aLabel, const QString& aIcon) {
 const core::TimeKeyType kMaskLanes[] = {
     core::TimeKeyType_HSV, core::TimeKeyType_Blur, core::TimeKeyType_Wave};
 const int kMaskLaneCount = 3;
-const int kMaskLayerTarget = kMaskLaneCount; // the fourth target: the node's own matte
 
 // The dock's strings that ALREADY have catalog entries keep their ORIGINAL contexts.
 // A context is a catalog key: re-spelling "Add bones" in QML would ship English until
@@ -175,15 +172,11 @@ void ToolBrushModel::adjustHardness(int aSteps) {
 // ToolViewModel
 //-------------------------------------------------------------------------------------------------
 ToolViewModel::ToolViewModel(QObject* aParent): QObject(aParent) {
+    mMaskEmptyText = tr("Select a layer to paint a mask.");
     mBrush = new ToolBrushModel(this);
     // an EDIT of the brush is an edit of the active tool's param (a retarget is not)
     connect(mBrush, &ToolBrushModel::edited, this, &ToolViewModel::changed);
     retargetBrush();
-}
-
-void ToolViewModel::setViewSetting(MainViewSetting* aSetting) {
-    mViewSetting = aSetting;
-    emit viewChanged();
 }
 
 void ToolViewModel::setDriverActive(bool aActive) {
@@ -271,13 +264,11 @@ QString ToolViewModel::title() const {
     case ctrl::ToolType_FFD:
         return QCoreApplication::translate("gui::tool::FFDPanel", "FFD");
     case ctrl::ToolType_Mask:
-        // A card named the field, so the heading IS the field's own name ("Wave Deform
-        // amount", and "Layer mask" for the matte - which is both the kind and the
-        // name). Picked from the toolbox the field is still a QUESTION, so the heading
-        // names the KIND and the chooser sits under it.
-        if (mMaskPinned)
-            return mMask.isLayerMask() ? tr("Layer mask") : maskFieldLabel();
-        return tr("Filter mask");
+        // The heading names the TOOL; the Target row below it is the field's own
+        // chooser (and shows the current field as its value). A card entry simply
+        // preselects that target - it must not turn the label into a caption plus a
+        // separate disclosure, which is the control this replaced.
+        return tr("Mask");
     default:
         return QString();
     }
@@ -294,9 +285,9 @@ QVariantList ToolViewModel::modes() const {
             entry(QCoreApplication::translate("gui::tool::BonePanel", "Remove bones"), QStringLiteral("minus-bold")),
             entry(QCoreApplication::translate("gui::tool::BonePanel", "Move joints"), QStringLiteral("navigation-arrow")),
             entry(QCoreApplication::translate("gui::tool::BonePanel", "Bind bone to node"), QStringLiteral("link")),
-            entry(QCoreApplication::translate("gui::tool::BonePanel", "Adjust influence"), QStringLiteral("broadcast")),
-            entry(QCoreApplication::translate("gui::tool::BonePanel", "Paint influence"), QStringLiteral("paint-brush")),
-            entry(QCoreApplication::translate("gui::tool::BonePanel", "Erase influence"), QStringLiteral("eraser")),
+            entry(QCoreApplication::translate("gui::tool::BonePanel", "Adjust envelope"), QStringLiteral("envelope")),
+            entry(QCoreApplication::translate("gui::tool::BonePanel", "Envelope brush"), QStringLiteral("paint-envelope")),
+            entry(QCoreApplication::translate("gui::tool::BonePanel", "Paint weights"), QStringLiteral("paint-brush")),
         };
     case ctrl::ToolType_Pose:
         return {
@@ -325,7 +316,12 @@ QVariantList ToolViewModel::modes() const {
 int ToolViewModel::modeIndex() const {
     switch (mTool) {
     case ctrl::ToolType_SRT: return mSRT.mode;
-    case ctrl::ToolType_Bone: return int(mBone.mode);
+    case ctrl::ToolType_Bone:
+        // The UI order has seven entries; the persisted enum keeps PaintWeights at 7
+        // and the retired EraseInfl at 6, so the list index is mapped explicitly.
+        if (mBone.mode == ctrl::BoneEditMode_PaintWeights) return 6;
+        if (mBone.mode == ctrl::BoneEditMode_EraseInfl) return 5;
+        return int(mBone.mode);
     case ctrl::ToolType_Pose: return int(mPose.mode);
     case ctrl::ToolType_Mesh: return mMesh.mode;
     case ctrl::ToolType_FFD: return int(mFFD.type);
@@ -344,7 +340,8 @@ QString ToolViewModel::modeName() const {
 bool ToolViewModel::brushVisible() const {
     switch (mTool) {
     case ctrl::ToolType_Bone:
-        return mBone.mode == ctrl::BoneEditMode_PaintInfl || mBone.mode == ctrl::BoneEditMode_EraseInfl;
+        return mBone.mode == ctrl::BoneEditMode_PaintInfl || mBone.mode == ctrl::BoneEditMode_EraseInfl
+            || mBone.mode == ctrl::BoneEditMode_PaintWeights;
     case ctrl::ToolType_Pose: return mPose.mode == ctrl::PoseEditMode_Erase;
     case ctrl::ToolType_FFD:
         return mFFD.type == ctrl::FFDParam::Type_Pencil || mFFD.type == ctrl::FFDParam::Type_Eraser;
@@ -359,6 +356,224 @@ bool ToolViewModel::blurVisible() const {
 
 bool ToolViewModel::weightVisible() const {
     return mTool == ctrl::ToolType_Pose && mPose.mode == ctrl::PoseEditMode_Draw;
+}
+
+bool ToolViewModel::weightHeatmapVisible() const {
+    if (mTool != ctrl::ToolType_Bone)
+        return false;
+    return mBone.mode == ctrl::BoneEditMode_Influence || mBone.mode == ctrl::BoneEditMode_PaintInfl
+        || mBone.mode == ctrl::BoneEditMode_EraseInfl || mBone.mode == ctrl::BoneEditMode_PaintWeights;
+}
+
+bool ToolViewModel::weightPaintHintVisible() const {
+    return mTool == ctrl::ToolType_Bone
+        && (mBone.mode == ctrl::BoneEditMode_PaintInfl || mBone.mode == ctrl::BoneEditMode_EraseInfl);
+}
+
+bool ToolViewModel::envelopeBrushVisible() const {
+    return mTool == ctrl::ToolType_Bone
+        && (mBone.mode == ctrl::BoneEditMode_PaintInfl || mBone.mode == ctrl::BoneEditMode_EraseInfl);
+}
+
+double ToolViewModel::envelopeValue() const { return double(mBone.envelopeValue); }
+
+void ToolViewModel::setEnvelopeValue(double aValue) {
+    const float clamped = float(std::min(std::max(aValue, double(envelopeValueMin())),
+                                         double(envelopeValueMax())));
+    if (std::abs(mBone.envelopeValue - clamped) < 1.0e-6f) {
+        return;
+    }
+    mBone.envelopeValue = clamped;
+    emit changed();
+}
+
+int ToolViewModel::envelopeValueMin() const { return 0; }
+
+int ToolViewModel::envelopeValueMax() const { return 1000; }
+
+bool ToolViewModel::weightHeatmap() const { return mBone.showWeightHeatmap; }
+
+void ToolViewModel::setWeightHeatmap(bool aValue) {
+    if (mBone.showWeightHeatmap == aValue)
+        return;
+    mBone.showWeightHeatmap = aValue;
+    emit changed();
+}
+
+//-------------------------------------------------------------------------------------------------
+// Paint weights
+//-------------------------------------------------------------------------------------------------
+namespace {
+bool sameWeightsState(const ctrl::bone::WeightState& aLhs, const ctrl::bone::WeightState& aRhs) {
+    return aLhs.kind == aRhs.kind && aLhs.boneIndex == aRhs.boneIndex
+        && aLhs.bakedNodes == aRhs.bakedNodes && aLhs.liveNodes == aRhs.liveNodes
+        && aLhs.bakedVertices == aRhs.bakedVertices && aLhs.meshMismatch == aRhs.meshMismatch
+        && aLhs.error == aRhs.error;
+}
+} // namespace
+
+void ToolViewModel::setWeightsState(const ctrl::bone::WeightState& aState) {
+    if (sameWeightsState(mWeights, aState))
+        return;
+    mWeights = aState;
+    emit weightsChanged();
+}
+
+bool ToolViewModel::weightsStateVisible() const {
+    return mTool == ctrl::ToolType_Bone && mBone.mode == ctrl::BoneEditMode_PaintWeights;
+}
+
+bool ToolViewModel::weightsActionsVisible() const {
+    return weightsStateVisible() && mWeights.kind != ctrl::bone::WeightState::Kind_None
+        && mWeights.kind != ctrl::bone::WeightState::Kind_SelectBone
+        && mWeights.kind != ctrl::bone::WeightState::Kind_NoTargets;
+}
+
+QString ToolViewModel::weightsStateText() const {
+    using Kind = ctrl::bone::WeightState::Kind;
+    switch (mWeights.kind) {
+    case Kind::Kind_None: return tr("No bone key");
+    case Kind::Kind_SelectBone: return tr("Select a bone");
+    case Kind::Kind_NoTargets: return tr("No mesh here");
+    case Kind::Kind_Envelope: return tr("Envelope");
+    // ONE WORD. The count is a diagnostic, not a state: it lives in the state
+    // tooltip, where a reader who wants the number can find it, and never in the
+    // row ("Baked · 622" made the number the state and left its unit to guess).
+    case Kind::Kind_Baked: return tr("Baked");
+    case Kind::Kind_Mixed: return tr("Partly baked");
+    }
+    return QString();
+}
+
+QString ToolViewModel::weightsStateRole() const {
+    using Kind = ctrl::bone::WeightState::Kind;
+    switch (mWeights.kind) {
+    case Kind::Kind_None: return QStringLiteral("none");
+    case Kind::Kind_SelectBone: return QStringLiteral("select");
+    case Kind::Kind_NoTargets: return QStringLiteral("no-targets");
+    case Kind::Kind_Envelope: return QStringLiteral("envelope");
+    case Kind::Kind_Baked: return QStringLiteral("baked");
+    case Kind::Kind_Mixed: return QStringLiteral("mixed");
+    }
+    return QString();
+}
+
+QString ToolViewModel::weightsStateTip() const {
+    using Kind = ctrl::bone::WeightState::Kind;
+    switch (mWeights.kind) {
+    case Kind::Kind_None:
+        return tr("Create a bone key at this frame to paint weights.");
+    case Kind::Kind_SelectBone:
+        return tr("Right-click a bone to target it. Left is always the stroke.");
+    case Kind::Kind_NoTargets:
+        return tr("The key skins no mesh at this frame.");
+    case Kind::Kind_Envelope:
+        return tr("This bone's weights are live. Bake evaluates its envelope once, then the brush edits the result.");
+    case Kind::Kind_Baked:
+        return tr("The field is authored (%1). Rebake replaces it from the envelope.")
+            .arg(authoredVertexCountText());
+    case Kind::Kind_Mixed:
+        return tr("%n layer(s) still use the live envelope; the brush paints the baked ones.", "", mWeights.liveNodes);
+    }
+    return QString();
+}
+
+QString ToolViewModel::authoredVertexCountText() const {
+    // `%n` is the Qt numerus form; the English catalog supplies "vertex"/"vertices".
+    return tr("%n vertex(s)", "", mWeights.bakedVertices);
+}
+
+bool ToolViewModel::weightsMeshWarningVisible() const {
+    return weightsStateVisible() && mWeights.meshMismatch;
+}
+
+QString ToolViewModel::weightsError() const {
+    return weightsStateVisible() ? mWeights.error : QString();
+}
+
+bool ToolViewModel::weightsBakeVisible() const {
+    using Kind = ctrl::bone::WeightState::Kind;
+    return weightsActionsVisible()
+        && (mWeights.kind == Kind::Kind_Envelope || mWeights.kind == Kind::Kind_Mixed);
+}
+
+bool ToolViewModel::weightsBakeEnabled() const { return weightsBakeVisible() && mWeights.canBake(); }
+
+bool ToolViewModel::weightsRebakeVisible() const {
+    using Kind = ctrl::bone::WeightState::Kind;
+    return weightsActionsVisible()
+        && (mWeights.kind == Kind::Kind_Baked || mWeights.kind == Kind::Kind_Mixed);
+}
+
+bool ToolViewModel::weightsRebakeEnabled() const {
+    return weightsRebakeVisible() && mWeights.canRebake();
+}
+
+bool ToolViewModel::weightsRevertVisible() const { return weightsRebakeVisible(); }
+
+bool ToolViewModel::weightsRevertEnabled() const {
+    return weightsRebakeVisible() && mWeights.canRevert();
+}
+
+bool ToolViewModel::weightsClearVisible() const { return weightsRebakeVisible(); }
+
+bool ToolViewModel::weightsClearEnabled() const {
+    return weightsRebakeVisible() && mWeights.canClear();
+}
+
+bool ToolViewModel::weightsPaintEnabled() const {
+    return weightsStateVisible() && mWeights.canPaint();
+}
+
+bool ToolViewModel::brushEnabled() const {
+    if (mTool != ctrl::ToolType_Bone || mBone.mode != ctrl::BoneEditMode_PaintWeights) {
+        return true;
+    }
+    return mWeights.canPaint();
+}
+
+QVariantList ToolViewModel::weightModes() const {
+    QVariantList out;
+    const char* labels[ctrl::WeightPaintMode_TERM] = {QT_TRANSLATE_NOOP("gui::ToolViewModel", "Add"),
+                                                      QT_TRANSLATE_NOOP("gui::ToolViewModel", "Subtract"),
+                                                      QT_TRANSLATE_NOOP("gui::ToolViewModel", "Replace")};
+    for (int i = 0; i < ctrl::WeightPaintMode_TERM; ++i) {
+        QVariantMap map;
+        map.insert(QStringLiteral("label"), tr(labels[i]));
+        map.insert(QStringLiteral("value"), i);
+        out.append(map);
+    }
+    return out;
+}
+
+int ToolViewModel::weightPaintMode() const { return int(mBone.weightMode); }
+
+void ToolViewModel::setWeightPaintMode(int aMode) {
+    if (aMode < 0 || aMode >= ctrl::WeightPaintMode_TERM || mBone.weightMode == ctrl::WeightPaintMode(aMode)) {
+        return;
+    }
+    mBone.weightMode = ctrl::WeightPaintMode(aMode);
+    emit changed();
+}
+
+void ToolViewModel::requestWeightsAction(int aAction) {
+    switch (WeightAction(aAction)) {
+    case WeightAction_Bake:
+        if (!weightsBakeEnabled()) return;
+        break;
+    case WeightAction_Rebake:
+        if (!weightsRebakeEnabled()) return;
+        break;
+    case WeightAction_Revert:
+        if (!weightsRevertEnabled()) return;
+        break;
+    case WeightAction_Clear:
+        if (!weightsClearEnabled()) return;
+        break;
+    default:
+        return;
+    }
+    emit weightsActionRequested(aAction);
 }
 
 bool ToolViewModel::srtCreateVisible() const {
@@ -439,61 +654,81 @@ void ToolViewModel::setWeight(double aValue) {
 //-------------------------------------------------------------------------------------------------
 QVariantList ToolViewModel::maskFields() const {
     QVariantList out;
-    for (int i = 0; i < kMaskLaneCount; ++i) {
-        const QString lane = filterDisplayName(kMaskLanes[i]);
-        // A translatable FORMAT per channel, never name + separator + name: word order is
-        // not the same in every language, and a bare separator is what makes a label read
-        // as machine-assembled.
-        out.append(entry(tr("%1 amount").arg(lane), QString()));
-        out.append(entry(tr("%1 time offset").arg(lane), QString()));
+    for (int i = 0; i < mMaskFieldEntries.size(); ++i) {
+        const MaskField& field = mMaskFieldEntries.at(i);
+        QVariantMap map;
+        map.insert(QStringLiteral("label"), field.label);
+        map.insert(QStringLiteral("value"), i);
+        out.append(map);
     }
-    out.append(entry(tr("Layer mask"), QString()));
     return out;
 }
 
 int ToolViewModel::maskFieldIndex() const {
-    if (mMask.isLayerMask())
-        return kMaskLayerTarget * 2; // the matte sits after the six filter fields
-    for (int i = 0; i < kMaskLaneCount; ++i) {
-        if (kMaskLanes[i] == mMask.lane)
-            return i * 2 + int(mMask.channel);
+    return findMaskField(mMask.kind, mMask.lane, mMask.channel);
+}
+
+int ToolViewModel::findMaskField(ctrl::MaskTargetKind aKind, core::TimeKeyType aLane,
+                                 core::FilterMaskChannel aChannel) const {
+    for (int i = 0; i < mMaskFieldEntries.size(); ++i) {
+        const MaskField& field = mMaskFieldEntries.at(i);
+        if (field.kind != aKind)
+            continue;
+        if (aKind == ctrl::MaskTargetKind_LayerMask || (field.lane == aLane && field.channel == aChannel))
+            return i;
     }
-    return kMaskLayerTarget * 2;
+    return -1;
 }
 
 QString ToolViewModel::maskFieldLabel() const {
-    const QVariantList fields = maskFields();
     const int index = maskFieldIndex();
-    if (index < 0 || index >= fields.size())
-        return QString();
-    return fields.at(index).toMap().value(QStringLiteral("label")).toString();
+    return (0 <= index && index < mMaskFieldEntries.size()) ? mMaskFieldEntries.at(index).label
+                                                           : QString();
+}
+
+QString ToolViewModel::maskEmptyText() const {
+    if (!maskPaintable() && mMaskEmptyText.isEmpty() && !mMaskFieldEntries.isEmpty())
+        return tr("Choose a paint target.");
+    return mMaskEmptyText;
 }
 
 void ToolViewModel::setMaskField(int aIndex) {
-    if (aIndex < 0 || aIndex > kMaskLayerTarget * 2 || aIndex == maskFieldIndex())
+    if (aIndex < 0 || aIndex >= mMaskFieldEntries.size() || aIndex == maskFieldIndex())
         return;
-    if (aIndex == kMaskLayerTarget * 2) {
-        // the node's own matte: no lane, no channel, and a neutral of reveal-all
+    selectMaskField(aIndex, true);
+}
+
+void ToolViewModel::selectMaskField(int aIndex, bool aNotify) {
+    if (aIndex < 0 || aIndex >= mMaskFieldEntries.size())
+        return;
+    const MaskField& field = mMaskFieldEntries.at(aIndex);
+    if (field.kind == ctrl::MaskTargetKind_LayerMask) {
         mMask.setKind(ctrl::MaskTargetKind_LayerMask);
     } else {
         // setKind FIRST: coming back from the matte, the kind change is what makes the
-        // next stroke read a filter input at all. MaskParam only touches the value when
-        // the kind or the channel actually changes, exactly as the widget did.
+        // next stroke read a filter input at all.
         mMask.setKind(ctrl::MaskTargetKind_FilterInput);
-        mMask.lane = kMaskLanes[aIndex / 2];
-        // the channel seeds the useful value for its own mask (amount -> 0, offset -> 1)
-        mMask.setChannel(core::FilterMaskChannel(aIndex % 2));
+        mMask.lane = field.lane;
+        // The channel seeds the useful value for its own mask (amount -> 0, offset -> 1).
+        mMask.setChannel(field.channel);
     }
-    emit stateChanged();   // the heading and the caption follow the target
-    emit maskChanged();    // setKind / setChannel may have reset the value
+    if (!aNotify)
+        return;
+    emit stateChanged();
+    emit maskChanged();
     emit changed();
 }
 
-void ToolViewModel::unpinMaskTarget() {
-    if (!mMaskPinned)
+void ToolViewModel::setMaskFields(const QVector<MaskField>& aFields, const QString& aEmptyText) {
+    if (mMaskFieldEntries == aFields && mMaskEmptyText == aEmptyText)
         return;
-    mMaskPinned = false;
-    emit stateChanged();
+    mMaskFieldEntries = aFields;
+    mMaskEmptyText = aEmptyText;
+    // A target that disappeared (or became unavailable) must not leave the brush
+    // aimed at a field the list no longer contains. Pick the first paintable one.
+    if (maskFieldIndex() < 0 && !mMaskFieldEntries.isEmpty())
+        selectMaskField(0, false);
+    emit maskChanged();
 }
 
 void ToolViewModel::setMaskValue(double aValue) {
@@ -524,11 +759,7 @@ void ToolViewModel::beginFilterMaskPaint(core::TimeKeyType aLane, core::FilterMa
         }
     }
     mMask.setChannel(aChannel);
-    // activate() CLEARS the pin (a toolbox entry asks the question), so the card entry
-    // sets it after the switch - which is also the order the user sees: the panel appears
-    // already naming the field.
     activate(int(ctrl::ToolType_Mask));
-    mMaskPinned = true;
     emit stateChanged();
     emit maskChanged();
     emit changed();
@@ -537,66 +768,9 @@ void ToolViewModel::beginFilterMaskPaint(core::TimeKeyType aLane, core::FilterMa
 void ToolViewModel::beginLayerMaskPaint() {
     mMask.setKind(ctrl::MaskTargetKind_LayerMask);
     activate(int(ctrl::ToolType_Mask));
-    mMaskPinned = true;
     emit stateChanged();
     emit maskChanged();
     emit changed();
-}
-
-//-------------------------------------------------------------------------------------------------
-// view settings
-//-------------------------------------------------------------------------------------------------
-bool ToolViewModel::showMesh() const { return mViewSetting && mViewSetting->showLayerMesh; }
-bool ToolViewModel::cutOutsideFrame() const { return mViewSetting && mViewSetting->cutImagesByTheFrame; }
-bool ToolViewModel::flipCanvas() const { return mViewSetting && mViewSetting->flipCanvas; }
-
-void ToolViewModel::setShowMesh(bool aValue) {
-    if (!mViewSetting || mViewSetting->showLayerMesh == aValue)
-        return;
-    mViewSetting->showLayerMesh = aValue;
-    emit viewChanged();
-    emit viewSettingsChanged();
-}
-
-void ToolViewModel::setCutOutsideFrame(bool aValue) {
-    if (!mViewSetting || mViewSetting->cutImagesByTheFrame == aValue)
-        return;
-    mViewSetting->cutImagesByTheFrame = aValue;
-    emit viewChanged();
-    emit viewSettingsChanged();
-}
-
-void ToolViewModel::setFlipCanvas(bool aValue) {
-    if (!mViewSetting || mViewSetting->flipCanvas == aValue)
-        return;
-    mViewSetting->flipCanvas = aValue;
-    emit viewChanged();
-    emit viewSettingsChanged();
-}
-
-QString ToolViewModel::viewTitle() const {
-    return QCoreApplication::translate("gui::ToolWidget", "View Settings");
-}
-QString ToolViewModel::showMeshTip() const {
-    return QCoreApplication::translate("gui::ToolWidget", "Show mesh");
-}
-QString ToolViewModel::cutOutsideFrameTip() const {
-    return QCoreApplication::translate("gui::ToolWidget", "Do not draw outside the frame");
-}
-QString ToolViewModel::rotateCounterClockwiseTip() const {
-    return QCoreApplication::translate("gui::ToolWidget", "Rotate the canvas counterclockwise (%1)")
-        .arg(mKeyHints.rotateCounterClockwise);
-}
-QString ToolViewModel::resetRotationTip() const {
-    return QCoreApplication::translate("gui::ToolWidget", "Reset rotation of the canvas (%1)")
-        .arg(mKeyHints.resetRotation);
-}
-QString ToolViewModel::rotateClockwiseTip() const {
-    return QCoreApplication::translate("gui::ToolWidget", "Rotate the canvas clockwise (%1)")
-        .arg(mKeyHints.rotateClockwise);
-}
-QString ToolViewModel::flipCanvasTip() const {
-    return QCoreApplication::translate("gui::ToolWidget", "Flip canvas");
 }
 
 QString ToolViewModel::sizeKeyTip() const {
@@ -606,34 +780,6 @@ QString ToolViewModel::sizeKeyTip() const {
 QString ToolViewModel::hardnessKeyTip() const {
     return tr("Brush hardness (%1 / %2)")
         .arg(mKeyHints.brushHardnessDecrease, mKeyHints.brushHardnessIncrease);
-}
-
-// The three rotation verbs are TRIGGERS, not states: the setting is a flag the main
-// view consumes on the same call (MainDisplayWidget::onViewSettingChanged), which is
-// why it is raised, announced and lowered again - the deleted ViewPanel did exactly
-// this and a latched flag would rotate on every later view change.
-void ToolViewModel::rotateCounterClockwise() {
-    if (!mViewSetting)
-        return;
-    mViewSetting->rotateViewACW = true;
-    emit viewSettingsChanged();
-    mViewSetting->rotateViewACW = false;
-}
-
-void ToolViewModel::resetRotation() {
-    if (!mViewSetting)
-        return;
-    mViewSetting->resetRotateView = true;
-    emit viewSettingsChanged();
-    mViewSetting->resetRotateView = false;
-}
-
-void ToolViewModel::rotateClockwise() {
-    if (!mViewSetting)
-        return;
-    mViewSetting->rotateViewCW = true;
-    emit viewSettingsChanged();
-    mViewSetting->rotateViewCW = false;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -647,10 +793,6 @@ void ToolViewModel::activate(int aType) {
         return;
     const ctrl::ToolType old = mTool;
     mTool = type;
-    // Picking the Mask tool from the toolbox ASKS which field, so the card's pin is
-    // dropped - a card entry re-pins it after this call (see beginFilterMaskPaint).
-    if (type == ctrl::ToolType_Mask)
-        mMaskPinned = false;
     retargetBrush();
     // The host finalizes the OLD tool before it switches the driver (see the signal's
     // own note); everything this model derives from the tool is already up to date, so
@@ -658,6 +800,7 @@ void ToolViewModel::activate(int aType) {
     emit toolChanged(int(old), int(mTool));
     emit stateChanged();
     emit modeChanged();
+    emit weightsChanged();
 }
 
 void ToolViewModel::setMode(int aIndex) {
@@ -670,9 +813,9 @@ void ToolViewModel::setMode(int aIndex) {
         mSRT.mode = aIndex;
         break;
     case ctrl::ToolType_Bone:
-        if (aIndex >= ctrl::BoneEditMode_TERM)
+        if (aIndex < 0 || aIndex > 6)
             return;
-        mBone.mode = ctrl::BoneEditMode(aIndex);
+        mBone.mode = aIndex == 6 ? ctrl::BoneEditMode_PaintWeights : ctrl::BoneEditMode(aIndex);
         break;
     case ctrl::ToolType_Pose:
         if (aIndex >= ctrl::PoseEditMode_TERM)
@@ -698,6 +841,7 @@ void ToolViewModel::setMode(int aIndex) {
     retargetBrush();
     emit stateChanged();
     emit modeChanged();
+    emit weightsChanged();
     emit changed();
 }
 

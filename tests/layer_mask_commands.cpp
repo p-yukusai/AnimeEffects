@@ -6,13 +6,13 @@
 //
 // What is asserted, in the order a person meets it:
 //   [1] ADD is a no-op on screen: a field at the neck value, the node's content rect,
-//       a texel grid inside the cap, and it goes on the DEFAULT key (so the lane
+//       a texel grid inside the cap, and it goes on the BASE VALUE (so the lane
 //       gains no keyframe).
 //   [2] ONE MASK PER NODE: a second add does nothing, and it pushes no command.
 //   [3] INVERT flips every texel and is ONE undo step.
 //   [4] TOGGLE KEY holds the blend: the key created between two keys carries the
 //       field the frame showed, and toggling again removes it.
-//   [5] REMOVE takes the keys and the default key, and undo brings them back.
+//   [5] REMOVE takes the keys and the base value, and undo brings them back.
 //
 // Headless: no widgets, no GL. The project's canvas is the content space a folder's
 // mask uses (a layer with no rendered texture falls back to it too).
@@ -93,7 +93,7 @@ bool noCommand(core::Project& aProject) {
 }
 
 const core::MaskKey* defaultMask(const core::TimeLine& aLine) {
-    return static_cast<const core::MaskKey*>(aLine.defaultKey(core::TimeKeyType_Mask));
+    return static_cast<const core::MaskKey*>(aLine.baseValue(core::TimeKeyType_Mask));
 }
 
 // A node standing in for a layer: enough of ObjectNode for the mask commands.
@@ -177,9 +177,9 @@ int main(int argc, char** argv) {
                 project.attribute().imageSize().height());
     ctrl::TimeLineUtil::addMask(project, node);
     core::MaskKey* mask = static_cast<core::MaskKey*>(
-        node.timeLine()->defaultKey(core::TimeKeyType_Mask)
+        node.timeLine()->baseValue(core::TimeKeyType_Mask)
     );
-    check(mask != nullptr, "add puts the mask on the default key");
+    check(mask != nullptr, "add puts the mask on the base value");
     check(exactlyOneCommand(project), "add pushes exactly one command");
     check(node.timeLine()->map(core::TimeKeyType_Mask).isEmpty(), "add leaves the lane keyless");
     if (mask) {
@@ -260,7 +260,7 @@ int main(int argc, char** argv) {
                         ++differ;
                 }
             }
-            std::printf("MEASURED keyed hold: %d texels differ from the default key\n", differ);
+            std::printf("MEASURED keyed hold: %d texels differ from the base value\n", differ);
             check(differ == 0, "a new key HOLDS what the frame showed");
         }
 
@@ -275,12 +275,12 @@ int main(int argc, char** argv) {
     {
         project.commandStack().clear();
         ctrl::TimeLineUtil::removeMask(project, node);
-        check(defaultMask(*node.timeLine()) == nullptr, "remove takes the default key");
+        check(defaultMask(*node.timeLine()) == nullptr, "remove takes the base value");
         check(node.timeLine()->map(core::TimeKeyType_Mask).isEmpty(), "remove takes every key");
         check(exactlyOneCommand(project), "remove is one undo step");
 
         project.commandStack().undo();
-        check(defaultMask(*node.timeLine()) != nullptr, "undo restores the default key");
+        check(defaultMask(*node.timeLine()) != nullptr, "undo restores the base value");
     }
 
     // ---- [6] A STROKE ANNOUNCES ONCE PER POINTER EVENT, NOT ONCE PER STAMP -------------

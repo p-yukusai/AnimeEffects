@@ -4,9 +4,15 @@
 #include <QFontMetrics>
 #include <QKeyEvent>
 #include <algorithm>
+#include <sstream>
 #include "core/TimeKeyExpans.h"
 #include "core/KeyEasing.h"
 #include "core/KeyEasingAccess.h"
+#include "core/ImageKey.h"
+#include "core/StateKey.h"
+#include "core/Serializer.h"
+#include "util/StreamWriter.h"
+#include "core/ChannelSpec.h"
 #include "core/BlurKey.h"
 #include "core/WaveKey.h"
 #include "core/TimeFormat.h"
@@ -41,6 +47,80 @@ bool samePlayWindow(
     const ctrl::TimeLineEditor::PlayWindow& aLhs, const ctrl::TimeLineEditor::PlayWindow& aRhs
 ) {
     return aLhs.start == aRhs.start && aLhs.end == aRhs.end;
+}
+
+// WHAT A TIMELINE KEY COMMAND ACTS ON. The timeline selects whole KEYS (a
+// key-level entry), while the animation graph selects individual markers. A
+// target carries only the component the hit test landed on, so a key-level
+// entry is fanned out here over every channel key at that frame; a marker
+// entry contributes exactly its component, and several marker entries for the
+// same key contribute their union. Structural keys and non-track properties
+// keep their single target. Stale targets (the key left the document while a
+// menu was open) are dropped, not fanned out.
+core::TimeLineEvent targetsForSelection(
+    const core::TimeLineEvent& aTargets, const ctrl::time::Selection& aSelection
+) {
+    core::TimeLineEvent out;
+    out.setType(aTargets.type());
+    for (const core::TimeLineEvent::Target& target : aTargets.targets()) {
+        if (!target.node || target.pos.isNull()) {
+            continue;
+        }
+        core::TimeKeyPos targetPos = target.pos;
+        core::TimeLine* line = targetPos.line();
+        const core::TimeKeyType type = targetPos.type();
+        const int frame = targetPos.index();
+        // A whole-property target (-1) has no legacy map slot to "exist"; its
+        // channels are resolved below. A component target still checks that its
+        // key is where the menu named it.
+        const bool propertyLevel =
+            core::TimeLine::usesChannelTracks(type) && targetPos.component() < 0;
+        if (!propertyLevel && !target.pos.isExist()) {
+            continue;
+        }
+
+        bool wholeKey = false;
+        QVector<int> namedComponents;
+        for (const ctrl::time::Selection::Item& item : aSelection.items()) {
+            if (item.target.node != target.node || item.target.pos.line() != line
+                || item.target.pos.type() != type || item.target.pos.index() != frame) {
+                continue;
+            }
+            if (item.component == ctrl::time::Selection::kKeyLevel) {
+                wholeKey = true;
+            } else if (!namedComponents.contains(item.component)) {
+                namedComponents.push_back(item.component);
+            }
+        }
+
+        if (wholeKey && core::TimeLine::usesChannelTracks(type)) {
+            const core::PropertyTrack* prop = line->property(type);
+            if (prop) {
+                for (int c = 0; c < prop->channelCount(); ++c) {
+                    if (line->hasChannelKey(type, c, frame)) {
+                        out.pushTarget(*target.node, core::TimeKeyPos(*line, type, frame, c));
+                    }
+                }
+                if (prop->state().keyAt(frame)) {
+                    out.pushTarget(
+                        *target.node,
+                        core::TimeKeyPos(*line, type, frame, core::TimeKeyPos::kStateComponent)
+                    );
+                }
+                continue;
+            }
+        }
+        if (!namedComponents.isEmpty()) {
+            for (int c : namedComponents) {
+                if (line->hasChannelKey(type, c, frame)) {
+                    out.pushTarget(*target.node, core::TimeKeyPos(*line, type, frame, c));
+                }
+            }
+            continue;
+        }
+        out.pushTarget(*target.node, target.pos);
+    }
+    return out;
 }
 } // namespace
 
@@ -605,6 +685,73 @@ void TimeLineEditorWidget::buildKeyMenu(QMenu& aMenu) {
         });
     }
     aMenu.addSeparator();
+
+    // LINK / SEPARATE CHANNELS: a keyframe's grouping. A linked keyframe is a
+    // property key (every graphable channel has a key there, all linked); a split
+    // keyframe belongs to one channel. Every target must name one frame of one
+    // multi-channel property. Linking requires the full channel set; separating
+    // always works on a frame that has keys. One command/undo step.
+    {
+        core::ObjectNode* groupNode = nullptr;
+        core::TimeLine* groupLine = nullptr;
+        core::TimeKeyType groupType = core::TimeKeyType_TERM;
+        int groupFrame = -1;
+        bool groupable = !mTargets.targets().isEmpty();
+        for (const core::TimeLineEvent::Target& target : mTargets.targets()) {
+            if (!target.node || !target.pos.line()) {
+                groupable = false;
+                break;
+            }
+            core::TimeKeyPos targetPos = target.pos;
+            const core::TimeKeyType type = targetPos.type();
+            const int frame = targetPos.index();
+            if (!core::TimeLine::usesChannelTracks(type) || core::propertyChannelCount(type) < 2) {
+                groupable = false;
+                break;
+            }
+            if (!groupNode) {
+                groupNode = target.node;
+                groupLine = targetPos.line();
+                groupType = type;
+                groupFrame = frame;
+            } else if (target.node != groupNode || targetPos.line() != groupLine
+                       || type != groupType || frame != groupFrame) {
+                groupable = false;
+                break;
+            }
+        }
+        if (groupable && groupLine && groupNode && mProject) {
+            const bool linked = groupLine->isFrameLinked(groupType, groupFrame);
+            const bool canLink = groupLine->canLinkFrame(groupType, groupFrame);
+            QAction* grouping = aMenu.addAction(
+                linked ? tr("Separate Channels") : tr("Link Channels")
+            );
+            if (!linked) {
+                grouping->setEnabled(canLink);
+                if (!canLink) {
+                    grouping->setText(tr("Link Channels (all channels need a key here)"));
+                    grouping->setToolTip(
+                        tr("Every channel must have a key at this frame before they can be linked.")
+                    );
+                }
+            }
+            grouping->connect(
+                grouping, &QAction::triggered,
+                [this, groupNode, groupType, groupFrame, linked]() {
+                    ctrl::TimeLineUtil::setFrameLinked(
+                        *mProject, *groupNode, groupType, groupFrame, !linked
+                    );
+                    emit channelGroupingChanged();
+                    this->update();
+                }
+            );
+            aMenu.addAction(mSelectSpacing);
+            aMenu.addSeparator();
+            aMenu.addAction(mDeleteKey);
+            return;
+        }
+    }
+
     aMenu.addAction(mSelectSpacing);
     aMenu.addSeparator();
     aMenu.addAction(mDeleteKey);
@@ -650,6 +797,41 @@ static void addStandardToObj(QJsonObject* json, keyData data, const int keyType,
 }
 
 QJsonObject getKeyTypeSerialized(int keyType, core::TimeKey* timeKey, core::ObjectNode* node) {
+    // Image has its own resource/grid clipboard payload (IDs must be resolved by
+    // the destination tree); it is a StateKey but not a scalar state payload.
+    if (!dynamic_cast<core::ImageKey*>(timeKey)) {
+        if (auto* stateKey = dynamic_cast<core::StateKey*>(timeKey)) {
+        QJsonObject key;
+        addTfToObj(&key, keyType, timeKey);
+        std::ostringstream bytes;
+        util::StreamWriter writer(bytes);
+        core::Serializer out(writer);
+        if (!stateKey->serialize(out)) {
+            return {};
+        }
+        const std::string data = bytes.str();
+        key["StateData"] = QString::fromLatin1(
+            QByteArray(data.data(), int(data.size())).toBase64()
+        );
+        return key;
+        }
+    }
+    if (auto* channelKey = dynamic_cast<core::ChannelKey*>(timeKey)) {
+        QJsonObject key;
+        addTfToObj(&key, keyType, timeKey);
+        key["Value"] = channelKey->value();
+        key["Component"] = channelKey->component();
+        key["Linked"] = channelKey->linked();
+        const QJsonObject easing = ctrl::TimeLineEditor::easingToJson(channelKey->easing());
+        key["eType"] = easing["eType"];
+        key["eRange"] = easing["eRange"];
+        key["eWeight"] = easing["eWeight"];
+        QJsonArray easings;
+        easings.append(easing);
+        key["eEasings"] = easings;
+        return key;
+    }
+
     switch (keyType) {
     // General data for all keys: Type, Frame and Easing {type, range & weight}
     case core::TimeKeyType_Move: {
@@ -686,13 +868,13 @@ QJsonObject getKeyTypeSerialized(int keyType, core::TimeKey* timeKey, core::Obje
         depth["Depth"] = data.depth();
         return depth;
     }
-    case core::TimeKeyType_Opa: {
-        auto data = dynamic_cast<const core::OpaKey*>(timeKey)->data();
+    case core::TimeKeyType_Opacity: {
+        auto data = dynamic_cast<const core::OpacityKey*>(timeKey)->data();
         // Data types: Opacity (float) //
-        QJsonObject opa;
-        addStandardToObj(&opa, data, keyType, timeKey);
-        opa["Opacity"] = data.opacity();
-        return opa;
+        QJsonObject opacity;
+        addStandardToObj(&opacity, data, keyType, timeKey);
+        opacity["Opacity"] = data.opacity();
+        return opacity;
     }
     case core::TimeKeyType_Bone: {
         auto data = dynamic_cast<const core::BoneKey*>(timeKey)->data();
@@ -841,7 +1023,7 @@ QJsonObject getKeyTypeSerialized(int keyType, core::TimeKey* timeKey, core::Obje
 }
 
 void TimeLineEditorWidget::onCopyKeyTriggered(bool) {
-    mCopyTargets = mTargets;
+    mCopyTargets = mEditor ? targetsForSelection(mTargets, mEditor->selection()) : mTargets;
     QSettings settings;
     auto cbCopy = settings.value("generalsettings/keys/autocb");
     bool copyToCb = !cbCopy.isValid() || cbCopy.toBool();
@@ -859,10 +1041,10 @@ void TimeLineEditorWidget::onCopyCBTriggered(bool) {
     targets["TargetsSize"] = mCopyTargets.targets().size();
     qDebug() << mCopyTargets.targets().size();
     for (auto cTarget : mCopyTargets.targets()) {
-        qDebug() << cTarget.pos.key();
-        core::TimeKeyType keyType = cTarget.pos.key()->type();
-        qDebug() << keyType;
-        core::TimeKey* timeKey = cTarget.node->timeLine()->timeKey(keyType, cTarget.pos.key()->frame());
+        core::TimeKey* timeKey = cTarget.pos.key();
+        if (!timeKey)
+            continue;
+        core::TimeKeyType keyType = timeKey->type();
         keys.append(getKeyTypeSerialized(keyType, timeKey, cTarget.node));
     }
     targets["Keys"] = keys;
@@ -1101,7 +1283,7 @@ static QString keyToString(const core::TimeKeyType key) {
         return "Depth";
     case core::TimeKeyType_Move:
         return "Move";
-    case core::TimeKeyType_Opa:
+    case core::TimeKeyType_Opacity:
         return "Opacity";
     case core::TimeKeyType_Pose:
         return "Pose";
@@ -1232,13 +1414,7 @@ void TimeLineEditorWidget::onDeleteKeyTriggered(bool) {
     if (!mEditor)
         return;
 
-    core::TimeLineEvent live;
-    live.setType(mTargets.type());
-    for (const core::TimeLineEvent::Target& target : mTargets.targets()) {
-        if (!target.node || target.pos.isNull() || !target.pos.isExist())
-            continue; // the key is not where the menu said it was any more
-        live.pushTarget(*target.node, target.pos);
-    }
+    core::TimeLineEvent live = targetsForSelection(mTargets, mEditor->selection());
     if (live.targets().isEmpty())
         return;
 
@@ -1393,7 +1569,17 @@ void TimeLineEditorWidget::pushEasingChipState() {
             core::TimeLine* line = target.pos.line();
             if (!line)
                 continue;
-            core::TimeKey* key = line->timeKey(target.pos.type(), target.pos.index());
+
+            const QVector<int> named =
+                selection.componentsOf(target, core::easingStorageCount(target.pos.type()));
+            const int component = named.isEmpty() ? 0 : named.first();
+
+            core::TimeKey* key = nullptr;
+            if (core::TimeLine::usesChannelTracks(target.pos.type())) {
+                key = line->channelKey(target.pos.type(), component, target.pos.index());
+            } else {
+                key = line->timeKey(target.pos.type(), target.pos.index());
+            }
             if (!key)
                 continue; // a stale entry names a key the document no longer holds
             // ONE EASING PER KEY for the CHIP'S DISPLAY. Each marker now carries
@@ -1405,9 +1591,6 @@ void TimeLineEditorWidget::pushEasingChipState() {
             // it (processor order - a single marker answers itself, a whole-key
             // entry answers 0). The same question openEasingPicker asks, so the chip
             // and the picker cannot open on two different curves.
-            const QVector<int> named =
-                selection.componentsOf(target, core::easingStorageCount(target.pos.type()));
-            const int component = named.isEmpty() ? 0 : named.first();
             bool alreadyNamed = false;
             for (int j = 0; j < i; ++j) {
                 const core::TimeLineEvent::Target& earlier = selection.items()[j].target;

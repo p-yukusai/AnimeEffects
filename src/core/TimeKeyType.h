@@ -8,7 +8,7 @@ enum TimeKeyType {
     TimeKeyType_Rotate,
     TimeKeyType_Scale,
     TimeKeyType_Depth,
-    TimeKeyType_Opa,
+    TimeKeyType_Opacity,
     TimeKeyType_Bone,
     TimeKeyType_Pose,
     TimeKeyType_Mesh,

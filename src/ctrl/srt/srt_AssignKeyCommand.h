@@ -2,9 +2,12 @@
 #define CTRL_SRT_ASSIGNKEYCOMMAND_H
 
 #include <QVector>
+#include <QVector2D>
 #include "cmnd/Stable.h"
 #include "core/TimeKey.h"
 #include "core/TimeKeyType.h"
+#include "core/ChannelKey.h"
+#include "core/ChannelTrack.h"
 #include "core/TimeLine.h"
 #include "ctrl/proportional/prop_Keys.h"
 
@@ -83,6 +86,203 @@ private:
     bool mDone;
 };
 
+
+// ONE TRACK-BACKED TRANSFORM CHANNEL'S VALUE, rewritten by every drag step.
+// The SRT modes still assemble a typed Move/Rotate/Scale Data; for a migrated
+// property that Data is applied to the channel key (or the channel base) the
+// proxy names. Proportional followers are not carried here yet; the migrated
+// transform types do not have proportional keys until that module is ported.
+class AssignChannelValueCommand: public cmnd::Stable {
+public:
+    AssignChannelValueCommand(
+        core::ChannelTrack& aTrack, core::ChannelKey& aKey, float aValue
+    ):
+        mTrack(aTrack), mKey(aKey), mPrev(), mNext(aValue), mDone(false) {}
+
+    void modifyValue(float aValue) {
+        mNext = aValue;
+        if (mDone)
+            redo();
+    }
+
+    void exec() override {
+        mPrev = mKey.value();
+        redo();
+    }
+    void undo() override {
+        mKey.setValue(mPrev);
+        mDone = false;
+    }
+    void redo() override {
+        mKey.setValue(mTrack.clamp(mTrack.quantize(mNext)));
+        mDone = true;
+    }
+
+private:
+    core::ChannelTrack& mTrack;
+    core::ChannelKey& mKey;
+    float mPrev;
+    float mNext;
+    bool mDone;
+};
+
+class AssignChannelBaseCommand: public cmnd::Stable {
+public:
+    AssignChannelBaseCommand(core::ChannelTrack& aTrack, float aValue):
+        mTrack(aTrack), mPrev(), mNext(aValue), mDone(false) {}
+
+    void modifyValue(float aValue) {
+        mNext = aValue;
+        if (mDone)
+            redo();
+    }
+
+    void exec() override {
+        mPrev = mTrack.baseValue();
+        redo();
+    }
+    void undo() override {
+        mTrack.setBaseValue(mPrev);
+        mDone = false;
+    }
+    void redo() override {
+        mTrack.setBaseValue(mNext);
+        mDone = true;
+    }
+
+private:
+    core::ChannelTrack& mTrack;
+    float mPrev;
+    float mNext;
+    bool mDone;
+};
+
+// A whole SCALE key's two channel writes, rewritten by every drag step. The
+// command names both channel keys (or neither, for the base pair) so one undo
+// entry restores X and Y together.
+class AssignScaleTrackCommand: public cmnd::Stable {
+public:
+    AssignScaleTrackCommand(
+        core::ChannelTrack& aXTrack, core::ChannelKey* aXKey,
+        core::ChannelTrack& aYTrack, core::ChannelKey* aYKey, const QVector2D& aValue
+    ):
+        mXTrack(aXTrack), mYTrack(aYTrack), mXKey(aXKey), mYKey(aYKey),
+        mPrev(), mNext(aValue), mDone(false) {}
+
+    void modifyValue(const QVector2D& aValue) {
+        mNext = aValue;
+        if (mDone)
+            redo();
+    }
+
+    void exec() override {
+        mPrev = current();
+        redo();
+    }
+    void undo() override {
+        write(mPrev);
+        mDone = false;
+    }
+    void redo() override {
+        write(mNext);
+        mDone = true;
+    }
+
+private:
+    QVector2D current() const {
+        return QVector2D(
+            mXKey ? mXKey->value() : mXTrack.baseValue(),
+            mYKey ? mYKey->value() : mYTrack.baseValue()
+        );
+    }
+    void write(const QVector2D& aValue) {
+        if (mXKey) {
+            mXKey->setValue(mXTrack.clamp(mXTrack.quantize(aValue.x())));
+            mYKey->setValue(mYTrack.clamp(mYTrack.quantize(aValue.y())));
+        } else {
+            mXTrack.setBaseValue(aValue.x());
+            mYTrack.setBaseValue(aValue.y());
+        }
+    }
+
+    core::ChannelTrack& mXTrack;
+    core::ChannelTrack& mYTrack;
+    core::ChannelKey* mXKey;
+    core::ChannelKey* mYKey;
+    QVector2D mPrev;
+    QVector2D mNext;
+    bool mDone;
+};
+
+// A whole MOVE key: position X/Y and centroid X/Y, rewritten by every drag
+// step. The state (spline mode) is untouched by a transform drag.
+class AssignMoveTrackCommand: public cmnd::Stable {
+public:
+    struct Channels {
+        core::ChannelTrack* track[4] = {};
+        core::ChannelKey* key[4] = {};
+    };
+
+    AssignMoveTrackCommand(const Channels& aChannels, const QVector2D& aPos, const QVector2D& aCentroid):
+        mChannels(aChannels), mPrevPos(), mPrevCentroid(), mNextPos(aPos), mNextCentroid(aCentroid), mDone(false) {}
+
+    void modifyValue(const QVector2D& aPos, const QVector2D& aCentroid) {
+        mNextPos = aPos;
+        mNextCentroid = aCentroid;
+        if (mDone)
+            redo();
+    }
+
+    void exec() override {
+        mPrevPos = currentPos();
+        mPrevCentroid = currentCentroid();
+        redo();
+    }
+    void undo() override {
+        write(mPrevPos, mPrevCentroid);
+        mDone = false;
+    }
+    void redo() override {
+        write(mNextPos, mNextCentroid);
+        mDone = true;
+    }
+
+private:
+    QVector2D currentPos() const {
+        return QVector2D(
+            mChannels.key[0] ? mChannels.key[0]->value() : mChannels.track[0]->baseValue(),
+            mChannels.key[1] ? mChannels.key[1]->value() : mChannels.track[1]->baseValue()
+        );
+    }
+    QVector2D currentCentroid() const {
+        return QVector2D(
+            mChannels.key[2] ? mChannels.key[2]->value() : mChannels.track[2]->baseValue(),
+            mChannels.key[3] ? mChannels.key[3]->value() : mChannels.track[3]->baseValue()
+        );
+    }
+    void write(const QVector2D& aPos, const QVector2D& aCentroid) {
+        const float values[4] = { aPos.x(), aPos.y(), aCentroid.x(), aCentroid.y() };
+        for (int c = 0; c < 4; ++c) {
+            if (!mChannels.track[c]) {
+                continue;
+            }
+            if (mChannels.key[c]) {
+                mChannels.key[c]->setValue(
+                    mChannels.track[c]->clamp(mChannels.track[c]->quantize(values[c]))
+                );
+            } else {
+                mChannels.track[c]->setBaseValue(values[c]);
+            }
+        }
+    }
+
+    Channels mChannels;
+    QVector2D mPrevPos;
+    QVector2D mPrevCentroid;
+    QVector2D mNextPos;
+    QVector2D mNextCentroid;
+    bool mDone;
+};
 } // namespace srt
 } // namespace ctrl
 

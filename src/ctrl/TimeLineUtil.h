@@ -15,7 +15,7 @@
 #include "core/BlurKey.h"
 #include "core/WaveKey.h"
 #include "core/DepthKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/HsvKey.h"
 #include "core/BoneKey.h"
 #include "core/PoseKey.h"
@@ -59,6 +59,8 @@ namespace TimeLineUtil {
         struct Context {
             core::TimeLine* line = nullptr;
             core::TimeKeyType type = core::TimeKeyType_Move;
+            int component = -1; // set for Image's independent offset channels
+            const core::TimeLine::MapType* map = nullptr; // bundle map or the single channel's map
             QVector<int> targetIndices; // into mSortedTargets
             QVector<SelectedProportional> selected;
             QVector<ProjectedKey> projected;
@@ -87,6 +89,12 @@ namespace TimeLineUtil {
     // targets collapse, and default/missing keys are ignored - nothing valid
     // targeted means no command.
     void setProportionalKeys(core::Project& aProject, const core::TimeLineEvent& aTargets, bool aEnabled);
+    // One undo step: set/clear the link bit on every channel key at aFrame.
+    // Linking is refused unless every graphable channel has a key there.
+    void setFrameLinked(
+        core::Project& aProject, core::ObjectNode& aTarget, core::TimeKeyType aType, int aFrame,
+        bool aLinked
+    );
 
     //-------------------------------------------------------------------------------------------------
     // The VALUE half of the graph's 2-axis key move: rewrites ONE numeric
@@ -283,7 +291,8 @@ namespace TimeLineUtil {
     };
 
     //-------------------------------------------------------------------------------------------------
-    /// @note you can also set a data to default keys in following assignment functions.
+    /// @note you can also set a data to an unkeyed value (the timeline's base value)
+    /// in the following assignment functions.
     ///@{
     void assignMoveKeyData(
         core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const core::MoveKey::Data& aNewData
@@ -301,8 +310,8 @@ namespace TimeLineUtil {
         core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const core::DepthKey::Data& aNewData
     );
 
-    void assignOpaKeyData(
-        core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const core::OpaKey::Data& aNewData
+    void assignOpacityKeyData(
+        core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const core::OpacityKey::Data& aNewData
     );
 
     void assignHSVKeyData(
@@ -329,7 +338,10 @@ namespace TimeLineUtil {
     assignImageKeyResource(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, img::ResourceNode& aNewData);
 
     void
-    assignImageKeyOffset(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const QVector2D& aNewData);
+    assignImageKeyOffset(
+        core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const QVector2D& aNewData,
+        int aComponent = -1
+    );
 
     void assignImageKeyCellSize(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, int aNewData);
     ///@}
@@ -337,7 +349,7 @@ namespace TimeLineUtil {
     //-------------------------------------------------------------------------------------------------
     // Append one key's creation commands to a macro the CALLER owns - no macro, no
     // notifier. pushNewKey() is this plus one macro and one PushKey event, and the tree's
-    // "Add default keys" uses it directly so a layer's whole set of default channels is a
+    // "Add keys at playhead" uses it directly so a layer's whole set of channels is a
     // single undo step and a single event.
     void appendNewKey(
         core::Project& aProject,
@@ -355,7 +367,7 @@ namespace TimeLineUtil {
 
     void pushNewDepthKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::DepthKey* aKey);
 
-    void pushNewOpaKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::OpaKey* aKey);
+    void pushNewOpacityKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::OpacityKey* aKey);
 
     void pushNewHSVKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::HSVKey* aKey);
     void pushNewBlurKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::BlurKey* aKey);
@@ -401,7 +413,7 @@ namespace TimeLineUtil {
     // A mask starts at REVEAL ALL (the field is 255 everywhere), so adding one
     // changes nothing on screen until it is painted - unlike a filter mask, whose
     // neutral is per input.
-    // The KEY a stroke may write: the one at aFrame, else the default key, else
+    // The KEY a stroke may write: the one at aFrame, else the base value, else
     // nullptr (nothing to paint - the card's "Add mask" is the entry, and the tool
     // does not invent a mask behind the user's back).
     core::MaskKey* maskKeyForPaint(core::ObjectNode& aTarget, int aFrame);

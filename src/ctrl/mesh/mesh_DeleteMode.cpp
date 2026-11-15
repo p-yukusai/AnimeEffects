@@ -2,6 +2,7 @@
 #include "core/TimeLine.h"
 #include "ctrl/CmndName.h"
 #include "ctrl/mesh/mesh_DeleteMode.h"
+#include "ctrl/bone/bone_MeshWeightRemap.h"
 #include "ctrl/mesh/mesh_Renderer.h"
 #include "ctrl/mesh/mesh_Notifier.h"
 
@@ -64,8 +65,20 @@ namespace mesh {
             cmnd::ScopedMacro macro(stack, CmndName::tr("Remove mesh key vertex"));
             // set notifier
             macro.grabListener(new Notifier(mProject, mTarget, *mKeyOwner.key, eventType));
+            // One undo step: the removal and the weight remap that follows from
+            // its index changes. Captured before the geometry command executes.
+            cmnd::Base* remap = nullptr;
+            if (!mKeyOwner.owns()) {
+                remap = bone::createMeshWeightsRemap(
+                    mProject, mTarget, *mKeyOwner.key, mKeyOwner.key->data().vertices()
+                );
+            }
+
             // push command
             stack.push(mMeshAccessor.createRemover(aVtx));
+            if (remap) {
+                stack.push(remap);
+            }
         }
     }
 
@@ -77,8 +90,18 @@ namespace mesh {
             cmnd::ScopedMacro macro(stack, CmndName::tr("Remove mesh key face"));
             // set notifier
             macro.grabListener(new Notifier(mProject, mTarget, *mKeyOwner.key, eventType));
+            cmnd::Base* remap = nullptr;
+            if (!mKeyOwner.owns()) {
+                remap = bone::createMeshWeightsRemap(
+                    mProject, mTarget, *mKeyOwner.key, mKeyOwner.key->data().vertices()
+                );
+            }
+
             // push command
             stack.push(mMeshAccessor.createRemover(aFace));
+            if (remap) {
+                stack.push(remap);
+            }
         }
     }
 

@@ -61,7 +61,7 @@ The picture: [`mask-surfaces.svg`](mask-surfaces.svg).
 2. **Neutral is reveal-all**, unlike a filter mask's per-channel neutral: adding one changes nothing.
 3. **`mask × present alpha`**, after the node's own filters — a blurred layer cannot bleed past its matte.
 4. **Raster only.** No vector paths.
-5. **PSD masks import** as one default key on the node they belong to, document-space rect. This is
+5. **PSD masks import** as one base value on the node they belong to, document-space rect. This is
    also what retires the "clipping as a mask stand-in" workaround for import fidelity.
 6. **Folders too** — a folder mask rides the composite path that folder opacity already needs.
 

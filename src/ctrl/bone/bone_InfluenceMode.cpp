@@ -5,6 +5,7 @@
 #include "ctrl/CmndName.h"
 #include "ctrl/bone/bone_InfluenceMode.h"
 #include "ctrl/bone/bone_Renderer.h"
+#include "ctrl/bone/bone_WeightHeatmap.h"
 #include "ctrl/bone/bone_Notifier.h"
 
 using namespace core;
@@ -19,6 +20,8 @@ namespace bone {
         mTargetMtx(aTarget.mtx),
         mTargetInvMtx(aTarget.invMtx),
         mFocuser(),
+        mHoverBone(),
+        mParam(),
         mFocusHAxis(),
         mFocusVAxis(),
         mFocusChild(),
@@ -29,8 +32,13 @@ namespace bone {
         mFocuser.setTargetMatrix(mTargetMtx);
     }
 
+    void InfluenceMode::updateParam(const BoneParam& aParam) { mParam = aParam; }
+
     bool InfluenceMode::updateCursor(const CameraInfo& aCamera, const AbstractCursor& aCursor) {
         auto focus = mFocuser.update(aCamera, aCursor.screenPos());
+        if (focus) {
+            mHoverBone = focus;
+        }
         bool updated = mFocuser.focusChanged();
 
         if (aCursor.emitsLeftPressedEvent()) {
@@ -87,6 +95,17 @@ namespace bone {
     }
 
     void InfluenceMode::renderQt(const RenderInfo& aInfo, QPainter& aPainter) {
+        // The bone being adjusted (or the last one hovered) gets its field
+        // painted over the layers it deforms; the handles stay above it.
+        if (mParam.showWeightHeatmap) {
+            Bone2* active = mFocuser.selectingBone();
+            if (!active)
+                active = mHoverBone;
+            if (active) {
+                drawWeightHeatmap(aPainter, aInfo, *mKeyOwner.key, *active, mTargetMtx);
+            }
+        }
+
         bone::Renderer renderer(aPainter, aInfo);
         renderer.setAntialiasing(true);
         renderer.setFocusConnector(true);
@@ -115,7 +134,7 @@ namespace bone {
             Notifier notifier(mProject, mTarget, *mKeyOwner.key, eventType);
             notifier.notify();
         } else {
-            cmnd::ScopedMacro macro(stack, CmndName::tr("Update bone influence"));
+            cmnd::ScopedMacro macro(stack, CmndName::tr("Update bone envelope"));
             macro.grabListener(new Notifier(mProject, mTarget, *mKeyOwner.key, eventType));
 
             // push command

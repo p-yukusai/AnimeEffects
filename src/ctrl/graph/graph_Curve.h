@@ -35,6 +35,10 @@ public:
     const Channel& channel() const { return mChannel; }
     // The layer this curve belongs to.
     const core::TimeLine& timeLine() const { return *mTimeLine; }
+    // Non-null when this curve reads a migrated per-channel track. The caller
+    // can still use the normal keys()/sample()/segment() API.
+    const core::ChannelTrack* track() const { return mTrack; }
+    bool isTrackBacked() const { return mTrack != nullptr; }
     bool isEmpty() const { return keys().isEmpty(); }
 
     // The channel's keys in frame order (empty when the map holds none).
@@ -213,6 +217,7 @@ private:
     float evaluateOver(const Prepared& aPrep, float aAt) const;
 
     const core::TimeLine* mTimeLine;
+    const core::ChannelTrack* mTrack = nullptr;
     Channel mChannel;
     bool mLoop;
     util::Range mLoopRange;

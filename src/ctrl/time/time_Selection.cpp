@@ -68,9 +68,34 @@ namespace time {
     }
 
     bool Selection::sameKey(const TimeLineEvent::Target& aLhs, const TimeLineEvent::Target& aRhs) {
-        // the map is unique per (line, type); address equality is exact
-        return &aLhs.pos.map() == &aRhs.pos.map() && aLhs.pos.type() == aRhs.pos.type() &&
-               aLhs.pos.index() == aRhs.pos.index();
+        if (aLhs.pos.type() != aRhs.pos.type() || aLhs.pos.index() != aRhs.pos.index())
+            return false;
+        if (aLhs.pos.type() != core::TimeKeyType_TERM
+            && core::TimeLine::usesChannelTracks(aLhs.pos.type())) {
+            // A track-backed key spans one maps per channel; the KEY is
+            // (line, type, frame), not the channel map the marker names.
+            return aLhs.pos.line() == aRhs.pos.line();
+        }
+        // the bundle map is unique per (line, type); address equality is exact
+        return &aLhs.pos.map() == &aRhs.pos.map();
+    }
+
+    int Selection::entryComponent(const TimeLineEvent::Target& aTarget) {
+        const TimeKeyType type = aTarget.pos.type();
+        if (aTarget.pos.component() == TimeKeyPos::kStateComponent) {
+            return TimeKeyPos::kStateComponent;
+        }
+        const TimeLine* line = aTarget.pos.line();
+        if (line && aTarget.pos.component() >= 0) {
+            if (type == TimeKeyType_Image) {
+                return aTarget.pos.component();
+            }
+            if (TimeLine::usesChannelTracks(type)
+                && !line->isFrameLinked(type, aTarget.pos.index())) {
+                return aTarget.pos.component();
+            }
+        }
+        return kKeyLevel;
     }
 
     bool Selection::sameEntries(const QVector<Item>& aLhs, const QVector<Item>& aRhs) {
@@ -108,9 +133,10 @@ namespace time {
         // not a change, and is not announced as one.
         QVector<Item> next;
         for (const TimeLineEvent::Target& src : aEvent.targets()) {
+            const int component = entryComponent(src);
             bool duplicate = false;
             for (const Item& item : next) {
-                if (sameKey(item.target, src)) {
+                if (item.component == component && sameKey(item.target, src)) {
                     duplicate = true;
                     break;
                 }
@@ -118,7 +144,7 @@ namespace time {
             if (duplicate)
                 continue;
             TimeLineEvent::Target t = src;
-            next.push_back(Item(t, t.pos.key()));
+            next.push_back(Item(t, t.pos.key(), component));
         }
         if (sameEntries(mItems, next))
             return false;
@@ -131,9 +157,17 @@ namespace time {
     bool Selection::add(const TimeLineEvent& aEvent) {
         bool changed = false;
         for (const TimeLineEvent::Target& src : aEvent.targets()) {
-            if (!contains(src)) {
+            const int component = entryComponent(src);
+            bool covered = false;
+            for (const Item& item : mItems) {
+                if (item.component == component && sameKey(item.target, src)) {
+                    covered = true;
+                    break;
+                }
+            }
+            if (!covered) {
                 TimeLineEvent::Target t = src;
-                mItems.push_back(Item(t, t.pos.key()));
+                mItems.push_back(Item(t, t.pos.key(), component));
                 changed = true;
             }
         }
@@ -188,7 +222,7 @@ namespace time {
     bool Selection::setMarker(const TimeLineEvent::Target& aTarget, int aComponent) {
         TimeLineEvent::Target t = aTarget;
         QVector<Item> next;
-        next.push_back(Item(t, t.pos.key(), aComponent < 0 ? kKeyLevel : aComponent));
+        next.push_back(Item(t, t.pos.key(), aComponent == kKeyLevel ? kKeyLevel : aComponent));
         if (sameEntries(mItems, next))
             return false;
         mItems = next;
@@ -201,11 +235,12 @@ namespace time {
         // The component a caller may hand in is kKeyLevel itself, and then the
         // question is "does anything name this key", not "does anything name this
         // component": a key already selected must not gain a second entry.
-        const bool covered = (aComponent < 0) ? contains(aTarget) : containsMarker(aTarget, aComponent);
+        const bool covered = (aComponent == kKeyLevel) ? contains(aTarget)
+                                                       : containsMarker(aTarget, aComponent);
         if (covered)
             return false;
         TimeLineEvent::Target t = aTarget;
-        mItems.push_back(Item(t, t.pos.key(), aComponent < 0 ? kKeyLevel : aComponent));
+        mItems.push_back(Item(t, t.pos.key(), aComponent == kKeyLevel ? kKeyLevel : aComponent));
         rebuildFocus();
         notifyChanged();
         return true;
@@ -215,7 +250,8 @@ namespace time {
         bool removed = false;
         for (auto itr = mItems.begin(); itr != mItems.end();) {
             const bool names = sameKey(itr->target, aTarget)
-                               && (aComponent < 0 || itr->component == kKeyLevel || itr->component == aComponent);
+                               && (aComponent == kKeyLevel || itr->component == kKeyLevel
+                                   || itr->component == aComponent);
             if (names) {
                 itr = mItems.erase(itr);
                 removed = true;

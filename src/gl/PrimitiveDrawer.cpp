@@ -505,6 +505,55 @@ void PrimitiveDrawer::drawPoint(const QPointF& aCenter) {
     drawEllipseImpl(aCenter, 1.0f, 1.0f, kDivision);
 }
 
+void PrimitiveDrawer::drawPoints(const QPointF* aPoints, int aCount) {
+    if (!aPoints || aCount <= 0 || !mScheduledState.hasPen)
+        return;
+
+    // GL_POINTS has no sub-coordinates, and a non-solid pen selects the
+    // stipple shader, which reads them. Draw the cloud with a solid pen of the
+    // caller's colour and width, then put the caller's style back for whatever
+    // is scheduled after it.
+    const PenStyle originalStyle = mScheduledState.penStyle;
+    if (originalStyle != PenStyle_Solid) {
+        Command solid;
+        solid.type = Type_Pen;
+        solid.attr.pen.color = mScheduledState.penColor;
+        solid.attr.pen.width = mScheduledState.penWidth;
+        solid.attr.pen.style = PenStyle_Solid;
+        pushStateCommand(solid);
+    }
+
+    Command command;
+    command.type = Type_Draw;
+    command.attr.draw.prim = GL_POINTS;
+    command.attr.draw.usePen = true;
+
+    // One command per slot. The pen width is the point size (see flushCommands,
+    // which sets glPointSize for a GL_POINTS draw), so every point in the cloud
+    // shares the colour and size of the pen that scheduled it.
+    int done = 0;
+    while (done < aCount) {
+        const int count = std::min(aCount - done, mVtxCountOfSlot);
+        command.attr.draw.count = count;
+
+        mPosBuffer.resize(count);
+        for (int i = 0; i < count; ++i) {
+            mPosBuffer[i].set(float(aPoints[done + i].x()), float(aPoints[done + i].y()));
+        }
+        pushDrawCommand(command, mPosBuffer.data());
+        done += count;
+    }
+
+    if (originalStyle != PenStyle_Solid) {
+        Command restore;
+        restore.type = Type_Pen;
+        restore.attr.pen.color = mScheduledState.penColor;
+        restore.attr.pen.width = mScheduledState.penWidth;
+        restore.attr.pen.style = originalStyle;
+        pushStateCommand(restore);
+    }
+}
+
 void PrimitiveDrawer::drawLine(const QPointF& aFrom, const QPointF& aTo) {
     if (!mScheduledState.hasPen)
         return;
@@ -882,6 +931,12 @@ void PrimitiveDrawer::flushCommands() {
         case Type_Draw: {
             bindAppositeShader(index);
             setColorToCurrentShader(command.attr.draw.usePen);
+            // GL_POINTS has no rasteriser width of its own; the scheduler's pen
+            // width is the point size (a screen-space size, like a line's). The
+            // state is left as-is afterwards: the next primitive ignores it.
+            if (command.attr.draw.prim == GL_POINTS) {
+                ggl.glPointSize(std::max(1.0f, mAppliedState.penWidth));
+            }
             ggl.glDrawArrays(command.attr.draw.prim, offset, command.attr.draw.count);
             offset += command.attr.draw.count;
         } break;

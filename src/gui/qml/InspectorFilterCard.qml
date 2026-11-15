@@ -337,6 +337,8 @@ Item {
                     decimals: 0
                     label: filterRow.hueLabel
                     prefix: "H"
+                    row: filterRow
+                    channel: 0
                     onValueEdited: (value) => filterRow.setHue(Math.round(value))
                 }
             }
@@ -352,6 +354,8 @@ Item {
                     decimals: 0
                     label: filterRow.saturationLabel
                     prefix: "S"
+                    row: filterRow
+                    channel: 1
                     onValueEdited: (value) => filterRow.setSaturation(Math.round(value))
                 }
             }
@@ -367,6 +371,8 @@ Item {
                     decimals: 0
                     label: filterRow.valueLabel
                     prefix: "V"
+                    row: filterRow
+                    channel: 2
                     onValueEdited: (value) => filterRow.setValue(Math.round(value))
                 }
             }
@@ -422,6 +428,8 @@ Item {
                     decimals: 1
                     label: filterRow.blurXLabel
                     prefix: "X"
+                    row: filterRow
+                    channel: 0
                     onValueEdited: (value) => filterRow.setBlurX(value)
                 }
             }
@@ -437,6 +445,8 @@ Item {
                     decimals: 1
                     label: filterRow.blurYLabel
                     prefix: "Y"
+                    row: filterRow
+                    channel: 1
                     onValueEdited: (value) => filterRow.setBlurY(value)
                 }
             }
@@ -453,6 +463,8 @@ Item {
                     label: qsTr("Blur angle")
                     prefixIcon: "angle"
                     suffix: "°"
+                    row: filterRow
+                    channel: 2
                     onValueEdited: (value) => filterRow.setBlurAngle(value)
                 }
             }
@@ -471,6 +483,8 @@ Item {
                     step: 0.5
                     decimals: 1
                     label: qsTr("Wave strength")
+                    row: filterRow
+                    channel: 0
                     onValueEdited: (value) => filterRow.setWaveStrength(value)
                 }
             }
@@ -485,6 +499,8 @@ Item {
                     step: 1
                     decimals: 0
                     label: qsTr("Wave wavelength")
+                    row: filterRow
+                    channel: 1
                     onValueEdited: (value) => filterRow.setWaveWavelength(value)
                 }
             }
@@ -501,6 +517,8 @@ Item {
                     label: qsTr("Wave direction")
                     prefixIcon: "angle"
                     suffix: "\u00b0"
+                    row: filterRow
+                    channel: 2
                     onValueEdited: (value) => filterRow.setWaveDirection(value)
                 }
             }
@@ -515,6 +533,8 @@ Item {
                     step: 0.05
                     decimals: 2
                     label: qsTr("Wave phase")
+                    row: filterRow
+                    channel: 3
                     onValueEdited: (value) => filterRow.setWavePhase(value)
                 }
             }
@@ -529,6 +549,8 @@ Item {
                     step: 0.05
                     decimals: 2
                     label: qsTr("Dual wave amount")
+                    row: filterRow
+                    channel: 4
                     onValueEdited: (value) => filterRow.setWaveMix(value)
                 }
             }
@@ -618,9 +640,12 @@ Item {
                         size: 20
                         iconSize: 16
                         iconName: "paint-brush"
-                        label: filterRow.paintMaskLabel
+                        label: filterRow.amountPaintActive ? qsTr("Painting this mask")
+                                                           : filterRow.paintMaskLabel
                         showTip: true
-                        opacity: root.headerHovered ? 1.0 : 0.75
+                        enabled: filterRow.enabled && !filterRow.amountPaintActive
+                        opacity: filterRow.amountPaintActive ? 1.0
+                               : (root.headerHovered ? 0.95 : 0.75)
                         onClicked: filterRow.paintMask(0)
                     }
                     AeIconButton {
@@ -651,9 +676,12 @@ Item {
                         size: 20
                         iconSize: 16
                         iconName: "paint-brush"
-                        label: filterRow.paintTimeMaskLabel
+                        label: filterRow.timePaintActive ? qsTr("Painting this mask")
+                                                        : filterRow.paintTimeMaskLabel
                         showTip: true
-                        opacity: root.headerHovered ? 1.0 : 0.75
+                        enabled: filterRow.enabled && !filterRow.timePaintActive
+                        opacity: filterRow.timePaintActive ? 1.0
+                               : (root.headerHovered ? 0.95 : 0.75)
                         onClicked: filterRow.paintMask(1)
                     }
                     AeIconButton {

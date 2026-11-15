@@ -29,8 +29,8 @@ namespace prop {
         // move
         void assignMoveEasing(util::Easing::Param);
         void assignMoveSpline(int);
-        void assignMovePosition(const QVector2D&);
-        void assignMoveCentroid(const QVector2D&);
+        void assignMovePosition(const QVector2D&, int aComponent = -1);
+        void assignMoveCentroid(const QVector2D&, int aComponent = -1);
 
         // rotate
         void assignRotateEasing(util::Easing::Param);
@@ -38,14 +38,14 @@ namespace prop {
 
         // scale
         void assignScaleEasing(util::Easing::Param);
-        void assignScaleRate(const QVector2D&);
+        void assignScaleRate(const QVector2D&, int aComponent = -1);
 
         // depth
         void assignDepthEasing(util::Easing::Param);
         void assignDepthPosition(float);
 
         // opa
-        void assignOpaEasing(util::Easing::Param);
+        void assignOpacityEasing(util::Easing::Param);
         void assignOpacity(float);
 
         // hsv
@@ -55,14 +55,14 @@ namespace prop {
         // blur
         void assignBlurEasing(util::Easing::Param);
         void assignBlur(float aAmount);
-        void assignBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg);
+        void assignBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg, int aComponent = -1);
         void assignBlurDirectional(bool aIsDirectional);
         core::BlurKey::Data blurData() const;
 
         // wave deform: the whole Data is written at once because nine fields
         // (five graph channels and four shape decisions) share one key, and a
         // per-field setter would have to be kept in step with the key's layout
-        void assignWave(const core::WaveKey::Data& aData);
+        void assignWave(const core::WaveKey::Data& aData, int aComponent = -1);
         core::WaveKey::Data waveData() const;
 
         // pose
@@ -73,7 +73,7 @@ namespace prop {
 
         // image
         void assignImageResource(img::ResourceNode&);
-        void assignImageOffset(const QVector2D&);
+        void assignImageOffset(const QVector2D&, int aComponent = -1);
         void assignImageCellSize(int);
 
         // new keys

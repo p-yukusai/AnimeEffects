@@ -2375,7 +2375,16 @@ a11y::Model buildAccessibilityModel(const GraphPanelModel& aModel, ctrl::GraphEd
     if (oneSelectedKey) {
         const core::TimeLineEvent::Target& target = selection.targets().first();
         const core::TimeLine* line = target.pos.line();
-        const core::TimeKey* key = line ? line->timeKey(target.pos.type(), target.pos.index()) : nullptr;
+        const core::TimeKey* key = nullptr;
+        if (line) {
+            key = core::TimeLine::usesChannelTracks(target.pos.type())
+                ? line->channelKey(
+                    target.pos.type(),
+                    target.pos.component() >= 0 ? target.pos.component() : 0,
+                    target.pos.index()
+                )
+                : line->timeKey(target.pos.type(), target.pos.index());
+        }
         const util::Easing::Param* easing =
             key ? ctrl::graph::Curve::easingOf(*key, target.pos.type(), 0) : nullptr;
         if (easing) {

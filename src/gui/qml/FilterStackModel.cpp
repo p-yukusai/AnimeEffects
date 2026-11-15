@@ -8,11 +8,16 @@
 #include <QVariant>
 
 #include "core/BlurKey.h"
+#include "core/ChannelKey.h"
+#include "cmnd/BasicCommands.h"
+#include "cmnd/ScopedMacro.h"
+#include "cmnd/Stack.h"
 #include "core/Constant.h"
 #include "core/FilterFrame.h"
 #include "core/HsvKey.h"
 #include "core/WaveKey.h"
 #include "core/TimeKeyExpans.h"
+#include "core/TimeKeyPos.h"
 #include "ctrl/TimeLineUtil.h"
 #include "gui/qml/InspectorViewModel.h"
 #include "gui/theme/Colors.h"
@@ -60,16 +65,28 @@ void FilterRowModel::refresh() {
     const int frame = mOwner.frame();
     const bool enabled = line->filterEnabled(mType);
     QString keyState;
-    if (line->map(mType).isEmpty())
-        keyState = QStringLiteral("static");
-    else if (line->hasTimeKey(mType, frame))
-        keyState = QStringLiteral("keyed");
-    else
-        keyState = QStringLiteral("animated");
+    bool hasKeys = false;
+    bool keyedHere = false;
+    if (core::TimeLine::usesChannelTracks(mType)) {
+        const core::PropertyTrack* prop = line->property(mType);
+        if (prop) {
+            for (int c = 0; c < prop->channelCount(); ++c) {
+                const core::ChannelTrack* channel = prop->channel(c);
+                hasKeys = hasKeys || (channel && !channel->keys().isEmpty());
+                keyedHere = keyedHere || line->hasChannelKey(mType, c, frame);
+            }
+        }
+    } else {
+        hasKeys = !line->map(mType).isEmpty();
+        keyedHere = line->hasTimeKey(mType, frame);
+    }
+    keyState = !hasKeys ? QStringLiteral("static")
+        : keyedHere       ? QStringLiteral("keyed")
+                          : QStringLiteral("animated");
 
     const QColor keyColor = theme::keyTypeColor(theme::Colors::current(), mType);
     const QVariantList before{mEnabled, mKeyState, mKeyColor, mSummary, mSummarySegments, mHasAmountMask,
-                              mHasTimeMask, mHue,
+                              mHasTimeMask, mAmountPaintActive, mTimePaintActive, mHue,
                               mSaturation, mValue, mAbsolute, mAmount, mDirectional, mBlurX,
                               mBlurY, mBlurAngle,
                               mWave.strength(), mWave.wavelength(), mWave.angleDeg(), mWave.phase(),
@@ -112,12 +129,9 @@ void FilterRowModel::refresh() {
         addSummary(trFilter("Direction"), direction + QStringLiteral("°"));
     } else if (isBlur()) {
         const auto data = mOwner.accessor().blurData();
-        const bool hasExplicit = line->hasTimeKey(mType, frame);
-        const auto* key = hasExplicit ? line->timeKey(mType, frame) : line->defaultKey(mType);
-        // Between keys the live radii are what the frame plays; the mode flag
-        // belongs to a stored key, so it falls back to linear when this frame
-        // is interpolated.
-        mDirectional = key ? static_cast<const core::BlurKey*>(key)->data().isDirectional() : false;
+        // The mode flag is the property's state track; the accessor already
+        // resolves the state at this frame (explicit, previous or base).
+        mDirectional = data.isDirectional();
         mAmount = current.blurX();
         mBlurX = current.blurX();
         mBlurY = current.blurY();
@@ -150,9 +164,13 @@ void FilterRowModel::refresh() {
     mHasTimeMask = hasTarget && ctrl::TimeLineUtil::hasFilterMask(
         *mOwner.target(), mType, core::FilterMaskChannel_TimeOffset
     );
+    mAmountPaintActive = mOwner.maskPaintIsFilter() && mOwner.maskPaintLane() == int(mType)
+        && mOwner.maskPaintChannel() == int(core::FilterMaskChannel_Amount);
+    mTimePaintActive = mOwner.maskPaintIsFilter() && mOwner.maskPaintLane() == int(mType)
+        && mOwner.maskPaintChannel() == int(core::FilterMaskChannel_TimeOffset);
 
     const QVariantList after{mEnabled, mKeyState, mKeyColor, mSummary, mSummarySegments, mHasAmountMask,
-                             mHasTimeMask, mHue,
+                             mHasTimeMask, mAmountPaintActive, mTimePaintActive, mHue,
                              mSaturation, mValue, mAbsolute, mAmount, mDirectional, mBlurX,
                              mBlurY, mBlurAngle,
                              mWave.strength(), mWave.wavelength(), mWave.angleDeg(), mWave.phase(),
@@ -160,6 +178,18 @@ void FilterRowModel::refresh() {
                              mWave.dualScale(), int(mWave.deform())};
     if (before != after)
         emit changed();
+}
+
+void FilterRowModel::refreshMaskPaintState() {
+    const bool amount = mOwner.maskPaintIsFilter() && mOwner.maskPaintLane() == int(mType)
+        && mOwner.maskPaintChannel() == int(core::FilterMaskChannel_Amount);
+    const bool time = mOwner.maskPaintIsFilter() && mOwner.maskPaintLane() == int(mType)
+        && mOwner.maskPaintChannel() == int(core::FilterMaskChannel_TimeOffset);
+    if (amount == mAmountPaintActive && time == mTimePaintActive)
+        return;
+    mAmountPaintActive = amount;
+    mTimePaintActive = time;
+    emit changed();
 }
 
 void FilterRowModel::refreshTheme() {
@@ -203,6 +233,118 @@ void FilterRowModel::toggleEnabled() {
 
 void FilterRowModel::remove() { mOwner.filters()->removeFilter(int(mType)); }
 
+bool FilterRowModel::channelKeyExists(int aComponent) const {
+    if (!core::TimeLine::usesChannelTracks(mType) || !mOwner.hasTarget()) {
+        return false;
+    }
+    if (aComponent < 0 || core::propertyChannelCount(mType) <= aComponent) {
+        return false;
+    }
+    return mOwner.timeLine()->hasChannelKey(mType, aComponent, mOwner.frame());
+}
+
+QString FilterRowModel::channelName(int aComponent) const {
+    switch (mType) {
+    case core::TimeKeyType_HSV:
+        return aComponent == 0 ? QStringLiteral("Hue")
+            : aComponent == 1 ? QStringLiteral("Saturation")
+                              : QStringLiteral("Value");
+    case core::TimeKeyType_Blur:
+        return aComponent == 0 ? QStringLiteral("Radius X")
+            : aComponent == 1 ? QStringLiteral("Radius Y")
+                              : QStringLiteral("Angle");
+    case core::TimeKeyType_Wave:
+        switch (aComponent) {
+        case 0: return QStringLiteral("Strength");
+        case 1: return QStringLiteral("Wavelength");
+        case 2: return QStringLiteral("Direction");
+        case 3: return QStringLiteral("Phase");
+        default: return QStringLiteral("Mix");
+        }
+    default:
+        return QString();
+    }
+}
+
+QString FilterRowModel::channelKeyAction(int aComponent) const {
+    if (!core::TimeLine::usesChannelTracks(mType) || !mOwner.hasTarget()) {
+        return QString();
+    }
+    if (aComponent < 0 || core::propertyChannelCount(mType) <= aComponent) {
+        return QString();
+    }
+    return channelKeyExists(aComponent)
+        ? QStringLiteral("Remove %1 Key").arg(channelName(aComponent))
+        : QStringLiteral("Add %1 Key").arg(channelName(aComponent));
+}
+
+float FilterRowModel::channelValue(int aComponent) const {
+    core::TimeLine* line = mOwner.timeLine();
+    if (!line) {
+        return 0.0f;
+    }
+    const core::TimeKeyExpans& current = line->current();
+    switch (mType) {
+    case core::TimeKeyType_HSV: {
+        const QList<int> values = current.hsv().hsv();
+        return float(values.value(aComponent, aComponent == 0 ? 0 : 100));
+    }
+    case core::TimeKeyType_Blur:
+        if (aComponent == 0) return current.blurX();
+        if (aComponent == 1) return current.blurY();
+        return current.angleDeg();
+    case core::TimeKeyType_Wave: {
+        const core::WaveKey::Data& data = current.wave();
+        switch (aComponent) {
+        case 0: return data.strength();
+        case 1: return data.wavelength();
+        case 2: return data.angleDeg();
+        case 3: return data.phase();
+        default: return data.mix();
+        }
+    }
+    default:
+        return 0.0f;
+    }
+}
+
+void FilterRowModel::toggleChannelKey(int aComponent) {
+    if (!mOwner.hasTarget() || !mOwner.project() || !mOwner.timeLine()
+        || !core::TimeLine::usesChannelTracks(mType)) {
+        return;
+    }
+    if (aComponent < 0 || core::propertyChannelCount(mType) <= aComponent) {
+        return;
+    }
+    core::TimeLine& line = *mOwner.timeLine();
+    const int frame = mOwner.frame();
+    cmnd::Stack& stack = mOwner.project()->commandStack();
+    cmnd::ScopedMacro macro(stack, QStringLiteral("Toggle channel key"));
+    auto* notifier = new ctrl::TimeLineUtil::Notifier(*mOwner.project());
+    const bool exists = line.hasChannelKey(mType, aComponent, frame);
+    notifier->event().setType(
+        exists ? core::TimeLineEvent::Type_RemoveKey : core::TimeLineEvent::Type_PushKey
+    );
+    notifier->event().pushTarget(
+        *mOwner.target(), core::TimeKeyPos(line, mType, frame, aComponent)
+    );
+    macro.grabListener(notifier);
+
+    if (exists) {
+        stack.push(line.createChannelRemover(mType, aComponent, frame, true));
+    } else {
+        auto* key = new core::ChannelKey(mType, aComponent);
+        key->setFrame(frame);
+        core::ChannelTrack* track = line.channelTrack(mType, aComponent);
+        const float value = channelValue(aComponent);
+        key->setValue(track ? track->clamp(track->quantize(value)) : value);
+        key->easing() = util::Easing::defaultParam();
+        stack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        stack.push(line.createChannelPusher(mType, aComponent, frame, key));
+    }
+    refresh();
+}
+
 void FilterRowModel::setHue(int aValue) {
     if (!isHSV() || !mOwner.hasTarget()) return;
     mOwner.accessor().assignHSV(aValue, QStringLiteral("hue"));
@@ -239,88 +381,90 @@ void FilterRowModel::setDirectional(bool aValue) {
     mOwner.refreshKeys();
 }
 
-void FilterRowModel::writeBlurEllipse() {
+void FilterRowModel::writeBlurEllipse(int aComponent) {
     if (!isBlur() || !mOwner.hasTarget()) return;
-    mOwner.accessor().assignBlurEllipse(float(mBlurX), float(mBlurY), float(mBlurAngle));
+    mOwner.accessor().assignBlurEllipse(
+        float(mBlurX), float(mBlurY), float(mBlurAngle), aComponent
+    );
     mOwner.refreshKeys();
 }
 
 void FilterRowModel::setBlurX(double aValue) {
     if (!isBlur()) return;
     mBlurX = aValue;
-    writeBlurEllipse();
+    writeBlurEllipse(0);
 }
 
 void FilterRowModel::setBlurY(double aValue) {
     if (!isBlur()) return;
     mBlurY = aValue;
-    writeBlurEllipse();
+    writeBlurEllipse(1);
 }
 
 void FilterRowModel::setBlurAngle(double aValue) {
     if (!isBlur()) return;
     mBlurAngle = aValue;
-    writeBlurEllipse();
+    writeBlurEllipse(2);
 }
 
 void FilterRowModel::setWaveStrength(double aValue) {
     if (!isWave()) return;
     mWave.setStrength(float(aValue));
-    writeWave();
+    writeWave(0);
 }
 
 void FilterRowModel::setWaveWavelength(double aValue) {
     if (!isWave()) return;
     mWave.setWavelength(float(aValue));
-    writeWave();
+    writeWave(1);
 }
 
 void FilterRowModel::setWaveDirection(double aValue) {
     if (!isWave()) return;
     mWave.setAngleDeg(float(aValue));
-    writeWave();
+    writeWave(2);
 }
 
 void FilterRowModel::setWavePhase(double aValue) {
     if (!isWave()) return;
     mWave.setPhase(float(aValue));
-    writeWave();
+    writeWave(3);
 }
 
 void FilterRowModel::setWaveMix(double aValue) {
     if (!isWave()) return;
     mWave.setMix(float(aValue));
-    writeWave();
+    writeWave(4);
 }
 
 void FilterRowModel::setWaveSpeed(double aValue) {
     if (!isWave()) return;
     mWave.setSpeed(float(aValue));
-    writeWave();
+    writeWave(-1);
 }
 
 void FilterRowModel::setWaveCrest(double aValue) {
     if (!isWave()) return;
     mWave.setCrest(float(aValue));
-    writeWave();
+    writeWave(-1);
 }
 
 void FilterRowModel::setWaveDualAngle(double aValue) {
     if (!isWave()) return;
     mWave.setDualAngleDeg(float(aValue));
-    writeWave();
+    writeWave(-1);
 }
 
 void FilterRowModel::setWaveDualScale(double aValue) {
     if (!isWave()) return;
     mWave.setDualScale(float(aValue));
-    writeWave();
+    writeWave(-1);
 }
 
 void FilterRowModel::setWaveRipple(bool aValue) {
     if (!isWave()) return;
     mWave.setDeform(aValue ? core::WaveKey::Deform_Ripple : core::WaveKey::Deform_Sway);
-    writeWave();
+    writeWave(-1);
 }
 
 void FilterRowModel::paintMask(int aChannel) {
@@ -342,9 +486,9 @@ void FilterRowModel::clearMask(int aChannel) {
     mOwner.refreshKeys();
 }
 
-void FilterRowModel::writeWave() {
+void FilterRowModel::writeWave(int aComponent) {
     if (!isWave() || !mOwner.hasTarget()) return;
-    mOwner.accessor().assignWave(mWave);
+    mOwner.accessor().assignWave(mWave, aComponent);
     mOwner.refreshKeys();
 }
 
@@ -498,6 +642,11 @@ void FilterStackModel::refresh() {
         row->refresh();
         row->setExpanded(mExpanded.contains(core::TimeKeyType(row->type())));
     }
+}
+
+void FilterStackModel::refreshMaskPaintState() {
+    for (FilterRowModel* row : mRows)
+        row->refreshMaskPaintState();
 }
 
 void FilterStackModel::refreshTheme() {

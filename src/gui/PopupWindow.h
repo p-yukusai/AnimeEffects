@@ -1,6 +1,7 @@
 #ifndef GUI_POPUPWINDOW_H
 #define GUI_POPUPWINDOW_H
 
+#include <QWindow>
 #include <QWidget>
 
 #ifdef Q_OS_WIN
@@ -71,6 +72,22 @@ inline void roundPopupWindow(QWidget* aWidget) {
     }
 #else
     Q_UNUSED(aWidget);
+#endif
+}
+
+// The Qt Quick popup's counterpart. Its window already exists when QML reports it
+// (`onOpened`), so winId() is only the native handle lookup.
+inline void roundPopupWindow(QWindow* aWindow) {
+    if (aWindow == nullptr)
+        return;
+#ifdef Q_OS_WIN
+    if (usesSystemPopupRounding()) {
+        const auto hwnd = reinterpret_cast<HWND>(aWindow->winId());
+        constexpr DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
+        DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+    }
+#else
+    Q_UNUSED(aWindow);
 #endif
 }
 

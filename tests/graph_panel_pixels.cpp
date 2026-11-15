@@ -324,7 +324,9 @@ bool AudioPlaybackWidget::deserialize(const QJsonObject&, std::vector<audioConfi
 // restatement of it, and the hover half is gui::panelPickAt on the model that editor
 // builds. QMouseEvent is only the press/release the cursor consumes.
 #include <QMouseEvent>
+#include "cmnd/BasicCommands.h"
 #include "cmnd/Stack.h"
+#include "core/ChannelKey.h"
 #include "core/AbstractCursor.h"
 #include "core/Animator.h"
 #include "core/CameraInfo.h"
@@ -6821,20 +6823,24 @@ bool checkHoverMatchesPress() {
     cmnd::Stack setup;
 
     HoverNode node;
-    core::RotateKey* first = new core::RotateKey();
-    first->setRotate(0.0f);
+    auto* first = new core::ChannelKey(core::TimeKeyType_Rotate, 0);
+    first->setFrame(100);
+    first->setValue(0.0f);
     util::Easing::Param easing;
     easing.type = util::Easing::Type_Custom;
     easing.cubicBezier.x1 = 11.0f / 64.0f; // exactly 11px at 1 px/frame
     easing.cubicBezier.y1 = 0.0f;
     easing.cubicBezier.x2 = 0.9f; // the incoming dot stays clear of every probe
     easing.cubicBezier.y2 = 0.5f;
-    first->data().easing(0) = easing;
-    setup.push(node.timeLine()->createPusher(core::TimeKeyType_Rotate, 100, first));
+    first->easing() = easing;
+    setup.push(new cmnd::GrabNewObject<core::ChannelKey>(first));
+    setup.push(node.timeLine()->createChannelPusher(core::TimeKeyType_Rotate, 0, 100, first));
 
-    core::RotateKey* second = new core::RotateKey();
-    second->setRotate(0.0f); // the same value: key centres and the handle share one row
-    setup.push(node.timeLine()->createPusher(core::TimeKeyType_Rotate, 164, second));
+    auto* second = new core::ChannelKey(core::TimeKeyType_Rotate, 0);
+    second->setFrame(164);
+    second->setValue(0.0f); // the same value: key centres and the handle share one row
+    setup.push(new cmnd::GrabNewObject<core::ChannelKey>(second));
+    setup.push(node.timeLine()->createChannelPusher(core::TimeKeyType_Rotate, 0, 164, second));
 
     core::CameraInfo camera;
     camera.setScreenSize(QSize(800, 600));
@@ -7187,7 +7193,7 @@ gui::GraphPanelModel makeCrowdedModel(const theme::Graph& aTheme) {
     gui::GraphPanelModel model = makeSilentCurveModel(aTheme);
     model.curves.clear();
     const core::TimeKeyType types[4] = {
-        core::TimeKeyType_Move, core::TimeKeyType_Scale, core::TimeKeyType_Rotate, core::TimeKeyType_Opa
+        core::TimeKeyType_Move, core::TimeKeyType_Scale, core::TimeKeyType_Rotate, core::TimeKeyType_Opacity
     };
     for (int c = 0; c < 8; ++c) {
         gui::PanelCurve curve;

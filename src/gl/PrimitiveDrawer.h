@@ -31,6 +31,11 @@ public:
     void setAntiAliasing(bool aIsEnable);
 
     void drawPoint(const QPointF& aCenter);
+    // A POINT CLOUD, one GL_POINTS command per slot: the heatmap's vertices are
+    // thousands of screen samples per frame, and drawPoint() is one tiny
+    // ellipse command each. The pen's colour is the point colour and its width
+    // is the point size in device pixels.
+    void drawPoints(const QPointF* aPoints, int aCount);
 
     void drawLine(const QPointF& aFrom, const QPointF& aTo);
     void drawLine(const QLineF& aLine) { drawLine(aLine.p1(), aLine.p2()); }

@@ -4,9 +4,10 @@ import QtQuick
 import QtQuick.Layouts
 
 // ONE geometry for every property row, keyable or not:
-//   gutter 16..36 | label 42..114 | field column 124..right-16
+//   gutter 13..33 | label 36..108 | field column 124..right-16
 // The empty gutter is deliberate on Constant rows: it is what keeps their
-// labels and fields on the same grid as Position and Opacity.
+// labels and fields on the same grid as Position and Opacity. The Filters
+// header uses the same 20px prefix slot from x=13, so its text starts at 36.
 Item {
     id: root
 
@@ -26,7 +27,7 @@ Item {
 
     Item {
         id: gutter
-        x: 16
+        x: 13
         width: 20
         height: 27
         InspectorKeyDot {
@@ -41,7 +42,8 @@ Item {
     }
 
     Text {
-        x: 42
+        objectName: "inspectorRowLabel"
+        x: 36
         width: 72
         anchors.verticalCenter: parent.verticalCenter
         text: root.label

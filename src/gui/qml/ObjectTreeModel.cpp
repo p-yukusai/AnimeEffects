@@ -39,12 +39,12 @@ constexpr int kThumbBox = ctrl::TimeLineRow::kHeight - 2;
 constexpr int kMatteChip = 14;
 
 
-// One resource's image, when the node has one: the Image default key carries it.
+// One resource's image, when the node has one: the Image base value carries it.
 const img::ResourceData* layerResource(const core::ObjectNode& aNode) {
     const core::TimeLine* line = aNode.timeLine();
     if (!line)
         return nullptr;
-    const core::TimeKey* key = line->defaultKey(core::TimeKeyType_Image);
+    const core::TimeKey* key = line->baseValue(core::TimeKeyType_Image);
     if (!key || key->type() != core::TimeKeyType_Image)
         return nullptr;
     const auto* image = static_cast<const core::ImageKey*>(key);
@@ -204,13 +204,13 @@ const core::MaskKey::Data* ObjectTreeModel::maskDataOf(const core::ObjectNode& a
     // THE DOCUMENT says whether a node has a mask, not the blended frame. `current()` is whatever
     // the last blend produced, so right after the mask is added (and before anything re-blends) it
     // is still empty - which is why the chip appeared only once the lane ALSO had an explicit key
-    // (reported). Creating a mask pushes its DEFAULT key, so that is what to look at first.
+    // (reported). Creating a mask pushes its BASE VALUE, so that is what to look at first.
     const core::TimeLine* line = aNode.timeLine();
     if (!line)
         return nullptr;
     if (const core::MaskKey::Data& blended = line->current().mask(); blended.isValid())
         return &blended;
-    if (const core::TimeKey* key = line->defaultKey(core::TimeKeyType_Mask))
+    if (const core::TimeKey* key = line->baseValue(core::TimeKeyType_Mask))
         return &static_cast<const core::MaskKey*>(key)->data();
     return nullptr;
 }
@@ -456,6 +456,8 @@ void ObjectTreeModel::rebuild() {
     if (selectionLost)
         emitSelectionChanged();
 }
+
+void ObjectTreeModel::refreshRows() { rebuild(); }
 
 void ObjectTreeModel::appendRow(core::ObjectNode& aNode, int aDepth, bool aIsDocument, int& aTop) {
     Row row;
@@ -1308,16 +1310,16 @@ void ObjectTreeModel::duplicateSelection() {
         setSelection(copies, copies.first());
 }
 
-void ObjectTreeModel::addDefaultKeysToSelection() {
+void ObjectTreeModel::addKeysAtPlayheadToSelection() {
     if (!mProject)
         return;
     const QVector<core::ObjectNode*> nodes = selectionInRowOrder();
     if (nodes.isEmpty())
         return;
-    // per node its own one-step action: adding defaults to three layers is three steps,
-    // which is what an undo of "I added keys to three layers" has to unwind anyway
+    // per node its own one-step action: adding playhead keys to three layers is three
+    // steps, which is what an undo of "I added keys to three layers" has to unwind anyway
     for (core::ObjectNode* node : nodes)
-        ctrl::tree::addDefaultKeys(*mProject, *node);
+        ctrl::tree::addKeysAtPlayhead(*mProject, *node);
 }
 
 void ObjectTreeModel::createFolder(int aRow) {

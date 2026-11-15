@@ -5,7 +5,8 @@ import QtQuick
 // THE BRUSH, once.
 //
 // Four painting contexts share one brush model (ctrl/Brush.h: size, hardness, flow,
-// opacity, the two pressure switches), and the widget dock showed that as four
+// opacity, the two pressure switches; the envelope brush adds its target Value), and
+// the widget dock showed that as four
 // separate hand-laid-out blocks - one per panel - each of which could (and did) drift
 // from the others. This is the one block now: `toolModel.brush` points at whichever
 // tool is up, so the rows are written once and a tool that cannot honour a row HIDES
@@ -44,6 +45,17 @@ Column {
         suffix: "%"
         value: toolModel.brush.hardness * 100
         onValueEdited: (value) => toolModel.brush.hardness = value / 100
+    }
+    ToolSliderRow {
+        visible: toolModel.envelopeBrushVisible
+        label: qsTr("Value")
+        tip: qsTr("The envelope range the brush moves toward; Flow limits each stamp")
+        from: toolModel.envelopeValueMin
+        to: toolModel.envelopeValueMax
+        step: 1
+        decimals: 0
+        value: toolModel.envelopeValue
+        onValueEdited: (value) => toolModel.envelopeValue = value
     }
     ToolSliderRow {
         label: qsTr("Flow")

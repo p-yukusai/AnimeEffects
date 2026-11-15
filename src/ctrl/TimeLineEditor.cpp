@@ -21,12 +21,27 @@
 #include "ctrl/CmndName.h"
 #include "ctrl/time/time_Renderer.h"
 #include "core/FFDKeyUpdater.h"
+#include "core/FormatVersion.h"
+#include <QVersionNumber>
+#include "core/StateKey.h"
+#include "gl/DeviceInfo.h"
+#include "util/StreamReader.h"
+#include "util/IDSolver.h"
+#include "util/IProgressReporter.h"
 
 using namespace core;
 
 namespace {
     constexpr int kDefaultFrameCount = 600;
     const util::Range kDefaultFrameRange(1, kDefaultFrameCount);
+
+    class ClipboardReporter: public util::IProgressReporter {
+    public:
+        void setSection(const QString&) override {}
+        void setMaximum(int) override {}
+        void setProgress(int) override {}
+        bool wasCanceled() const override { return false; }
+    };
 
 } // namespace
 
@@ -187,7 +202,7 @@ void TimeLineEditor::selectCreatedKeys(const core::TimeLineEvent& aEvent) {
     // event through pos.isExist() so a stale index (a notification that named a
     // frame the key no longer occupies) can never inject a null-key entry into
     // the selection — it is simply skipped. Default-key payloads
-    // (kDefaultKeyIndex) carry nothing selectable in the lane maps, so they
+    // (kBaseValueIndex) carry nothing selectable in the lane maps, so they
     // leave the current selection untouched rather than clearing it.
     core::TimeLineEvent live;
     for (const core::TimeLineEvent::Target& target : aEvent.targets()) {
@@ -491,7 +506,17 @@ bool TimeLineEditor::selectKeysAt(TimeLineEvent& aEvent, const QPoint& aPos) {
         return false;
 
     const TimeLineEvent::Target target(*hit.node, hit.pos, hit.pos.index());
-    if (mSelection.contains(target)) {
+    const int component = hit.pos.component();
+    const bool split = hit.pos.line()
+        && (component == core::TimeKeyPos::kStateComponent
+            || (component >= 0
+                && (core::TimeLine::usesChannelTracks(hit.pos.type())
+                    || hit.pos.type() == core::TimeKeyType_Image)
+                && (hit.pos.type() == core::TimeKeyType_Image
+                    || !hit.pos.line()->isFrameLinked(hit.pos.type(), hit.pos.index()))));
+    const bool alreadySelected = split ? mSelection.containsMarker(target, component)
+                                      : mSelection.contains(target);
+    if (alreadySelected) {
         // right-click on a selected key: operate on the whole selection
         mSelection.assign(aEvent);
         return true;
@@ -501,10 +526,16 @@ bool TimeLineEditor::selectKeysAt(TimeLineEvent& aEvent, const QPoint& aPos) {
     // the clicked key a temporary selection for the lifetime of the context
     // menu — it shows the highlight and every menu action consumes it. The
     // previous selection is NOT restored; endTemporarySelection() drops the
-    // temporary selection once the menu closes.
+    // temporary selection once the menu closes. A split frame's marker is
+    // selected at COMPONENT level, so its menu edits/copies/deletes only that
+    // channel; a linked property key is selected as one key.
     TimeLineEvent single;
     single.pushTarget(*hit.node, hit.pos);
-    mSelection.set(single);
+    if (split) {
+        mSelection.setMarker(target, component);
+    } else {
+        mSelection.set(single);
+    }
     mSelectionTemporary = true;
     mSelection.assign(aEvent);
     return true;
@@ -531,9 +562,40 @@ bool TimeLineEditor::selectAllKeys() {
             core::ObjectNode* node = nodeItr.next();
             if (!node || !node->timeLine())
                 continue;
-            const core::TimeLine& timeLine = *(node->timeLine());
+            core::TimeLine& timeLine = *(node->timeLine());
             for (int i = 0; i < core::TimeKeyType_TERM; ++i) {
                 const core::TimeKeyType type = core::TimeLine::getTimeKeyTypeInOrderOfOperations(i);
+                if (const core::PropertyTrack* prop = timeLine.property(type)) {
+                    for (const core::TimeKey* stateKey : prop->state().keys()) {
+                        all.pushTarget(
+                            *node,
+                            core::TimeKeyPos(
+                                timeLine, type, stateKey->frame(),
+                                core::TimeKeyPos::kStateComponent
+                            )
+                        );
+                    }
+                }
+                if (core::TimeLine::usesChannelTracks(type)) {
+                    const core::PropertyTrack* prop = timeLine.property(type);
+                    if (!prop) {
+                        continue;
+                    }
+                    for (int c = 0; c < prop->channelCount(); ++c) {
+                        const core::ChannelTrack* track = prop->channel(c);
+                        if (!track || !track->spec().graphable) {
+                            continue;
+                        }
+                        for (auto itr = track->keys().begin(); itr != track->keys().end(); ++itr) {
+                            if (itr.value()) {
+                                all.pushTarget(
+                                    *node, core::TimeKeyPos(timeLine, type, itr.key(), c)
+                                );
+                            }
+                        }
+                    }
+                    continue;
+                }
                 const core::TimeLine::MapType& map = timeLine.map(type);
                 for (auto itr = map.begin(); itr != map.end(); ++itr) {
                     if (itr.value())
@@ -671,6 +733,48 @@ static void assignClipboardEasing(TKey* aKey, const QVector<util::Easing::Param>
 
 static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project, bool isFolder, ObjectNode* aOwner) {
     TimeKeyType type = TimeLine::getTimeKeyType(obj["Type"].toString());
+
+    if (obj.contains("StateData")) {
+        std::unique_ptr<StateKey> state = createStateKey(type);
+        if (!state) {
+            return nullptr;
+        }
+        const QByteArray raw = QByteArray::fromBase64(obj["StateData"].toString().toLatin1());
+        std::string bytes(raw.constData(), size_t(raw.size()));
+        std::istringstream input(bytes);
+        util::LEStreamReader reader(input);
+        util::IDSolver<void*> solver;
+        ClipboardReporter reporter;
+        static gl::DeviceInfo device;
+        core::Deserializer in(
+            reader, solver, bytes.size() + 1,
+            QVersionNumber(0, AE_PROJECT_FORMAT_MINOR_VERSION), device, reporter, 0
+        );
+        if (!state->deserialize(in)) {
+            return nullptr;
+        }
+        state->setFrame(obj["Frame"].toInt());
+        return state.release();
+    }
+
+    if (obj.contains("Component") || TimeLine::usesChannelTracks(type)) {
+        const int component = obj.contains("Component") ? obj["Component"].toInt() : 0;
+        auto* key = new ChannelKey(type, component);
+        // Clipboards written before the link flag existed describe linked keys.
+        key->setLinked(obj.value("Linked").toBool(true));
+        if (obj.contains("Value")) {
+            key->setValue(static_cast<float>(obj["Value"].toDouble()));
+        } else if (type == TimeKeyType_Opacity) {
+            key->setValue(static_cast<float>(obj["Opacity"].toDouble(1.0)));
+        }
+        const QVector<util::Easing::Param> easings = TimeLineEditor::easingsFromJson(obj, 1);
+        if (!easings.isEmpty()) {
+            key->easing() = easings.first();
+        }
+        key->setFrame(obj["Frame"].toInt());
+        return key;
+    }
+
     // We're losing precision for float casts from json strings because
     // the cast rounds at the third decimal for some godforsaken reason.
     switch (type) {
@@ -708,12 +812,12 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
             depthKey->setFrame(obj["Frame"].toInt());
             return depthKey;
         }
-        case TimeKeyType_Opa: {
-            auto* opaKey = new OpaKey;
-            opaKey->setOpacity(static_cast<float>(obj["Opacity"].toDouble()));
-            assignClipboardEasing(opaKey, TimeLineEditor::easingsFromJson(obj, core::OpaKey::kComponents));
-            opaKey->setFrame(obj["Frame"].toInt());
-            return opaKey;
+        case TimeKeyType_Opacity: {
+            auto* opacityKey = new OpacityKey;
+            opacityKey->setOpacity(static_cast<float>(obj["Opacity"].toDouble()));
+            assignClipboardEasing(opacityKey, TimeLineEditor::easingsFromJson(obj, core::OpacityKey::kComponents));
+            opacityKey->setFrame(obj["Frame"].toInt());
+            return opacityKey;
         }
         case TimeKeyType_Bone: {
             auto* boneKey = new BoneKey;
@@ -821,6 +925,9 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
             waveKey->setFrame(obj["Frame"].toInt());
             return waveKey;
         }
+        // A matte key is not carried by the clipboard payload yet; refusing it
+        // here is the same result as the old implicit fall-through, but says so.
+        case TimeKeyType_Mask:
         // If you end up here you've done goofed.
         case TimeKeyType_TERM: {
             return nullptr;
@@ -902,7 +1009,14 @@ QString TimeLineEditor::pasteCbKeys(ObjectNode& aNode, util::LifeLink::Pointee<P
                 // invalid frame
                 if (newFrame < 0) { frameLessThanZero++; }
                 else {
-                    if (timeLine->hasTimeKey(type, newFrame)) { timelineHasKey++; }
+                    bool occupied = false;
+                    if (TimeLine::usesChannelTracks(type)) {
+                        const int component = keyframe->component() >= 0 ? keyframe->component() : 0;
+                        occupied = timeLine->hasChannelKey(type, component, newFrame);
+                    } else {
+                        occupied = timeLine->hasTimeKey(type, newFrame);
+                    }
+                    if (occupied) { timelineHasKey++; }
                     else {
                         if (type == TimeKeyType_FFD) {
                             // find area key and mesh
@@ -916,12 +1030,6 @@ QString TimeLineEditor::pasteCbKeys(ObjectNode& aNode, util::LifeLink::Pointee<P
                             // connect to parent mesh
                             aKey->children().pushBack(keyframe);
                         }
-                        // Announce the created key at its actual frame. The old
-                        // code named the loop index x, which never matched a key
-                        // in the lane map and left follow-up consumers (and the
-                        // created-key selection) pointing at nothing.
-                        notifier->event().pushTarget(aNode, TimeKeyPos(*timeLine, type, newFrame));
-
                         QHash<const TimeKey*, TimeKey*> parentHash;
                         struct ChildInfo {
                             TimeKey* key;
@@ -944,8 +1052,24 @@ QString TimeLineEditor::pasteCbKeys(ObjectNode& aNode, util::LifeLink::Pointee<P
 
                         newKey->setFrame(newFrame);
 
+                        // Announce the created key at its actual frame, with its
+                        // channel component when it is a track key.
+                        if (auto* channelKey = dynamic_cast<ChannelKey*>(newKey)) {
+                            notifier->event().pushTarget(
+                                aNode, TimeKeyPos(*timeLine, type, newFrame, channelKey->component())
+                            );
+                        } else {
+                            notifier->event().pushTarget(aNode, TimeKeyPos(*timeLine, type, newFrame));
+                        }
+
                         stack.push(new cmnd::GrabNewObject<TimeKey>(newKey));
-                        stack.push(line->createPusher(type, newFrame, newKey));
+                        if (auto* channelKey = dynamic_cast<ChannelKey*>(newKey)) {
+                            stack.push(line->createChannelPusher(
+                                type, channelKey->component(), newFrame, channelKey
+                            ));
+                        } else {
+                            stack.push(line->createPusher(type, newFrame, newKey));
+                        }
 
                         if (newKey->canHoldChild()) {
                             parentHash[copiedKey] = newKey;
@@ -1004,7 +1128,7 @@ QString TimeLineEditor::pasteCbKeys(ObjectNode& aNode, util::LifeLink::Pointee<P
                 folderError = true;
                 folderErrorCount++;
             }
-            QStringList keys{"Move", "Rotate", "Scale", "Depth", "Opa", "Bone", "Pose", "HSV", "Blur"};
+            QStringList keys{"Move", "Rotate", "Scale", "Depth", "Opacity", "Bone", "Pose", "HSV", "Blur"};
             bool containsOtherKeys = false;
             int containsCount = 0;
             for (const QString& key : keys) {
@@ -1054,7 +1178,18 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
 
         // a key already exists.
         auto type = target.pos.type();
-        if (target.pos.line()->hasTimeKey(type, newFrame)) {
+        if (target.pos.component() == core::TimeKeyPos::kStateComponent) {
+            PropertyTrack* prop = target.pos.line()->property(type);
+            if (prop && prop->state().keys().contains(newFrame)) {
+                return false;
+            }
+        } else if (core::TimeLine::usesChannelTracks(type)
+            || (type == core::TimeKeyType_Image && target.pos.component() >= 0)) {
+            const int component = target.pos.component() >= 0 ? target.pos.component() : 0;
+            if (target.pos.line()->hasChannelKey(type, component, newFrame)) {
+                return false;
+            }
+        } else if (target.pos.line()->hasTimeKey(type, newFrame)) {
             return false;
         }
     }
@@ -1102,9 +1237,24 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
             newKey->setFrame(newFrame);
 
             stack.push(new cmnd::GrabNewObject<TimeKey>(newKey));
-            stack.push(line->createPusher(type, newFrame, newKey));
-
-            notifier->event().pushTarget(*target.node, type, newFrame);
+            if (auto* stateKey = dynamic_cast<StateKey*>(newKey)) {
+                stack.push(line->createStatePusher(type, newFrame, stateKey));
+                notifier->event().pushTarget(
+                    *target.node,
+                    core::TimeKeyPos(*line, type, newFrame, core::TimeKeyPos::kStateComponent)
+                );
+            } else if (auto* channelKey = dynamic_cast<ChannelKey*>(newKey)) {
+                stack.push(line->createChannelPusher(
+                    type, channelKey->component(), newFrame, channelKey
+                ));
+                notifier->event().pushTarget(
+                    *target.node,
+                    core::TimeKeyPos(*line, type, newFrame, channelKey->component())
+                );
+            } else {
+                stack.push(line->createPusher(type, newFrame, newKey));
+                notifier->event().pushTarget(*target.node, type, newFrame);
+            }
 
             if (newKey->canHoldChild()) {
                 parentMap[copiedKey] = newKey;
@@ -1148,7 +1298,17 @@ void TimeLineEditor::deleteCheckedKeys(TimeLineEvent& aEvent) {
         for (auto target : aEvent.targets()) {
             TimeLine* line = target.pos.line();
             XC_PTR_ASSERT(line);
-            stack.push(line->createRemover(target.pos.type(), target.pos.index(), true));
+            if (target.pos.component() == TimeKeyPos::kStateComponent) {
+                stack.push(line->createStateRemover(target.pos.type(), target.pos.index(), true));
+            } else if (TimeLine::usesChannelTracks(target.pos.type())
+                || (target.pos.type() == TimeKeyType_Image && target.pos.component() >= 0)) {
+                const int component = target.pos.component() >= 0 ? target.pos.component() : 0;
+                stack.push(line->createChannelRemover(
+                    target.pos.type(), component, target.pos.index(), true
+                ));
+            } else {
+                stack.push(line->createRemover(target.pos.type(), target.pos.index(), true));
+            }
         }
     }
     mOnUpdatingKey = false;
@@ -1257,16 +1417,29 @@ void TimeLineEditor::appendAutoPresetWrites(core::TimeLine& aLine, core::ObjectN
     // segment arriving at this key is not the one this action owns. Same type,
     // same component - one curve per component, so the neighbour's mode for the
     // SAME component is the one that shapes the segment.
-    const core::TimeLine::MapType& map = aLine.map(aType);
-    auto self = map.constFind(aFrame.get());
-    if (self == map.constEnd() || !self.value())
-        return;
-
+    core::TimeKey* self = nullptr;
     core::TimeKey* next = nullptr;
-    auto after = self;
-    ++after;
-    if (after != map.constEnd())
-        next = after.value();
+    if (core::TimeLine::usesChannelTracks(aType)) {
+        core::ChannelTrack* track = aLine.channelTrack(aType, aComponent);
+        if (!track)
+            return;
+        self = track->keyAt(aFrame.get());
+        if (!self)
+            return;
+        auto after = track->keysRef().upperBound(aFrame.get());
+        if (after != track->keysRef().end())
+            next = after.value();
+    } else {
+        const core::TimeLine::MapType& map = aLine.map(aType);
+        auto selfItr = map.constFind(aFrame.get());
+        if (selfItr == map.constEnd() || !selfItr.value())
+            return;
+        self = selfItr.value();
+        auto after = selfItr;
+        ++after;
+        if (after != map.constEnd())
+            next = after.value();
+    }
 
     // The forced fields: aType makes the segment's curve a Custom one (without it
     // this key's OUTGOING mode would be inert), aIn/aOut are the two automatic
@@ -1316,7 +1489,7 @@ void TimeLineEditor::appendAutoPresetWrites(core::TimeLine& aLine, core::ObjectN
     // before they add the neighbour that will use it. No other param is named:
     // there is no next incoming side to write.
     if (!next) {
-        write(self.value(), true, true, true);
+        write(self, true, true, true);
         return;
     }
 
@@ -1324,7 +1497,7 @@ void TimeLineEditor::appendAutoPresetWrites(core::TimeLine& aLine, core::ObjectN
     // forced Custom and its OUTGOING side becomes the automatic start tangent.
     // This key's INCOMING side is left alone: it is the end tangent of the
     // segment ARRIVING here, which belongs to the previous key's segment.
-    write(self.value(), true, false, true);
+    write(self, true, false, true);
     // ...and the next key's INCOMING side is the segment's automatic end
     // tangent. Its type is not touched - that param shapes the segment AFTER it.
     write(next, false, true, false);

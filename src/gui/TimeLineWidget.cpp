@@ -144,6 +144,13 @@ TimeLineWidget::TimeLineWidget(
     mInner = new TimeLineEditorWidget(aViaPoint, this);
     mHorizontalScrollBar = new TimelineScrollBar(this);
 
+    // Link/Separate is a VIEW edit (ctrl::TimeLine's transient grouping flag):
+    // announce it so the dock can rebuild the row heights it owns.
+    this->connect(
+        mInner, &TimeLineEditorWidget::channelGroupingChanged, this,
+        [this]() { onChannelGroupingChanged(); }
+    );
+
     this->setMouseTracking(true);
     this->setFocusPolicy(Qt::StrongFocus);
     this->connect(&mTimer, &QTimer::timeout, this, &TimeLineWidget::onPlayBackUpdated);
@@ -347,7 +354,12 @@ QSize TimeLineWidget::minimumSizeHint() const {
     // invalid hint as (1,1) — the object tree would swallow the split at
     // startup. Claim a usable default so both panes start reasonable.
     const int hbarHeight = mHorizontalScrollBar ? mHorizontalScrollBar->sizeHint().height() : 0;
-    return QSize(280, ctrl::TimeLineEditor::kHeaderHeight + 2 * ctrl::TimeLineRow::kHeight + hbarHeight);
+    // The width is a floor, not a comfort: the object tree beside it has to fit
+    // inside dockMetrics::kMinWidth with it, so the animation panel can actually
+    // be dragged to its area's 200px minimum (and past it, which collapses it).
+    // The old 280 made the panel refuse to go below 380 wide, which no sidebar
+    // could ever give it.
+    return QSize(100, ctrl::TimeLineEditor::kHeaderHeight + 2 * ctrl::TimeLineRow::kHeight + hbarHeight);
 }
 
 QSize TimeLineWidget::sizeHint() const {

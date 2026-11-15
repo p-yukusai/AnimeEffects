@@ -39,10 +39,13 @@ Item {
     property string tip: ""
     signal valueEdited(real value)
 
-    implicitHeight: 26
+    // Same 28px row / 24px field as ToolRow, so the combo and the numeric fields
+    // line up down the whole dock.
+    implicitHeight: theme.toolFieldHeight + 4
     width: parent ? parent.width : 0
 
     Text {
+        id: labelText
         x: 12
         width: 76
         anchors.verticalCenter: parent.verticalCenter
@@ -53,9 +56,11 @@ Item {
         Accessible.role: Accessible.StaticText
         Accessible.name: root.label
         HoverHandler { id: labelHover }
-        ToolTip.visible: labelHover.hovered && root.tip !== ""
-        ToolTip.delay: 500
-        ToolTip.text: root.tip
+        AeToolTip {
+            ownerItem: labelText
+            text: root.tip
+            shown: labelHover.hovered && root.tip !== ""
+        }
     }
 
     InspectorNumberField {
@@ -64,7 +69,7 @@ Item {
         anchors.rightMargin: 16
         anchors.verticalCenter: parent.verticalCenter
         width: 58
-        height: 23
+        height: theme.toolFieldHeight
         // no prefix glyph in these fields, so no 24px lead-in either
         reservePrefix: false
         value: root.value

@@ -8,17 +8,32 @@
 
 #include "core/FilterMask.h"
 #include "core/TimeKeyType.h"
+#include "ctrl/BoneEditMode.h"
 #include "ctrl/BoneParam.h"
 #include "ctrl/Brush.h"
+#include "ctrl/bone/bone_WeightState.h"
 #include "ctrl/FFDParam.h"
 #include "ctrl/MaskParam.h"
 #include "ctrl/MeshParam.h"
 #include "ctrl/PoseParam.h"
 #include "ctrl/SRTParam.h"
 #include "ctrl/ToolType.h"
-#include "gui/MainViewSetting.h"
 
 namespace gui {
+
+// One field the Mask tool may paint, derived by the HOST from the current node and
+// frame. The model owns selection and labels; it deliberately does not own the
+// document walk, so it can be tested (and reused) without linking the project.
+struct MaskField {
+    ctrl::MaskTargetKind kind = ctrl::MaskTargetKind_FilterInput;
+    core::TimeKeyType lane = core::TimeKeyType_TERM;
+    core::FilterMaskChannel channel = core::FilterMaskChannel_Amount;
+    QString label;
+    bool operator==(const MaskField& aRhs) const {
+        return kind == aRhs.kind && lane == aRhs.lane && channel == aRhs.channel
+            && label == aRhs.label;
+    }
+};
 
 // THE SHARED BRUSH, as one Qt Quick object that RETARGETS with the tool.
 //
@@ -109,9 +124,6 @@ private:
 // application's key map rather than assuming the defaults.
 class ToolKeyHints {
 public:
-    QString rotateCounterClockwise;
-    QString resetRotation;
-    QString rotateClockwise;
     QString brushSizeDecrease;
     QString brushSizeIncrease;
     QString brushHardnessDecrease;
@@ -124,11 +136,11 @@ public:
 // gui::InspectorViewModel on the other side of the dock.
 //
 // WHAT IT OWNS. One ctrl param object per tool (the same structs the widget panels
-// held as members), the current tool, and the view toggles. It owns NO widget, no
-// driver and no project: the host (gui::ToolWidget) hands it a MainViewSetting to
-// write through and answers its requests with its driver. That is what lets
-// tests/tool_view_model.cpp ask every question the dock can answer without a window,
-// and it is the split the inspector took.
+// held as members) and the current tool. It owns NO widget, no
+// driver and no project: the host (gui::ToolWidget) answers its requests with its
+// driver. That is what lets tests/tool_view_model.cpp ask every question the dock can
+// answer without a window, and it is the split the inspector took. The window's view
+// settings moved to gui::ViewSettingsModel when they left this dock for the header.
 //
 // WHAT IT DECIDES, and why here rather than in the QML:
 //   * which rows a tool shows (brush, blur, weight, the SRT key checkboxes, the mask
@@ -174,6 +186,51 @@ class ToolViewModel: public QObject {
     Q_PROPERTY(bool opacityVisible READ opacityVisible NOTIFY stateChanged)
     Q_PROPERTY(bool blurVisible READ blurVisible NOTIFY stateChanged)
     Q_PROPERTY(bool weightVisible READ weightVisible NOTIFY stateChanged)
+    // The bone field modes can paint the selected bone's weight field over the
+    // layers it skips; the toggle is offered only where that is meaningful.
+    Q_PROPERTY(bool weightHeatmapVisible READ weightHeatmapVisible NOTIFY stateChanged)
+    Q_PROPERTY(bool weightHeatmap READ weightHeatmap WRITE setWeightHeatmap NOTIFY changed)
+    Q_PROPERTY(bool weightPaintHintVisible READ weightPaintHintVisible NOTIFY stateChanged)
+
+    // ---- Paint weights -------------------------------------------------------
+    // The authored-weight mode's state panel. The editor owns the selected bone;
+    // the host copies its WeightState here after every selection/action/stroke,
+    // and this model turns it into the one line the panel shows and the action
+    // rows that are legal in it.
+    Q_PROPERTY(bool weightsStateVisible READ weightsStateVisible NOTIFY weightsChanged)
+    Q_PROPERTY(QString weightsStateText READ weightsStateText NOTIFY weightsChanged)
+    // "baked" / "mixed" / "envelope" / "select" / "none" / "no-targets": the
+    // panel's state ink, without exposing the ctrl enum's numeric values to QML.
+    Q_PROPERTY(QString weightsStateRole READ weightsStateRole NOTIFY weightsChanged)
+    // The state's explanation, in a TOOLTIP: the dock has no visible hint lines
+    // (the reported "too busy" verdict), and the state line is the control.
+    Q_PROPERTY(QString weightsStateTip READ weightsStateTip NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsMeshWarningVisible READ weightsMeshWarningVisible NOTIFY weightsChanged)
+    Q_PROPERTY(QString weightsError READ weightsError NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsActionsVisible READ weightsActionsVisible NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsBakeVisible READ weightsBakeVisible NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsBakeEnabled READ weightsBakeEnabled NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsRebakeVisible READ weightsRebakeVisible NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsRebakeEnabled READ weightsRebakeEnabled NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsRevertVisible READ weightsRevertVisible NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsRevertEnabled READ weightsRevertEnabled NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsClearVisible READ weightsClearVisible NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsClearEnabled READ weightsClearEnabled NOTIFY weightsChanged)
+    Q_PROPERTY(bool weightsPaintEnabled READ weightsPaintEnabled NOTIFY weightsChanged)
+    // The shared brush rows are visible in this mode even when painting is not
+    // legal yet: they are disabled and the state panel says why (a control that
+    // silently does nothing is worse than one that explains itself).
+    Q_PROPERTY(bool brushEnabled READ brushEnabled NOTIFY weightsChanged)
+    // Add / Subtract / Replace: one list and one index, so the chooser cannot
+    // describe a mode the editor does not have.
+    Q_PROPERTY(QVariantList weightModes READ weightModes CONSTANT)
+    Q_PROPERTY(int weightPaintMode READ weightPaintMode WRITE setWeightPaintMode NOTIFY changed)
+    // One envelope brush: Size/Hardness are the footprint, Flow the rate, and
+    // Value the envelope range it paints toward (below it shrinks, above it grows).
+    Q_PROPERTY(bool envelopeBrushVisible READ envelopeBrushVisible NOTIFY stateChanged)
+    Q_PROPERTY(double envelopeValue READ envelopeValue WRITE setEnvelopeValue NOTIFY changed)
+    Q_PROPERTY(int envelopeValueMin READ envelopeValueMin CONSTANT)
+    Q_PROPERTY(int envelopeValueMax READ envelopeValueMax CONSTANT)
     Q_PROPERTY(bool srtCreateVisible READ srtCreateVisible NOTIFY stateChanged)
     Q_PROPERTY(bool srtCentroidVisible READ srtCentroidVisible NOTIFY stateChanged)
     Q_PROPERTY(bool maskPickersVisible READ maskPickersVisible NOTIFY stateChanged)
@@ -202,21 +259,16 @@ class ToolViewModel: public QObject {
     Q_PROPERTY(QString weightLabel READ weightLabel CONSTANT)
 
     // ---- Mask ----------------------------------------------------------------
-    // ONE field chooser. A mask is addressed as (filter lane, channel) or as the node's
-    // own matte, so the seven addressable fields are one list: two selectors (a lane and
-    // then a channel) asked the same question twice, and the pair only ever named one
-    // field. The labels are built with a translatable format, not concatenated with a
-    // separator ("Wave Deform amount", never "Wave Deform · amount").
-    Q_PROPERTY(QVariantList maskFields READ maskFields CONSTANT)
+    // ONE derived chooser. A mask is addressed as (filter lane, channel) or as the node's
+    // own matte. The list is NOT a fixed catalog: it is rebuilt from the current node and
+    // frame, so a lane the layer does not have, a disabled filter, a time-offset mask no
+    // filter consumes, or a layer mask with no key at this frame is never offered. When
+    // nothing can be painted, maskEmptyText says why.
+    Q_PROPERTY(QVariantList maskFields READ maskFields NOTIFY maskChanged)
     Q_PROPERTY(int maskFieldIndex READ maskFieldIndex NOTIFY maskChanged)
-    // The current field's own name ("Wave Deform amount", "Layer mask"): what the chooser
-    // shows as its value.
     Q_PROPERTY(QString maskFieldLabel READ maskFieldLabel NOTIFY maskChanged)
-    // True when a card sent the tool here (a filter's "Paint mask", the mask card's own
-    // Paint). The field is then a FACT rather than a question, so the panel shows the
-    // caption plus a disclosure and does not ask; picking the Mask tool from the toolbox
-    // opens the chooser instead.
-    Q_PROPERTY(bool maskPinned READ maskPinned NOTIFY stateChanged)
+    Q_PROPERTY(bool maskPaintable READ maskPaintable NOTIFY maskChanged)
+    Q_PROPERTY(QString maskEmptyText READ maskEmptyText NOTIFY maskChanged)
     // What the brush paints TOWARD, 0..1 (shown as a percentage). A stamp moves a texel
     // toward this, so one value both reduces an amount mask and restores it.
     Q_PROPERTY(double maskValue READ maskValue WRITE setMaskValue NOTIFY maskChanged)
@@ -226,22 +278,6 @@ class ToolViewModel: public QObject {
     // 0..1, and the field shows them as 0..100.
     Q_PROPERTY(double percentMax READ percentMax CONSTANT)
 
-    // ---- View settings -------------------------------------------------------
-    Q_PROPERTY(bool showMesh READ showMesh WRITE setShowMesh NOTIFY viewChanged)
-    Q_PROPERTY(bool cutOutsideFrame READ cutOutsideFrame WRITE setCutOutsideFrame NOTIFY viewChanged)
-    Q_PROPERTY(bool flipCanvas READ flipCanvas WRITE setFlipCanvas NOTIFY viewChanged)
-    Q_PROPERTY(QString viewTitle READ viewTitle NOTIFY viewChanged)
-    // EVERY hover text in the dock, with the live key binding folded in where the action
-    // has one. They all notify together because they are all rebuilt from one key map:
-    // a rebound key re-spells every tooltip at once. NOTHING here is drawn as visible
-    // text - the dock has no hint lines, by the reported "too busy" verdict (a shortcut
-    // spelled out under the controls is noise; inside a tooltip it costs no layout).
-    Q_PROPERTY(QString showMeshTip READ showMeshTip NOTIFY keyHintsChanged)
-    Q_PROPERTY(QString cutOutsideFrameTip READ cutOutsideFrameTip NOTIFY keyHintsChanged)
-    Q_PROPERTY(QString rotateCounterClockwiseTip READ rotateCounterClockwiseTip NOTIFY keyHintsChanged)
-    Q_PROPERTY(QString resetRotationTip READ resetRotationTip NOTIFY keyHintsChanged)
-    Q_PROPERTY(QString rotateClockwiseTip READ rotateClockwiseTip NOTIFY keyHintsChanged)
-    Q_PROPERTY(QString flipCanvasTip READ flipCanvasTip NOTIFY keyHintsChanged)
     // The brush's two notches, for the Size and Hardness rows' tooltips.
     Q_PROPERTY(QString sizeKeyTip READ sizeKeyTip NOTIFY keyHintsChanged)
     Q_PROPERTY(QString hardnessKeyTip READ hardnessKeyTip NOTIFY keyHintsChanged)
@@ -250,7 +286,6 @@ public:
     explicit ToolViewModel(QObject* aParent = nullptr);
 
     // The host wires these in; nothing here reaches a driver or a project through them.
-    void setViewSetting(MainViewSetting* aSetting);
     void setDriverActive(bool aActive);
     void setKeyHints(const ToolKeyHints& aHints);
 
@@ -265,6 +300,50 @@ public:
     bool opacityVisible() const;
     bool blurVisible() const;
     bool weightVisible() const;
+    bool weightHeatmapVisible() const;
+    bool weightHeatmap() const;
+    void setWeightHeatmap(bool aValue);
+    bool weightPaintHintVisible() const;
+    bool weightsStateVisible() const;
+    QString weightsStateText() const;
+    QString weightsStateRole() const;
+    QString weightsStateTip() const;
+    bool weightsMeshWarningVisible() const;
+    QString weightsError() const;
+    bool weightsActionsVisible() const;
+    bool weightsBakeVisible() const;
+    bool weightsBakeEnabled() const;
+    bool weightsRebakeVisible() const;
+    bool weightsRebakeEnabled() const;
+    bool weightsRevertVisible() const;
+    bool weightsRevertEnabled() const;
+    bool weightsClearVisible() const;
+    bool weightsClearEnabled() const;
+    bool weightsPaintEnabled() const;
+    bool brushEnabled() const;
+    QVariantList weightModes() const;
+    int weightPaintMode() const;
+    void setWeightPaintMode(int aMode);
+    bool envelopeBrushVisible() const;
+    double envelopeValue() const;
+    void setEnvelopeValue(double aValue);
+    int envelopeValueMin() const;
+    int envelopeValueMax() const;
+    // The host's push of the editor's answer. Ignored when equal, so a stroke's
+    // per-frame re-read does not churn every binding in the panel.
+    void setWeightsState(const ctrl::bone::WeightState& aState);
+    const ctrl::bone::WeightState& weightsState() const { return mWeights; }
+
+    // The four state actions, as one index so the scene has one verb and the
+    // host one switch.
+    enum WeightAction {
+        WeightAction_Bake,
+        WeightAction_Rebake,
+        WeightAction_Revert,
+        WeightAction_Clear,
+    };
+    Q_ENUM(WeightAction)
+    Q_INVOKABLE void requestWeightsAction(int aAction);
     bool srtCreateVisible() const;
     bool srtCentroidVisible() const;
     bool maskPickersVisible() const;
@@ -296,14 +375,19 @@ public:
     int maskFieldIndex() const;
     Q_INVOKABLE void setMaskField(int aIndex);
     QString maskFieldLabel() const;
-    bool maskPinned() const { return mMaskPinned; }
+    bool maskPaintable() const { return maskFieldIndex() >= 0; }
+    QString maskEmptyText() const;
     // The Mask tool is up AND its target is a LAYER's own matte (not a filter lane's input):
     // the card that offers "Paint this layer's matte" is only redundant in that case.
     bool maskPaintingLayerMask() const {
         return mTool == ctrl::ToolType_Mask && mMask.kind == ctrl::MaskTargetKind_LayerMask;
     }
-    // The caption's disclosure: open the chooser for a field a card chose.
-    Q_INVOKABLE void unpinMaskTarget();
+    bool maskToolActive() const { return mTool == ctrl::ToolType_Mask; }
+    core::TimeKeyType maskLane() const { return mMask.lane; }
+    core::FilterMaskChannel maskChannel() const { return mMask.channel; }
+    // The host's derived target set and the explanation to show when it is empty.
+    // Idempotent: it only notifies when the list or the explanation actually moves.
+    void setMaskFields(const QVector<MaskField>& aFields, const QString& aEmptyText);
     double maskValue() const { return double(mMask.value); }
     void setMaskValue(double aValue);
     // THE mask keyboard verb: swap the paint value between the two ends, the way every
@@ -313,19 +397,6 @@ public:
     QString maskValueHint() const;
     double percentMax() const { return 100.0; }
 
-    bool showMesh() const;
-    bool cutOutsideFrame() const;
-    bool flipCanvas() const;
-    void setShowMesh(bool aValue);
-    void setCutOutsideFrame(bool aValue);
-    void setFlipCanvas(bool aValue);
-    QString viewTitle() const;
-    QString showMeshTip() const;
-    QString cutOutsideFrameTip() const;
-    QString rotateCounterClockwiseTip() const;
-    QString resetRotationTip() const;
-    QString rotateClockwiseTip() const;
-    QString flipCanvasTip() const;
     QString sizeKeyTip() const;
     QString hardnessKeyTip() const;
 
@@ -352,9 +423,6 @@ public:
     Q_INVOKABLE void sampleMaskValue(double aValue);
     // "Clear mask" - the host owns the driver, so this is a request.
     Q_INVOKABLE void requestClearMask();
-    Q_INVOKABLE void rotateCounterClockwise();
-    Q_INVOKABLE void resetRotation();
-    Q_INVOKABLE void rotateClockwise();
     // A filter card's "paint mask" (InspectorViewModel::onMaskPaintRequested) and the
     // card's own Paint: select what is painted, PIN it (the card named it) and switch to
     // the Mask tool in one step, so no caller has to remember the order.
@@ -382,8 +450,10 @@ signals:
     void changed();
     // the mask's target/channel/value changed, or its chooser's labels did
     void maskChanged();
-    void viewChanged();
-    void viewSettingsChanged();
+    // the authored-weight state or one of its action's availability changed
+    void weightsChanged();
+    // one of the four state actions was asked for (the host owns the driver)
+    void weightsActionRequested(int aAction);
     void driverActiveChanged();
     // every tooltip (they all read the same key map)
     void keyHintsChanged();
@@ -391,10 +461,12 @@ signals:
 
 private:
     void retargetBrush();
+    // The state tooltip's authored count, with a numerus form: the visible line
+    // carries no number, so this is the only place the count is worded.
+    QString authoredVertexCountText() const;
 
     ctrl::ToolType mTool = ctrl::ToolType_TERM;
     bool mDriverActive = false;
-    MainViewSetting* mViewSetting = nullptr;
     ToolKeyHints mKeyHints;
 
     // One param object per tool, exactly as the widget panels held them: switching
@@ -404,10 +476,16 @@ private:
     ctrl::BoneParam mBone;
     ctrl::PoseParam mPose;
     ctrl::MeshParam mMesh;
+    int findMaskField(ctrl::MaskTargetKind aKind, core::TimeKeyType aLane,
+                      core::FilterMaskChannel aChannel) const;
+    void selectMaskField(int aIndex, bool aNotify);
+
     ctrl::MaskParam mMask;
+    QVector<MaskField> mMaskFieldEntries;
+    QString mMaskEmptyText;
 
     ToolBrushModel* mBrush = nullptr;
-    bool mMaskPinned = false;
+    ctrl::bone::WeightState mWeights;
 };
 
 } // namespace gui

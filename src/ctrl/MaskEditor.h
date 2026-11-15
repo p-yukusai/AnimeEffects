@@ -23,7 +23,7 @@ namespace ctrl {
 //
 // A filter input is a per-lane side table with a per-channel neutral, so the first
 // stamp allocates it. A layer mask is a KEY's own field: it exists only where the
-// document has one (a key at the playhead, or the default key) and the tool writes it
+// document has one (a key at the playhead, or the base value) and the tool writes it
 // in place, pushing ONE command on the release.
 //
 // The stroke is the shared BrushStroke (ctrl/Brush.h): stamps on the press, spaced

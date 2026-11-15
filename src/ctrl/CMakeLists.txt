@@ -48,25 +48,30 @@ add_library(${PROJECT_NAME}
     UILogType.h
     UILogger.h
     bone/bone_AssignInfluence.h
+    bone/bone_BakeWeights.cpp bone/bone_BakeWeights.h
     bone/bone_BindNodesMode.cpp bone/bone_BindNodesMode.h
     bone/bone_CreateMode.cpp bone/bone_CreateMode.h
     bone/bone_DeleteBone.cpp bone/bone_DeleteBone.h
     bone/bone_DeleteMode.cpp bone/bone_DeleteMode.h
-    bone/bone_EraseInflMode.cpp bone/bone_EraseInflMode.h
     bone/bone_Focuser.cpp bone/bone_Focuser.h
     bone/bone_GeoBuilder.cpp bone/bone_GeoBuilder.h
     bone/bone_IMode.h
     bone/bone_InfluenceMode.cpp bone/bone_InfluenceMode.h
     bone/bone_KeyOwner.cpp bone/bone_KeyOwner.h
     bone/bone_MoveBone.h
+    bone/bone_MeshWeightRemap.cpp bone/bone_MeshWeightRemap.h
     bone/bone_MoveJointMode.cpp bone/bone_MoveJointMode.h
     bone/bone_NodeSelector.cpp bone/bone_NodeSelector.h
     bone/bone_Notifier.cpp bone/bone_Notifier.h
     bone/bone_PaintInflMode.cpp bone/bone_PaintInflMode.h
+    bone/bone_PaintWeightsMode.cpp bone/bone_PaintWeightsMode.h
     bone/bone_PushNewPoses.h
     bone/bone_PushNewTopPoses.h
     bone/bone_Renderer.cpp bone/bone_Renderer.h
     bone/bone_Target.h
+    bone/bone_WeightCommands.cpp bone/bone_WeightCommands.h
+    bone/bone_WeightHeatmap.cpp bone/bone_WeightHeatmap.h
+    bone/bone_WeightState.cpp bone/bone_WeightState.h
     ffd/ffd_BrushMode.cpp ffd/ffd_BrushMode.h
     ffd/ffd_DragMode.cpp ffd/ffd_DragMode.h
     ffd/ffd_IMode.h

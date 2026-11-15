@@ -3,12 +3,13 @@
 #include <algorithm>
 #include <cmath>
 
+#include "core/ChannelKey.h"
 #include "core/TimeKey.h"
 #include "core/MoveKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
 #include "core/DepthKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/HsvKey.h"
 #include "core/BlurKey.h"
 #include "core/WaveKey.h"
@@ -51,6 +52,9 @@ QVector<float> flattenPose(const core::PoseKey& aKey) {
 // carries none. Used to read the TO key's incoming handle mode for the segment's
 // arriving side; the dispatch is the same one valueOf() makes.
 const util::Easing::Param* paramOf(const core::TimeKey& aKey, int aComponent) {
+    if (const auto* channelKey = dynamic_cast<const core::ChannelKey*>(&aKey)) {
+        return channelKey->component() == aComponent ? &channelKey->easing() : nullptr;
+    }
     switch (aKey.type()) {
     case core::TimeKeyType_Move:
         return &static_cast<const core::MoveKey&>(aKey).data().easing(aComponent);
@@ -66,8 +70,8 @@ const util::Easing::Param* paramOf(const core::TimeKey& aKey, int aComponent) {
         return &static_cast<const core::RotateKey&>(aKey).data().easing(aComponent);
     case core::TimeKeyType_Depth:
         return &static_cast<const core::DepthKey&>(aKey).data().easing(aComponent);
-    case core::TimeKeyType_Opa:
-        return &static_cast<const core::OpaKey&>(aKey).data().easing(aComponent);
+    case core::TimeKeyType_Opacity:
+        return &static_cast<const core::OpacityKey&>(aKey).data().easing(aComponent);
     case core::TimeKeyType_Pose:
         return &static_cast<const core::PoseKey&>(aKey).data().easing(aComponent);
     case core::TimeKeyType_FFD:
@@ -83,6 +87,14 @@ bool valueOf(
     // not read a Move key through a Scale cast.
     if (aKey.type() != aFrom.type() || aKey.type() != aTo.type())
         return false;
+
+    if (const auto* channelKey = dynamic_cast<const core::ChannelKey*>(&aKey)) {
+        if (channelKey->component() != aComponent) {
+            return false;
+        }
+        aOut = channelKey->value();
+        return true;
+    }
 
     switch (aKey.type()) {
     case core::TimeKeyType_Move: {
@@ -137,10 +149,10 @@ bool valueOf(
             return false;
         aOut = static_cast<const core::DepthKey&>(aKey).data().depth();
         return true;
-    case core::TimeKeyType_Opa:
+    case core::TimeKeyType_Opacity:
         if (aComponent != 0)
             return false;
-        aOut = static_cast<const core::OpaKey&>(aKey).data().opacity();
+        aOut = static_cast<const core::OpacityKey&>(aKey).data().opacity();
         return true;
     case core::TimeKeyType_Pose: {
         // Pose carries ONE easing for the whole key. Its derived shape reads the

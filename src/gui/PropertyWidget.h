@@ -37,8 +37,10 @@ public:
     void onKeyUpdated(core::TimeLineEvent& aEvent, bool aUndo);
     void onFrameUpdated();
     void onPlayBackStateChanged(bool aIsActive);
-    // the Mask tool is up (the host knows; the card disables its Paint button accordingly)
-    void setMaskPaintActive(bool aActive);
+    // The tool's mask paint state, with the node it is aimed at. The cards disable
+    // Paint only when the tool is painting THEIR field on THIS node.
+    void setMaskPaintState(core::ObjectNode* aNode, bool aLayerMask, bool aFilterInput,
+                           core::TimeKeyType aLane, core::FilterMaskChannel aChannel);
     void refreshTheme();
     // the matte's invert (Ctrl+I with the Mask tool in hand): one door onto the model's own edit
     void invertMask();
@@ -48,6 +50,11 @@ public:
     util::Signaler<void(core::TimeKeyType, core::FilterMaskChannel)> onMaskPaintRequested;
     // the card's Paint: the node's own matte, which has no lane or channel
     util::Signaler<void()> onLayerMaskPaintRequested;
+    // the Mesh spacing field's transient overlay: node, and whether to show it
+    util::Signaler<void(core::ObjectNode*, bool)> onMeshPreviewRequested;
+    // a filter/key edit may have changed which mask fields the current node can
+    // paint; the Tools panel rebuilds its derived chooser from this
+    util::Signaler<void()> onMaskTargetsChanged;
 
 private:
     void unlinkProject();

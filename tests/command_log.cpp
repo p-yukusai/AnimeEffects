@@ -280,7 +280,7 @@ int main(int argc, char* argv[]) {
         log.append({gui::LogKind::Undo, QStringLiteral("Add filter")});
         log.append({gui::LogKind::Warning, QStringLiteral("Failed to save project")});
         log.append({gui::LogKind::Info, QStringLiteral("A plain editor message")});
-        log.append({gui::LogKind::Redo, QStringLiteral("Update default opacity key")});
+        log.append({gui::LogKind::Redo, QStringLiteral("Update opacity")});
 
         const QImage image = renderViewport(log);
         const QFontMetricsF metrics(log.font());

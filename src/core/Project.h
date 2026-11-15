@@ -119,6 +119,11 @@ public:
     util::Signaler<void(ResourceEvent&, bool)> onResourceModified;
     util::Signaler<void(ObjectTreeEvent&, bool)> onTreeRestructured;
     util::Signaler<void(ProjectEvent&, bool)> onProjectAttributeModified;
+    // Authored skin weights changed on the owner node. Deliberately separate
+    // from the attribute/pose events: a pose or move rebuilds one affected key,
+    // while one baked field is addressed by every BoneKey of the owner (all
+    // frames). The bool is the command's undo flag, as the other signals use it.
+    util::Signaler<void(ObjectNode&, bool)> onSkinWeightsModified;
     // Audio
     std::vector<audioConfig>* pConf = new std::vector<audioConfig>();
     mediaState* mediaPlayer = new mediaState();

@@ -7,8 +7,6 @@
 
 namespace gui {
 
-static const int kBarHeight = 18;
-
 //-------------------------------------------------------------------------------------------------
 ProjectTabBar::ProjectTabBar(QWidget* aParent, GUIResources& aResources):
     QTabBar(aParent), mProjects(), mCloseButtons(), mSignal(true), mContextMenuIndex(-1), mGUIResources(aResources) {
@@ -19,18 +17,27 @@ ProjectTabBar::ProjectTabBar(QWidget* aParent, GUIResources& aResources):
     this->setDrawBase(false);
     this->setMouseTracking(true);
     this->setAttribute(Qt::WA_Hover, true);
+    // Reordering is Qt's own job once the bar is movable; the model behind it
+    // (mProjects and mCloseButtons run parallel to the tabs) follows tabMoved.
+    this->setMovable(true);
 
     this->installEventFilter(this);
 
-    this->setGeometry(0, 0, aParent->geometry().width(), kBarHeight);
+    // The height is the bar's own hint - whatever the tabs' style makes them -
+    // rather than a constant: a fixed 18px with 1.125em tabs meant the tabs were
+    // cut off at the bottom and the close button (16px) did not fit at all.
+    this->setGeometry(0, 0, aParent->geometry().width(), this->sizeHint().height());
 
     this->connect(this, &QTabBar::currentChanged, this, &ProjectTabBar::onTabChanged);
+    this->connect(this, &QTabBar::tabMoved, this, &ProjectTabBar::onTabMoved);
     mGUIResources.onThemeChanged.connect(this, &ProjectTabBar::onThemeUpdated);
     this->onThemeUpdated(mGUIResources.mTheme);
 }
 
 void ProjectTabBar::updateTabPosition(const QSize& aDisplaySize) {
-    this->setGeometry(0, 0, aDisplaySize.width(), kBarHeight);
+    // The height is the bar's own hint - whatever the tabs' style makes them -
+    // rather than a constant (see the constructor).
+    this->setGeometry(0, 0, aDisplaySize.width(), this->sizeHint().height());
 }
 
 QString ProjectTabBar::getTabName(const core::Project& aProject) const {
@@ -38,8 +45,38 @@ QString ProjectTabBar::getTabName(const core::Project& aProject) const {
     return name.isEmpty() ? QString("New Project") : QFileInfo(name).fileName();
 }
 
+void ProjectTabBar::syncCloseButtonSizes() {
+    // Both heights are explicit and both come from the one number the style sets
+    // for a tab: the bar is exactly as tall as its tabs - it used to be a
+    // hard-coded 18px against 1.125em tabs, which is why the tabs overflowed it -
+    // and the close button fits inside that height rather than overhanging it.
+    if (this->count() == 0) return;
+    const int tabHeight = this->tabRect(0).height();
+    if (tabHeight > 0 && this->height() != tabHeight) this->setFixedHeight(tabHeight);
+
+    const int side = qMax(8, tabHeight - 4);
+    for (auto* button : mCloseButtons) {
+        if (button && button->width() != side) button->setFixedSize(side, side);
+    }
+}
+
+/// Qt moves a tab's *data* but not the buttons set on its indices, so the buttons
+/// are re-applied positionally after a move, and the parallel arrays follow.
+void ProjectTabBar::onTabMoved(int aFrom, int aTo) {
+    if (0 <= aFrom && aFrom < mProjects.size() && 0 <= aTo && aTo < mProjects.size()) {
+        mProjects.move(aFrom, aTo);
+        mCloseButtons.move(aFrom, aTo);
+    }
+    for (int i = 0; i < mCloseButtons.size(); ++i) {
+        this->setTabButton(i, QTabBar::RightSide, mCloseButtons.at(i));
+    }
+    syncCloseButtonSizes();
+    this->update();
+}
+
 void ProjectTabBar::onThemeUpdated(theme::Theme& aTheme) {
     this->setStyleSheet(aTheme.loadStylesheet("modetabbar.ssa"));
+    syncCloseButtonSizes();
     this->update();
     for (auto* button : mCloseButtons) {
         if (button) {
@@ -55,6 +92,7 @@ bool ProjectTabBar::pushProject(core::Project& aProject) {
         const int index = this->addTab(getTabName(aProject));
         mCloseButtons.push_back(createCloseButton(aProject));
         this->setTabButton(index, QTabBar::RightSide, mCloseButtons.last());
+        syncCloseButtonSizes();
         this->setCurrentIndex(index);
         this->updateTabActiveState();
         mSignal = true;

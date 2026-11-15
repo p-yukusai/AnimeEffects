@@ -26,7 +26,12 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     ../XCType.h
     CanvasMover.cpp CanvasMover.h
     DestinationPicker.cpp DestinationPicker.h
+    DockDropOverlay.cpp DockDropOverlay.h
+    DockMetrics.h
+    DockPanel.cpp DockPanel.h
     DockSash.cpp DockSash.h
+    DockSlots.cpp DockSlots.h
+    DockTabBar.cpp DockTabBar.h
     DriverHolder.cpp DriverHolder.h
     EasyDialog.cpp EasyDialog.h
     GUIResources.cpp GUIResources.h
@@ -133,6 +138,10 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     qml/FilterStackModel.cpp qml/FilterStackModel.h
     qml/ToolViewModel.cpp qml/ToolViewModel.h
     qml/FilterNames.h
+    qml/MenuCommand.cpp qml/MenuCommand.h
+    qml/ViewSettingsModel.cpp qml/ViewSettingsModel.h
+    qml/DockSlotsModel.cpp qml/DockSlotsModel.h
+    HeaderBar.cpp HeaderBar.h
     QmlHost.h
     ${CMAKE_SOURCE_DIR}/assets/assets.qrc
 )
@@ -197,6 +206,18 @@ qt_add_qml_module(${PROJECT_NAME}
         qml/ToolModeRow.qml
         qml/ToolBrushSection.qml
         qml/ToolTextAction.qml
+        qml/ToolMenu.qml
+        # The window header: a Qt Quick Controls MenuBar with this project's menu
+        # delegates, the view settings and the slot toggles.
+        qml/HeaderBar.qml
+        qml/HeaderMenu.qml
+        qml/HeaderMenuBarItem.qml
+        qml/HeaderMenuItem.qml
+        qml/HeaderMenuSeparator.qml
+        qml/HeaderAction.qml
+        qml/HeaderCheckableAction.qml
+        qml/HeaderTextButton.qml
+        qml/HeaderSlotButton.qml
         # The Animation dock's tree column. The scene owns the rows' ink and the pointer;
         # gui::ObjectTreeModel owns what a row means (its rows are the timeline's lanes too).
         qml/ObjectTreePanel.qml
@@ -221,6 +242,20 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Quick Qt6::Qml Qt6::QuickWidgets Qt6::QuickControls2
         cmnd core ctrl gl img thr util media
 )
+
+# The header's popup windows need to know whether X11 is actually compositing
+# alpha before choosing between an alpha window and the 1-bit region fallback.
+# The check is one xcb selection query; keep the dependency optional so a
+# Wayland-only packaging host still builds (AE_HAVE_XCB=0 then always masks).
+set(AE_HAVE_XCB 0)
+if(UNIX AND NOT APPLE)
+    find_package(X11 QUIET)
+    if(TARGET X11::xcb)
+        set(AE_HAVE_XCB 1)
+        target_link_libraries(${PROJECT_NAME} PRIVATE X11::xcb)
+    endif()
+endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE AE_HAVE_XCB=${AE_HAVE_XCB})
 
 # Win32 libraries the platform code calls directly: DwmSetWindowAttribute (the
 # popup rounding in gui/PopupWindow.h) and the user32 entry points around it.
@@ -332,6 +367,15 @@ endforeach()
 # compiled into ctrl by name).
 list(APPEND AE_I18N_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../ctrl/ExportTargetStrings.h
+    # The tools host derives the mask chooser's empty-state explanations with
+    # QCoreApplication::translate("gui::ToolViewModel", ...); lupdate only sees files
+    # in this list, and the GUI target is not one of AE_I18N_LIBRARIES.
+    ${CMAKE_CURRENT_SOURCE_DIR}/ToolWidget.cpp
+    # The menu bar, the window's panel strings and the header's view-setting
+    # tooltips are already in the executable target's own sources, which
+    # qt_add_translations scans: listing them here as well scans each file a SECOND
+    # time without its include path, producing both `gui::MainMenuBar` AND
+    # `MainMenuBar` contexts for the same source line. Leave them to the target scan.
 )
 list(REMOVE_DUPLICATES AE_I18N_SOURCES)
 

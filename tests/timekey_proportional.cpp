@@ -24,10 +24,13 @@
 #include <cstdio>
 #include <initializer_list>
 
+#include "cmnd/BasicCommands.h"
 #include "cmnd/Stack.h"
+#include "core/ChannelKey.h"
 #include "core/DepthKey.h"
+#include "core/ChannelKey.h"
 #include "core/MoveKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/TimeKey.h"
 #include "core/TimeKeyType.h"
 #include "core/TimeLine.h"
@@ -64,9 +67,12 @@ void check(bool aOk, const char* aWhat) {
 }
 
 // Push one key onto the timeline through the production push path.
-core::MoveKey* pushMove(core::TimeLine& aLine, cmnd::Stack& aStack, int aFrame) {
-    auto* key = new core::MoveKey();
-    aStack.push(aLine.createPusher(core::TimeKeyType_Move, aFrame, key));
+core::ChannelKey* pushMove(core::TimeLine& aLine, cmnd::Stack& aStack, int aFrame) {
+    auto* key = new core::ChannelKey(core::TimeKeyType_Move, 0);
+    key->setFrame(aFrame);
+    key->setValue(0.0f);
+    aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+    aStack.push(aLine.createChannelPusher(core::TimeKeyType_Move, 0, aFrame, key));
     return key;
 }
 
@@ -74,7 +80,7 @@ core::MoveKey* pushMove(core::TimeLine& aLine, cmnd::Stack& aStack, int aFrame) 
 // frame agrees with its map frame.
 bool mappingIs(core::TimeLine& aLine, core::TimeKeyType aType,
     std::initializer_list<QPair<int, core::TimeKey*>> aExpected) {
-    const core::TimeLine::MapType& map = aLine.map(aType);
+    const core::TimeLine::MapType& map = aLine.channelMap(aType, 0);
     if (map.size() != static_cast<int>(aExpected.size())) {
         return false;
     }
@@ -95,7 +101,7 @@ bool mappingIs(core::TimeLine& aLine, core::TimeKeyType aType,
 void sectionIds() {
     core::MoveKey a;
     core::MoveKey b;
-    core::OpaKey c;
+    core::OpacityKey c;
     core::DepthKey d;
 
     check(a.id() > 0 && b.id() > 0 && c.id() > 0 && d.id() > 0, "every constructed key gets a positive id");
@@ -192,8 +198,8 @@ void sectionMoveKeysAccepted() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, 0);
-        core::MoveKey* b = pushMove(line, stack, 10);
+        core::ChannelKey* a = pushMove(line, stack, 0);
+        core::ChannelKey* b = pushMove(line, stack, 10);
 
         check(line.moveKeys(core::TimeKeyType_Move, { { 0, 5 } }), "a single move is accepted");
         check(mappingIs(line, core::TimeKeyType_Move, { { 5, a }, { 10, b } }),
@@ -203,8 +209,8 @@ void sectionMoveKeysAccepted() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, 0);
-        core::MoveKey* b = pushMove(line, stack, 10);
+        core::ChannelKey* a = pushMove(line, stack, 0);
+        core::ChannelKey* b = pushMove(line, stack, 10);
 
         check(line.moveKeys(core::TimeKeyType_Move, { { 0, 10 }, { 10, 0 } }), "a swap of two frames is accepted");
         check(mappingIs(line, core::TimeKeyType_Move, { { 0, b }, { 10, a } }),
@@ -214,8 +220,8 @@ void sectionMoveKeysAccepted() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, 0);
-        core::MoveKey* b = pushMove(line, stack, 10);
+        core::ChannelKey* a = pushMove(line, stack, 0);
+        core::ChannelKey* b = pushMove(line, stack, 10);
 
         check(line.moveKeys(core::TimeKeyType_Move, { { 0, 10 }, { 10, 20 } }),
             "a destination vacated by the same batch is accepted");
@@ -226,8 +232,8 @@ void sectionMoveKeysAccepted() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, -10);
-        core::MoveKey* b = pushMove(line, stack, -5);
+        core::ChannelKey* a = pushMove(line, stack, -10);
+        core::ChannelKey* b = pushMove(line, stack, -5);
 
         check(line.moveKeys(core::TimeKeyType_Move, { { -10, -20 }, { -5, -10 } }),
             "negative frames are ordinary frames");
@@ -238,14 +244,16 @@ void sectionMoveKeysAccepted() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* move = pushMove(line, stack, 0);
-        auto* opa = new core::OpaKey();
-        stack.push(line.createPusher(core::TimeKeyType_Opa, 10, opa));
+        core::ChannelKey* move = pushMove(line, stack, 0);
+        auto* opa = new core::ChannelKey(core::TimeKeyType_Opacity, 0);
+        opa->setFrame(10);
+        stack.push(new cmnd::GrabNewObject<core::ChannelKey>(opa));
+        stack.push(line.createChannelPusher(core::TimeKeyType_Opacity, 0, 10, opa));
 
         check(line.moveKeys(core::TimeKeyType_Move, { { 0, 10 } }),
             "another type's key does not occupy a move destination");
         check(mappingIs(line, core::TimeKeyType_Move, { { 10, move } }), "the move landed on the shared frame");
-        check(line.timeKey(core::TimeKeyType_Opa, 10) == opa, "the other type's key was not disturbed");
+        check(line.channelKey(core::TimeKeyType_Opacity, 0, 10) == opa, "the other type's key was not disturbed");
     }
 
     std::printf("[4] moveKeys: single, swap, chained, negative, and type isolation accepted\n");
@@ -258,8 +266,8 @@ void sectionMoveKeysRefused() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, 0);
-        core::MoveKey* b = pushMove(line, stack, 10);
+        core::ChannelKey* a = pushMove(line, stack, 0);
+        core::ChannelKey* b = pushMove(line, stack, 10);
 
         check(!line.moveKeys(core::TimeKeyType_Move, { { 0, 10 } }),
             "a destination occupied by a non-moving key is refused");
@@ -270,9 +278,9 @@ void sectionMoveKeysRefused() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, 0);
-        core::MoveKey* b = pushMove(line, stack, 10);
-        core::MoveKey* c = pushMove(line, stack, 20);
+        core::ChannelKey* a = pushMove(line, stack, 0);
+        core::ChannelKey* b = pushMove(line, stack, 10);
+        core::ChannelKey* c = pushMove(line, stack, 20);
 
         check(!line.moveKeys(core::TimeKeyType_Move, { { 0, 5 }, { 10, 20 } }),
             "one occupied destination refuses the whole batch");
@@ -283,8 +291,8 @@ void sectionMoveKeysRefused() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, 0);
-        core::MoveKey* b = pushMove(line, stack, 10);
+        core::ChannelKey* a = pushMove(line, stack, 0);
+        core::ChannelKey* b = pushMove(line, stack, 10);
 
         check(!line.moveKeys(core::TimeKeyType_Move, { { 0, 5 }, { 0, 6 } }),
             "two moves sharing a source are refused");
@@ -295,8 +303,8 @@ void sectionMoveKeysRefused() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, 0);
-        core::MoveKey* b = pushMove(line, stack, 10);
+        core::ChannelKey* a = pushMove(line, stack, 0);
+        core::ChannelKey* b = pushMove(line, stack, 10);
 
         check(!line.moveKeys(core::TimeKeyType_Move, { { 0, 5 }, { 10, 5 } }),
             "two moves sharing a destination are refused");
@@ -307,8 +315,8 @@ void sectionMoveKeysRefused() {
     {
         core::TimeLine line;
         cmnd::Stack stack;
-        core::MoveKey* a = pushMove(line, stack, 0);
-        core::MoveKey* b = pushMove(line, stack, 10);
+        core::ChannelKey* a = pushMove(line, stack, 0);
+        core::ChannelKey* b = pushMove(line, stack, 10);
 
         check(!line.moveKeys(core::TimeKeyType_Move, { { 0, 5 }, { 7, 8 } }),
             "a batch naming a missing source is refused");

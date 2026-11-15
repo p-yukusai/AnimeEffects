@@ -2,6 +2,7 @@
 #include <QUndoCommand>
 #include "XC.h"
 #include "core/Project.h"
+#include "core/BoneKeyUpdater.h"
 
 namespace {
 const int kParaThreadCount = 4;
@@ -86,6 +87,11 @@ Project::Project(QString aFileName, Animator& aAnimator, Hook* aHookGrabbed):
     onTreeRestructured.connect(&mObjectTree, &ObjectTree::onTreeRestructured);
     onResourceModified.connect(&mObjectTree, &ObjectTree::onResourceModified);
     onProjectAttributeModified.connect(&mObjectTree, &ObjectTree::onProjectAttributeModified);
+    // One authored field is shared by every BoneKey of its owner, so this is a
+    // whole-owner cache reset, not a single-key refresh.
+    onSkinWeightsModified.connect([this](ObjectNode& aOwner, bool aIsUndo) {
+        BoneKeyUpdater::onSkinWeightsModified(*this, aOwner, aIsUndo);
+    });
     // Attribute setters drive onProjectAttributeModified; the bool (undo) is not
     // consumed by any listener, so a forward re-sync is all that's needed here.
     mAttribute.setChangeNotifier([this](ProjectEvent::Type aType) {

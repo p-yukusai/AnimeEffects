@@ -324,7 +324,8 @@ void buildChannels(
             continue;
 
         for (core::TimeKeyType type : ctrl::graph::Channel::graphableTypes()) {
-            if (timeLine->map(type).isEmpty())
+            const bool trackStorage = core::TimeLine::usesChannelTracks(type);
+            if (!trackStorage && timeLine->map(type).isEmpty())
                 continue; // no keys: nothing to draw and nothing to toggle
 
             // The rows of one type are one LEGEND GROUP (design section 7): the
@@ -349,13 +350,15 @@ void buildChannels(
             }
 
             for (const ctrl::graph::Channel& channel : channels) {
+                if (trackStorage && !timeLine->hasChannelKeys(type, channel.component()))
+                    continue;
                 gui::PanelChannelRow row;
                 row.node = node;
                 row.channel = channel;
                 row.layer = node->name();
                 row.group = group;
                 // A one-component type has no sibling to be told apart from, so the
-                // component word is noise: "Opa", not "Opa Opacity" (the reference
+                // component word is noise: "Opacity", not "Opacity Opacity" (the reference
                 // draws exactly this chip, mock-graph.js's _curveLabels).
                 row.name = channels.size() > 1 ? channel.name() : typeName;
                 // The one channel hue table: axis where the component lies on an
@@ -491,7 +494,9 @@ void buildCurves(
                 // map does not answer for is not proportional. The model publishes the
                 // flag unmodified - drawing a ring instead of a filled dot is the drawing
                 // layer's decision, the same one the timeline's key pass makes.
-                const core::TimeKey* publishedKey = timeLine->timeKey(row.channel.type(), frame.get());
+                const core::TimeKey* publishedKey = core::TimeLine::usesChannelTracks(row.channel.type())
+                    ? timeLine->channelKey(row.channel.type(), row.channel.component(), frame.get())
+                    : timeLine->timeKey(row.channel.type(), frame.get());
                 out.keyProportional.append(publishedKey && publishedKey->isProportional());
             }
         }
@@ -588,9 +593,10 @@ void buildCurves(
             const int width = aMetrics.horizontalAdvance(out.chipText) + 2 * kChipPadX;
             const int height = aMetrics.height();
             const double y = out.points.last().y();
-            const QRect chip(
-                aModel.plot.right() + 1 - kChipRightGap - width, qRound(y) - height / 2, width, height
-            );
+            // Centre the box on the curve: round the CENTRE, not the top edge,
+            // or an even-height box lands half a line off the value it names.
+            const int top = qRound(y - (height - 1) / 2.0);
+            const QRect chip(aModel.plot.right() + 1 - kChipRightGap - width, top, width, height);
             if (aModel.plot.contains(chip))
                 out.chip = chip;
         }

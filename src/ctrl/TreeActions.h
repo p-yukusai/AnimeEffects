@@ -109,10 +109,11 @@ core::ObjectNode* createFolderFromResource(
 // children, its visibility, blend mode, rect and depth. One undo step.
 core::ObjectNode* duplicateNode(core::Project& aProject, core::ObjectNode& aSource);
 
-// A Move/Rotate/Scale/Depth/Opacity/HSV key at frame 0 for the node and -- on a layer --
-// its Pose/FFD channels, recursively for a folder. ONE undo step and ONE PushKey event,
-// where the widget pushed one command per key.
-void addDefaultKeys(core::Project& aProject, core::ObjectNode& aNode);
+// A Move/Rotate/Scale/Depth/Opacity/HSV key at the PLAYHEAD for the node and -- on
+// a layer -- its Pose/FFD channels, recursively for a folder. Channels that already
+// have a key there are left alone. ONE undo step and ONE PushKey event, where the
+// widget pushed one command per key.
+void addKeysAtPlayhead(core::Project& aProject, core::ObjectNode& aNode);
 
 } // namespace tree
 } // namespace ctrl

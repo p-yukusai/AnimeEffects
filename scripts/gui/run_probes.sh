@@ -64,7 +64,7 @@ echo "projects: default=${PROJ:-<search>}  probe_capped=${capped_proj:-<same as 
 # still be the large one. The
 # raise is PER PROBE so one probe's honest runtime cannot silently eat the sweep
 # budget the others live in.
-declare -A PROBE_TIMEOUT=( [probe_capped]=1800 )
+declare -A PROBE_TIMEOUT=( [probe_capped]=1800 [probe_weights_bake_paint]=1200 )
 for probe in "$DIR"/probe_*.sh; do
     name=$(basename "$probe")
     budget=${PROBE_TIMEOUT["${name%.sh}"]:-900}

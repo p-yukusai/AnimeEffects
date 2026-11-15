@@ -163,7 +163,7 @@ void Graph::assignFrom(const Colors& aColors) {
     mKeyColors[core::TimeKeyType_Rotate] = aColors.rotateKey;
     mKeyColors[core::TimeKeyType_Scale] = aColors.scaleKey;
     mKeyColors[core::TimeKeyType_Depth] = aColors.depthKey;
-    mKeyColors[core::TimeKeyType_Opa] = aColors.opaKey;
+    mKeyColors[core::TimeKeyType_Opacity] = aColors.opacityKey;
     mKeyColors[core::TimeKeyType_Image] = aColors.imageKey;
     mKeyColors[core::TimeKeyType_HSV] = aColors.HSVKey;
     mKeyColors[core::TimeKeyType_Blur] = aColors.blurKey;
@@ -189,7 +189,7 @@ QColor Graph::channelColor(core::TimeKeyType aType, int aComponent) const {
 QColor Graph::keyColor(core::TimeKeyType aType) const {
     // A timeline key belongs to the TYPE, so it takes the type's first
     // component's hue from the same table: X red for Move/Scale/Image/Blur,
-    // its own hue otherwise (Opa amber, Rotate purple, ...).
+    // its own hue otherwise (Opacity amber, Rotate purple, ...).
     return channelColor(aType, 0);
 }
 

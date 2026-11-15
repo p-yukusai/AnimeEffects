@@ -35,8 +35,12 @@ namespace srt {
         void assignMoveKey(core::MoveKey::Data& aNewData);
         void assignRotateKey(core::RotateKey::Data& aNewData);
         void assignScaleKey(core::ScaleKey::Data& aNewData);
+        void assignTrackRotateKey(core::RotateKey::Data& aNewData);
+        void assignTrackScaleKey(core::ScaleKey::Data& aNewData);
+        void assignTrackMoveKey(core::MoveKey::Data& aNewData);
 
-        void setAssignNotifier(cmnd::ScopedMacro& aMacro, core::TimeKeyType aKeyType, bool aPushKey);
+        void setAssignNotifier(cmnd::ScopedMacro& aMacro, core::TimeKeyType aKeyType, bool aPushKey,
+                               bool aBaseValue);
         void notifyAssignModification(core::TimeKeyType aKeyType);
 
         core::Project& mProject;
@@ -49,6 +53,10 @@ namespace srt {
         AssignMoveCommand* mAssignMoveRef;
         AssignRotateCommand* mAssignRotateRef;
         AssignScaleCommand* mAssignScaleRef;
+        AssignChannelValueCommand* mTrackRotateRef;
+        AssignChannelBaseCommand* mTrackRotateBaseRef;
+        AssignScaleTrackCommand* mTrackScaleRef;
+        AssignMoveTrackCommand* mTrackMoveRef;
         util::PlacePointer<ScopedModifier> mSuspend;
         QVector2D mBaseVec;
         float mBaseValue;

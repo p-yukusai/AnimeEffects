@@ -44,9 +44,11 @@ Item {
     Accessible.description: root.tip
     Accessible.onPressAction: if (root.enabled) root.clicked()
 
-    ToolTip.visible: mouse.containsMouse && root.tip !== ""
-    ToolTip.delay: 500
-    ToolTip.text: root.tip
+    AeToolTip {
+        ownerItem: root
+        text: root.tip
+        shown: mouse.containsMouse && root.tip !== ""
+    }
 
     activeFocusOnTab: true
     Keys.onSpacePressed: if (root.enabled) { root.clicked(); event.accepted = true }

@@ -25,6 +25,7 @@ Driver::Driver(core::Project& aProject, DriverResources& aResources, GraphicStyl
     mEditor(),
     mGraphEditor(new GraphEditor(aProject, aUILogger)),
     mMaskEditor(nullptr),
+    mBoneEditor(nullptr),
     mCurrentNode(),
     mOnUpdating(0),
     mRejectedTarget() {
@@ -51,7 +52,12 @@ void Driver::setTool(ToolType aType) {
     } else if (mToolType == ToolType_SRT) {
         mEditor.reset(new SRTEditor(mProject, mUILogger));
     } else if (mToolType == ToolType_Bone) {
-        mEditor.reset(new BoneEditor(mProject, mGraphicStyle, mUILogger));
+        auto* editor = new BoneEditor(mProject, mGraphicStyle, mUILogger);
+        mBoneEditor = editor;
+        // The editor owns the selected bone; its state changes must reach the
+        // panel even when the change came from a canvas click.
+        editor->onWeightsStateChanged.connect([this]() { onBoneWeightsStateChanged(); });
+        mEditor.reset(editor);
     } else if (mToolType == ToolType_Pose) {
         mEditor.reset(new PoseEditor(mProject, mUILogger));
     } else if (mToolType == ToolType_Mesh) {
@@ -66,6 +72,9 @@ void Driver::setTool(ToolType aType) {
     }
     if (mToolType != ToolType_Mask) {
         mMaskEditor = nullptr;
+    }
+    if (mToolType != ToolType_Bone) {
+        mBoneEditor = nullptr;
     }
 
     setTarget(mCurrentNode);
@@ -105,6 +114,18 @@ void Driver::updateFrame() {
     }
 }
 
+void Driver::markPendingBlend(core::TimeLineEvent& aEvent) {
+    if (mPendingBlend) {
+        for (core::TimeLineEvent::Target& target : aEvent.targets())
+            mPendingEvent.targets().append(target);
+        if (mPendingEvent.type() < aEvent.type())
+            mPendingEvent.setType(aEvent.type());
+    } else {
+        mPendingEvent = aEvent;
+        mPendingBlend = true;
+    }
+}
+
 void Driver::updateKey(core::TimeLineEvent& aEvent, bool aUndo) {
 #if 0
     qDebug() << "type: " << aEvent.type() << (aUndo ? " undo" : " redo");
@@ -120,15 +141,7 @@ void Driver::updateKey(core::TimeLineEvent& aEvent, bool aUndo) {
     // platform collapses the motion it could not deliver (measured: 40 of 40 moves with no drag in
     // flight, 8-10 of 40 during one, handler 0.4ms). The pan had the same shape and was fixed the
     // same way - mark, and do the work once per painted frame (flushPendingBlend).
-    if (mPendingBlend) {
-        for (core::TimeLineEvent::Target& target : aEvent.targets())
-            mPendingEvent.targets().append(target);
-        if (mPendingEvent.type() < aEvent.type())
-            mPendingEvent.setType(aEvent.type());
-    } else {
-        mPendingEvent = aEvent;
-        mPendingBlend = true;
-    }
+    markPendingBlend(aEvent);
 
     if (mOnUpdating > 0)
         return;
@@ -146,6 +159,33 @@ void Driver::frameTick() {
     // it unconditionally; blending is a separate duty that still only happens when something changed.
     if (mEditor)
         mEditor->flushPendingWork();
+}
+
+void Driver::updateSkinWeights(core::ObjectNode& aOwner) {
+    // The owner's BoneKey caches were already rebuilt by BoneKeyUpdater (the
+    // Project signal that got us here); the blend only has to re-derive the
+    // per-node expans pointers and matrices from them. No editor event: this is
+    // not a key edit, and a mode reset here would end the stroke that asked for
+    // it. The next paint's flushPendingBlend does the work once.
+    core::TimeLineEvent event;
+    event.setType(core::TimeLineEvent::Type_ChangeKeyValue);
+    event.pushTarget(aOwner, core::TimeKeyType_Bone, mProject.animator().currentFrame().get());
+    markPendingBlend(event);
+    // An undo/redo of an authored-weight command reaches the document without
+    // the mode, so the panel's state has to be re-read here too.
+    onBoneWeightsStateChanged();
+}
+
+bool Driver::bakeBoneWeights(bool aReplace, QString* aError) {
+    return mBoneEditor && mBoneEditor->bakeWeights(aReplace, aError);
+}
+
+bool Driver::revertBoneWeights(QString* aError) {
+    return mBoneEditor && mBoneEditor->revertWeights(aError);
+}
+
+bool Driver::clearBoneWeights(QString* aError) {
+    return mBoneEditor && mBoneEditor->clearWeights(aError);
 }
 
 void Driver::flushPendingBlend() {

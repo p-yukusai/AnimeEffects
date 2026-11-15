@@ -21,7 +21,7 @@ namespace core {
 //   Rotate : 0 angle
 //   Scale  : 0 x, 1 y
 //   Depth  : 0
-//   Opa    : 0
+//   Opacity    : 0
 //   Blur   : 0 blurX, 1 blurY, 2 angleDeg
 //   HSV    : 0 hue, 1 saturation, 2 value
 //   Wave   : 0 strength, 1 wavelength, 2 angleDeg, 3 phase, 4 mix
@@ -37,7 +37,7 @@ constexpr int easingComponentCount(TimeKeyType aType) {
     case TimeKeyType_Rotate: return 1;
     case TimeKeyType_Scale: return 2;
     case TimeKeyType_Depth: return 1;
-    case TimeKeyType_Opa: return 1;
+    case TimeKeyType_Opacity: return 1;
     case TimeKeyType_Blur: return 3;
     case TimeKeyType_HSV: return 3;
     case TimeKeyType_Wave: return 5;

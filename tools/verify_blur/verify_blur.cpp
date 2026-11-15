@@ -1047,7 +1047,7 @@ void suiteGating() {
             blurNode = scene::addLayer(tree, root, pool.wedge("w"), "layer", QVector2D(64, 48), 20.0f, QVector2D(1.4f, 0.8f));
         }
         if (opacity != 1.0f)
-            core::getOrCreateDefaultKey<core::OpaKey, core::TimeKeyType_Opa>(*blurNode->timeLine())
+            core::getOrCreateBaseValue<core::OpaKey, core::TimeKeyType_Opa>(*blurNode->timeLine())
                 ->setOpacity(opacity);
         if (keyFrame >= 0)
             scene::addBlur(blurNode, keyFrame, bx, by, ang);
@@ -1885,7 +1885,7 @@ void suitePsdImport() {
 
     // folder opacity maps to the default opa key
     const auto opaOf = [](core::ObjectNode* aNode) {
-        auto* key = (core::OpaKey*)aNode->timeLine()->defaultKey(core::TimeKeyType_Opa);
+        auto* key = (core::OpaKey*)aNode->timeLine()->baseValue(core::TimeKeyType_Opa);
         return key ? key->opacity() : 1.0f;
     };
     expect(grp && std::abs(opaOf(grp) - 200.0f / 255.0f) < 0.001f, "S11: grp opacity == 200/255");
@@ -2158,7 +2158,7 @@ void suiteOraImport() {
 
     // stack opacity maps to the default opa key
     const auto opaOf = [](core::ObjectNode* aNode) {
-        auto* key = (core::OpaKey*)aNode->timeLine()->defaultKey(core::TimeKeyType_Opa);
+        auto* key = (core::OpaKey*)aNode->timeLine()->baseValue(core::TimeKeyType_Opa);
         return key ? key->opacity() : 1.0f;
     };
     expect(

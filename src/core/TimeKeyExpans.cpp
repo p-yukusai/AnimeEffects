@@ -9,7 +9,7 @@ TimeKeyExpans::TimeKeyExpans():
     mKeyCaches(),
     mKeyCached(),
     mSRT(),
-    mOpa(),
+    mOpacity(),
     mHSV(),
     mBlurX(0.0f),
     mBlurY(0.0f),

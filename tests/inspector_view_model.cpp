@@ -12,7 +12,7 @@
 #include "core/FolderNode.h"
 #include "core/HsvKey.h"
 #include "core/MoveKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/Project.h"
 #include "core/RotateKey.h"
 #include "gui/qml/FilterStackModel.h"
@@ -70,8 +70,24 @@ private:
         }                                                                                                    \
     } while (false)
 
-const core::MoveKey::Data& moveDefault(const core::TimeLine& line) {
-    return static_cast<const core::MoveKey*>(line.defaultKey(core::TimeKeyType_Move))->data();
+QVector2D moveDefault(const core::TimeLine& line) {
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Move)) {
+        return QVector2D(
+            line.channelBaseValue(core::TimeKeyType_Move, 0),
+            line.channelBaseValue(core::TimeKeyType_Move, 1)
+        );
+    }
+    return static_cast<const core::MoveKey*>(line.baseValue(core::TimeKeyType_Move))->data().pos();
+}
+
+QVector2D moveAt(const core::TimeLine& line, int frame) {
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Move)) {
+        const auto* x = line.channelKey(core::TimeKeyType_Move, 0, frame);
+        const auto* y = line.channelKey(core::TimeKeyType_Move, 1, frame);
+        return QVector2D(x ? x->value() : 0.0f, y ? y->value() : 0.0f);
+    }
+    const auto* key = static_cast<const core::MoveKey*>(line.timeKey(core::TimeKeyType_Move, frame));
+    return key ? key->data().pos() : QVector2D();
 }
 
 // The expansion state exactly as the delegate would read it, row by row. The
@@ -113,36 +129,72 @@ int run() {
     CHECK(inspector.opacity()->opacity() == 0.75);
     CHECK(inspector.move()->keyState() == QStringLiteral("static"));
     CHECK(inspector.move()->keyEnabled());
+    CHECK(inspector.meshCellLabel() == QStringLiteral("Mesh spacing"));
+    CHECK(inspector.meshCellTooltip().contains(QStringLiteral("Distance between mesh vertices")));
 
     // A static edit writes the default and creates no key.
     inspector.move()->setX(11.0);
-    CHECK(line.map(core::TimeKeyType_Move).isEmpty());
-    CHECK(moveDefault(line).pos() == QVector2D(11.0f, 200.0f));
+    CHECK(!line.hasChannelKeys(core::TimeKeyType_Move, 0));
+    CHECK(moveDefault(line) == QVector2D(11.0f, 200.0f));
 
     // A keyed property edits the key at the playhead, and undo restores it.
     inspector.move()->toggleKey();
     CHECK(inspector.move()->keyState() == QStringLiteral("keyed"));
-    CHECK(line.hasTimeKey(core::TimeKeyType_Move, 10));
+    CHECK(line.hasChannelKey(core::TimeKeyType_Move, 0, 10));
+    const QVector2D beforeEdit = moveAt(line, 10);
     inspector.move()->setX(11.0);
     inspector.move()->setY(33.0);
-    const auto* key = static_cast<const core::MoveKey*>(line.timeKey(core::TimeKeyType_Move, 10));
-    CHECK(key && key->data().pos() == QVector2D(11.0f, 33.0f));
+    CHECK(moveAt(line, 10) == QVector2D(11.0f, 33.0f));
     project.commandStack().undo();
     inspector.refresh();
-    const auto* undone = static_cast<const core::MoveKey*>(line.timeKey(core::TimeKeyType_Move, 10));
-    CHECK(undone && undone->data().pos() == QVector2D(11.0f, 0.0f));
+    CHECK(moveAt(line, 10) == beforeEdit);
 
+    // A FIELD's own menu keys only that channel: X exists while Y does not.
+    if (line.hasChannelKey(core::TimeKeyType_Move, 0, 10)) {
+        inspector.move()->toggleKey();
+        inspector.refresh();
+    }
+    CHECK(inspector.move()->channelKeyAction(0).startsWith(QStringLiteral("Add")));
+    inspector.move()->toggleChannelKey(0);
+    CHECK(line.hasChannelKey(core::TimeKeyType_Move, 0, 10));
+    CHECK(!line.hasChannelKey(core::TimeKeyType_Move, 1, 10));
+    CHECK(inspector.move()->channelKeyAction(0).startsWith(QStringLiteral("Remove")));
+    inspector.move()->toggleChannelKey(0);
+    CHECK(!line.hasChannelKey(core::TimeKeyType_Move, 0, 10));
+
+    // The dot is a toggle; removing the key keeps the static base.
     // The dot is a toggle; removing the key keeps the static base.
     inspector.move()->toggleKey();
     CHECK(inspector.move()->keyState() == QStringLiteral("static"));
-    CHECK(!line.hasTimeKey(core::TimeKeyType_Move, 10));
-    CHECK(moveDefault(line).pos() == QVector2D(11.0f, 200.0f));
+    CHECK(!line.hasChannelKey(core::TimeKeyType_Move, 0, 10));
+
+    // The mesh-spacing field's transient preview reaches the viewport host with the
+    // inspected node and clears when the selection moves.
+    {
+        int previewEvents = 0;
+        core::ObjectNode* previewNode = nullptr;
+        bool previewActive = false;
+        auto slot = inspector.onMeshPreviewRequested.connect(
+            [&](core::ObjectNode* aNode, bool aActive) {
+                ++previewEvents;
+                previewNode = aNode;
+                previewActive = aActive;
+            }
+        );
+        inspector.setMeshPreviewActive(true);
+        CHECK(previewEvents == 1 && previewNode == &folder && previewActive);
+        core::FolderNode other(QStringLiteral("other preview"));
+        inspector.setTarget(&other);
+        CHECK(previewEvents == 2 && previewNode == nullptr && !previewActive);
+        inspector.onMeshPreviewRequested.disconnect(slot);
+        inspector.setTarget(&folder);
+    }
+    CHECK(moveDefault(line) == QVector2D(11.0f, 200.0f));
 
     // Rotation is degrees in the model and radians in the document.
     inspector.rotate()->setAngle(45.0);
     CHECK(inspector.rotate()->angle() == 45.0);
-    const auto* rotate = static_cast<const core::RotateKey*>(line.defaultKey(core::TimeKeyType_Rotate));
-    CHECK(rotate && std::abs(rotate->data().rotate() - 0.7853982f) < 0.0001f);
+    CHECK(std::abs(line.channelBaseValue(core::TimeKeyType_Rotate, 0) - 0.7853982f) < 0.0001f);
 
     // Filters: add is static-first, the dot creates the explicit key, and the
     // row's fields edit the document.
@@ -192,8 +244,13 @@ int run() {
     CHECK(hsv && hsv->kind() == QStringLiteral("hsv"));
     CHECK(hsv->keyState() == QStringLiteral("static"));
     hsv->setHue(42);
-    CHECK(line.map(core::TimeKeyType_HSV).isEmpty());
-    CHECK(static_cast<const core::HSVKey*>(line.defaultKey(core::TimeKeyType_HSV))->data().hsv().at(0) == 42);
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_HSV)) {
+        CHECK(!line.hasChannelKeys(core::TimeKeyType_HSV, 0));
+        CHECK(line.channelBaseValue(core::TimeKeyType_HSV, 0) == 42.0f);
+    } else {
+        CHECK(line.map(core::TimeKeyType_HSV).isEmpty());
+        CHECK(static_cast<const core::HSVKey*>(line.baseValue(core::TimeKeyType_HSV))->data().hsv().at(0) == 42);
+    }
     hsv->toggleKey();
     CHECK(hsv->keyState() == QStringLiteral("keyed"));
 
@@ -208,6 +265,26 @@ int run() {
     inspector.filters()->addFilter(core::TimeKeyType_Blur);
     CHECK(inspector.filters()->rows().size() == 2);
     CHECK(inspector.filters()->rowAt(1)->kind() == QStringLiteral("blur"));
+
+    // The card's Paint state is per FIELD and per NODE: only the lane/channel the
+    // tool is actually painting on this node disables that row.
+    inspector.setMaskPaintState(&folder, false, true, core::TimeKeyType_HSV,
+                                core::FilterMaskChannel_Amount);
+    CHECK(inspector.maskPaintIsFilter());
+    CHECK(inspector.filters()->rowAt(0)->amountPaintActive());
+    CHECK(!inspector.filters()->rowAt(0)->timePaintActive());
+    inspector.setMaskPaintState(&folder, false, true, core::TimeKeyType_HSV,
+                                core::FilterMaskChannel_TimeOffset);
+    CHECK(inspector.filters()->rowAt(0)->timePaintActive());
+    CHECK(!inspector.filters()->rowAt(0)->amountPaintActive());
+    inspector.setMaskPaintState(&folder, true, false, core::TimeKeyType_TERM,
+                                core::FilterMaskChannel_Amount);
+    CHECK(inspector.maskPaintActive());
+    CHECK(!inspector.filters()->rowAt(0)->amountPaintActive());
+    core::FolderNode other(QStringLiteral("other"));
+    inspector.setMaskPaintState(&other, true, false, core::TimeKeyType_TERM,
+                                core::FilterMaskChannel_Amount);
+    CHECK(!inspector.maskPaintActive() && !inspector.filters()->rowAt(0)->amountPaintActive());
 
     // Expansion is a SET keyed by TYPE, not one slot. The second add opens its
     // own card and leaves the first card's state alone (it was collapsed just

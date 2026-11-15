@@ -99,10 +99,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include "XCAssert.h"
+#include "cmnd/BasicCommands.h"
 #include "core/BoneKey.h"
+#include "core/ChannelKey.h"
 #include "core/MoveKey.h"
+#include "core/MoveStateKey.h"
+#include "core/ChannelKey.h"
 #include "core/ObjectNode.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/TimeLine.h"
 #include "ctrl/TimeLineEditor.h"
 // The selected key's ring tokens (alpha/offset) - the same cells the graph panel's
@@ -335,14 +339,26 @@ int main(int argc, char** argv) {
     const Rgb floor = rgbOf(colors.base);
 
     core::TestNode nodeA; // the selected row: Move keys, one of them focused
-    core::TestNode nodeB; // an unselected row: one Opa key (a strongly hued label)
+    core::TestNode nodeB; // an unselected row: one Opacity key (a strongly hued label)
     cmnd::Stack stack;
 
-    auto* keyA = new core::MoveKey();
-    auto* keyFocused = new core::MoveKey();
-    stack.push(nodeA.timeLine()->createPusher(core::TimeKeyType_Move, kKeyFrameA, keyA));
-    stack.push(nodeA.timeLine()->createPusher(core::TimeKeyType_Move, kKeyFrameFocused, keyFocused));
-    stack.push(nodeB.timeLine()->createPusher(core::TimeKeyType_Opa, kKeyFrameA, new core::OpaKey()));
+    auto makeRotate = [](core::TimeLine& aLine, cmnd::Stack& aStack, int aFrame) {
+        auto* key = new core::ChannelKey(core::TimeKeyType_Rotate, 0);
+        key->setFrame(aFrame);
+        key->setValue(0.0f);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aLine.createChannelPusher(core::TimeKeyType_Rotate, 0, aFrame, key));
+        return key;
+    };
+    auto* keyA = makeRotate(*nodeA.timeLine(), stack, kKeyFrameA);
+    auto* keyFocused = makeRotate(*nodeA.timeLine(), stack, kKeyFrameFocused);
+    {
+        auto* opa = new core::ChannelKey(core::TimeKeyType_Opacity, 0);
+        opa->setFrame(kKeyFrameA);
+        opa->setValue(1.0f);
+        stack.push(new cmnd::GrabNewObject<core::ChannelKey>(opa));
+        stack.push(nodeB.timeLine()->createChannelPusher(core::TimeKeyType_Opacity, 0, kKeyFrameA, opa));
+    }
 
     // The focus the renderer reads is the key's own life link (the same live
     // link the editor's Selection holds); it must outlive the renders below.
@@ -416,9 +432,9 @@ int main(int argc, char** argv) {
         // The channel hue table (design section 7) on the TIMELINE: a Move key
         // belongs to the type, so it takes the type's first component's hue -
         // the X axis colour - not the old per-type indigo moveKey.
-        const Rgb moveKey = rgbOf(theme::channelColor(colors, core::TimeKeyType_Move, 0));
-        CHECK(chebyshev(moveKey, rgbOf(colors.axisX)) == 0);
-        CHECK(chebyshev(moveKey, rgbOf(colors.moveKey)) > 0); // the old type hue is gone from this key
+        const Rgb moveKey = rgbOf(theme::channelColor(colors, core::TimeKeyType_Rotate, 0));
+        CHECK(chebyshev(moveKey, rgbOf(colors.rotateKey)) == 0);
+        CHECK(chebyshev(moveKey, rgbOf(colors.moveKey)) > 0); // the Move hue is not this key
         const Rgb brightened = towardText(moveKey, kSelectFillMix);
 
         // The axis rule itself, read off the same table both views read: the two
@@ -429,7 +445,7 @@ int main(int argc, char** argv) {
         CHECK(chebyshev(moveX, moveY) > 0);
         CHECK(chebyshev(moveY, rgbOf(colors.axisY)) == 0);
         CHECK(chebyshev(rgbOf(theme::channelColor(colors, core::TimeKeyType_Scale, 0)), moveX) == 0);
-        CHECK(chebyshev(rgbOf(theme::channelColor(colors, core::TimeKeyType_Opa, 0)), rgbOf(colors.opaKey)) == 0);
+        CHECK(chebyshev(rgbOf(theme::channelColor(colors, core::TimeKeyType_Opacity, 0)), rgbOf(colors.opacityKey)) == 0);
         CHECK(chebyshev(rgbOf(theme::channelColor(colors, core::TimeKeyType_Rotate, 0)), rgbOf(colors.rotateKey)) == 0);
         // The band the ring is drawn on (row A is the selected row).
         const Rgb bandA = pixelAt(image, kBandProbeX, keyRowAY);
@@ -469,7 +485,7 @@ int main(int argc, char** argv) {
         // therefore puts the BODY on +6 (0.65 of the pixel) and its fringe on +7
         // (0.35), while +5 (5.0px) is still the clear gap past the marker. A ring at
         // any other offset moves that maximum and fails the profile comparison.
-        const QColor ringToken = theme::channelColor(colors, core::TimeKeyType_Move, 0);
+        const QColor ringToken = theme::channelColor(colors, core::TimeKeyType_Rotate, 0);
         const double inkAlpha = double(ctrl::time::kSelectRingAlpha) / 255.0;
         const double offset = ctrl::time::kSelectRingOffset;
         CHECK(std::abs(offset - 2.6) < 1e-9); // the token the graph reads is the same 2.6
@@ -506,19 +522,19 @@ int main(int argc, char** argv) {
     {
         const QImage image = renderTimeline(editor, theme);
         // Row B is unselected, so its band is the floor: a clean dst for an ink
-        // measurement. Its single type is Opa, whose hue is strongly non-neutral.
+        // measurement. Its single type is Opacity, whose hue is strongly non-neutral.
         const Rgb bandB = pixelAt(image, kBandProbeX, kRowBTop + 30);
         CHECK(chebyshev(bandB, floor) <= kClean);
 
         // Display names are not serialization tokens: the lane says "Opacity",
-        // while the project format and clipboard keep "Opa".
-        CHECK(core::TimeLine::getTimeKeyDisplayName(core::TimeKeyType_Opa) == QStringLiteral("Opacity"));
-        CHECK(core::TimeLine::getTimeKeyName(core::TimeKeyType_Opa) == QStringLiteral("Opa"));
+        // while the project format and clipboard keep "Opacity".
+        CHECK(core::TimeLine::getTimeKeyDisplayName(core::TimeKeyType_Opacity) == QStringLiteral("Opacity"));
+        CHECK(core::TimeLine::getTimeKeyName(core::TimeKeyType_Opacity) == QStringLiteral("Opacity"));
 
         const Rgb ink = strongestInk(image, labelB, bandB);
         CHECK(chebyshev(ink, bandB) > 15); // there is ink at all
 
-        const Rgb hueTint = over(colors.opaKey, 0.42, bandB);
+        const Rgb hueTint = over(colors.opacityKey, 0.42, bandB);
         const Rgb neutralInk = over(colors.text, 180.0 / 255.0, bandB);
 
         // The ink carries the channel's HUE: the old neutral text ink was a
@@ -529,7 +545,7 @@ int main(int argc, char** argv) {
         CHECK(chebyshev(ink, hueTint) + 20 < chebyshev(ink, neutralInk));
         // And it is quiet - still nearer its own band than the full-strength
         // hue, which no full-brightness ink is.
-        CHECK(chebyshev(ink, bandB) < chebyshev(ink, rgbOf(colors.opaKey)));
+        CHECK(chebyshev(ink, bandB) < chebyshev(ink, rgbOf(colors.opacityKey)));
     }
 
     // --- 4: the lane label does NOT yield its column to the playhead.
@@ -604,7 +620,7 @@ int main(int argc, char** argv) {
                 }
             }
         }
-        const Rgb hueTint = over(colors.opaKey, 0.42, bandB);
+        const Rgb hueTint = over(colors.opacityKey, 0.42, bandB);
         CHECK(chebyshev(strongest, hueTint) <= 25);
     }
 
@@ -788,10 +804,8 @@ int main(int argc, char** argv) {
     {
         core::TestNode nodeP;
         cmnd::Stack stackP;
-        auto* absoluteKey = new core::MoveKey();
-        auto* proportionalKey = new core::MoveKey();
-        stackP.push(nodeP.timeLine()->createPusher(core::TimeKeyType_Move, kKeyFrameA, absoluteKey));
-        stackP.push(nodeP.timeLine()->createPusher(core::TimeKeyType_Move, kKeyFrameFocused, proportionalKey));
+        auto* absoluteKey = makeRotate(*nodeP.timeLine(), stackP, kKeyFrameA);
+        auto* proportionalKey = makeRotate(*nodeP.timeLine(), stackP, kKeyFrameFocused);
         // The document's own flag: the renderer reads nothing else to decide the ring.
         proportionalKey->setProportional(true);
         CHECK(proportionalKey->isProportional());
@@ -812,7 +826,7 @@ int main(int argc, char** argv) {
         CHECK(absoluteX != proportionalX);
         CHECK(proportionalX + 9 < labelBox(kRowATop, kRowABottom).left());
 
-        const QColor hue = theme::channelColor(colors, core::TimeKeyType_Move, 0);
+        const QColor hue = theme::channelColor(colors, core::TimeKeyType_Rotate, 0);
         const Rgb plainHue = rgbOf(hue);
 
         // The absolute key: the full channel hue, solid.
@@ -864,9 +878,17 @@ int main(int argc, char** argv) {
     // summary band's centre.
     {
         core::TestFolder folder;
-        stack.push(folder.timeLine()->createPusher(core::TimeKeyType_Move, kKeyFrameA, new core::MoveKey()));
-        stack.push(folder.child().timeLine()->createPusher(core::TimeKeyType_Move, kKeyFrameA, new core::MoveKey()));
-        stack.push(folder.child().timeLine()->createPusher(core::TimeKeyType_Opa, kKeyFrameA, new core::OpaKey()));
+        makeRotate(*folder.timeLine(), stack, kKeyFrameA);
+        makeRotate(*folder.child().timeLine(), stack, kKeyFrameA);
+        {
+            auto* opa = new core::ChannelKey(core::TimeKeyType_Opacity, 0);
+            opa->setFrame(kKeyFrameA);
+            opa->setValue(1.0f);
+            stack.push(new cmnd::GrabNewObject<core::ChannelKey>(opa));
+            stack.push(folder.child().timeLine()->createChannelPusher(
+                core::TimeKeyType_Opacity, 0, kKeyFrameA, opa
+            ));
+        }
 
         const QRect rowRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
                             ctrl::TimeLineRow::kHeight + ctrl::TimeLineRow::kFolderSummaryHeight);
@@ -981,7 +1003,7 @@ int main(int argc, char** argv) {
             QPoint(keyX, int(row.summaryCenterY())), 1.0f);
         CHECK(hit.isValid());
         CHECK(hit.node == &folder.child());
-        CHECK(hit.pos.type() == core::TimeKeyType_Move);
+        CHECK(hit.pos.type() == core::TimeKeyType_Rotate);
 
         // THE HOLDER DIAMOND USES THE SAME RADIUS. A Bone key can hold children, so
         // its marker is the diamond; a rounded corner flattens the four-point shape
@@ -1002,8 +1024,7 @@ int main(int argc, char** argv) {
         // A folder with no own keys uses the whole row for the summary: no empty
         // lane above it. The tree height and TimeLineRow agree on the same 22px.
         core::TestFolder summaryOnly;
-        stack.push(summaryOnly.child().timeLine()->createPusher(
-            core::TimeKeyType_Move, kKeyFrameA, new core::MoveKey()));
+        makeRotate(*summaryOnly.child().timeLine(), stack, kKeyFrameA);
         const ctrl::TimeLineRow summaryRow(
             &summaryOnly, QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
                                 ctrl::TimeLineRow::kFolderSummaryHeight),
@@ -1036,7 +1057,7 @@ int main(int argc, char** argv) {
         // A folder with lanes of its OWN plus keyed children: the band sits UNDER its lanes and
         // the divider between them is a TYPE separator (the dashed 40% ink), not a row seam -
         // the band is a lane of this row, and the seam is what separates rows.
-        stack.push(folder.timeLine()->createPusher(core::TimeKeyType_Move, kKeyFrameA, new core::MoveKey()));
+        makeRotate(*folder.timeLine(), stack, kKeyFrameA);
         const ctrl::TimeLineRow mixedRow(
             &folder,
             QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
@@ -1051,6 +1072,214 @@ int main(int argc, char** argv) {
         CHECK(mixedLines.lanes[1].summary);
         CHECK(mixedLines.lanes[1].separators.size() == 1);
         CHECK(std::abs(mixedLines.lanes[1].separators[0].y - double(mixedRow.summaryRect().top())) < 0.5);
+    }
+
+    // ---- LINKED / SPLIT KEYFRAMES: a fully linked property is one lane and one
+    // property marker per frame. As soon as one frame is split or partial the row
+    // shows the channel lanes with NO separator between them; linked frames still
+    // draw one marker at the property centre, split frames draw their own channel
+    // markers.
+    {
+        core::TestNode groupedNode;
+        core::TimeLine* line = groupedNode.timeLine();
+        core::ChannelTrack* x = line->channelTrack(core::TimeKeyType_Scale, 0);
+        core::ChannelTrack* y = line->channelTrack(core::TimeKeyType_Scale, 1);
+        CHECK(x && y);
+        if (x && y) {
+            x->insertKey(kKeyFrameA, 1.0f);
+            x->insertKey(kKeyFrameA + 10, 2.0f);
+            y->insertKey(kKeyFrameA, 3.0f);
+            y->insertKey(kKeyFrameA + 10, 4.0f);
+
+            ctrl::time::Inks inks;
+            inks.body = theme.trackColor();
+            inks.bodySelected = theme.trackSelectColor();
+            inks.edge = theme.trackEdgeColor();
+            inks.separator = theme.trackSeperatorColor();
+            const QRect camera(0, 0, kWidth, kHeight);
+            ctrl::time::Scaler groupingScale;
+            const auto rowOf = [&]() {
+                return ctrl::TimeLineRow(
+                    &groupedNode,
+                    QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
+                          ctrl::TimeLineRow::calculateHeight(groupedNode)),
+                    false, false
+                );
+            };
+            const auto linesOf = [&](const ctrl::TimeLineRow& aRow) {
+                return ctrl::time::buildLines(
+                    QVector<ctrl::TimeLineRow>{ aRow }, camera, camera, inks
+                );
+            };
+            const auto keysOf = [&](const ctrl::TimeLineRow& aRow) {
+                return ctrl::time::buildKeys(
+                    &groupedNode, aRow, groupingScale, util::Range(0, 200),
+                    ctrl::TimeLineEditor::kTimeLineMargin, inks.body
+                );
+            };
+
+            // Linked is the default.
+            CHECK(line->channelsGrouped(core::TimeKeyType_Scale));
+            CHECK(ctrl::TimeLineRow::calculateHeight(groupedNode) == ctrl::TimeLineRow::kHeight);
+            {
+                const ctrl::TimeLineRow row = rowOf();
+                CHECK(linesOf(row).lanes.size() == 1);
+                CHECK(linesOf(row).lanes[0].labels.size() == 1);
+                CHECK(linesOf(row).lanes[0].labels[0].text == QStringLiteral("Scale"));
+                CHECK(linesOf(row).lanes[0].separators.isEmpty());
+                CHECK(keysOf(row).marks.size() == 2);
+            }
+
+            // Split ONE frame. The other frame stays a linked property key, drawn
+            // once at the centre; the split frame draws both channel markers.
+            CHECK(line->setFrameLinked(core::TimeKeyType_Scale, kKeyFrameA, false));
+            CHECK(!line->channelsGrouped(core::TimeKeyType_Scale));
+            CHECK(ctrl::TimeLineRow::calculateHeight(groupedNode) == ctrl::TimeLineRow::kIncrease * 2);
+            {
+                const ctrl::TimeLineRow row = rowOf();
+                CHECK(linesOf(row).lanes.size() == 1);
+                CHECK(linesOf(row).lanes[0].labels.size() == 2);
+                CHECK(linesOf(row).lanes[0].labels[0].text == QStringLiteral("Scale X"));
+                CHECK(linesOf(row).lanes[0].labels[1].text == QStringLiteral("Scale Y"));
+                CHECK(linesOf(row).lanes[0].separators.isEmpty()); // one property, no seam
+                CHECK(keysOf(row).marks.size() == 3);
+            }
+
+            // A lone channel key is a partial frame, so it draws in its own lane.
+            x->insertKey(kKeyFrameA + 20, 5.0f);
+            CHECK(!line->channelsGrouped(core::TimeKeyType_Scale));
+            CHECK(line->hasSplitChannelKeys(core::TimeKeyType_Scale));
+            {
+                const ctrl::TimeLineRow row = rowOf();
+                CHECK(linesOf(row).lanes[0].labels.size() == 2);
+                CHECK(linesOf(row).lanes[0].separators.isEmpty());
+                CHECK(keysOf(row).marks.size() == 4);
+            }
+            x->removeKey(kKeyFrameA + 20);
+
+            // Linking the split frame restores the one-lane view; separating the
+            // other frame opens it again.
+            CHECK(line->setFrameLinked(core::TimeKeyType_Scale, kKeyFrameA, true));
+            CHECK(line->channelsGrouped(core::TimeKeyType_Scale));
+            {
+                const ctrl::TimeLineRow row = rowOf();
+                CHECK(row.ownRect().height() == ctrl::TimeLineRow::kHeight);
+                CHECK(linesOf(row).lanes[0].labels.size() == 1);
+                CHECK(keysOf(row).marks.size() == 2);
+            }
+            CHECK(line->setFrameLinked(core::TimeKeyType_Scale, kKeyFrameA + 10, false));
+            CHECK(!line->channelsGrouped(core::TimeKeyType_Scale));
+            {
+                const ctrl::TimeLineRow row = rowOf();
+                CHECK(linesOf(row).lanes[0].labels.size() == 2);
+                CHECK(linesOf(row).lanes[0].separators.isEmpty());
+                CHECK(keysOf(row).marks.size() == 3);
+            }
+        }
+    }
+
+    // ---- IMAGE OFFSETS are channel lanes beside the Image state key. This
+    // fixture has no ImageKey (which needs GL), only the two offset channels.
+    {
+        core::TestNode imageNode;
+        core::TimeLine* line = imageNode.timeLine();
+        core::ChannelTrack* x = line->channelTrack(core::TimeKeyType_Image, 0);
+        core::ChannelTrack* y = line->channelTrack(core::TimeKeyType_Image, 1);
+        CHECK(x && y);
+        if (x && y) {
+            x->insertKey(kKeyFrameA, 12.0f);
+            y->insertKey(kKeyFrameA, 34.0f);
+            CHECK(ctrl::TimeLineRow::calculateHeight(imageNode) == ctrl::TimeLineRow::kIncrease * 2);
+            const ctrl::TimeLineRow row(
+                &imageNode,
+                QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
+                      ctrl::TimeLineRow::calculateHeight(imageNode)),
+                false, false
+            );
+            ctrl::time::Inks inks;
+            inks.body = theme.trackColor();
+            inks.bodySelected = theme.trackSelectColor();
+            inks.edge = theme.trackEdgeColor();
+            inks.separator = theme.trackSeperatorColor();
+            const QRect camera(0, 0, kWidth, kHeight);
+            ctrl::time::Scaler scale;
+            const ctrl::time::Lines lines =
+                ctrl::time::buildLines(QVector<ctrl::TimeLineRow>{ row }, camera, camera, inks);
+            CHECK(lines.lanes.size() == 1);
+            CHECK(lines.lanes[0].labels.size() == 2);
+            CHECK(lines.lanes[0].labels[0].text == QStringLiteral("Image X"));
+            CHECK(lines.lanes[0].labels[1].text == QStringLiteral("Image Y"));
+            CHECK(lines.lanes[0].separators.isEmpty()); // one property, no seam between offsets
+            const ctrl::time::KeyPass keys = ctrl::time::buildKeys(
+                &imageNode, row, scale, util::Range(0, 200),
+                ctrl::TimeLineEditor::kTimeLineMargin, inks.body
+            );
+            CHECK(keys.marks.size() == 2); // one key per offset channel
+        }
+    }
+
+    // ---- STATE KEYS are visible as part of the property lane. A property with
+    // only a state key still has one lane and a small state diamond; a linked
+    // property key already represents the state at its frame, so no extra mark.
+    {
+        core::TestNode stateOnly;
+        core::PropertyTrack* prop = stateOnly.timeLine()->property(core::TimeKeyType_Move);
+        CHECK(prop != nullptr);
+        if (prop) {
+            prop->state().insertKey(
+                kKeyFrameA, std::unique_ptr<core::StateKey>(new core::MoveStateKey())
+            );
+            CHECK(stateOnly.timeLine()->channelLaneCount(core::TimeKeyType_Move) == 1);
+            const ctrl::TimeLineRow row(
+                &stateOnly,
+                QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
+                      ctrl::TimeLineRow::kHeight),
+                false, false
+            );
+            ctrl::time::Inks inks;
+            inks.body = theme.trackColor();
+            inks.bodySelected = theme.trackSelectColor();
+            inks.edge = theme.trackEdgeColor();
+            inks.separator = theme.trackSeperatorColor();
+            const QRect camera(0, 0, kWidth, kHeight);
+            ctrl::time::Scaler scale;
+            const ctrl::time::Lines lines =
+                ctrl::time::buildLines(QVector<ctrl::TimeLineRow>{ row }, camera, camera, inks);
+            CHECK(lines.lanes.size() == 1);
+            CHECK(lines.lanes[0].labels.size() == 1);
+            CHECK(lines.lanes[0].labels[0].text == QStringLiteral("Position"));
+            const ctrl::time::KeyPass keys = ctrl::time::buildKeys(
+                &stateOnly, row, scale, util::Range(0, 200),
+                ctrl::TimeLineEditor::kTimeLineMargin, inks.body
+            );
+            CHECK(keys.marks.size() == 1);
+            CHECK(keys.marks[0].shape == ctrl::time::KeyShape::Polygon);
+        }
+
+        core::TestNode linkedWithState;
+        core::TimeLine* line = linkedWithState.timeLine();
+        line->channelTrack(core::TimeKeyType_Move, 0)->insertKey(kKeyFrameA, 1.0f);
+        line->channelTrack(core::TimeKeyType_Move, 1)->insertKey(kKeyFrameA, 2.0f);
+        line->property(core::TimeKeyType_Move)->state().insertKey(
+            kKeyFrameA, std::unique_ptr<core::StateKey>(new core::MoveStateKey())
+        );
+        const ctrl::TimeLineRow row(
+            &linkedWithState,
+            QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
+                  ctrl::TimeLineRow::kHeight),
+            false, false
+        );
+        ctrl::time::Inks inks;
+        inks.body = theme.trackColor();
+        inks.bodySelected = theme.trackSelectColor();
+        inks.edge = theme.trackEdgeColor();
+        inks.separator = theme.trackSeperatorColor();
+        ctrl::time::Scaler scale;
+        const ctrl::time::KeyPass keys = ctrl::time::buildKeys(
+            &linkedWithState, row, scale, util::Range(0, 200),
+            ctrl::TimeLineEditor::kTimeLineMargin, inks.body
+        );
+        CHECK(keys.marks.size() == 1); // ONE property key already carries the state
     }
 
     std::printf("timeline_visuals: all checks passed\n");

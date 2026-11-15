@@ -74,6 +74,10 @@ class FilterRowModel: public QObject {
     // when a field exists (a fresh field is neutral and renders like none)
     Q_PROPERTY(bool hasAmountMask READ hasAmountMask NOTIFY changed)
     Q_PROPERTY(bool hasTimeMask READ hasTimeMask NOTIFY changed)
+    // The Mask tool is already painting THIS field of THIS node: the card's Paint
+    // icon reports the state instead of re-arming it.
+    Q_PROPERTY(bool amountPaintActive READ amountPaintActive NOTIFY changed)
+    Q_PROPERTY(bool timePaintActive READ timePaintActive NOTIFY changed)
     // The mask rows' texts. They are Q_PROPERTYs like every other label here: a plain
     // method is not readable from QML, and a binding that reads one evaluates to
     // `undefined` - which is how these rows were MISSING from the card while the C++
@@ -158,13 +162,24 @@ public:
     bool waveRipple() const { return mWave.deform() == core::WaveKey::Deform_Ripple; }
     bool hasAmountMask() const { return mHasAmountMask; }
     bool hasTimeMask() const { return mHasTimeMask; }
+    bool amountPaintActive() const { return mAmountPaintActive; }
+    bool timePaintActive() const { return mTimePaintActive; }
 
     void refresh();
     void refreshTheme();
+    // The tool's paint target changed. Cheap: it only re-reads the two flags on
+    // this row and notifies when one of them moved.
+    void refreshMaskPaintState();
     void setExpanded(bool aExpanded);
 
     Q_INVOKABLE void toggleExpanded();
     Q_INVOKABLE void toggleKey();
+    // PER-FIELD KEYING, the same contract InspectorRowModel offers: the card's
+    // property dot keys every channel/state of the filter; one numeric field's
+    // menu keys only its own channel.
+    Q_INVOKABLE bool channelKeyExists(int aComponent) const;
+    Q_INVOKABLE QString channelKeyAction(int aComponent) const;
+    Q_INVOKABLE void toggleChannelKey(int aComponent);
     Q_INVOKABLE void toggleEnabled();
     Q_INVOKABLE void remove();
 
@@ -201,10 +216,12 @@ private:
     bool isHSV() const { return mType == core::TimeKeyType_HSV; }
     bool isBlur() const { return mType == core::TimeKeyType_Blur; }
     bool isWave() const { return mType == core::TimeKeyType_Wave; }
-    void writeBlurEllipse();
+    void writeBlurEllipse(int aComponent);
+    void writeWave(int aComponent);
+    float channelValue(int aComponent) const;
+    QString channelName(int aComponent) const;
     // Writes the row's whole wave data, so every field the user did not touch
     // keeps the value the document had at this frame.
-    void writeWave();
 
     InspectorViewModel& mOwner;
     core::TimeKeyType mType;
@@ -227,6 +244,8 @@ private:
     core::WaveKey::Data mWave;
     bool mHasAmountMask = false;
     bool mHasTimeMask = false;
+    bool mAmountPaintActive = false;
+    bool mTimePaintActive = false;
 };
 
 class FilterStackModel: public QObject {
@@ -275,6 +294,9 @@ public:
     void setTarget(core::ObjectNode* aTarget);
     void refresh();
     void refreshTheme();
+    // The tool's paint target changed. Cheap: it only re-reads the two flags on
+    // this row and notifies when one of them moved.
+    void refreshMaskPaintState();
 
     Q_INVOKABLE bool hasFilter(int aType) const;
     Q_INVOKABLE void addFilter(int aType);

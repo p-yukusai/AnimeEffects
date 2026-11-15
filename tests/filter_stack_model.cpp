@@ -6,6 +6,8 @@
 #include <QApplication>
 #include <cstdio>
 
+#include "cmnd/BasicCommands.h"
+#include "core/ChannelKey.h"
 #include "core/Project.h"
 #include "core/Animator.h"
 #include "core/FolderNode.h"
@@ -71,12 +73,17 @@ int run() {
     folder.setDefaultPosture(QVector2D(0, 0));
     core::TimeLine& line = *folder.timeLine();
 
-    // A filter starts STATIC: its entry and default key are one undo step, and
+    // A filter starts STATIC: its entry and base value are one undo step, and
     // the timeline gains no explicit key until the row's key dot is pressed.
     ctrl::TimeLineUtil::addFilter(project, folder, core::TimeKeyType_HSV);
     CHECK(types(line) == QVector<core::TimeKeyType>{core::TimeKeyType_HSV});
-    CHECK(line.defaultKey(core::TimeKeyType_HSV) != nullptr);
-    CHECK(line.map(core::TimeKeyType_HSV).isEmpty());
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_HSV)) {
+        CHECK(line.channelTrack(core::TimeKeyType_HSV, 0) != nullptr);
+        CHECK(!line.hasChannelKeys(core::TimeKeyType_HSV, 0));
+    } else {
+        CHECK(line.baseValue(core::TimeKeyType_HSV) != nullptr);
+        CHECK(line.map(core::TimeKeyType_HSV).isEmpty());
+    }
 
     // Duplicate add is a no-op: the stack and its default stay exactly as they were.
     ctrl::TimeLineUtil::addFilter(project, folder, core::TimeKeyType_HSV);
@@ -85,10 +92,19 @@ int run() {
 
     ctrl::TimeLineUtil::addFilter(project, folder, core::TimeKeyType_Blur);
     CHECK(types(line) == (QVector<core::TimeKeyType>{core::TimeKeyType_HSV, core::TimeKeyType_Blur}));
-    CHECK(line.defaultKey(core::TimeKeyType_Blur) != nullptr);
-    CHECK(line.map(core::TimeKeyType_Blur).isEmpty());
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Blur)) {
+        CHECK(line.channelTrack(core::TimeKeyType_Blur, 0) != nullptr);
+        CHECK(!line.hasChannelKeys(core::TimeKeyType_Blur, 0));
+    } else {
+        if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Blur)) {
+        CHECK(line.channelTrack(core::TimeKeyType_Blur, 0) != nullptr);
+    } else {
+        CHECK(line.baseValue(core::TimeKeyType_Blur) != nullptr);
+    }
+        CHECK(line.map(core::TimeKeyType_Blur).isEmpty());
+    }
 
-    // Undo removes the stack row. The default key is structural and stays (a
+    // Undo removes the stack row. The base value is structural and stays (a
     // hidden value reused if the filter is added again), so the visible state
     // is what we assert.
     project.commandStack().undo();
@@ -96,7 +112,11 @@ int run() {
     CHECK(line.map(core::TimeKeyType_Blur).isEmpty());
     project.commandStack().redo();
     CHECK(types(line) == (QVector<core::TimeKeyType>{core::TimeKeyType_HSV, core::TimeKeyType_Blur}));
-    CHECK(line.defaultKey(core::TimeKeyType_Blur) != nullptr);
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Blur)) {
+        CHECK(line.channelTrack(core::TimeKeyType_Blur, 0) != nullptr);
+    } else {
+        CHECK(line.baseValue(core::TimeKeyType_Blur) != nullptr);
+    }
 
     // Model 2: a static filter edit writes its default, not a key; pressing
     // the dot is what adds the explicit key; the dot toggles it back off.
@@ -104,8 +124,13 @@ int run() {
     accessor.setProject(&project);
     accessor.setTarget(&folder);
     accessor.assignHSV(42, "hue");
-    CHECK(line.map(core::TimeKeyType_HSV).isEmpty());
-    CHECK(static_cast<const core::HSVKey*>(line.defaultKey(core::TimeKeyType_HSV))->data().hsv().at(0) == 42);
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_HSV)) {
+        CHECK(!line.hasChannelKeys(core::TimeKeyType_HSV, 0));
+        CHECK(line.channelBaseValue(core::TimeKeyType_HSV, 0) == 42.0f);
+    } else {
+        CHECK(line.map(core::TimeKeyType_HSV).isEmpty());
+        CHECK(static_cast<const core::HSVKey*>(line.baseValue(core::TimeKeyType_HSV))->data().hsv().at(0) == 42);
+    }
     accessor.knockNewHSV();
     CHECK(line.hasTimeKey(core::TimeKeyType_HSV, 7));
     accessor.removeKey(core::TimeKeyType_HSV);
@@ -121,11 +146,26 @@ int run() {
     project.commandStack().redo();
 
     // The eye toggle is stack state, not key state.
-    auto* blurKey = new core::BlurKey();
-    blurKey->setBlurX(line.current().blurX());
-    blurKey->setBlurY(line.current().blurY());
-    blurKey->setAngleDeg(line.current().angleDeg());
-    ctrl::TimeLineUtil::pushNewBlurKey(project, folder, 7, blurKey);
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Blur)) {
+        const float values[3] = {
+            line.current().blurX(), line.current().blurY(), line.current().angleDeg()
+        };
+        for (int c = 0; c < 3; ++c) {
+            auto* key = new core::ChannelKey(core::TimeKeyType_Blur, c);
+            key->setFrame(7);
+            key->setValue(values[c]);
+            project.commandStack().push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+            project.commandStack().push(
+                line.createChannelPusher(core::TimeKeyType_Blur, c, 7, key)
+            );
+        }
+    } else {
+        auto* blurKey = new core::BlurKey();
+        blurKey->setBlurX(line.current().blurX());
+        blurKey->setBlurY(line.current().blurY());
+        blurKey->setAngleDeg(line.current().angleDeg());
+        ctrl::TimeLineUtil::pushNewBlurKey(project, folder, 7, blurKey);
+    }
     ctrl::TimeLineUtil::setFilterEnabled(project, folder, core::TimeKeyType_Blur, false);
     CHECK(!line.filterEnabled(core::TimeKeyType_Blur));
     CHECK(line.hasTimeKey(core::TimeKeyType_Blur, 7));

@@ -11,9 +11,19 @@ target_compile_definitions(autoscroll PRIVATE
     AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1 USE_GL_CORE_PROFILE)
 target_link_libraries(autoscroll PRIVATE Qt6::Core Qt6::Gui)
 
-# Regression test for the BoneKey::deserialize use-after-free (dangling
-# &mBindingCaches.back() captured into a deferred IDSolver lambda that runs
-# after the QList reallocates). Self-contained; see bonekey_regression.cpp.
+# The per-layer mesh content level (img::MeshContentLevel): the mapping and its no-measurement
+# fallback, and the creator's content threshold. Pure pixel math, no GL.
+add_executable(mesh_content_level mesh_content_level.cpp)
+target_include_directories(mesh_content_level PRIVATE .. ../src)
+target_compile_definitions(mesh_content_level PRIVATE
+    AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1 USE_GL_CORE_PROFILE)
+target_link_libraries(mesh_content_level PRIVATE Qt6::Core Qt6::Gui img util)
+
+# BoneKey stream compatibility gate: the <= 0.20 derived influence-cache section
+# must be discarded byte-exactly, and 0.21 must carry no such section. It grew
+# out of the old deserialize use-after-free regression (dangling
+# &mBindingCaches.back() captured into a deferred IDSolver lambda); the discard
+# path no longer stores those caches. See bonekey_regression.cpp.
 add_executable(bonekey_regression bonekey_regression.cpp)
 target_include_directories(bonekey_regression PRIVATE ..)
 target_compile_definitions(bonekey_regression PRIVATE
@@ -27,6 +37,220 @@ target_link_libraries(bonekey_regression PRIVATE
     Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
     Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
     cmnd core ctrl gl img thr util pugixml
+)
+
+# The packed skinning attributes: 4 x uint8 indices + 4 x float32 weights per
+# set = 40 B/vertex (from 64). Pins the layout and the default weights. The
+# uint16 weight variant was measured and rejected; see the influence plan.
+add_executable(bone_influence_storage bone_influence_storage.cpp)
+target_include_directories(bone_influence_storage PRIVATE ..)
+target_compile_definitions(bone_influence_storage PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(bone_influence_storage PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Stable bone ids (format 0.22): fresh ids, reservation, copy/clone/shadow
+# semantics, and the version gate that keeps a 0.21 Bone2 block readable. See
+# bone_ids.cpp.
+add_executable(bone_ids bone_ids.cpp)
+target_include_directories(bone_ids PRIVATE ..)
+target_compile_definitions(bone_ids PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(bone_ids PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# core::SkinWeights: BakedBone presence is the state (an empty baked field is
+# Baked, not Envelope), entries stay sorted/sparse, node records are
+# life-linked, and bakeBone evaluates the build's exact float. See
+# skin_weights.cpp.
+add_executable(skin_weights skin_weights.cpp)
+target_include_directories(skin_weights PRIVATE ..)
+target_compile_definitions(skin_weights PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(skin_weights PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# The baked build branch and the bake command: a bake is bit-identical to the
+# envelope at the bake frame, a missing baked vertex is 0 (never the envelope),
+# and two keys with divergent same-id geometry refuse with their frame named.
+# See weight_bake.cpp.
+add_executable(weight_bake weight_bake.cpp)
+target_include_directories(weight_bake PRIVATE ..)
+target_compile_definitions(weight_bake PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(weight_bake PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Format 0.22 weight block round trip: a 0.21 object tree with no block loads,
+# a 0.22 save/reload keeps empty Baked records and descendant references, and
+# corrupt counts/weights/node references fail the load. See weight_roundtrip.cpp.
+add_executable(weight_roundtrip weight_roundtrip.cpp)
+target_include_directories(weight_roundtrip PRIVATE ..)
+target_compile_definitions(weight_roundtrip PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(weight_roundtrip PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Phase 2's authored-weight actions: the Envelope/Baked/Mixed state, one-step
+# Bake/Rebake/Revert/Clear, the one-command stroke rewrite, the structural mesh
+# remap and duplication's field copy. See weight_paint_commands.cpp.
+add_executable(weight_paint_commands weight_paint_commands.cpp)
+target_include_directories(weight_paint_commands PRIVATE ..)
+target_compile_definitions(weight_paint_commands PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(weight_paint_commands PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# The skeleton bone cap: 33 bones (the dataset's largest rig) must keep their
+# last bone in the influence build and in the pose palette, and 65 must still
+# stop at kMaxCount. Drives makeBoneList/writeWeights and the palette's
+# matrices/dual quaternions through the production holder (BoneKey::Cache), so
+# the cap cannot drift from the shader's MAX_BONES variation. See bone_cap.cpp.
+add_executable(bone_cap bone_cap.cpp)
+target_include_directories(bone_cap PRIVATE ..)
+target_compile_definitions(bone_cap PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(bone_cap PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# The skinning palette's uniform block at a bone index the old default-block
+# array could not address: a 201-bone palette, one point on bone 200. Compiles
+# the real shader and skins through transform feedback, so the block binding,
+# the std140 layout and the high-index fetch are pinned together. Needs a live
+# GL context; the suite runs it under xvfb. See mesh_palette_block.cpp.
+add_executable(mesh_palette_block mesh_palette_block.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(mesh_palette_block PRIVATE ..)
+target_compile_definitions(mesh_palette_block PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(mesh_palette_block PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# BoneShape's precomputed polygon containment must return exactly what
+# QPolygonF::containsPoint(point, OddEvenFill) returns: the influence build is
+# bit-identical only while it does. One .cpp and Qt Gui, so this gate needs no
+# project, no GL and no core library.
+add_executable(bone_polygon_index
+    bone_polygon_index.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/BonePolygonIndex.cpp
+)
+target_include_directories(bone_polygon_index PRIVATE .. ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(bone_polygon_index PRIVATE Qt6::Core Qt6::Gui)
+
+# The per-channel track primitive: ChannelSpec's defaults/clamps/interpolation,
+# ChannelTrack's base/hold/ease/step/loop sampling and stable key ids. Compiled
+# from its own sources so it needs no core::Project, no GUI audio stub and no GL.
+add_executable(channel_track channel_track.cpp)
+target_include_directories(channel_track PRIVATE ..)
+target_compile_definitions(channel_track PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(channel_track PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core gl img thr util pugixml
+)
+
+# Move's per-channel evaluator: the spatial spline while X/Y share key frames,
+# independent scalar sampling when they do not, and the hidden centroid pair.
+add_executable(move_evaluator move_evaluator.cpp)
+target_include_directories(move_evaluator PRIVATE ..)
+target_compile_definitions(move_evaluator PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(move_evaluator PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core gl img thr util pugixml
+)
+
+# The first TimeLine migration: Opacity channel storage, component addressing,
+# move/adopt and the 0.23 channel-track round trip.
+add_executable(channel_timeline channel_timeline.cpp)
+target_include_directories(channel_timeline PRIVATE ..)
+target_compile_definitions(channel_timeline PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(channel_timeline PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core gl img thr util pugixml
 )
 
 # Regression test for the util::TreeUtil::deleteAll use-after-free write (the
@@ -903,9 +1127,27 @@ target_link_libraries(attribute_observable PRIVATE
     cmnd core ctrl gl img thr util pugixml
 )
 
-# Model 2 at the accessor layer: static properties edit their default key, and
+# Model 2 at the accessor layer: static properties edit their base value, and
 # animated properties edit/create a key at the playhead. The unified Inspector
 # depends on this split; see key_accessor_model2.cpp.
+# The Transform tool's key policy (tested with the real SRTEditor/MoveMode): a
+# static channel edits its base value, an animated one auto-keys at the playhead,
+# and a checked "Create ... key" box forces exactly that channel. See srt_keys.cpp.
+add_executable(srt_keys srt_keys.cpp)
+target_include_directories(srt_keys PRIVATE .. ../src)
+target_compile_definitions(srt_keys PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(srt_keys PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
 add_executable(key_accessor_model2
     key_accessor_model2.cpp
     ../src/gui/prop/prop_KeyAccessor.cpp)
@@ -963,6 +1205,63 @@ target_compile_definitions(tool_view_model PRIVATE
 )
 target_link_libraries(tool_view_model PRIVATE
     Qt6::Core Qt6::Gui Qt6::OpenGL
+)
+
+# The header's widget-free models: menu commands, the view settings that moved out
+# of the Tools dock, and the slot toggles. See header_model.cpp.
+add_executable(header_model
+    header_model.cpp
+    ../src/gui/qml/MenuCommand.cpp
+    ../src/gui/qml/ViewSettingsModel.cpp
+    ../src/gui/qml/DockSlotsModel.cpp)
+target_include_directories(header_model PRIVATE .. ../src)
+target_compile_definitions(header_model PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+)
+target_link_libraries(header_model PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Test
+)
+
+# The header SCENE: the MenuBar, its delegates and the Action<->MenuCommand bridge,
+# loaded offscreen with a fake registry. See header_scene.cpp.
+add_executable(header_scene
+    header_scene.cpp
+    ../src/gui/qml/MenuCommand.cpp
+    ../src/gui/qml/ViewSettingsModel.cpp
+    ../src/gui/qml/DockSlotsModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp)
+target_include_directories(header_scene PRIVATE .. ../src ../src/gui)
+target_compile_definitions(header_scene PRIVATE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(header_scene PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets Qt6::Test
+)
+
+# AeComboBox's popup geometry: the optional scrollbar lane is reserved only when
+# the list actually scrolls, and it is flush with the popup's inner edge. See
+# combo_geometry.cpp.
+add_executable(combo_geometry
+    combo_geometry.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp
+)
+target_include_directories(combo_geometry PRIVATE .. ../src ../src/gui)
+target_compile_definitions(combo_geometry PRIVATE
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(combo_geometry PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets
 )
 
 # The Tools dock's SCENE: loads the REAL ToolsPanel.qml and drives its controls through
@@ -1083,7 +1382,7 @@ target_link_libraries(brush_stroke PRIVATE
 )
 
 # The Wave deform filter: the key's data contract and clamps, the five graph
-# channels, playback (each channel eased, the shape step-held, a default key
+# channels, playback (each channel eased, the shape step-held, a base value
 # playing), the 0.18 record on disk and the pass mapping. See wave_deform.cpp.
 add_executable(wave_deform wave_deform.cpp)
 target_include_directories(wave_deform PRIVATE ..)
@@ -1939,4 +2238,26 @@ target_link_libraries(render_probe PRIVATE
     Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
     Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
     cmnd core ctrl gl img thr util pugixml
+)
+
+# THE DOCK SLOT MODEL AND THE DROP RULE: one derivation of "what is an area" (DockSlots)
+# and the rule the drop preview and the drop itself share (DockDropOverlay). A real
+# QMainWindow with real DockPanels, offscreen: slots, hidden-vs-empty, a tab group as
+# one slot, the empty-area place, and the target at a point. See dock_slots.cpp.
+add_executable(dock_slots
+    dock_slots.cpp
+    ../src/gui/DockDropOverlay.cpp ../src/gui/DockDropOverlay.h
+    ../src/gui/DockMetrics.h
+    ../src/gui/DockPanel.cpp ../src/gui/DockPanel.h
+    ../src/gui/DockSlots.cpp ../src/gui/DockSlots.h
+    ../src/gui/DockTabBar.cpp ../src/gui/DockTabBar.h
+)
+target_include_directories(dock_slots PRIVATE .. ../src)
+target_compile_definitions(dock_slots PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+)
+target_link_libraries(dock_slots PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets
 )

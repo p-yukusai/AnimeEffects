@@ -132,13 +132,15 @@
 #include <type_traits>
 
 #include "XCAssert.h"
+#include "cmnd/BasicCommands.h"
 #include "cmnd/Stack.h"
+#include "core/ChannelKey.h"
 #include "core/Animator.h"
 #include "core/AutoEasing.h"
 #include "core/Frame.h"
 #include "core/MoveKey.h"
 #include "core/ObjectNode.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/Project.h"
 #include "core/RotateKey.h"
 #include "core/TimeKeyType.h"
@@ -275,9 +277,12 @@ QVector<Pair> expectedPairs(const QVector<core::ObjectNode*>& aTargets) {
         if (!timeLine)
             continue;
         for (core::TimeKeyType type : ctrl::graph::Channel::graphableTypes()) {
-            if (timeLine->map(type).isEmpty())
+            const bool trackStorage = core::TimeLine::usesChannelTracks(type);
+            if (!trackStorage && timeLine->map(type).isEmpty())
                 continue;
             for (const ctrl::graph::Channel& channel : ctrl::graph::Channel::channelsOf(type)) {
+                if (trackStorage && !timeLine->hasChannelKeys(type, channel.component()))
+                    continue;
                 pairs.append(Pair(node, channel));
             }
         }
@@ -451,34 +456,64 @@ int main(int argc, char** argv) {
     // empty and the read-only probe below is measurable.
     cmnd::Stack setup;
 
+    const auto pushRotate = [&setup](core::TestNode& aNode, int aFrame, float aValue) {
+        auto* track = aNode.timeLine()->channelTrack(core::TimeKeyType_Rotate, 0);
+        auto* key = new core::ChannelKey(core::TimeKeyType_Rotate, 0);
+        key->setFrame(aFrame);
+        key->setValue(track ? track->clamp(track->quantize(aValue)) : aValue);
+        setup.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        setup.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Rotate, 0, aFrame, key));
+        return key;
+    };
+    const auto rotateKeyCount = [](const core::TimeLine& aLine) {
+        if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Rotate)) {
+            const auto* track = aLine.channelTrack(core::TimeKeyType_Rotate, 0);
+            return track ? track->keyCount() : 0;
+        }
+        return int(aLine.map(core::TimeKeyType_Rotate).size());
+    };
+
+    const auto pushMove = [&setup](core::TestNode& aNode, int aFrame, const QVector2D& aPos) {
+        struct Keys { core::ChannelKey* key[4]; };
+        auto* out = new Keys();
+        const float values[4] = { aPos.x(), aPos.y(), 0.0f, 0.0f };
+        for (int c = 0; c < 4; ++c) {
+            auto* key = new core::ChannelKey(core::TimeKeyType_Move, c);
+            key->setFrame(aFrame);
+            key->setValue(values[c]);
+            setup.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+            setup.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Move, c, aFrame, key));
+            out->key[c] = key;
+        }
+        return out;
+    };
+
     core::TestNode nodeA;
     nodeA.setName(QStringLiteral("A"));
     core::TestNode nodeB;
     nodeB.setName(QStringLiteral("B"));
 
     // A: Rotate (1 channel, 0 -> 90 deg) and Move (2 channels: x 0 -> 100, y 10 -> -30).
-    core::RotateKey* rotate0 = new core::RotateKey();
-    rotate0->setRotate(0.0f);
-    setup.push(nodeA.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, rotate0));
-    core::RotateKey* rotate1 = new core::RotateKey();
-    rotate1->setRotate(90.0f);
-    setup.push(nodeA.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, rotate1));
+    pushRotate(nodeA, 0, 0.0f);
+    pushRotate(nodeA, 24, 90.0f);
 
-    core::MoveKey* move0 = new core::MoveKey();
-    move0->setPos(QVector2D(0.0f, 10.0f));
-    setup.push(nodeA.timeLine()->createPusher(core::TimeKeyType_Move, 0, move0));
-    core::MoveKey* move1 = new core::MoveKey();
-    move1->setPos(QVector2D(100.0f, -30.0f));
-    setup.push(nodeA.timeLine()->createPusher(core::TimeKeyType_Move, 20, move1));
+    auto* move0 = pushMove(nodeA, 0, QVector2D(0.0f, 10.0f));
+    auto* move1 = pushMove(nodeA, 20, QVector2D(100.0f, -30.0f));
 
-    // B: Opa (1 channel, 0.25 -> 0.75) - a second target, so "every channel of
+    // B: Opacity (1 channel, 0.25 -> 0.75) - a second target, so "every channel of
     // every target" has something to be about.
-    core::OpaKey* opa0 = new core::OpaKey();
-    opa0->setOpacity(0.25f);
-    setup.push(nodeB.timeLine()->createPusher(core::TimeKeyType_Opa, 6, opa0));
-    core::OpaKey* opa1 = new core::OpaKey();
-    opa1->setOpacity(0.75f);
-    setup.push(nodeB.timeLine()->createPusher(core::TimeKeyType_Opa, 30, opa1));
+    {
+        auto* opa0 = new core::ChannelKey(core::TimeKeyType_Opacity, 0);
+        opa0->setFrame(6);
+        opa0->setValue(0.25f);
+        setup.push(new cmnd::GrabNewObject<core::ChannelKey>(opa0));
+        setup.push(nodeB.timeLine()->createChannelPusher(core::TimeKeyType_Opacity, 0, 6, opa0));
+        auto* opa1 = new core::ChannelKey(core::TimeKeyType_Opacity, 0);
+        opa1->setFrame(30);
+        opa1->setValue(0.75f);
+        setup.push(new cmnd::GrabNewObject<core::ChannelKey>(opa1));
+        setup.push(nodeB.timeLine()->createChannelPusher(core::TimeKeyType_Opacity, 0, 30, opa1));
+    }
 
     // C: a THREE-key Move channel whose outer keys are the ordinary Linear
     // default. It is not an editor target until the Auto-publication block asks
@@ -486,15 +521,9 @@ int main(int argc, char** argv) {
     // is the one the Auto action selects.
     core::TestNode nodeC;
     nodeC.setName(QStringLiteral("C"));
-    core::MoveKey* moveC0 = new core::MoveKey();
-    moveC0->setPos(QVector2D(0.0f, 0.0f));
-    setup.push(nodeC.timeLine()->createPusher(core::TimeKeyType_Move, 0, moveC0));
-    core::MoveKey* moveC1 = new core::MoveKey();
-    moveC1->setPos(QVector2D(100.0f, 0.0f));
-    setup.push(nodeC.timeLine()->createPusher(core::TimeKeyType_Move, 10, moveC1));
-    core::MoveKey* moveC2 = new core::MoveKey();
-    moveC2->setPos(QVector2D(40.0f, 0.0f));
-    setup.push(nodeC.timeLine()->createPusher(core::TimeKeyType_Move, 20, moveC2));
+    auto* moveC0 = pushMove(nodeC, 0, QVector2D(0.0f, 0.0f));
+    auto* moveC1 = pushMove(nodeC, 10, QVector2D(100.0f, 0.0f));
+    auto* moveC2 = pushMove(nodeC, 20, QVector2D(40.0f, 0.0f));
 
     NullLogger logger;
     ctrl::GraphEditor editor(project, logger);
@@ -1188,7 +1217,8 @@ int main(int argc, char** argv) {
                 if (!polylineYAt(curve, scale.pixelXOfFrame(double(key->frame())), y, distance))
                     continue;
                 maxXDistance = std::max(maxXDistance, distance);
-                maxYDeviation = std::max(maxYDeviation, std::fabs(y - double(scale.pixelY(source.valueOf(*key)))));
+                const double deviation = std::fabs(y - double(scale.pixelY(source.valueOf(*key))));
+                maxYDeviation = std::max(maxYDeviation, deviation);
             }
         }
 
@@ -1249,12 +1279,12 @@ int main(int argc, char** argv) {
             const theme::Colors& colors = theme::Colors::current();
 
             // The four keys this document has: A's Move (X, Y) and Rotate, then
-            // B's Opa - target order, then the timeline's own type order.
+            // B's Opacity - target order, then the timeline's own type order.
             CHECK(model.channels.size() == 4);
             CHECK(model.channels.at(0).channel == ctrl::graph::Channel(core::TimeKeyType_Move, 0));
             CHECK(model.channels.at(1).channel == ctrl::graph::Channel(core::TimeKeyType_Move, 1));
             CHECK(model.channels.at(2).channel == ctrl::graph::Channel(core::TimeKeyType_Rotate, 0));
-            CHECK(model.channels.at(3).channel == ctrl::graph::Channel(core::TimeKeyType_Opa, 0));
+            CHECK(model.channels.at(3).channel == ctrl::graph::Channel(core::TimeKeyType_Opacity, 0));
 
             // ONE GROUP PER (layer, key type), naming the property and every
             // component - "<type> [X][Y]"; a one-component type carries its own name
@@ -1267,7 +1297,7 @@ int main(int argc, char** argv) {
             CHECK(model.channels.at(2).group ==
                   core::TimeLine::getTimeKeyDisplayName(core::TimeKeyType_Rotate));
             CHECK(model.channels.at(3).group ==
-                  core::TimeLine::getTimeKeyDisplayName(core::TimeKeyType_Opa));
+                  core::TimeLine::getTimeKeyDisplayName(core::TimeKeyType_Opacity));
             // A group's rows are contiguous: the same (layer, type) never returns
             // after another group has started, or the menu's boundary walk would
             // open a second heading for one property.
@@ -1284,7 +1314,7 @@ int main(int argc, char** argv) {
             CHECK(model.channels.at(1).color == colors.axisY);
             CHECK(model.channels.at(0).color != model.channels.at(1).color);
             CHECK(model.channels.at(2).color == colors.rotateKey); // angle: no axis
-            CHECK(model.channels.at(3).color == colors.opaKey);    // opacity: no axis
+            CHECK(model.channels.at(3).color == colors.opacityKey);    // opacity: no axis
 
             // THE NO-AXIS GUARD: an axis must never be silently assigned to Depth
             // (the design leaves it on its type's hue) or to an angle, and HSV's
@@ -1292,7 +1322,7 @@ int main(int argc, char** argv) {
             // are pinned, so a future axis added for one of them fails here.
             CHECK(theme::channelAxis(core::TimeKeyType_Depth, 0) < 0);
             CHECK(theme::channelAxis(core::TimeKeyType_Rotate, 0) < 0);
-            CHECK(theme::channelAxis(core::TimeKeyType_Opa, 0) < 0);
+            CHECK(theme::channelAxis(core::TimeKeyType_Opacity, 0) < 0);
             CHECK(theme::channelAxis(core::TimeKeyType_HSV, 0) < 0);
             CHECK(theme::channelAxis(core::TimeKeyType_HSV, 1) < 0);
             CHECK(theme::channelAxis(core::TimeKeyType_HSV, 2) < 0);
@@ -1313,7 +1343,7 @@ int main(int argc, char** argv) {
             CHECK(model.channels.at(0).color == theme::channelColor(colors, core::TimeKeyType_Move, 0));
             CHECK(model.channels.at(1).color == theme::channelColor(colors, core::TimeKeyType_Move, 1));
             CHECK(palette.keyColor(core::TimeKeyType_Move) == model.channels.at(0).color);
-            CHECK(palette.keyColor(core::TimeKeyType_Opa) == model.channels.at(3).color);
+            CHECK(palette.keyColor(core::TimeKeyType_Opacity) == model.channels.at(3).color);
             CHECK(palette.channelColor(core::TimeKeyType_Move, 1) == model.channels.at(1).color);
 
             // THE UNREACHABLE TYPES, proven rather than assumed: componentCount()
@@ -1526,7 +1556,8 @@ int main(int argc, char** argv) {
         double worstDelta = 0.0;
 
         for (const gui::PanelCurve& curve : zoomedModel.curves) {
-            const ctrl::graph::Curve source(*curve.node->timeLine(), curve.channel);
+            ctrl::graph::Curve source(*curve.node->timeLine(), curve.channel);
+            source.setLoop(editor.isLooping(), editor.frameRange());
             const core::Frame first = zoomed.frameAt(zoomedModel.plot.left());
             const core::Frame last = zoomed.frameAt(zoomedModel.plot.right());
             const int segments = std::max(1, source.segmentCount());
@@ -2046,7 +2077,7 @@ int main(int argc, char** argv) {
         custom.cubicBezier.x2 = 0.6f;
         custom.cubicBezier.y2 = 0.9f;
         for (int component = 0; component < core::MoveKey::kComponents; ++component) {
-            move0->data().easing(component) = custom;
+            move0->key[component]->easing() = custom;
         }
 
         const gui::GraphPanelModel handled = gui::buildGraphPanelModel(editor, viewport, palette);
@@ -2149,8 +2180,8 @@ int main(int argc, char** argv) {
         automatic.handleIn = util::Easing::HandleMode_Auto;
         automatic.handleOut = util::Easing::HandleMode_Auto;
         for (int component = 0; component < core::MoveKey::kComponents; ++component) {
-            move0->data().easing(component) = automatic;
-            move1->data().easing(component) = automatic;
+            move0->key[component]->easing() = automatic;
+            move1->key[component]->easing() = automatic;
         }
 
         const gui::GraphPanelModel ghosted = gui::buildGraphPanelModel(editor, viewport, palette);
@@ -2240,10 +2271,10 @@ int main(int argc, char** argv) {
             incomingDerived.handleOut = util::Easing::HandleMode_Aligned;
             incomingDerived.handleIn = util::Easing::HandleMode_Auto;
 
-            move0->data().easing(0) = outgoingDerived;
-            move1->data().easing(0) = custom; // incoming side stored (Aligned)
-            move0->data().easing(1) = storedOutgoing;
-            move1->data().easing(1) = incomingDerived;
+            move0->key[0]->easing() = outgoingDerived;
+            move1->key[0]->easing() = custom; // incoming side stored (Aligned)
+            move0->key[1]->easing() = storedOutgoing;
+            move1->key[1]->easing() = incomingDerived;
 
             const gui::GraphPanelModel mixed = gui::buildGraphPanelModel(editor, viewport, palette);
             ctrl::graph::Scaler mixedOracle = editor.scale();
@@ -2261,7 +2292,7 @@ int main(int argc, char** argv) {
                 if (curve.channel.type() != core::TimeKeyType_Move || source.isEmpty())
                     continue;
                 const ctrl::graph::Curve::Segment seg = source.segment(0);
-                if (seg.from != move0)
+                if (seg.from != move0->key[curve.channel.component()])
                     continue; // another layer's Move channel: not the edited segment
                 if (curve.handles.size() != 2) {
                     ++badSize;
@@ -2304,8 +2335,8 @@ int main(int argc, char** argv) {
         // Back to the Custom pair, so the blocks after this one measure the geometry
         // they were written against (the trace handle is the one thing that moved).
         for (int component = 0; component < core::MoveKey::kComponents; ++component) {
-            move0->data().easing(component) = custom;
-            move1->data().easing(component) = custom;
+            move0->key[component]->easing() = custom;
+            move1->key[component]->easing() = custom;
         }
         const gui::GraphPanelModel restoredHandles = gui::buildGraphPanelModel(editor, viewport, palette);
         int restoredGhosts = 0;
@@ -2345,8 +2376,8 @@ int main(int argc, char** argv) {
         automatic.handleIn = util::Easing::HandleMode_Auto;
         automatic.handleOut = util::Easing::HandleMode_Auto;
         for (int component = 0; component < core::MoveKey::kComponents; ++component) {
-            move0->data().easing(component) = automatic;
-            move1->data().easing(component) = automatic;
+            move0->key[component]->easing() = automatic;
+            move1->key[component]->easing() = automatic;
         }
 
         const gui::GraphPanelModel unfocused = gui::buildGraphPanelModel(editor, viewport, palette);
@@ -2410,8 +2441,8 @@ int main(int argc, char** argv) {
         custom.cubicBezier.x2 = 0.6f;
         custom.cubicBezier.y2 = 0.9f;
         for (int component = 0; component < core::MoveKey::kComponents; ++component) {
-            move0->data().easing(component) = custom;
-            move1->data().easing(component) = custom;
+            move0->key[component]->easing() = custom;
+            move1->key[component]->easing() = custom;
         }
     }
 
@@ -3011,7 +3042,7 @@ int main(int argc, char** argv) {
         const ctrl::graph::Channel moveX(core::TimeKeyType_Move, 0);
         const ctrl::graph::Channel moveY(core::TimeKeyType_Move, 1);
         const ctrl::graph::Channel rotate(core::TimeKeyType_Rotate, 0);
-        const ctrl::graph::Channel opa(core::TimeKeyType_Opa, 0);
+        const ctrl::graph::Channel opa(core::TimeKeyType_Opacity, 0);
 
         // ---- NOTHING SELECTED: neither flag on any marker of any curve.
         const gui::GraphPanelModel none = gui::buildGraphPanelModel(editor, viewport, palette);
@@ -3036,7 +3067,7 @@ int main(int argc, char** argv) {
         const gui::PanelCurve* oneX = curveFor(one, &nodeA, moveX);
         const gui::PanelCurve* oneY = curveFor(one, &nodeA, moveY);
         const gui::PanelCurve* oneRotate = curveFor(one, &nodeA, rotate);
-        const gui::PanelCurve* oneOpa = curveFor(one, &nodeB, opa);
+        const gui::PanelCurve* oneOpacity = curveFor(one, &nodeB, opa);
         bool x0 = false;
         bool y0 = false;
         bool x20 = false;
@@ -3051,15 +3082,15 @@ int main(int argc, char** argv) {
         const bool oneYSib20 = oneY && flagOf(oneY->keySiblingSelected, *oneY, core::Frame(20), y20);
         std::printf(
             "[15] Move X at frame 0 selected: markers=%d parallel_mismatches=%d flag_mismatches=%d/%d"
-            "  Move X=[%s]  Move Y=[%s]  Rotate=[%s]  Opa=[%s]  (frame0 published X/Y=%d/%d,"
+            "  Move X=[%s]  Move Y=[%s]  Rotate=[%s]  Opacity=[%s]  (frame0 published X/Y=%d/%d,"
             " frame20 X/Y=%d/%d)\n",
             oneTally.keys, oneTally.wider, oneTally.wrongSelected, oneTally.wrongSibling,
             oneX ? qUtf8Printable(statesOf(*oneX)) : "<missing>",
             oneY ? qUtf8Printable(statesOf(*oneY)) : "<missing>",
             oneRotate ? qUtf8Printable(statesOf(*oneRotate)) : "<missing>",
-            oneOpa ? qUtf8Printable(statesOf(*oneOpa)) : "<missing>", int(x0), int(y0), int(x20), int(y20)
+            oneOpacity ? qUtf8Printable(statesOf(*oneOpacity)) : "<missing>", int(x0), int(y0), int(x20), int(y20)
         );
-        CHECK(oneX && oneY && oneRotate && oneOpa); // the model draws every channel of both targets
+        CHECK(oneX && oneY && oneRotate && oneOpacity); // the model draws every channel of both targets
         CHECK(oneTally.wider == 0);
         CHECK(oneTally.wrongSelected == 0); // the model IS the editor's answer, cell for cell
         CHECK(oneTally.wrongSibling == 0);
@@ -3074,9 +3105,9 @@ int main(int argc, char** argv) {
         CHECK(!oneY20 && !oneYSib20);
         // A ONE-component key can have no sibling at all (the engine's own rule: another
         // COMPONENT of the same key, which Rotate has none of), and a Move selection does
-        // not reach another target's Opa key either.
+        // not reach another target's Opacity key either.
         CHECK(oneRotate->keySiblingSelected.count(true) == 0);
-        CHECK(oneOpa->keySelected.count(true) == 0 && oneOpa->keySiblingSelected.count(true) == 0);
+        CHECK(oneOpacity->keySelected.count(true) == 0 && oneOpacity->keySiblingSelected.count(true) == 0);
         CHECK(flaggedCount(one) == 2); // exactly the selected marker and its one sibling
 
         // ---- THE WHOLE KEY: the timeline's own gesture (and the panel's marquee and
@@ -3140,8 +3171,8 @@ int main(int argc, char** argv) {
         // nothing about the model's geometry may change with it (the model is read-only).
         const int absoluteFrame = 0;
         const int proportionalFrame = 20;
-        move1->setProportional(true);
-        CHECK(nodeA.timeLine()->timeKey(core::TimeKeyType_Move, proportionalFrame) == move1);
+        for (int c = 0; c < 4; ++c) move1->key[c]->setProportional(true);
+        CHECK(nodeA.timeLine()->channelKey(core::TimeKeyType_Move, 0, proportionalFrame) == move1->key[0]);
 
         const gui::GraphPanelModel proportionalModel = gui::buildGraphPanelModel(editor, viewport, palette);
         int widerProportional = 0;
@@ -3153,8 +3184,10 @@ int main(int argc, char** argv) {
                 ++widerProportional;
             }
             for (int i = 0; i < curve.keyFrames.size(); ++i) {
-                const core::TimeKey* key =
-                    curve.node->timeLine()->timeKey(curve.channel.type(), curve.keyFrames.at(i).get());
+                const core::TimeKey* key = core::TimeLine::usesChannelTracks(curve.channel.type())
+                    ? curve.node->timeLine()->channelKey(
+                          curve.channel.type(), curve.channel.component(), curve.keyFrames.at(i).get())
+                    : curve.node->timeLine()->timeKey(curve.channel.type(), curve.keyFrames.at(i).get());
                 const bool expected = key && key->isProportional();
                 if (i >= curve.keyProportional.size() || curve.keyProportional.at(i) != expected)
                     ++wrongProportional;
@@ -3191,7 +3224,7 @@ int main(int argc, char** argv) {
         CHECK(wrongProportional == 0);
 
         // ...and CLEARED AGAIN: the flag follows the document rather than latching.
-        move1->setProportional(false);
+        for (int c = 0; c < 4; ++c) move1->key[c]->setProportional(false);
         const gui::GraphPanelModel afterClear = gui::buildGraphPanelModel(editor, viewport, palette);
         const gui::PanelCurve* clearedX = curveFor(afterClear, &nodeA, moveX);
         CHECK(clearedX != nullptr);
@@ -3622,17 +3655,17 @@ int main(int argc, char** argv) {
         editor.clearFocus(); // no-focus ink: every row publishes its pairs
         editor.fitAll();
 
-        const util::Easing::Param firstBefore = moveC0->data().easing(0);
-        const util::Easing::Param middleBefore = moveC1->data().easing(0);
-        const util::Easing::Param lastBefore = moveC2->data().easing(0);
+        const util::Easing::Param firstBefore = moveC0->key[0]->easing();
+        const util::Easing::Param middleBefore = moveC1->key[0]->easing();
+        const util::Easing::Param lastBefore = moveC2->key[0]->easing();
 
         const bool selected =
             editor.selectMarker(nodeC, ctrl::graph::Channel(core::TimeKeyType_Move, 0), core::Frame(10));
         const bool acted = selected && editor.setSelectedKeysAutoHandles();
 
-        const util::Easing::Param first = moveC0->data().easing(0);
-        const util::Easing::Param middle = moveC1->data().easing(0);
-        const util::Easing::Param last = moveC2->data().easing(0);
+        const util::Easing::Param first = moveC0->key[0]->easing();
+        const util::Easing::Param middle = moveC1->key[0]->easing();
+        const util::Easing::Param last = moveC2->key[0]->easing();
         // The SELECTED key: type Custom and the OUTGOING side automatic. Its
         // incoming side belongs to the arriving segment and is left exactly as it
         // was, as are the stored cubic, range and weight.
@@ -3709,9 +3742,9 @@ int main(int argc, char** argv) {
         // must put every param back (an action that pushed one command per param
         // would only revert the last write).
         project.commandStack().undo();
-        const bool undone = moveC0->data().easing(0) == firstBefore
-            && moveC1->data().easing(0) == middleBefore
-            && moveC2->data().easing(0) == lastBefore;
+        const bool undone = moveC0->key[0]->easing() == firstBefore
+            && moveC1->key[0]->easing() == middleBefore
+            && moveC2->key[0]->easing() == lastBefore;
         std::printf("[10d] one undo restores the written params (and leaves the untouched one equal)=%d\n",
                     int(undone));
         CHECK(undone);
@@ -3746,26 +3779,24 @@ int main(int argc, char** argv) {
         nodeD.setName(QStringLiteral("D"));
         const int dFrames[5] = { 0, 10, 20, 30, 40 };
         const float dValues[5] = { 0.0f, 10.0f, 40.0f, 70.0f, 100.0f };
-        core::RotateKey* dKeys[5] = {};
+        core::ChannelKey* dKeys[5] = {};
         for (int i = 0; i < 5; ++i) {
-            dKeys[i] = new core::RotateKey();
-            dKeys[i]->setRotate(dValues[i]);
-            setup.push(nodeD.timeLine()->createPusher(core::TimeKeyType_Rotate, dFrames[i], dKeys[i]));
+            dKeys[i] = pushRotate(nodeD, dFrames[i], dValues[i]);
         }
         // K0..K2 shape the segment leaving them; K2's incoming side is STORED
         // (Aligned) so one published handle is of the other kind. K3 is analytic:
         // its outgoing mode means nothing, and its arrival at K4 must not publish.
         for (int i = 0; i < 3; ++i) {
-            dKeys[i]->data().easing(0).type = util::Easing::Type_Custom;
-            dKeys[i]->data().easing(0).handleOut = util::Easing::HandleMode_AutoClamped;
+            dKeys[i]->easing().type = util::Easing::Type_Custom;
+            dKeys[i]->easing().handleOut = util::Easing::HandleMode_AutoClamped;
         }
-        dKeys[0]->data().easing(0).handleIn = util::Easing::HandleMode_Aligned;
-        dKeys[1]->data().easing(0).handleIn = util::Easing::HandleMode_AutoClamped;
-        dKeys[2]->data().easing(0).handleIn = util::Easing::HandleMode_Aligned;
-        dKeys[3]->data().easing(0).type = util::Easing::Type_Linear;
-        dKeys[3]->data().easing(0).handleIn = util::Easing::HandleMode_AutoClamped;
-        dKeys[4]->data().easing(0).type = util::Easing::Type_Custom;
-        dKeys[4]->data().easing(0).handleIn = util::Easing::HandleMode_AutoClamped;
+        dKeys[0]->easing().handleIn = util::Easing::HandleMode_Aligned;
+        dKeys[1]->easing().handleIn = util::Easing::HandleMode_AutoClamped;
+        dKeys[2]->easing().handleIn = util::Easing::HandleMode_Aligned;
+        dKeys[3]->easing().type = util::Easing::Type_Linear;
+        dKeys[3]->easing().handleIn = util::Easing::HandleMode_AutoClamped;
+        dKeys[4]->easing().type = util::Easing::Type_Custom;
+        dKeys[4]->easing().handleIn = util::Easing::HandleMode_AutoClamped;
 
         editor.setTargets({ &nodeD });
         editor.clearSelection();
@@ -3778,7 +3809,7 @@ int main(int argc, char** argv) {
         const ctrl::graph::Curve gateCurve(*nodeD.timeLine(),
                                            ctrl::graph::Channel(core::TimeKeyType_Rotate, 0));
         const core::TimeLine::MapType& dMap =
-            nodeD.timeLine()->map(core::TimeKeyType_Rotate);
+            nodeD.timeLine()->channelMap(core::TimeKeyType_Rotate, 0);
 
         int published = 0;
         int badKind = 0;
@@ -3902,19 +3933,17 @@ int main(int argc, char** argv) {
         nodeE.setName(QStringLiteral("E"));
         const int eFrames[3] = { 0, 10, 20 };
         const float eValues[3] = { 0.0f, 10.0f, 40.0f };
-        core::RotateKey* eKeys[3] = {};
+        core::ChannelKey* eKeys[3] = {};
         for (int i = 0; i < 3; ++i) {
-            eKeys[i] = new core::RotateKey();
-            eKeys[i]->setRotate(eValues[i]);
-            setup.push(nodeE.timeLine()->createPusher(core::TimeKeyType_Rotate, eFrames[i], eKeys[i]));
+            eKeys[i] = pushRotate(nodeE, eFrames[i], eValues[i]);
         }
 
         ctrl::TimeLineEditor timeline;
         timeline.setProject(&project);
 
-        const util::Easing::Param eFirstBefore = eKeys[0]->data().easing(0);
-        const util::Easing::Param eMiddleBefore = eKeys[1]->data().easing(0);
-        const util::Easing::Param eLastBefore = eKeys[2]->data().easing(0);
+        const util::Easing::Param eFirstBefore = eKeys[0]->easing();
+        const util::Easing::Param eMiddleBefore = eKeys[1]->easing();
+        const util::Easing::Param eLastBefore = eKeys[2]->easing();
 
         core::TimeLineEvent created;
         created.setType(core::TimeLineEvent::Type_PushKey);
@@ -3923,18 +3952,18 @@ int main(int argc, char** argv) {
         const bool acted = timeline.assignSelectionAutoHandles();
 
         const bool wrote = acted
-            && eKeys[0]->data().easing(0) == eFirstBefore // previous key: byte-identical
-            && eKeys[1]->data().easing(0).type == util::Easing::Type_Custom
-            && eKeys[1]->data().easing(0).handleOut == util::Easing::kAutoPresetHandleMode
-            && eKeys[1]->data().easing(0).handleIn == eMiddleBefore.handleIn // arriving side untouched
-            && eKeys[2]->data().easing(0).handleIn == util::Easing::kAutoPresetHandleMode
-            && eKeys[2]->data().easing(0).type == eLastBefore.type // its own curve is not ours
-            && eKeys[2]->data().easing(0).handleOut == eLastBefore.handleOut;
+            && eKeys[0]->easing() == eFirstBefore // previous key: byte-identical
+            && eKeys[1]->easing().type == util::Easing::Type_Custom
+            && eKeys[1]->easing().handleOut == util::Easing::kAutoPresetHandleMode
+            && eKeys[1]->easing().handleIn == eMiddleBefore.handleIn // arriving side untouched
+            && eKeys[2]->easing().handleIn == util::Easing::kAutoPresetHandleMode
+            && eKeys[2]->easing().type == eLastBefore.type // its own curve is not ours
+            && eKeys[2]->easing().handleOut == eLastBefore.handleOut;
 
         project.commandStack().undo();
-        const bool undone = eKeys[0]->data().easing(0) == eFirstBefore
-            && eKeys[1]->data().easing(0) == eMiddleBefore
-            && eKeys[2]->data().easing(0) == eLastBefore;
+        const bool undone = eKeys[0]->easing() == eFirstBefore
+            && eKeys[1]->easing() == eMiddleBefore
+            && eKeys[2]->easing() == eLastBefore;
 
         std::printf("[10f] timeline Auto on one key: acted=%d  two params written=%d  "
                     "one undo restores all=%d\n",
@@ -3955,17 +3984,17 @@ int main(int argc, char** argv) {
         timeline.selectCreatedKeys(adjacent);
         const bool actedBoth = timeline.assignSelectionAutoHandles();
         const bool sharedKept = actedBoth
-            && eKeys[0]->data().easing(0).type == util::Easing::Type_Custom
-            && eKeys[0]->data().easing(0).handleOut == util::Easing::kAutoPresetHandleMode
-            && eKeys[0]->data().easing(0).handleIn == eFirstBefore.handleIn
-            && eKeys[1]->data().easing(0).handleIn == util::Easing::kAutoPresetHandleMode
-            && eKeys[1]->data().easing(0).handleOut == util::Easing::kAutoPresetHandleMode
-            && eKeys[2]->data().easing(0).handleIn == util::Easing::kAutoPresetHandleMode
-            && eKeys[2]->data().easing(0).type == eLastBefore.type;
+            && eKeys[0]->easing().type == util::Easing::Type_Custom
+            && eKeys[0]->easing().handleOut == util::Easing::kAutoPresetHandleMode
+            && eKeys[0]->easing().handleIn == eFirstBefore.handleIn
+            && eKeys[1]->easing().handleIn == util::Easing::kAutoPresetHandleMode
+            && eKeys[1]->easing().handleOut == util::Easing::kAutoPresetHandleMode
+            && eKeys[2]->easing().handleIn == util::Easing::kAutoPresetHandleMode
+            && eKeys[2]->easing().type == eLastBefore.type;
         project.commandStack().undo();
-        const bool bothUndone = eKeys[0]->data().easing(0) == eFirstBefore
-            && eKeys[1]->data().easing(0) == eMiddleBefore
-            && eKeys[2]->data().easing(0) == eLastBefore;
+        const bool bothUndone = eKeys[0]->easing() == eFirstBefore
+            && eKeys[1]->easing() == eMiddleBefore
+            && eKeys[2]->easing() == eLastBefore;
         std::printf("[10f] timeline Auto on two adjacent keys: acted=%d  shared key keeps both sides=%d  "
                     "one undo restores all=%d\n",
                     int(actedBoth), int(sharedKept), int(bothUndone));
@@ -3983,7 +4012,7 @@ int main(int argc, char** argv) {
         lastOnly.pushTarget(nodeE, core::TimeKeyType_Rotate, 20);
         timeline.selectCreatedKeys(lastOnly);
         const bool actedLast = timeline.assignSelectionAutoHandles();
-        const util::Easing::Param lastAfter = eKeys[2]->data().easing(0);
+        const util::Easing::Param lastAfter = eKeys[2]->easing();
         const bool lastPair = lastAfter.type == util::Easing::Type_Custom
             && lastAfter.handleIn == util::Easing::kAutoPresetHandleMode
             && lastAfter.handleOut == util::Easing::kAutoPresetHandleMode
@@ -3991,12 +4020,12 @@ int main(int argc, char** argv) {
             && lastAfter.range == eLastBefore.range
             && lastAfter.weight == eLastBefore.weight;
         const bool lastOnlyWrote = actedLast && lastPair
-            && eKeys[0]->data().easing(0) == eFirstBefore // no other param was named
-            && eKeys[1]->data().easing(0) == eMiddleBefore;
+            && eKeys[0]->easing() == eFirstBefore // no other param was named
+            && eKeys[1]->easing() == eMiddleBefore;
         project.commandStack().undo();
-        const bool lastUndone = eKeys[0]->data().easing(0) == eFirstBefore
-            && eKeys[1]->data().easing(0) == eMiddleBefore
-            && eKeys[2]->data().easing(0) == eLastBefore;
+        const bool lastUndone = eKeys[0]->easing() == eFirstBefore
+            && eKeys[1]->easing() == eMiddleBefore
+            && eKeys[2]->easing() == eLastBefore;
         std::printf("[10f] timeline Auto on the LAST key: acted=%d  own pair automatic=%d  "
                     "nothing else written=%d  one undo restores it=%d\n",
                     int(actedLast), int(lastPair), int(lastOnlyWrote), int(lastUndone));
@@ -4012,27 +4041,25 @@ int main(int argc, char** argv) {
         // ride along untouched.
         core::TestNode soloNode;
         soloNode.setName(QStringLiteral("Solo"));
-        core::RotateKey* soloKey = new core::RotateKey();
-        soloKey->setRotate(25.0f);
-        setup.push(soloNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 5, soloKey));
-        CHECK(soloNode.timeLine()->map(core::TimeKeyType_Rotate).size() == 1);
+        core::ChannelKey* soloKey = pushRotate(soloNode, 5, 25.0f);
+        CHECK(rotateKeyCount(*soloNode.timeLine()) == 1);
 
         core::TimeLineEvent soloCreated;
         soloCreated.setType(core::TimeLineEvent::Type_PushKey);
         soloCreated.pushTarget(soloNode, core::TimeKeyType_Rotate, 5);
         timeline.selectCreatedKeys(soloCreated);
-        const util::Easing::Param soloBefore = soloKey->data().easing(0);
+        const util::Easing::Param soloBefore = soloKey->easing();
         const bool soloActed = timeline.assignSelectionAutoHandles();
-        const util::Easing::Param soloAfter = soloKey->data().easing(0);
+        const util::Easing::Param soloAfter = soloKey->easing();
         const bool soloPair = soloAfter.type == util::Easing::Type_Custom
             && soloAfter.handleIn == util::Easing::kAutoPresetHandleMode
             && soloAfter.handleOut == util::Easing::kAutoPresetHandleMode
             && soloAfter.cubicBezier == soloBefore.cubicBezier
             && soloAfter.range == soloBefore.range
             && soloAfter.weight == soloBefore.weight
-            && soloNode.timeLine()->map(core::TimeKeyType_Rotate).size() == 1;
+            && rotateKeyCount(*soloNode.timeLine()) == 1;
         project.commandStack().undo();
-        const bool soloUndone = soloKey->data().easing(0) == soloBefore;
+        const bool soloUndone = soloKey->easing() == soloBefore;
         std::printf("[10f] timeline Auto on the ONLY key: acted=%d  both sides automatic=%d  "
                     "one undo restores it=%d\n",
                     int(soloActed), int(soloPair), int(soloUndone));
@@ -4360,7 +4387,7 @@ int main(int argc, char** argv) {
         const float minBefore = editor.scale().valueMin();
         const float maxBefore = editor.scale().valueMax();
         const int targetsBefore = editor.targets().size();
-        const int rotateKeysBefore = nodeA.timeLine()->map(core::TimeKeyType_Rotate).size();
+        const int rotateKeysBefore = rotateKeyCount(*nodeA.timeLine());
         const bool modifiedBefore = project.isModified();
         const int frameBefore = editor.currentFrame().get();
 
@@ -4379,7 +4406,7 @@ int main(int argc, char** argv) {
         CHECK(editor.scale().valueMin() == minBefore);
         CHECK(editor.scale().valueMax() == maxBefore);
         CHECK(editor.targets().size() == targetsBefore);
-        CHECK(nodeA.timeLine()->map(core::TimeKeyType_Rotate).size() == rotateKeysBefore);
+        CHECK(rotateKeyCount(*nodeA.timeLine()) == rotateKeysBefore);
         CHECK(project.isModified() == modifiedBefore);
         CHECK(editor.currentFrame().get() == frameBefore);
         CHECK(probe.playheadX == probeAgain.playheadX);

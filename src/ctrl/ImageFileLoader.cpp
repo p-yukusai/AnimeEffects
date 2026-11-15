@@ -79,7 +79,7 @@ void attachMask(core::ObjectNode& aNode, const QImage& aField, const QRectF& aCo
     auto* key = new core::MaskKey();
     key->data().write(aField, aContentRect);
     key->data().easing(0) = util::Easing::defaultParam();
-    aNode.timeLine()->grabDefaultKey(core::TimeKeyType_Mask, key);
+    aNode.timeLine()->setBaseValue(core::TimeKeyType_Mask, key);
 }
 
 } // namespace

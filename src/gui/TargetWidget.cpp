@@ -54,7 +54,6 @@ TargetWidget::TargetWidget(
         if (mTimeLine && mObjTree)
             mTimeLine->setRows(mObjTree->rows());
     });
-
     // The dock's body, as ONE pane with the views stacked in it (design section 5):
     // the timeline's own surface and, when the graph panel is part of the build, the
     // animation graph panel. The tab in the header is what swaps them; the TREE stays
@@ -63,6 +62,14 @@ TargetWidget::TargetWidget(
     // not computed, and the surface the user sees is the one Qt sizes and shows.
     mSurfaceStack = new QStackedWidget(mHorizontalSplitter);
     mTimeLine = new TimeLineWidget(aResources, aViaPoint, *this, mSurfaceStack);
+    // Link/Separate Channels changes lane count (and therefore row heights)
+    // without a document edit: re-derive the tree's rows, which re-pushes them
+    // through the connection above. The timeline's own paint is refreshed by its
+    // last row push.
+    mTimeLine->onChannelGroupingChanged.connect([this]() {
+        if (mObjTree)
+            mObjTree->refreshRows();
+    });
 #ifdef AE_ENABLE_IMGUI
     // The Graph tab is the SAME panel the viewport's overlay draws, docked: it is the
     // panel's own widget (gui::GraphPanelWidget), pinned over the dock's floor at the

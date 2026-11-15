@@ -44,14 +44,19 @@
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/TimeLine.h"
+#include "core/ChannelKey.h"
 #include "core/MoveKey.h"
+#include "core/MoveStateKey.h"
 #include "core/PoseKey.h"
 #include "core/FFDKey.h"
 #include "core/KeyEasing.h"
+#include "core/Serializer.h"
+#include "util/StreamWriter.h"
 #include "ctrl/graph/graph_Curve.h"
 #include "core/AbstractCursor.h"
 #include "util/Easing.h"
 #include "ctrl/TimeLineEditor.h"
+#include "cmnd/BasicCommands.h"
 #include "cmnd/Stack.h"
 
 // Project.cpp references the GUI AudioPlaybackWidget::deserialize (only to
@@ -101,7 +106,8 @@ void notifyTimelineModified(ctrl::TimeLineEditor& aEditor) { aEditor.updateKey()
 // route that writes this now; the key menus carry no easing entry), minus the
 // command plumbing. The selection must survive it.
 void editKeyEasingDataOnly(core::TimeKey* aKey) {
-    static_cast<core::MoveKey*>(aKey)->data().easing(0).type = util::Easing::Type_Linear;
+    if (auto* channel = dynamic_cast<core::ChannelKey*>(aKey)) channel->easing().type = util::Easing::Type_Linear;
+    else static_cast<core::MoveKey*>(aKey)->data().easing(0).type = util::Easing::Type_Linear;
 }
 
 // A plain click through the real gesture path (press + release at one point).
@@ -157,10 +163,16 @@ int main(int argc, char** argv) {
     cmnd::Stack stack;
 
     core::TestNode node;
-    auto* keyA = new core::MoveKey();
-    auto* keyB = new core::MoveKey();
-    stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 5, keyA));
-    stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 20, keyB));
+    auto makeKey = [&](int aFrame) {
+        auto* key = new core::ChannelKey(core::TimeKeyType_Opacity, 0);
+        key->setFrame(aFrame);
+        key->setValue(1.0f);
+        stack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        stack.push(node.timeLine()->createChannelPusher(core::TimeKeyType_Opacity, 0, aFrame, key));
+        return key;
+    };
+    auto* keyA = makeKey(5);
+    auto* keyB = makeKey(20);
     CHECK(node.timeLine()->validTypeCount() == 1);
 
     ctrl::TimeLineEditor editor;
@@ -213,7 +225,7 @@ int main(int argc, char** argv) {
         // a data-only edit, like the one a menu action would fire on the loaned
         // target, notifies the timeline: the loan survives updateKey()
         editKeyEasingDataOnly(keyA);
-        CHECK(keyA->data().easing(0).type == util::Easing::Type_Linear);
+        CHECK(keyA->easing().type == util::Easing::Type_Linear);
         notifyTimelineModified(editor);
         core::TimeLineEvent during;
         CHECK(editor.retrieveSelectionTargets(during));
@@ -303,20 +315,20 @@ int main(int argc, char** argv) {
         CHECK(keyA->isFocused());
 
         // a move: the selection follows the key to its new frame
-        CHECK(node.timeLine()->overwriteMove(core::TimeKeyType_Move, 5, 8));
+        CHECK(node.timeLine()->overwriteMove(core::TimeKeyType_Opacity, 5, 8));
         notifyTimelineModified(editor);
         CHECK(editor.retrieveSelectionTargets(kept = core::TimeLineEvent()));
         CHECK(singleTargetIs(kept, keyA));
         CHECK(kept.targets().front().pos.index() == 8);
 
         // removing another key must not disturb the selection
-        stack.push(node.timeLine()->createRemover(core::TimeKeyType_Move, 20, false));
+        stack.push(node.timeLine()->createChannelRemover(core::TimeKeyType_Opacity, 0, 20, false));
         notifyTimelineModified(editor);
         CHECK(editor.retrieveSelectionTargets(kept = core::TimeLineEvent()));
         CHECK(singleTargetIs(kept, keyA));
 
         // removing the selected key drops it from the selection
-        stack.push(node.timeLine()->createRemover(core::TimeKeyType_Move, 8, false));
+        stack.push(node.timeLine()->createChannelRemover(core::TimeKeyType_Opacity, 0, 8, false));
         notifyTimelineModified(editor);
         core::TimeLineEvent gone;
         CHECK(!editor.retrieveSelectionTargets(gone)); // the drop is the contract
@@ -340,8 +352,11 @@ int main(int argc, char** argv) {
 
         // The lane this section drives: one fresh key at frame 12 on the node the
         // row already names (S6 removed both of the original pair).
-        auto* keyC = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 12, keyC));
+        auto* keyC = new core::ChannelKey(core::TimeKeyType_Opacity, 0);
+        keyC->setFrame(12);
+        keyC->setValue(1.0f);
+        stack.push(new cmnd::GrabNewObject<core::ChannelKey>(keyC));
+        stack.push(node.timeLine()->createChannelPusher(core::TimeKeyType_Opacity, 0, 12, keyC));
         const QPoint posC(frameX(12), laneY);
         editor.endTemporarySelection();
         editor.selection().clear();
@@ -373,7 +388,7 @@ int main(int argc, char** argv) {
         CHECK(changes == afterLend);
 
         // A key that MOVED is a change: the entry follows it to its new frame.
-        CHECK(node.timeLine()->overwriteMove(core::TimeKeyType_Move, 12, 16));
+        CHECK(node.timeLine()->overwriteMove(core::TimeKeyType_Opacity, 12, 16));
         notifyTimelineModified(editor);
         CHECK(changes > afterLend);
         core::TimeLineEvent followed;
@@ -383,7 +398,7 @@ int main(int argc, char** argv) {
 
         // ...and a key that is GONE is a change too: the entry is dropped.
         const int afterFollow = changes;
-        stack.push(node.timeLine()->createRemover(core::TimeKeyType_Move, 16, false));
+        stack.push(node.timeLine()->createChannelRemover(core::TimeKeyType_Opacity, 0, 16, false));
         notifyTimelineModified(editor);
         CHECK(changes > afterFollow);
         core::TimeLineEvent gone;
@@ -405,8 +420,16 @@ int main(int argc, char** argv) {
     // every timeline gesture - is the one case that writes them all, because it
     // names them all.) Undo restores exactly the written component.
     {
-        auto* key = new core::MoveKey();
-        project.commandStack().push(node.timeLine()->createPusher(core::TimeKeyType_Move, 30, key));
+        auto* key0 = new core::ChannelKey(core::TimeKeyType_Scale, 0);
+        key0->setFrame(30);
+        key0->setValue(1.0f);
+        project.commandStack().push(new cmnd::GrabNewObject<core::ChannelKey>(key0));
+        project.commandStack().push(node.timeLine()->createChannelPusher(core::TimeKeyType_Scale, 0, 30, key0));
+        auto* key1 = new core::ChannelKey(core::TimeKeyType_Scale, 1);
+        key1->setFrame(30);
+        key1->setValue(1.0f);
+        project.commandStack().push(new cmnd::GrabNewObject<core::ChannelKey>(key1));
+        project.commandStack().push(node.timeLine()->createChannelPusher(core::TimeKeyType_Scale, 1, 30, key1));
 
         util::Easing::Param x;
         x.type = util::Easing::Type_Cubic;
@@ -416,12 +439,12 @@ int main(int argc, char** argv) {
         y.type = util::Easing::Type_Elastic;
         y.range = util::Easing::Range_Out;
         y.weight = 0.8f;
-        key->data().easing(0) = x;
-        key->data().easing(1) = y;
+        key0->easing() = x;
+        key1->easing() = y;
 
         core::TimeLineEvent::Target target;
         target.node = &node;
-        target.pos = core::TimeKeyPos(*node.timeLine(), core::TimeKeyType_Move, 30);
+        target.pos = core::TimeKeyPos(*node.timeLine(), core::TimeKeyType_Scale, 30, 1);
         CHECK(editor.selection().setMarker(target, 1)); // Move Y, not the whole key
         CHECK(editor.selection().items().front().component == 1);
 
@@ -432,15 +455,15 @@ int main(int argc, char** argv) {
         CHECK(editor.assignSelectionEasing([next](const util::Easing::Param&) { return next; }));
 
         // THE OTHER CHANNEL IS BYTE-IDENTICAL, all fields included.
-        CHECK(key->data().easing(0) == x);
-        CHECK(key->data().easing(1) == next);
+        CHECK(key0->easing() == x);
+        CHECK(key1->easing() == next);
 
         // ...and undo restores only what was written.
         bool undone = false;
         project.commandStack().undo(&undone);
         CHECK(undone);
-        CHECK(key->data().easing(0) == x);
-        CHECK(key->data().easing(1) == y);
+        CHECK(key0->easing() == x);
+        CHECK(key1->easing() == y);
 
         // WHAT THE SELECTION NAMES - the question the picker opens on. A marker
         // answers its own component; several markers answer the sorted union; a
@@ -448,18 +471,18 @@ int main(int argc, char** argv) {
         // lets openEasingPicker open on Move Y instead of collapsing to component 0,
         // and what tells the chip that the selection spans more than the curve it
         // paints.)
-        const QVector<int> onlyY = editor.selection().componentsOf(target, core::MoveKey::kComponents);
+        const QVector<int> onlyY = editor.selection().componentsOf(target, 2);
         CHECK(onlyY.size() == 1 && onlyY.first() == 1);
         CHECK(editor.selection().addMarker(target, 0));
-        const QVector<int> both = editor.selection().componentsOf(target, core::MoveKey::kComponents);
+        const QVector<int> both = editor.selection().componentsOf(target, 2);
         CHECK(both.size() == 2 && both.first() == 0 && both.at(1) == 1);
         core::TimeLineEvent whole;
-        whole.pushTarget(node, core::TimeKeyType_Move, 30);
+        whole.pushTarget(node, core::TimeKeyType_Scale, 30);
         editor.selection().set(whole);
-        const QVector<int> wholeKey = editor.selection().componentsOf(target, core::MoveKey::kComponents);
+        const QVector<int> wholeKey = editor.selection().componentsOf(target, 2);
         CHECK(wholeKey.size() == 2 && wholeKey.first() == 0 && wholeKey.at(1) == 1);
-        // A type with one stored component (Rotate) answers exactly one, and an
-        // out-of-range stored count answers none.
+        // A stored count that names only component 0 does not include the marker
+        // on component 1; a count of zero answers none.
         CHECK(editor.selection().componentsOf(target, 1).size() == 1);
         CHECK(editor.selection().componentsOf(target, 0).isEmpty());
         editor.selection().clear();
@@ -587,9 +610,9 @@ int main(int argc, char** argv) {
         QList<core::TimeKey*> pasted = ctrl::TimeLineEditor::getTypesFromCb(project.pointee(), &node);
         CHECK(pasted.size() == 1);
         if (!pasted.isEmpty()) {
-            auto* pastedMove = static_cast<core::MoveKey*>(pasted.front());
-            CHECK(pastedMove->data().easing(0) == x); // modes, range, weight, cubic
-            CHECK(pastedMove->data().easing(1) == y); // the OTHER component is not x
+            auto* pastedKey = dynamic_cast<core::ChannelKey*>(pasted.front());
+            CHECK(pastedKey && pastedKey->component() == 0);
+            CHECK(pastedKey->easing() == x); // modes, range, weight, cubic
         }
         qDeleteAll(pasted);
 
@@ -617,15 +640,99 @@ int main(int argc, char** argv) {
         QList<core::TimeKey*> legacyPasted = ctrl::TimeLineEditor::getTypesFromCb(project.pointee(), &node);
         CHECK(legacyPasted.size() == 1);
         if (!legacyPasted.isEmpty()) {
-            auto* pastedMove = static_cast<core::MoveKey*>(legacyPasted.front());
-            for (int component = 0; component < core::MoveKey::kComponents; ++component) {
-                const util::Easing::Param& got = pastedMove->data().easing(component);
+            auto* pastedKey = dynamic_cast<core::ChannelKey*>(legacyPasted.front());
+            CHECK(pastedKey != nullptr);
+            if (pastedKey) {
+                const util::Easing::Param& got = pastedKey->easing();
                 CHECK(got.type == util::Easing::Type_Custom);
                 CHECK(got.handleIn == util::Easing::kDefaultAutomaticHandleMode);
                 CHECK(got.handleOut == util::Easing::kDefaultAutomaticHandleMode);
             }
         }
         qDeleteAll(legacyPasted);
+    }
+
+    // --- STATE KEY SELECTION / DELETE --------------------------------------
+    // A state key is a first-class timeline key: it has its own map identity,
+    // hit target and delete command, and it can be focused like any other key.
+    {
+        core::TestNode stateNode;
+        auto* state = new core::MoveStateKey();
+        CHECK(stateNode.timeLine()->property(core::TimeKeyType_Move)->state().insertKey(
+            5, std::unique_ptr<core::StateKey>(state)) != nullptr);
+
+        ctrl::TimeLineEditor stateEditor;
+        stateEditor.setProject(&project);
+        stateEditor.pushRow(&stateNode, util::Range(100, 120), false);
+        const int stateLaneY = 100 + (120 - 100) / 2;
+        const QPoint statePos(
+            ctrl::TimeLineEditor::kTimeLineMargin
+                + stateEditor.timeScale().pixelWidth(5),
+            stateLaneY
+        );
+        core::TimeLineEvent stateTargets;
+        CHECK(stateEditor.selectKeysAt(stateTargets, statePos));
+        CHECK(stateTargets.targets().size() == 1);
+        CHECK(stateTargets.targets().first().pos.component()
+              == core::TimeKeyPos::kStateComponent);
+        CHECK(state->isFocused());
+        CHECK(stateEditor.selection().items().size() == 1);
+        CHECK(stateEditor.selection().items().first().component
+              == core::TimeKeyPos::kStateComponent);
+
+        stateEditor.deleteCheckedKeys(stateTargets);
+        CHECK(stateNode.timeLine()->property(core::TimeKeyType_Move)->state().keyAt(5) == nullptr);
+        project.commandStack().undo();
+        CHECK(stateNode.timeLine()->property(core::TimeKeyType_Move)->state().keyAt(5) != nullptr);
+        CHECK(stateNode.timeLine()->moveStateKeys(
+            core::TimeKeyType_Move, { qMakePair(5, 8) }));
+        CHECK(stateNode.timeLine()->property(core::TimeKeyType_Move)->state().keyAt(8) != nullptr);
+
+        core::TimeLineEvent stateCopy;
+        stateCopy.pushTarget(
+            stateNode,
+            core::TimeKeyPos(
+                *stateNode.timeLine(), core::TimeKeyType_Move, 8,
+                core::TimeKeyPos::kStateComponent
+            )
+        );
+        CHECK(stateEditor.pasteCopiedKeys(stateCopy, QPoint(frameX(10), stateLaneY)));
+        CHECK(stateNode.timeLine()->property(core::TimeKeyType_Move)->state().keyAt(10) != nullptr);
+        project.commandStack().undo();
+        CHECK(stateNode.timeLine()->property(core::TimeKeyType_Move)->state().keyAt(10) == nullptr);
+
+        // Clipboard JSON carries a state key as its serialized payload; the
+        // reader reconstructs the typed state rather than a structural key.
+        core::MoveStateKey sample;
+        sample.setSpline(core::MoveKey::SplineType_CatmullRom);
+        std::ostringstream stateBytes;
+        util::StreamWriter stateWriter(stateBytes);
+        core::Serializer stateOut(stateWriter);
+        CHECK(sample.serialize(stateOut));
+        const std::string stateData = stateBytes.str();
+        QJsonObject stateJson;
+        stateJson["Type"] = QStringLiteral("Move");
+        stateJson["Frame"] = 12;
+        stateJson["StateData"] = QString::fromLatin1(
+            QByteArray(stateData.data(), int(stateData.size())).toBase64()
+        );
+        QJsonObject statePayload;
+        statePayload["TargetsSize"] = 1;
+        statePayload["Keys"] = QJsonArray{ stateJson };
+        QGuiApplication::clipboard()->setText(
+            QString::fromUtf8(QJsonDocument(statePayload).toJson(QJsonDocument::Compact)));
+        QList<core::TimeKey*> fromStateCb =
+            ctrl::TimeLineEditor::getTypesFromCb(project.pointee(), &stateNode);
+        CHECK(fromStateCb.size() == 1);
+        if (!fromStateCb.isEmpty()) {
+            auto* readState = dynamic_cast<core::MoveStateKey*>(fromStateCb.front());
+            CHECK(readState != nullptr);
+            if (readState) {
+                CHECK(readState->spline() == core::MoveKey::SplineType_CatmullRom);
+                CHECK(readState->frame() == 12);
+            }
+        }
+        qDeleteAll(fromStateCb);
     }
 
     std::printf("rightclick_transient_selection: all checks passed\n");

@@ -1,4 +1,5 @@
 #include "ctrl/graph/graph_Curve.h"
+#include "core/MoveEvaluator.h"
 
 #include <QVector3D>
 
@@ -11,7 +12,7 @@
 #include "core/ImageKey.h"
 #include "core/WaveKey.h"
 #include "core/MoveKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
 #include "util/FergusonCoonsSpline.h"
@@ -30,16 +31,16 @@ namespace {
 
 // The value a channel reads from the document when the map holds no key at all.
 //
-// This mirrors getDefaultKeyData<tKey, tType>() in core/TimeKeyBlender.cpp: the
-// timeline's own default key wins, and only when the document has none does the
+// This mirrors getBaseValueData<tKey, tType>() in core/TimeKeyBlender.cpp: the
+// timeline's own base value wins, and only when the document has none does the
 // concrete Data default stand in. The read itself goes through the Channel, so
 // the component mapping lives in exactly one file and the fallback cannot drift
 // away from the accessor playback uses - in particular ScaleKey::Data() is
 // (1,1), not (0,0), and a naive zero here would draw a curve playback never
 // plays.
 template<class tKey, core::TimeKeyType tType>
-float defaultKeyValue(const core::TimeLine& aTimeLine, const Channel& aChannel) {
-    if (const core::TimeKey* key = aTimeLine.defaultKey(tType)) {
+float baseValueForChannel(const core::TimeLine& aTimeLine, const Channel& aChannel) {
+    if (const core::TimeKey* key = aTimeLine.baseValue(tType)) {
         XC_ASSERT(key->type() == tType);
         return aChannel.value(*key);
     }
@@ -54,32 +55,32 @@ float defaultKeyValue(const core::TimeLine& aTimeLine, const Channel& aChannel) 
 }
 
 // dispatch on the channel's own type; the concrete key type is only needed to
-// construct the no-default-key fallback.
+// construct the no-base-value fallback.
 float defaultValue(const core::TimeLine& aTimeLine, const Channel& aChannel) {
     switch (aChannel.type()) {
     case core::TimeKeyType_Move:
-        return defaultKeyValue<core::MoveKey, core::TimeKeyType_Move>(aTimeLine, aChannel);
+        return baseValueForChannel<core::MoveKey, core::TimeKeyType_Move>(aTimeLine, aChannel);
     case core::TimeKeyType_Rotate:
-        return defaultKeyValue<core::RotateKey, core::TimeKeyType_Rotate>(aTimeLine, aChannel);
+        return baseValueForChannel<core::RotateKey, core::TimeKeyType_Rotate>(aTimeLine, aChannel);
     case core::TimeKeyType_Scale:
-        return defaultKeyValue<core::ScaleKey, core::TimeKeyType_Scale>(aTimeLine, aChannel);
+        return baseValueForChannel<core::ScaleKey, core::TimeKeyType_Scale>(aTimeLine, aChannel);
     case core::TimeKeyType_Depth:
-        return defaultKeyValue<core::DepthKey, core::TimeKeyType_Depth>(aTimeLine, aChannel);
-    case core::TimeKeyType_Opa:
-        return defaultKeyValue<core::OpaKey, core::TimeKeyType_Opa>(aTimeLine, aChannel);
+        return baseValueForChannel<core::DepthKey, core::TimeKeyType_Depth>(aTimeLine, aChannel);
+    case core::TimeKeyType_Opacity:
+        return baseValueForChannel<core::OpacityKey, core::TimeKeyType_Opacity>(aTimeLine, aChannel);
     case core::TimeKeyType_Blur:
-        return defaultKeyValue<core::BlurKey, core::TimeKeyType_Blur>(aTimeLine, aChannel);
+        return baseValueForChannel<core::BlurKey, core::TimeKeyType_Blur>(aTimeLine, aChannel);
     case core::TimeKeyType_HSV:
-        return defaultKeyValue<core::HSVKey, core::TimeKeyType_HSV>(aTimeLine, aChannel);
+        return baseValueForChannel<core::HSVKey, core::TimeKeyType_HSV>(aTimeLine, aChannel);
     case core::TimeKeyType_Wave:
-        return defaultKeyValue<core::WaveKey, core::TimeKeyType_Wave>(aTimeLine, aChannel);
+        return baseValueForChannel<core::WaveKey, core::TimeKeyType_Wave>(aTimeLine, aChannel);
     case core::TimeKeyType_Image: {
-        if (const core::TimeKey* key = aTimeLine.defaultKey(core::TimeKeyType_Image)) {
+        if (const core::TimeKey* key = aTimeLine.baseValue(core::TimeKeyType_Image)) {
             XC_ASSERT(key->type() == core::TimeKeyType_Image);
             return aChannel.value(*key);
         }
-        // blendImageKey() is the one blender path with no getDefaultKeyData():
-        // with neither a key nor a default key playback offsets by zero. Reading
+        // blendImageKey() is the one blender path with no getBaseValueData():
+        // with neither a key nor a base value playback offsets by zero. Reading
         // the zero directly (instead of constructing an ImageKey as the other
         // types do) keeps sample() callable outside a GL context: ImageKey::Data
         // owns a GridMesh, and GridMesh's constructor allocates GL buffers
@@ -101,6 +102,9 @@ Curve::Curve(): mTimeLine(nullptr), mChannel(), mLoop(false), mLoopRange(kNoLoop
 
 Curve::Curve(const core::TimeLine& aTimeLine, const Channel& aChannel):
     mTimeLine(&aTimeLine),
+    mTrack(core::TimeLine::usesChannelTracks(aChannel.type())
+        ? aTimeLine.channelTrack(aChannel.type(), aChannel.component())
+        : nullptr),
     mChannel(aChannel),
     mLoop(false),
     mLoopRange(kNoLoopRange) {}
@@ -116,6 +120,15 @@ bool Curve::isLooped() const { return mLoop && 0 <= mLoopRange.diff(); }
 QVector<const core::TimeKey*> Curve::keys() const {
     QVector<const core::TimeKey*> result;
     if (!mTimeLine) {
+        return result;
+    }
+
+    // A migrated channel's track already holds exactly this channel's keys.
+    if (mTrack) {
+        result.reserve(mTrack->keyCount());
+        for (auto itr = mTrack->keys().constBegin(); itr != mTrack->keys().constEnd(); ++itr) {
+            result.append(itr.value());
+        }
         return result;
     }
 
@@ -137,6 +150,10 @@ const core::TimeKey* Curve::findLower(core::Frame aFrame) const {
         return nullptr;
     }
 
+    if (mTrack) {
+        return mTrack->keyBeforeOrAt(aFrame.get());
+    }
+
     // Same query as TimeKeyGatherer::findLastKey(): the last key at or before
     // the frame. Null means the frame sits before the first key.
     const core::TimeLine::MapType& map = mTimeLine->map(mChannel.type());
@@ -152,6 +169,36 @@ const core::TimeKey* Curve::findLower(core::Frame aFrame) const {
 float Curve::sample(core::Frame aFrame) const {
     if (!mTimeLine) {
         return 0.0f;
+    }
+
+    if (mTrack) {
+        core::TimeInfo time;
+        time.frameRange = 0 <= mLoopRange.diff() ? mLoopRange : util::Range(0, -1);
+        time.loop = mLoop;
+        // The graph clamps a frame outside the project range to the range's
+        // edge, exactly as the legacy sample() path above does; the track's own
+        // sampling defines the loop/hold inside that range.
+        float frame = aFrame.getDecimal();
+        // An EXPLICIT key is its own answer, even when it sits outside the
+        // playback range: the graph's frame window can show frames the project
+        // range excludes, and clamping a key's own frame turns the drawn key
+        // into a different value. Only non-key frames take the range clamp.
+        const bool exactKey = aFrame.getDecimal() == static_cast<float>(aFrame.get())
+            && mTrack->hasKey(aFrame.get());
+        if (!exactKey && 0 <= time.frameRange.diff()) {
+            frame = std::min(
+                static_cast<float>(time.frameRange.max()),
+                std::max(static_cast<float>(time.frameRange.min()), frame)
+            );
+        }
+        time.frame = core::Frame::fromDecimal(frame);
+        if (mChannel.type() == core::TimeKeyType_Move) {
+            const core::PropertyTrack* prop = mTimeLine->property(core::TimeKeyType_Move);
+            if (prop) {
+                return core::MoveEvaluator::sampleChannel(*prop, mChannel.component(), time);
+            }
+        }
+        return mTrack->sample(time);
     }
 
     const core::TimeLine::MapType& map = mTimeLine->map(mChannel.type());
@@ -229,6 +276,24 @@ void Curve::neighborsOf(const core::TimeKey& aFrom, const core::TimeKey& aTo,
                         const core::TimeKey*& aPrev, const core::TimeKey*& aNext) const {
     aPrev = nullptr;
     aNext = nullptr;
+
+    if (mTrack) {
+        const core::ChannelTrack::MapType& map = mTrack->keys();
+        auto fromItr = map.constFind(aFrom.frame());
+        if (fromItr != map.constBegin() && fromItr != map.constEnd()) {
+            auto prev = fromItr;
+            --prev;
+            aPrev = prev.value();
+        }
+        auto toItr = map.constFind(aTo.frame());
+        if (toItr != map.constEnd()) {
+            ++toItr;
+            if (toItr != map.constEnd()) {
+                aNext = toItr.value();
+            }
+        }
+        return;
+    }
 
     const core::TimeLine::MapType& map = mTimeLine->map(mChannel.type());
     auto fromItr = map.constFind(aFrom.frame());
@@ -464,22 +529,9 @@ QVector<QPointF> Curve::ghostHandles(const core::TimeKey& aFrom) const {
     }
 
     // The segment this easing shapes: from aFrom to its successor in the
-    // channel's map. The LAST key of a channel has no next key at all - the
+    // channel's keys. The LAST key of a channel has no next key at all - the
     // wrapped segment a looping playback draws is not a segment the panel hands
-    // handles to.
-    const core::TimeLine::MapType& map = mTimeLine->map(mChannel.type());
-    auto toItr = map.constFind(aFrom.frame());
-    if (toItr == map.constEnd()) {
-        return result;
-    }
-    ++toItr;
-    if (toItr == map.constEnd()) {
-        return result;
-    }
-
-    // Find the index of the from key in the key list so the segment can be built
-    // with the same code every other reader uses (including the TO key's
-    // incoming mode).
+    // handles to. keys() is the one list for both storage models.
     const QVector<const core::TimeKey*> all = keys();
     int index = -1;
     for (int i = 0; i + 1 < all.size(); ++i) {
@@ -557,6 +609,7 @@ void Curve::buildPolyline(
 ) const {
     aOut.clear();
 
+
     const QVector<const core::TimeKey*> all = keys();
     if (all.isEmpty()) {
         // Nothing to draw: the value does not vary over frames.
@@ -566,6 +619,38 @@ void Curve::buildPolyline(
     const float fromFrame = aFrom.getDecimal();
     const float toFrame = aTo.getDecimal();
     if (toFrame < fromFrame) {
+        return;
+    }
+
+    // Move's two position channels render ONE spatial path. Sampling the channel
+    // track directly would draw each axis as an independent scalar curve and lose
+    // the Catmull-Rom curvature, so the whole polyline is sampled through the
+    // same evaluator playback uses.
+    if (mTrack && mChannel.type() == core::TimeKeyType_Move) {
+        // Keep the exact key frames in the polyline (the panel's key dots are
+        // matched to it by x), then subdivide each interval the window shows.
+        QVector<float> knots;
+        knots.append(fromFrame);
+        knots.append(toFrame);
+        for (const core::TimeKey* key : all) {
+            const float frame = static_cast<float>(key->frame());
+            if (fromFrame <= frame && frame <= toFrame) {
+                knots.append(frame);
+            }
+        }
+        std::sort(knots.begin(), knots.end());
+        knots.erase(std::unique(knots.begin(), knots.end()), knots.end());
+        const int steps = qMax(1, aSamplesPerSegment) + 1;
+        for (int k = 0; k + 1 < knots.size(); ++k) {
+            const float lo = knots[k];
+            const float hi = knots[k + 1];
+            aOut.append(QPointF(lo, sample(core::Frame::fromDecimal(lo))));
+            for (int i = 1; i < steps; ++i) {
+                const float frame = lo + (hi - lo) * (static_cast<float>(i) / steps);
+                aOut.append(QPointF(frame, sample(core::Frame::fromDecimal(frame))));
+            }
+            aOut.append(QPointF(hi, sample(core::Frame::fromDecimal(hi))));
+        }
         return;
     }
 

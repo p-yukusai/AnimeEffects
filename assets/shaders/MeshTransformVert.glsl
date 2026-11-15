@@ -2,20 +2,57 @@
 
 #variation USE_SKINNING 1
 #variation USE_DUAL_QUATERNION 1
+#variation INFLUENCE_SLOTS 8
+// The skeleton cap, also core::PosePalette::kMaxCount: the influence map stores
+// a bone index as one uint8, so 256 is the index ceiling. The palette lives in
+// a uniform BLOCK, not the default uniform block: two vec4 per bone makes 128
+// bones the whole guaranteed 1024 vertex-uniform components, while a block's
+// guaranteed 16384 bytes hold all 256 bones (8192 bytes). The CPU's
+// MeshTransformerResource sets MAX_BONES from the C++ constant; the literal is
+// only the default.
+#variation MAX_BONES 256
 
-in vec4  inPosition;
+in vec4 inPosition;
+
+#if INFLUENCE_SLOTS == 8
 in ivec4 inBoneIndex0;
 in ivec4 inBoneIndex1;
 in vec4  inBoneWeight0;
 in vec4  inBoneWeight1;
+#else
+// A sparse map stores only the slots it uses: one scalar index and (above one
+// influence) one scalar weight per slot. The unused inputs are optimized out.
+in int inBoneIndex0;
+in int inBoneIndex1;
+in int inBoneIndex2;
+in int inBoneIndex3;
+in int inBoneIndex4;
+in int inBoneIndex5;
+in int inBoneIndex6;
+in float inBoneWeight0;
+in float inBoneWeight1;
+in float inBoneWeight2;
+in float inBoneWeight3;
+in float inBoneWeight4;
+in float inBoneWeight5;
+in float inBoneWeight6;
+#endif
 
 uniform mat4 uInnerMatrix;
 uniform mat4 uWorldMatrix;
 
 #if USE_DUAL_QUATERNION == 0
+// The linear-blend alternative, kept declared but never selected:
+// MeshTransformer::callGL pins the dual-quaternion path. It stays at 32
+// matrices because 64 mat4 is the whole guaranteed 1024-component vertex
+// uniform budget by itself; it is not on the block path.
 uniform mat4 uBoneMatrix[32];
 #else
-uniform vec4 uBoneDualQuat[64];
+layout(std140) uniform BonePalette {
+    // indexed by the per-vertex bone index; the CPU uploads the used prefix and
+    // identity-pads a palette shorter than the map's bone count
+    vec4 uBoneDualQuat[MAX_BONES * 2];
+};
 #endif
 
 out vec3 outPosition;
@@ -57,7 +94,12 @@ mat4 getSkinMatrix()
 #if USE_SKINNING == 0
     return mat4(1);
 
-#elif USE_DUAL_QUATERNION == 0
+#elif INFLUENCE_SLOTS == 8
+
+    // THE DENSE FORM (all eight slots). Kept byte-for-byte beside the sparse
+    // form below: a map that needs eight influences is the one case the scalar
+    // attributes cannot express within the guaranteed 16 vertex attributes.
+#if USE_DUAL_QUATERNION == 0
     mat4 skinMtx = mat4(0);
     skinMtx += uBoneMatrix[inBoneIndex0.x] * inBoneWeight0.x;
     skinMtx += uBoneMatrix[inBoneIndex0.y] * inBoneWeight0.y;
@@ -70,8 +112,6 @@ mat4 getSkinMatrix()
     return skinMtx;
 
 #else
-
-#if 1
     ivec4 index0 = 2 * inBoneIndex0;
     ivec4 index1 = 2 * inBoneIndex1;
     mat2x4 dq0 = mat2x4(uBoneDualQuat[index0.x], uBoneDualQuat[index0.x+1]);
@@ -101,46 +141,94 @@ mat4 getSkinMatrix()
     blended +=  inBoneWeight1.z * dq6;
     blended +=  inBoneWeight1.w * dq7;
     return dualQuatToMatrix(blended[0], blended[1]);
+#endif
 
 #else
-    vec4 dq0[2] = vec4[2](uBoneDualQuat[2*inBoneIndex0.x], uBoneDualQuat[2*inBoneIndex0.x+1]);
-    vec4 dq1[2] = vec4[2](uBoneDualQuat[2*inBoneIndex0.y], uBoneDualQuat[2*inBoneIndex0.y+1]);
-    vec4 dq2[2] = vec4[2](uBoneDualQuat[2*inBoneIndex0.z], uBoneDualQuat[2*inBoneIndex0.z+1]);
-    vec4 dq3[2] = vec4[2](uBoneDualQuat[2*inBoneIndex0.w], uBoneDualQuat[2*inBoneIndex0.w+1]);
-    vec4 dq4[2] = vec4[2](uBoneDualQuat[2*inBoneIndex1.x], uBoneDualQuat[2*inBoneIndex1.x+1]);
-    vec4 dq5[2] = vec4[2](uBoneDualQuat[2*inBoneIndex1.y], uBoneDualQuat[2*inBoneIndex1.y+1]);
-    vec4 dq6[2] = vec4[2](uBoneDualQuat[2*inBoneIndex1.z], uBoneDualQuat[2*inBoneIndex1.z+1]);
-    vec4 dq7[2] = vec4[2](uBoneDualQuat[2*inBoneIndex1.w], uBoneDualQuat[2*inBoneIndex1.w+1]);
 
-    if (dot(dq0[0], dq1[0]) < 0.0) { dq1[0] *= -1.0; dq1[1] *= -1.0; }
-    if (dot(dq0[0], dq2[0]) < 0.0) { dq2[0] *= -1.0; dq2[1] *= -1.0; }
-    if (dot(dq0[0], dq3[0]) < 0.0) { dq3[0] *= -1.0; dq3[1] *= -1.0; }
-    if (dot(dq0[0], dq4[0]) < 0.0) { dq4[0] *= -1.0; dq4[1] *= -1.0; }
-    if (dot(dq0[0], dq5[0]) < 0.0) { dq5[0] *= -1.0; dq5[1] *= -1.0; }
-    if (dot(dq0[0], dq6[0]) < 0.0) { dq6[0] *= -1.0; dq6[1] *= -1.0; }
-    if (dot(dq0[0], dq7[0]) < 0.0) { dq7[0] *= -1.0; dq7[1] *= -1.0; }
+    // THE SPARSE FORM (1..7 slots). Missing slots held exactly-zero weights in
+    // the dense form, so omitting their terms is exact; a one-slot map's weight
+    // is exactly 1 and is not stored at all.
+#if USE_DUAL_QUATERNION == 0
+#if INFLUENCE_SLOTS == 1
+    return uBoneMatrix[inBoneIndex0];
+#else
+    mat4 skinMtx = uBoneMatrix[inBoneIndex0] * inBoneWeight0;
+#if INFLUENCE_SLOTS >= 2
+    skinMtx += uBoneMatrix[inBoneIndex1] * inBoneWeight1;
+#endif
+#if INFLUENCE_SLOTS >= 3
+    skinMtx += uBoneMatrix[inBoneIndex2] * inBoneWeight2;
+#endif
+#if INFLUENCE_SLOTS >= 4
+    skinMtx += uBoneMatrix[inBoneIndex3] * inBoneWeight3;
+#endif
+#if INFLUENCE_SLOTS >= 5
+    skinMtx += uBoneMatrix[inBoneIndex4] * inBoneWeight4;
+#endif
+#if INFLUENCE_SLOTS >= 6
+    skinMtx += uBoneMatrix[inBoneIndex5] * inBoneWeight5;
+#endif
+#if INFLUENCE_SLOTS >= 7
+    skinMtx += uBoneMatrix[inBoneIndex6] * inBoneWeight6;
+#endif
+    return skinMtx;
+#endif
 
-    vec4 br =
-            inBoneWeight0.x * dq0[0];
-    br +=   inBoneWeight0.y * dq1[0];
-    br +=   inBoneWeight0.z * dq2[0];
-    br +=   inBoneWeight0.w * dq3[0];
-    br +=   inBoneWeight1.x * dq4[0];
-    br +=   inBoneWeight1.y * dq5[0];
-    br +=   inBoneWeight1.z * dq6[0];
-    br +=   inBoneWeight1.w * dq7[0];
-
-    vec4 bd =
-            inBoneWeight0.x * dq0[1];
-    bd +=   inBoneWeight0.y * dq1[1];
-    bd +=   inBoneWeight0.z * dq2[1];
-    bd +=   inBoneWeight0.w * dq3[1];
-    bd +=   inBoneWeight1.x * dq4[1];
-    bd +=   inBoneWeight1.y * dq5[1];
-    bd +=   inBoneWeight1.z * dq6[1];
-    bd +=   inBoneWeight1.w * dq7[1];
-
-    return dualQuatToMatrix(br, bd);
+#else
+#if INFLUENCE_SLOTS == 1
+    mat2x4 dq0 = mat2x4(
+        uBoneDualQuat[2*inBoneIndex0], uBoneDualQuat[2*inBoneIndex0+1]
+    );
+    return dualQuatToMatrix(dq0[0], dq0[1]);
+#else
+    mat2x4 dq0 = mat2x4(
+        uBoneDualQuat[2*inBoneIndex0], uBoneDualQuat[2*inBoneIndex0+1]
+    );
+    mat2x4 blended = inBoneWeight0 * dq0;
+#if INFLUENCE_SLOTS >= 2
+    mat2x4 dq1 = mat2x4(
+        uBoneDualQuat[2*inBoneIndex1], uBoneDualQuat[2*inBoneIndex1+1]
+    );
+    if (dot(dq0[0], dq1[0]) < 0.0) dq1 *= -1.0;
+    blended += inBoneWeight1 * dq1;
+#endif
+#if INFLUENCE_SLOTS >= 3
+    mat2x4 dq2 = mat2x4(
+        uBoneDualQuat[2*inBoneIndex2], uBoneDualQuat[2*inBoneIndex2+1]
+    );
+    if (dot(dq0[0], dq2[0]) < 0.0) dq2 *= -1.0;
+    blended += inBoneWeight2 * dq2;
+#endif
+#if INFLUENCE_SLOTS >= 4
+    mat2x4 dq3 = mat2x4(
+        uBoneDualQuat[2*inBoneIndex3], uBoneDualQuat[2*inBoneIndex3+1]
+    );
+    if (dot(dq0[0], dq3[0]) < 0.0) dq3 *= -1.0;
+    blended += inBoneWeight3 * dq3;
+#endif
+#if INFLUENCE_SLOTS >= 5
+    mat2x4 dq4 = mat2x4(
+        uBoneDualQuat[2*inBoneIndex4], uBoneDualQuat[2*inBoneIndex4+1]
+    );
+    if (dot(dq0[0], dq4[0]) < 0.0) dq4 *= -1.0;
+    blended += inBoneWeight4 * dq4;
+#endif
+#if INFLUENCE_SLOTS >= 6
+    mat2x4 dq5 = mat2x4(
+        uBoneDualQuat[2*inBoneIndex5], uBoneDualQuat[2*inBoneIndex5+1]
+    );
+    if (dot(dq0[0], dq5[0]) < 0.0) dq5 *= -1.0;
+    blended += inBoneWeight5 * dq5;
+#endif
+#if INFLUENCE_SLOTS >= 7
+    mat2x4 dq6 = mat2x4(
+        uBoneDualQuat[2*inBoneIndex6], uBoneDualQuat[2*inBoneIndex6+1]
+    );
+    if (dot(dq0[0], dq6[0]) < 0.0) dq6 *= -1.0;
+    blended += inBoneWeight6 * dq6;
+#endif
+    return dualQuatToMatrix(blended[0], blended[1]);
+#endif
 #endif
 
 #endif

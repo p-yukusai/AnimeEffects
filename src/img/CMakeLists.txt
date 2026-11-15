@@ -12,6 +12,7 @@ add_library(${PROJECT_NAME}
     ColorRGBA.h
     Format.h
     GridMeshCreator.cpp GridMeshCreator.h
+    MeshContentLevel.cpp MeshContentLevel.h
     PSDFormat.h
     PSDReader.cpp PSDReader.h
     PSDUtil.cpp PSDUtil.h

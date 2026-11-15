@@ -65,7 +65,7 @@ int TimeLineRow::displayHeight(const core::ObjectNode& aNode, bool aExpanded) {
     const int base = calculateHeight(aNode);
     if (!aNode.parent() || !hasDescendantKeys(aNode))
         return base;
-    const bool hasOwnLanes = aNode.timeLine() && aNode.timeLine()->validTypeCount() > 0;
+    const bool hasOwnLanes = aNode.timeLine() && aNode.timeLine()->validChannelCount() > 0;
     return hasOwnLanes ? base + kFolderSummaryHeight : kFolderSummaryHeight;
 }
 
@@ -73,7 +73,7 @@ int TimeLineRow::calculateHeight(const core::ObjectNode& aNode) {
     if (!aNode.timeLine())
         return kHeight;
 
-    auto validCount = aNode.timeLine()->validTypeCount();
+    auto validCount = aNode.timeLine()->validChannelCount();
     if (validCount <= 1 || aNode.isSlimmedDown()) {
         return kHeight;
     } else {

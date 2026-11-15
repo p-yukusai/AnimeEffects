@@ -9,7 +9,7 @@ import QtQuick
 // component: a mode row is ICONS (seven of them in the bone editor), and the widget
 // version explained them with tooltips only, so four unlabeled glyphs were the only way
 // to tell which field the mask brush writes. The heading names the TOOL, the trailing
-// text names the MODE: "Bone editor ... Paint influence" is readable at a glance
+// text names the MODE: "Bone editor ... Envelope brush" is readable at a glance
 // without hovering. It is the deleted QGroupBox title, in the dock's own vocabulary -
 // the dock's face at semibold weight in `textMuted`, on the base surface, with no card
 // and no rule.

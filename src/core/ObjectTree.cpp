@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <cmath>
 #include <functional>
+#include <limits>
 #include <QSet>
 #include "util/LinkPointer.h"
 #include "util/TreeUtil.h"
@@ -323,7 +325,7 @@ QVector<ObjectNode*> ObjectTree::findNodesUsingResource(const img::ResourceNode&
         if (!timeLine)
             continue; // a folder holds no image key
 
-        // Both the default key and every key on the timeline hold a resource
+        // Both the base value and every key on the timeline hold a resource
         // handle; the object references the asset if any of them points into it.
         const auto usesTarget = [&resourceNodes](const TimeKey* aKey) {
             if (!aKey || aKey->type() != TimeKeyType_Image)
@@ -332,7 +334,7 @@ QVector<ObjectNode*> ObjectTree::findNodesUsingResource(const img::ResourceNode&
             return handle && resourceNodes.contains(handle->serialAddress());
         };
 
-        bool uses = usesTarget(timeLine->defaultKey(TimeKeyType_Image));
+        bool uses = usesTarget(timeLine->baseValue(TimeKeyType_Image));
         if (!uses) {
             const auto& map = timeLine->map(TimeKeyType_Image);
             for (auto it = map.begin(); it != map.end(); ++it) {
@@ -381,6 +383,181 @@ bool ObjectTree::serialize(Serializer& aOut) const {
     return aOut.checkStream();
 }
 
+bool ObjectTree::serializeSkinWeights(Serializer& aOut, const ObjectNode& aNode) const {
+    static const std::array<uint8, 8> kSignature = {'S', 'k', 'i', 'n', 'W', 'g', 't', '_'};
+
+    auto pos = aOut.beginBlock(kSignature);
+
+    const SkinWeights& weights = aNode.skinWeights();
+    int recordCount = 0;
+    for (const SkinWeights::NodeWeights& record : weights.nodes()) {
+        if (record.node) {
+            ++recordCount;
+        }
+    }
+    aOut.write(recordCount);
+
+    for (const SkinWeights::NodeWeights& record : weights.nodes()) {
+        // A record whose target was deleted is dormant; the save drops it
+        // rather than inventing a reference. Undo has already restored a live
+        // record in that case (the command owns the snapshot).
+        if (!record.node) {
+            continue;
+        }
+
+        aOut.writeID(record.node.get());
+        aOut.write(record.vertexCount);
+        aOut.write(static_cast<int>(static_cast<quint32>(record.meshSignature & 0xffffffffULL)));
+        aOut.write(static_cast<int>(static_cast<quint32>(record.meshSignature >> 32)));
+        aOut.write(static_cast<int>(record.bakedBones.size()));
+
+        for (const SkinWeights::BakedBone& bone : record.bakedBones) {
+            aOut.write(bone.boneId);
+            aOut.write(static_cast<int>(bone.entries.size()));
+
+            for (const SkinWeights::Entry& entry : bone.entries) {
+                if (entry.vertex > quint32(std::numeric_limits<int>::max())) {
+                    return false;
+                }
+                aOut.write(static_cast<int>(entry.vertex));
+                aOut.write(entry.weight);
+            }
+        }
+    }
+
+    aOut.endBlock(pos);
+    return aOut.checkStream();
+}
+
+bool ObjectTree::deserializeSkinWeights(Deserializer& aIn, ObjectNode& aNode) {
+    // 0.21 and older carry no block at all; the node stays envelope-only.
+    if (aIn.version().majorVersion() != 0 || aIn.version().minorVersion() < 22) {
+        return true;
+    }
+
+    if (!aIn.beginBlock("SkinWgt_")) {
+        return aIn.errored("invalid skin weights block");
+    }
+
+    int recordCount = 0;
+    aIn.read(recordCount);
+    // Every record is at least: node reference (4), vertex count (4), mesh
+    // signature (8), baked-bone count (4). A count larger than that allows is
+    // a corrupt stream, not something to reserve for.
+    constexpr int kMaxWeightRecords = 1 << 20;
+    // A node cannot carry more baked bones than a skeleton can have (256); a
+    // deleted-bone history is small, so 65536 is already generous.
+    constexpr int kMaxBakedBonesPerNode = 1 << 16;
+    // A real mesh is far below this; the bound exists so a corrupt count cannot
+    // make one reserve huge.
+    constexpr int kMaxWeightEntries = 1 << 24;
+    constexpr qint64 kMinRecordBytes = 20;
+    if (recordCount < 0 || recordCount > kMaxWeightRecords
+        || qint64(recordCount) * kMinRecordBytes > qint64(aIn.remainingBytes())) {
+        return aIn.errored("invalid skin weight record count");
+    }
+
+    QVector<SkinWeights::NodeWeights> records;
+    records.reserve(recordCount);
+
+    for (int r = 0; r < recordCount; ++r) {
+        records.push_back(SkinWeights::NodeWeights());
+        const int index = records.size() - 1;
+
+        // The target is a descendant serialized after this owner; defer the
+        // binding to the tree's ID solver, like the pre-0.21 influence cache
+        // did. An unresolved reference fails the load: these are authored
+        // weights, and silently dropping them would lose the user's paint.
+        auto solver = [&aNode, index](void* aPtr) {
+            auto* target = static_cast<ObjectNode*>(aPtr);
+            auto& nodes = aNode.skinWeights().nodes();
+            if (target && index >= 0 && index < nodes.size()) {
+                nodes[index].node = target->pointee();
+            }
+        };
+        if (!aIn.orderIDData(solver)) {
+            return aIn.errored("invalid weight node reference");
+        }
+
+        int vertexCount = 0;
+        aIn.read(vertexCount);
+        if (vertexCount < 0 || vertexCount > (1 << 30)) {
+            return aIn.errored("invalid skin weight vertex count");
+        }
+        records[index].vertexCount = vertexCount;
+
+        int signatureLow = 0;
+        int signatureHigh = 0;
+        aIn.read(signatureLow);
+        aIn.read(signatureHigh);
+        records[index].meshSignature =
+            (quint64(quint32(signatureHigh)) << 32) | quint64(quint32(signatureLow));
+
+        int bakedCount = 0;
+        aIn.read(bakedCount);
+        // Every baked bone is at least an id and an entry count (8 bytes).
+        if (bakedCount < 0 || bakedCount > kMaxBakedBonesPerNode
+            || qint64(bakedCount) * 8 > qint64(aIn.remainingBytes())) {
+            return aIn.errored("invalid baked bone count");
+        }
+        records[index].bakedBones.reserve(bakedCount);
+
+        int previousBoneId = 0;
+        for (int b = 0; b < bakedCount; ++b) {
+            SkinWeights::BakedBone bone;
+            aIn.read(bone.boneId);
+            if (bone.boneId <= 0 || bone.boneId <= previousBoneId) {
+                return aIn.errored("invalid baked bone id");
+            }
+            previousBoneId = bone.boneId;
+
+            int entryCount = 0;
+            aIn.read(entryCount);
+            if (entryCount < 0 || entryCount > kMaxWeightEntries
+                || qint64(entryCount) * 8 > qint64(aIn.remainingBytes())) {
+                return aIn.errored("invalid skin weight entry count");
+            }
+            bone.entries.reserve(entryCount);
+
+            quint32 previousVertex = 0;
+            bool hasPrevious = false;
+            for (int e = 0; e < entryCount; ++e) {
+                int vertex = 0;
+                float weight = 0.0f;
+                aIn.read(vertex);
+                aIn.read(weight);
+                if (vertex < 0) {
+                    return aIn.errored("invalid skin weight vertex");
+                }
+                if (!std::isfinite(weight) || weight < 0.0f || weight > 1.0f) {
+                    return aIn.errored("invalid skin weight value");
+                }
+                const quint32 vertexIndex = quint32(vertex);
+                // The build walks entries as a cursor, so the file's order is
+                // part of the contract; a duplicate would make which value wins
+                // depend on the reader.
+                if (hasPrevious && vertexIndex <= previousVertex) {
+                    return aIn.errored("unsorted skin weight entries");
+                }
+                previousVertex = vertexIndex;
+                hasPrevious = true;
+                bone.entries.push_back(SkinWeights::Entry{vertexIndex, weight});
+            }
+
+            records[index].bakedBones.push_back(bone);
+        }
+    }
+
+    if (!aIn.endBlock()) {
+        return aIn.errored("invalid end of skin weights block");
+    }
+
+    // The solvers capture this vector's indices; publish it only when every
+    // record was read, so a failed read never leaves a partially bound field.
+    aNode.skinWeights().nodes() = records;
+    return aIn.checkStream();
+}
+
 bool ObjectTree::serializeNode(Serializer& aOut, const ObjectNode& aNode) const {
     static const std::array<uint8, 8> kSignature = {'O', 'b', 'j', 'N', 'o', 'd', 'e', '_'};
 
@@ -398,6 +575,12 @@ bool ObjectTree::serializeNode(Serializer& aOut, const ObjectNode& aNode) const 
 
     // serialize object node
     if (!aNode.serialize(aOut)) {
+        return false;
+    }
+
+    // authored skin weights (format 0.22); every node carries the block, empty
+    // when it owns no baked field
+    if (!serializeSkinWeights(aOut, aNode)) {
         return false;
     }
 
@@ -497,6 +680,13 @@ bool ObjectTree::deserializeNode(Deserializer& aIn, ObjectNode* aParent) {
     if (!node->deserialize(aIn)) {
         delete node;
         return aIn.errored("failed to deserialize node");
+    }
+
+    // authored skin weights (format 0.22). Their node references are deferred:
+    // the descendants they name are read after this owner.
+    if (!deserializeSkinWeights(aIn, *node)) {
+        delete node;
+        return false;
     }
 
     // push to tree

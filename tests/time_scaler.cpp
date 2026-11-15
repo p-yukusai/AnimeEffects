@@ -36,13 +36,9 @@ void check(bool aOk, const char* aWhat) {
 }
 
 // One wheel notch is kWheelValue (120) of raw delta. A POSITIVE angle delta is the wheel pushed
-// away from the user, and that zooms IN - the convention ctrl::CanvasMover, TimeLineEditor and the
-// graph page all follow (MouseSetting::invertZoom reverses it).
-void notchIn(ctrl::time::Scaler& aScale, int aCount = 1) {
-    for (int i = 0; i < aCount; ++i)
-        aScale.update(120);
-}
-
+// away from the user. The conventions below follow ctrl::CanvasMover, TimeLineEditor and the
+// graph page (MouseSetting::invertZoom reverses them).
+//
 // the wheel toward the user: zoom OUT
 void notchOut(ctrl::time::Scaler& aScale, int aCount = 1) {
     for (int i = 0; i < aCount; ++i)

@@ -1,7 +1,7 @@
 // Gate for the WAVE DEFORM filter (core/WaveKey.h, core/WavePass.h,
 // core/FilterFrame.cpp's wave pass, core/LayerNode.cpp + core/FolderNode.cpp):
 //
-//   [1] the key's data contract - a default key is inert, the preset is the
+//   [1] the key's data contract - a base value is inert, the preset is the
 //       visible starter a new filter gets, and every setter keeps the range the
 //       shader and the UI assume;
 //   [2] the five graph channels read and write the same five fields playback
@@ -9,7 +9,7 @@
 //   [3] playback: a two-key segment interpolates each channel with its OWN
 //       easing while the shape fields (speed, crest, the dual wave, the deform
 //       mode) are STEP-HELD from the earlier key, and a lane with no explicit
-//       key plays its default key;
+//       key plays its base value;
 //   [4] the 0.18 record: every field, the easings and the filter stack survive
 //       TimeLine serialize -> deserialize;
 //   [5] the PASS MAPPING: content pixels -> composite pixels is the exact path
@@ -19,7 +19,7 @@
 //       instead of to the screen;
 //   [6] the 0.19 painted-mask record: both fields, their content rectangles and
 //       their neutral starts survive TimeLine serialize -> deserialize;
-//   [7] filter ACTIVITY: a value living on a lane's DEFAULT key (no explicit key
+//   [7] filter ACTIVITY: a value living on a lane's BASE VALUE (no explicit key
 //       at all) is live, editing it back to the identity makes it not live, and
 //       a key at a later frame is live BEFORE that frame too - the renderer tests
 //       the BLENDED value, not the key map (core/FilterActivity.h), so a static
@@ -45,7 +45,9 @@
 #include "core/FormatVersion.h"
 #include "core/KeyEasing.h"
 #include "core/Serializer.h"
+#include "cmnd/BasicCommands.h"
 #include "core/BlurKey.h"
+#include "core/ChannelKey.h"
 #include "core/FilterActivity.h"
 #include "core/FilterMask.h"
 #include "core/HsvKey.h"
@@ -54,7 +56,9 @@
 #include "core/TimeCacheAccessor.h"
 #include "core/TimeCacheLock.h"
 #include "core/TimeLine.h"
+#include "core/ChannelKey.h"
 #include "core/WaveKey.h"
+#include "core/WaveStateKey.h"
 #include "core/WavePass.h"
 #include "ctrl/graph/graph_Channel.h"
 #include "gl/DeviceInfo.h"
@@ -132,19 +136,45 @@ public:
 
 namespace {
 
-core::WaveKey* pushWave(core::TimeLine& aLine, cmnd::Stack& aStack, int aFrame, const core::WaveKey::Data& aData) {
-    auto* key = new core::WaveKey();
-    key->data() = aData;
-    aStack.push(aLine.createPusher(core::TimeKeyType_Wave, aFrame, key));
-    return key;
+struct WaveKeys {
+    core::ChannelKey* key[5] = {};
+    core::ChannelKey* operator[](int aComponent) const { return key[aComponent]; }
+};
+
+WaveKeys* pushWave(core::TimeLine& aLine, cmnd::Stack& aStack, int aFrame, const core::WaveKey::Data& aData) {
+    auto* keys = new WaveKeys();
+    const float values[5] = {
+        aData.strength(), aData.wavelength(), aData.angleDeg(), aData.phase(), aData.mix()
+    };
+    for (int c = 0; c < 5; ++c) {
+        auto* key = new core::ChannelKey(core::TimeKeyType_Wave, c);
+        key->setFrame(aFrame);
+        key->setValue(values[c]);
+        key->easing() = aData.easing(c);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aLine.createChannelPusher(core::TimeKeyType_Wave, c, aFrame, key));
+        keys->key[c] = key;
+    }
+    if (core::PropertyTrack* prop = aLine.property(core::TimeKeyType_Wave)) {
+        prop->state().removeKey(aFrame);
+        auto state = std::make_unique<core::WaveStateKey>();
+        state->setSpeed(aData.speed());
+        state->setCrest(aData.crest());
+        state->setDualAngleDeg(aData.dualAngleDeg());
+        state->setDualScale(aData.dualScale());
+        state->setTimeOffset(aData.timeOffset());
+        state->setDeform(aData.deform());
+        prop->state().insertKey(aFrame, std::move(state));
+    }
+    return keys;
 }
 
 // Linear easing on every channel, so a halfway frame is exactly halfway.
-void linearEasing(core::WaveKey& aKey) {
+void linearEasing(WaveKeys& aKeys) {
     util::Easing::Param param;
     param.type = util::Easing::Type_Linear;
-    for (int c = 0; c < core::WaveKey::kComponents; ++c)
-        aKey.data().easing(c) = param;
+    for (int c = 0; c < 5; ++c)
+        aKeys[c]->easing() = param;
 }
 
 QVector2D mapPoint(const QMatrix4x4& aMatrix, const QVector2D& aPoint) {
@@ -153,6 +183,42 @@ QVector2D mapPoint(const QMatrix4x4& aMatrix, const QVector2D& aPoint) {
 }
 
 } // namespace
+
+
+void pushBlurTrackKey(core::TimeLine& aLine, cmnd::Stack& aStack, int aFrame, float aAmount) {
+    for (int c = 0; c < 3; ++c) {
+        auto* key = new core::ChannelKey(core::TimeKeyType_Blur, c);
+        key->setFrame(aFrame);
+        key->setValue(c == 2 ? 0.0f : aAmount);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aLine.createChannelPusher(core::TimeKeyType_Blur, c, aFrame, key));
+    }
+}
+
+void pushHsvTrackKey(core::TimeLine& aLine, cmnd::Stack& aStack, int aFrame, int aHue) {
+    const float values[3] = { float(aHue), 100.0f, 100.0f };
+    for (int c = 0; c < 3; ++c) {
+        auto* key = new core::ChannelKey(core::TimeKeyType_HSV, c);
+        key->setFrame(aFrame);
+        key->setValue(values[c]);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aLine.createChannelPusher(core::TimeKeyType_HSV, c, aFrame, key));
+    }
+}
+
+int hsvTrackKeyCount(const core::TimeLine& aLine) {
+    if (!core::TimeLine::usesChannelTracks(core::TimeKeyType_HSV))
+        return int(aLine.map(core::TimeKeyType_HSV).size());
+    const auto* track = aLine.channelTrack(core::TimeKeyType_HSV, 0);
+    return track ? track->keyCount() : 0;
+}
+
+int blurTrackKeyCount(const core::TimeLine& aLine) {
+    if (!core::TimeLine::usesChannelTracks(core::TimeKeyType_Blur))
+        return int(aLine.map(core::TimeKeyType_Blur).size());
+    const auto* track = aLine.channelTrack(core::TimeKeyType_Blur, 0);
+    return track ? track->keyCount() : 0;
+}
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
@@ -268,7 +334,7 @@ int main(int argc, char** argv) {
         second.setDualScale(2.0f);
         second.setDeform(core::WaveKey::Deform_Ripple);
 
-        core::WaveKey* k0 = pushWave(line, stack, 0, first);
+        auto* k0 = pushWave(line, stack, 0, first);
         linearEasing(*k0);
         pushWave(line, stack, 10, second);
 
@@ -305,20 +371,20 @@ int main(int argc, char** argv) {
         check(nearly(onKey.crest(), 1.0f), "the later key's own shape plays on its frame");
         check(onKey.deform() == core::WaveKey::Deform_Ripple, "the later key's own deform plays");
 
-        // A lane with only a DEFAULT key must play it: that is what makes a
+        // A lane with only a BASE VALUE must play it: that is what makes a
         // filter added from the stack deform before it is keyed at all.
         core::TestNode defaulted;
         core::WaveKey::Data only = core::WaveKey::Data::presetData();
         only.setStrength(7.0f);
-        auto* defaultKey = new core::WaveKey();
-        defaultKey->data() = only;
-        defaulted.timeLine()->grabDefaultKey(core::TimeKeyType_Wave, defaultKey);
+        auto* baseValue = new core::WaveKey();
+        baseValue->data() = only;
+        defaulted.timeLine()->setBaseValue(core::TimeKeyType_Wave, baseValue);
         info.frame = core::Frame(3);
         core::TimeKeyBlender defaultBlender(defaulted, false);
         defaultBlender.updateCurrents(&defaulted, info);
         check(
             nearly(defaulted.timeLine()->current().wave().strength(), 7.0f),
-            "a wave with no explicit key plays its default key"
+            "a wave with no explicit key plays its base value"
         );
 
         if (failures == before)
@@ -350,26 +416,22 @@ int main(int argc, char** argv) {
         data.setDualScale(1.75f);
         data.setDeform(core::WaveKey::Deform_Sway);
 
-        auto* key = new core::WaveKey();
-        key->data() = data;
         util::Easing::Param eased;
         eased.type = util::Easing::Type_Custom;
         eased.cubicBezier.x1 = 0.25f;
         eased.cubicBezier.y1 = 0.5f;
         eased.cubicBezier.x2 = 0.75f;
         eased.cubicBezier.y2 = 0.875f;
-        for (int c = 0; c < core::WaveKey::kComponents; ++c)
-            key->data().easing(c) = eased;
-        stack.push(line.createPusher(core::TimeKeyType_Wave, 4, key));
-
-        core::TimeKey::Proportional proportional;
-        proportional.timeValid = true;
-        proportional.timeWeight = 0.375f;
-        for (int c = 0; c < core::TimeKey::kMaxProportionalComponents; ++c) {
+        auto* keys = pushWave(line, stack, 4, data);
+        for (int c = 0; c < 5; ++c) {
+            keys->key[c]->easing() = eased;
+            core::TimeKey::Proportional proportional;
+            proportional.timeValid = true;
+            proportional.timeWeight = 0.375f;
             proportional.valueValid[c] = true;
             proportional.valueWeight[c] = 0.1f * float(c + 1);
+            keys->key[c]->setProportionalState(proportional);
         }
-        key->setProportionalState(proportional);
 
         std::ostringstream bytes;
         util::StreamWriter writer(bytes);
@@ -393,36 +455,40 @@ int main(int argc, char** argv) {
         check(loaded.filters().size() == 1, "the filter stack survives");
         if (loaded.filters().size() == 1)
             check(loaded.filters().first().type == core::TimeKeyType_Wave, "the wave entry survives");
-        check(loaded.map(core::TimeKeyType_Wave).size() == 1, "the explicit wave key survives");
-        if (const core::TimeKey* loadedKey = loaded.map(core::TimeKeyType_Wave).value(4)) {
-            check(loadedKey->type() == core::TimeKeyType_Wave, "the key is a wave key");
-            const auto& read = static_cast<const core::WaveKey&>(*loadedKey).data();
-            check(nearly(read.strength(), data.strength()), "strength survives");
-            check(nearly(read.wavelength(), data.wavelength()), "wavelength survives");
-            check(nearly(read.angleDeg(), data.angleDeg()), "direction survives");
-            check(nearly(read.phase(), data.phase()), "phase survives");
-            check(nearly(read.mix(), data.mix()), "mix survives");
-            check(nearly(read.speed(), data.speed()), "speed survives");
-            check(nearly(read.crest(), data.crest()), "crest survives");
-            check(nearly(read.dualAngleDeg(), data.dualAngleDeg()), "the dual angle survives");
-            check(nearly(read.dualScale(), data.dualScale()), "the dual scale survives");
-            check(read.deform() == data.deform(), "the deform mode survives");
-            check(
-                read.easing(4).type == util::Easing::Type_Custom
-                    && read.easing(4).cubicBezier == eased.cubicBezier,
-                "the fifth component's easing survives (five params are stored, not three)"
-            );
-            const core::TimeKey::Proportional* readProportional = loadedKey->proportionalState();
-            check(readProportional != nullptr, "the proportional state survives");
-            if (readProportional) {
-                check(nearly(readProportional->timeWeight, 0.375f), "the time weight survives");
-                check(readProportional->valueValid[4], "the fifth component's weight flag survives");
-                check(nearly(readProportional->valueWeight[4], 0.5f), "the fifth component's weight survives");
+        const auto* loadedKeys = loaded.property(core::TimeKeyType_Wave);
+        check(loadedKeys != nullptr, "the wave property survives");
+        if (loadedKeys) {
+            const float expected[5] = {
+                data.strength(), data.wavelength(), data.angleDeg(), data.phase(), data.mix()
+            };
+            for (int c = 0; c < 5; ++c) {
+                const auto* key = loaded.channelKey(core::TimeKeyType_Wave, c, 4);
+                check(key != nullptr, "the channel key survives");
+                if (!key) continue;
+                check(nearly(key->value(), expected[c]), "the channel value survives");
+                check(key->easing().type == util::Easing::Type_Custom
+                      && key->easing().cubicBezier == eased.cubicBezier,
+                      "the channel easing survives");
+                const auto* proportional = key->proportionalState();
+                check(proportional != nullptr, "the proportional state survives");
+                if (proportional) {
+                    check(nearly(proportional->timeWeight, 0.375f), "the time weight survives");
+                    check(proportional->valueValid[c], "the component weight flag survives");
+                    check(nearly(proportional->valueWeight[c], 0.1f * float(c + 1)),
+                          "the component weight survives");
+                }
             }
-        } else {
-            check(false, "the wave key is present after the round trip");
+            const auto* state = static_cast<const core::WaveStateKey*>(
+                loadedKeys->state().sampleState(4));
+            check(state != nullptr, "the wave state survives");
+            if (state) {
+                check(nearly(state->speed(), data.speed()), "speed survives");
+                check(nearly(state->crest(), data.crest()), "crest survives");
+                check(nearly(state->dualAngleDeg(), data.dualAngleDeg()), "the dual angle survives");
+                check(nearly(state->dualScale(), data.dualScale()), "the dual scale survives");
+                check(state->deform() == data.deform(), "the deform mode survives");
+            }
         }
-
         if (failures == before)
             std::printf("[4] the 0.18 wave record round-trips\n");
     }
@@ -579,11 +645,11 @@ int main(int argc, char** argv) {
             std::printf("[6] the 0.19 painted-mask record round-trips\n");
     }
 
-    // ------------------------------ [7] a filter's DEFAULT key makes it live
+    // ------------------------------ [7] a filter's BASE VALUE makes it live
     //
     // The reported defect this gates: a Blur/HSV added from the stack and edited
-    // BEFORE any keyframe is written to the lane's DEFAULT key (prop_KeyAccessor's
-    // editFrame picks TimeLine::kDefaultKeyIndex while the map is empty), and the
+    // BEFORE any keyframe is written to the lane's BASE VALUE (prop_KeyAccessor's
+    // editFrame picks TimeLine::kBaseValueIndex while the map is empty), and the
     // renderer used to require "an explicit key at or before this frame" - so the
     // value the panel showed and playback blended was never rendered, while Wave
     // (which already read the blended value) applied. The gate is now the
@@ -623,30 +689,30 @@ int main(int argc, char** argv) {
 
             auto* blur = new core::BlurKey();
             blur->setAmount(8.0f); // the edit the panel writes
-            line.grabDefaultKey(core::TimeKeyType_Blur, blur);
+            line.setBaseValue(core::TimeKeyType_Blur, blur);
             auto* hsv = new core::HSVKey();
             hsv->setHue(40); // additive hue 40: not the identity
-            line.grabDefaultKey(core::TimeKeyType_HSV, hsv);
+            line.setBaseValue(core::TimeKeyType_HSV, hsv);
 
             const core::TimeKeyExpans& expans = readFrame(node, info);
             std::printf(
-                "[7] default-key edits at frame 0: blur keys=%d radius=%.3f, hsv keys=%d hue=%d\n",
-                int(line.map(core::TimeKeyType_Blur).size()), expans.maxBlurRadius(),
-                int(line.map(core::TimeKeyType_HSV).size()), expans.hsv().hsv().at(0)
+                "[7] base-value edits at frame 0: blur keys=%d radius=%.3f, hsv keys=%d hue=%d\n",
+                blurTrackKeyCount(line), expans.maxBlurRadius(),
+                hsvTrackKeyCount(line), expans.hsv().hsv().at(0)
             );
-            check(line.map(core::TimeKeyType_Blur).isEmpty(), "an edit before any key adds no explicit blur key");
-            check(line.map(core::TimeKeyType_HSV).isEmpty(), "an edit before any key adds no explicit HSV key");
+            check(blurTrackKeyCount(line) == 0, "an edit before any key adds no explicit blur key");
+            check(hsvTrackKeyCount(line) == 0, "an edit before any key adds no explicit HSV key");
             check(
                 core::filterValueIsActive(core::TimeKeyType_Blur, expans),
-                "a static blur (default key only) is live"
+                "a static blur (base value only) is live"
             );
-            check(core::filterValueIsActive(core::TimeKeyType_HSV, expans), "a static HSV (default key only) is live");
+            check(core::filterValueIsActive(core::TimeKeyType_HSV, expans), "a static HSV (base value only) is live");
             check(live(line, expans, core::TimeKeyType_Blur), "the enabled static blur reads live");
             check(live(line, expans, core::TimeKeyType_HSV), "the enabled static HSV reads live");
 
             // The same slots, edited back to the type's identity.
-            static_cast<core::BlurKey*>(line.defaultKey(core::TimeKeyType_Blur))->setAmount(0.0f);
-            static_cast<core::HSVKey*>(line.defaultKey(core::TimeKeyType_HSV))->setHSV({0, 100, 100, 0});
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Blur)) { line.setChannelBaseValue(core::TimeKeyType_Blur, 0, 0.0f); line.setChannelBaseValue(core::TimeKeyType_Blur, 1, 0.0f); line.setChannelBaseValue(core::TimeKeyType_Blur, 2, 0.0f); } else static_cast<core::BlurKey*>(line.baseValue(core::TimeKeyType_Blur))->setAmount(0.0f);
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_HSV)) { line.setChannelBaseValue(core::TimeKeyType_HSV, 0, 0.0f); line.setChannelBaseValue(core::TimeKeyType_HSV, 1, 100.0f); line.setChannelBaseValue(core::TimeKeyType_HSV, 2, 100.0f); } else static_cast<core::HSVKey*>(line.baseValue(core::TimeKeyType_HSV))->setHSV({0, 100, 100, 0});
             const core::TimeKeyExpans& identity = readFrame(node, info);
             std::printf(
                 "[7] edited back to the identity: radius=%.3f hue=%d sat=%d val=%d\n",
@@ -675,20 +741,28 @@ int main(int argc, char** argv) {
             line.setFilterEntries(entries);
 
             cmnd::Stack commands;
-            auto* blur = new core::BlurKey();
-            blur->setAmount(5.0f);
-            commands.push(line.createPusher(core::TimeKeyType_Blur, 10, blur));
-            auto* hsv = new core::HSVKey();
-            hsv->setHue(90);
-            commands.push(line.createPusher(core::TimeKeyType_HSV, 10, hsv));
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Blur)) {
+                pushBlurTrackKey(line, commands, 10, 5.0f);
+            } else {
+                auto* blur = new core::BlurKey();
+                blur->setAmount(5.0f);
+                commands.push(line.createPusher(core::TimeKeyType_Blur, 10, blur));
+            }
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_HSV)) {
+                pushHsvTrackKey(line, commands, 10, 90);
+            } else {
+                auto* hsv = new core::HSVKey();
+                hsv->setHue(90);
+                commands.push(line.createPusher(core::TimeKeyType_HSV, 10, hsv));
+            }
 
             const core::TimeKeyExpans& expans = readFrame(node, info); // frame 0, keys at 10
             std::printf(
                 "[7] keyed at frame 10, read at frame 0: radius=%.3f hue=%d\n",
                 expans.maxBlurRadius(), expans.hsv().hsv().at(0)
             );
-            check(line.map(core::TimeKeyType_Blur).size() == 1, "the blur key sits at a later frame");
-            check(line.map(core::TimeKeyType_HSV).size() == 1, "the HSV key sits at a later frame");
+            check(blurTrackKeyCount(line) == 1, "the blur key sits at a later frame");
+            check(hsvTrackKeyCount(line) == 1, "the HSV key sits at a later frame");
             check(
                 core::filterValueIsActive(core::TimeKeyType_Blur, expans),
                 "a blur keyed at frame 10 is already live at frame 0 (the first-key clamp is gone)"
@@ -710,10 +784,10 @@ int main(int argc, char** argv) {
 
             auto* blur = new core::BlurKey();
             blur->setAmount(8.0f);
-            line.grabDefaultKey(core::TimeKeyType_Blur, blur);
+            line.setBaseValue(core::TimeKeyType_Blur, blur);
             auto* hsv = new core::HSVKey();
             hsv->setHue(40);
-            line.grabDefaultKey(core::TimeKeyType_HSV, hsv);
+            line.setBaseValue(core::TimeKeyType_HSV, hsv);
 
             const core::TimeKeyExpans& expans = readFrame(node, info);
             std::printf(

@@ -15,7 +15,7 @@
 //   * DRAG AND DROP: the drop target the pointer computes (above / below / into), the refusal
 //     to drop a node into its own subtree, and the document move it becomes - with ONE undo
 //     restoring the order;
-//   * the ACTIONS: rename, visibility, slim, add-default-keys, duplicate, delete - each one
+//   * the ACTIONS: rename, visibility, slim, add-base-values, duplicate, delete - each one
 //     command and one event, which is what the widget could not promise (its "add default
 //     keys" pushed one command per channel, its visibility toggle pushed none).
 //
@@ -114,6 +114,7 @@ public:
     core::LayerNode* innerB() { return mInnerB; }
     core::LayerNode* leaf() { return mLeaf; }
     cmnd::Stack& stack() { return mProject.commandStack(); }
+    TestAnimator& animator() { return mAnimator; }
 
 private:
     TestAnimator mAnimator;
@@ -261,7 +262,7 @@ int main(int argc, char** argv) {
         check(namesAre(model, {"doc", "group", "leaf"}), "collapsing removes the children again");
 
         // a key adds a lane band: the row grows by kIncrease per animated channel
-        ctrl::tree::addDefaultKeys(fixture.project(), *fixture.innerA());
+        ctrl::tree::addKeysAtPlayhead(fixture.project(), *fixture.innerA());
         model.toggleExpanded(rowOf(model, fixture.group()));
         const int innerRow = rowOf(model, fixture.innerA());
         check(innerRow > 0, "the keyed layer has a row again");
@@ -466,15 +467,15 @@ int main(int argc, char** argv) {
         check(failures == before, "drag and drop");
     }
 
-    // --- 7. delete, duplicate and add-default-keys are each ONE step ---
+    // --- 7. delete, duplicate and add-base-values are each ONE step ---
     {
         const int before = failures;
         Fixture fixture;
         gui::ObjectTreeModel model;
         model.setProject(&fixture.project());
 
-        // add default keys: one undo removes every channel it made
-        ctrl::tree::addDefaultKeys(fixture.project(), *fixture.leaf());
+        // add playhead keys: one undo removes every channel it made
+        ctrl::tree::addKeysAtPlayhead(fixture.project(), *fixture.leaf());
         check(fixture.leaf()->timeLine()->validTypeCount() > 1,
               "add defaults animated several channels");
         fixture.stack().undo();
@@ -483,7 +484,7 @@ int main(int argc, char** argv) {
         fixture.stack().redo();
 
         // duplicate a folder with keys inside: one undo takes the whole copy
-        ctrl::tree::addDefaultKeys(fixture.project(), *fixture.innerA());
+        ctrl::tree::addKeysAtPlayhead(fixture.project(), *fixture.innerA());
         const int topChildren = int(fixture.top()->children().size());
         model.pressRow(rowOf(model, fixture.group()), 0);
         model.duplicateSelection();
@@ -607,7 +608,7 @@ int main(int argc, char** argv) {
         Fixture fixture;
         gui::ObjectTreeModel model;
         model.setProject(&fixture.project());
-        ctrl::tree::addDefaultKeys(fixture.project(), *fixture.leaf());
+        ctrl::tree::addKeysAtPlayhead(fixture.project(), *fixture.leaf());
         model.toggleExpanded(rowOf(model, fixture.group()));
 
         // What TimeLineEditorWidget::setRows does with the contract: skip the document row and

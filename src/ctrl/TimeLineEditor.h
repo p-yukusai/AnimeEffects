@@ -404,7 +404,7 @@ public:
     // replaced with exactly the created keys carried by aEvent. Gesture and
     // temporary-selection state are dropped so a stale press/marquee/temporary
     // loan cannot anchor future drags on the fresh selection. No-op when aEvent
-    // carries no live explicit-key targets (e.g. a default-key payload or a
+    // carries no live explicit-key targets (e.g. a base-value payload or a
     // stale index), so a malformed event can never inject null keys into the
     // selection.
     void selectCreatedKeys(const core::TimeLineEvent& aEvent);

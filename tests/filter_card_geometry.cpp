@@ -33,6 +33,7 @@
 #include <QTextStream>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 
 #include "XCAssert.h"
@@ -223,6 +224,37 @@ int main(int argc, char** argv) {
     window.show();
     QCoreApplication::processEvents();
 
+    // ---- the property rows and the Filters header share one text grid ------
+    // The row prefix is a 20px slot at x=13 and its text starts at x=36; the
+    // Filters header uses the same slot (its 14px caret is centred in it), so
+    // its text must start at 36 as well. This is the measured form of the
+    // 13..33 prefix / 36 text contract in InspectorRow.qml.
+    QQuickItem* rowLabel = nullptr;
+    QQuickItem* filtersLabel = nullptr;
+    QQuickItem* filtersPrefix = nullptr;
+    for (QQuickItem* it : visualTree(rootItem)) {
+        if (it->objectName() == QLatin1String("filterHeaderPrefix")) filtersPrefix = it;
+        if (it->objectName() == QLatin1String("filterHeaderLabel")) filtersLabel = it;
+        // Every InspectorRow label shares this name; any one is the same grid.
+        if (it->objectName() == QLatin1String("inspectorRowLabel") && !rowLabel) rowLabel = it;
+    }
+    check(rowLabel != nullptr && filtersLabel != nullptr,
+          QStringLiteral("a property row and the Filters header both publish their text"));
+    if (rowLabel && filtersLabel) {
+        const qreal rowX = rowLabel->mapToItem(rootItem, 0, 0).x();
+        const qreal filtersX = filtersLabel->mapToItem(rootItem, 0, 0).x();
+        std::printf("MEASURED  text start: row x=%.1f Filters x=%.1f\n", rowX, filtersX);
+        check(std::abs(rowX - filtersX) < 0.01,
+              QStringLiteral("the Filters header starts on the row labels' x"));
+        check(std::abs(rowX - 36.0) < 0.01,
+              QStringLiteral("and that shared start is x=36 (got %1)").arg(rowX));
+    }
+    check(filtersPrefix != nullptr
+              && std::abs(filtersPrefix->width() - 20.0) < 0.01
+              && std::abs(filtersPrefix->height() - 20.0) < 0.01
+              && std::abs(filtersPrefix->mapToItem(rootItem, 0, 0).x() - 13.0) < 0.01,
+          QStringLiteral("the Filters caret sits in the same 20x20 prefix slot at x=13"));
+
     auto markers = disclosures(rootItem);
     check(markers.size() == 2, QStringLiteral("two filter cards publish a disclosure (found %1)")
                                   .arg(markers.size()));
@@ -293,12 +325,10 @@ int main(int argc, char** argv) {
         // findChildren, never through childItems (the first version of this check walked the
         // item tree and found nothing, which is exactly the trap)
         int hoverHandlers = 0;
-        QObject* handlerParent = nullptr;
         for (QObject* object : rootItem->findChildren<QObject*>()) {
             if (QString::fromLatin1(object->metaObject()->className())
                     .startsWith(QStringLiteral("QQuickHoverHandler"))) {
                 ++hoverHandlers;
-                handlerParent = object->parent();
             }
         }
         check(hoverHandlers >= 1,

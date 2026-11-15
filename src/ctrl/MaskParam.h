@@ -10,7 +10,7 @@ namespace ctrl {
 // WHICH field the brush writes. There are two kinds and they differ in more than
 // their address: a filter input is a per-lane side table whose neutral is per channel,
 // while a layer mask is a KEY's own field whose neutral is reveal-all and which only
-// exists on frames that own a key (or on the default key).
+// exists on frames that own a key (or on the base value).
 enum MaskTargetKind {
     MaskTargetKind_FilterInput,
     MaskTargetKind_LayerMask,

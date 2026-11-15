@@ -30,6 +30,7 @@
 // Run: QT_QPA_PLATFORM=offscreen ./build/tests/Debug/scrub_escape
 #include <QApplication>
 #include <QKeyEvent>
+#include <QWheelEvent>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -52,8 +53,11 @@ static void check(bool ok, const QString& what) {
 
 // Send one key straight to the item (same-item delivery). The return value - the
 // item accepted it - is a useful extra fact, never the assertion by itself.
-static bool sendKey(QQuickItem* aItem, int aKey, const QString& aText = QString()) {
-    QKeyEvent event(QEvent::KeyPress, aKey, Qt::NoModifier, aText);
+static bool sendKey(
+    QQuickItem* aItem, int aKey, const QString& aText = QString(),
+    Qt::KeyboardModifiers aModifiers = Qt::NoModifier
+) {
+    QKeyEvent event(QEvent::KeyPress, aKey, aModifiers, aText);
     QCoreApplication::sendEvent(aItem, &event);
     return event.isAccepted();
 }
@@ -345,6 +349,64 @@ int main(int argc, char** argv) {
               "and the value keeps the field's decimals (0.25, not rounded to 0)");
         check(qFuzzyCompare(scene.num->property("external").toReal() + 1.0, 1.25),
               "and the owner's re-sync carries the same precision");
+    }
+
+    // ---- Up/Down step the value while editing --------------------------------
+    // The old widgets were QAbstractSpinBoxes: Up/Down stepped (Shift x10), and
+    // Escape still restored the value the edit began with. The QML port lost the
+    // stepping; this pins the restored path.
+    {
+        makeScene();
+        check(scene.found(), "precondition: a fresh scene for the step scenario");
+        check(beginPlainEdit(), "precondition: the step edit begins");
+        check(sendKey(scene.plainEdit, Qt::Key_Up), "Up is consumed by the field");
+        QCoreApplication::processEvents();
+        check(scene.plain->property("value").toReal() == 96.0,
+              QStringLiteral("Up steps 95 -> 96 (%1)").arg(scene.plain->property("value").toReal()));
+        check(scene.plainEdit->property("text").toString() == QStringLiteral("96"),
+              QStringLiteral("the editor text follows the step (%1)")
+                  .arg(scene.plainEdit->property("text").toString()));
+        check(sendKey(scene.plainEdit, Qt::Key_Down, QString(), Qt::ShiftModifier),
+              "Shift+Down is consumed");
+        check(scene.plain->property("value").toReal() == 86.0,
+              QStringLiteral("Shift+Down steps x10 (%1)").arg(scene.plain->property("value").toReal()));
+        check(sendKey(scene.plainEdit, Qt::Key_Down), "Down is consumed");
+        check(scene.plain->property("value").toReal() == 85.0,
+              QStringLiteral("Down steps back one (%1)").arg(scene.plain->property("value").toReal()));
+        sendKey(scene.plainEdit, Qt::Key_Escape);
+        check(scene.plain->property("value").toReal() == 95.0,
+              "Escape still restores the value the edit began with after stepping");
+        check(scene.owner->property("external").toReal() == 95.0,
+              "and the owner sees the restored value");
+    }
+
+    // ---- the wheel steps the field while it is being edited ------------------
+    {
+        makeScene();
+        check(scene.found(), "precondition: a fresh scene for the wheel scenario");
+        check(beginPlainEdit(), "precondition: the wheel edit begins");
+        const QPointF local(10.0, 10.0);
+        const QPointF scenePos = scene.plain->mapToItem(window.contentItem(), local);
+        const QPointF globalPos = window.mapToGlobal(scenePos.toPoint());
+        QWheelEvent wheel(scenePos, globalPos, QPoint(), QPoint(0, 120), Qt::NoButton,
+                          Qt::NoModifier, Qt::NoScrollPhase, false);
+        QCoreApplication::sendEvent(&window, &wheel);
+        QCoreApplication::processEvents();
+        check(scene.plain->property("value").toReal() == 96.0,
+              QStringLiteral("one wheel notch steps 95 -> 96 (%1)")
+                  .arg(scene.plain->property("value").toReal()));
+        check(scene.plainEdit->property("text").toString() == QStringLiteral("96"),
+              "and the editor text follows the wheel");
+        QWheelEvent wheelBack(scenePos, globalPos, QPoint(), QPoint(0, -120), Qt::NoButton,
+                              Qt::NoModifier, Qt::NoScrollPhase, true);
+        QCoreApplication::sendEvent(&window, &wheelBack);
+        QCoreApplication::processEvents();
+        check(scene.plain->property("value").toReal() == 95.0,
+              QStringLiteral("the reverse notch steps back (%1)")
+                  .arg(scene.plain->property("value").toReal()));
+        sendKey(scene.plainEdit, Qt::Key_Escape);
+        check(scene.plain->property("value").toReal() == 95.0,
+              "Escape still restores the value the wheel edit began with");
     }
 
     if (scene.root) delete scene.root;

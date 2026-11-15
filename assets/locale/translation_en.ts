@@ -21,7 +21,7 @@
 <context>
     <name>QCoreApplication</name>
     <message numerus="yes">
-        <location filename="../../src/gui/prop/prop_Items.cpp" line="368"/>
+        <location filename="../../src/gui/prop/prop_Items.cpp" line="373"/>
         <source>%n key(s)</source>
         <translation>
             <numerusform>%n key</numerusform>
@@ -32,7 +32,7 @@
 <context>
     <name>gui::GraphPanelFrame</name>
     <message numerus="yes">
-        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2443"/>
+        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2346"/>
         <source>%1, %n key(s) selected</source>
         <translation>
             <numerusform>%1, %n key selected</numerusform>
@@ -43,7 +43,7 @@
 <context>
     <name>gui::ImGuiOverlay</name>
     <message numerus="yes">
-        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2433"/>
+        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2336"/>
         <source>%n channel(s) shown</source>
         <translation>
             <numerusform>1 channel shown</numerusform>
@@ -61,13 +61,39 @@
 <context>
     <name>gui::TimeLineHeader</name>
     <message numerus="yes">
-        <location filename="../../src/gui/TimeLineHeader.cpp" line="452"/>
-        <location filename="../../src/gui/TimeLineHeader.cpp" line="770"/>
-        <location filename="../../src/gui/TimeLineHeader.cpp" line="772"/>
+        <location filename="../../src/gui/TimeLineHeader.cpp" line="577"/>
+        <location filename="../../src/gui/TimeLineHeader.cpp" line="918"/>
+        <location filename="../../src/gui/TimeLineHeader.cpp" line="920"/>
         <source>%n channel(s)</source>
         <translation>
             <numerusform>%n channel</numerusform>
             <numerusform>%n channels</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
+    <name>gui::ToolViewModel</name>
+    <message numerus="yes">
+        <location filename="../../src/gui/qml/ToolViewModel.cpp" line="483"/>
+        <source>%n vertex(s)</source>
+        <translation>
+            <numerusform>%n vertex</numerusform>
+            <numerusform>%n vertices</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n layer(s) still live</source>
+        <translation type="vanished">
+            <numerusform>%n layer still live</numerusform>
+            <numerusform>%n layers still live</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../../src/gui/qml/ToolViewModel.cpp" line="476"/>
+        <source>%n layer(s) still use the live envelope; the brush paints the baked ones.</source>
+        <translation>
+            <numerusform>%n layer still uses the live envelope; the brush paints the baked ones.</numerusform>
+            <numerusform>%n layers still use the live envelope; the brush paints the baked ones.</numerusform>
         </translation>
     </message>
 </context>

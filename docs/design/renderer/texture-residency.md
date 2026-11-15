@@ -1870,7 +1870,7 @@ it, and the shader cost is what remains.
 
   **No project in the local dataset has a folder matte** (checked with `render_probe
   --list-layers`, which now prints folders and sees a matte on animated keys as well as on the
-  default key), so this gate builds its own field: the gain is structural - the pass joined the
+  base value), so this gate builds its own field: the gain is structural - the pass joined the
   sampler and the pool - rather than measured on existing content. The target case is the one the
   design named: a folder matte covers the CANVAS, so a 15000² project's folder matte would have
   held a ~300 MB chain and now holds its coarse tier (0.33 MiB) plus the pages it samples.

@@ -3,6 +3,7 @@
 #include "core/TimeLine.h"
 #include "ctrl/CmndName.h"
 #include "ctrl/mesh/mesh_SplitMode.h"
+#include "ctrl/bone/bone_MeshWeightRemap.h"
 #include "ctrl/mesh/mesh_Renderer.h"
 #include "ctrl/mesh/mesh_Notifier.h"
 
@@ -144,12 +145,24 @@ namespace mesh {
             cmnd::ScopedMacro macro(stack, CmndName::tr("Split mesh key triangle"));
             // set notifier
             macro.grabListener(new Notifier(mProject, mTarget, *mKeyOwner.key, eventType));
+            // The new centre vertices inherit an interpolation of the split
+            // edge's two vertices, in the same undo step as the geometry.
+            cmnd::Base* remap = nullptr;
+            if (!mKeyOwner.owns()) {
+                remap = bone::createMeshWeightsRemap(
+                    mProject, mTarget, *mKeyOwner.key, mKeyOwner.key->data().vertices()
+                );
+            }
+
             // push command
             if (edge[1]) {
                 stack.push(mMeshAccessor.createSplitter(*face, *edge[0], posOnEdge[0], *edge[1], posOnEdge[1], &tailVtx)
                 );
             } else {
                 stack.push(mMeshAccessor.createSplitter(*face, *edge[0], posOnEdge[0], &tailVtx));
+            }
+            if (remap) {
+                stack.push(remap);
             }
         }
         ///@attention "tailVtx" was assigned when the command executed.

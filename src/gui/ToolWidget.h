@@ -38,6 +38,11 @@ public:
     ~ToolWidget();
 
     void setDriver(ctrl::Driver* aDriver);
+    // The tree selection/frame changed: rebuild the mask-target chooser from the
+    // document. Both are idempotent; the model only notifies when the result moves.
+    void onSelectionChanged(core::ObjectNode* aNode);
+    void onFrameUpdated();
+    void refreshMaskTargets();
     // the temporary eyedropper's value, from the viewport through MainWindow
     void setMaskValue(float aValue);
     // one brush adjustment step (the [ ] keys and the Alt+right-drag gesture):
@@ -64,9 +69,15 @@ public:
     util::Signaler<void(ctrl::ToolType)> onToolChanged;
     // the Mask tool is painting THIS LAYER's own matte (see ToolViewModel::maskPaintingLayerMask)
     bool maskPaintingLayerMask() const;
+    bool maskToolActive() const;
+    core::TimeKeyType maskLane() const;
+    core::FilterMaskChannel maskChannel() const;
     // the mask editor's TARGET changed (a filter card's Paint switches it without switching tools)
     util::Signaler<void()> onMaskTargetChanged;
     util::Signaler<void(ctrl::ToolType)> onFinalizeTool;
+    // The FFD tool's automatic show/hide of the mesh writes the window's view
+    // setting; the viewport consumes it through this signal, exactly as the header's
+    // own ViewSettingsModel does for the user's clicks.
     util::Signaler<void(const MainViewSetting&)> onViewSettingChanged;
 
 private:
@@ -81,6 +92,9 @@ private:
     // tool and a mismatched call is a crash rather than a no-op.
     void pushParam();
     void onParamUpdated();
+    // Re-read the Bone editor's selected-bone state into the panel model.
+    void syncWeightsState();
+    void onWeightsAction(int aAction);
 
     // "Show mesh" while the FFD tool is up (generalsettings/tools/autoshowmesh). The
     // flag is what keeps the tool from taking ownership of a mesh the USER turned on.
@@ -95,6 +109,7 @@ private:
     ToolViewModel* mModel;
     QmlTheme* mTheme;
     QQuickWidget* mQuick;
+    util::SlotId mWeightsSlot;
 };
 
 } // namespace gui

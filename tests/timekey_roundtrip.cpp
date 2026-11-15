@@ -20,11 +20,13 @@
 #include <vector>
 
 #include "XC.h"
+#include "cmnd/BasicCommands.h"
 #include "cmnd/Stack.h"
 #include "core/Deserializer.h"
 #include "core/FormatVersion.h"
 #include "core/TimeKeyType.h"
 #include "core/MaskKey.h"
+#include "core/ChannelKey.h"
 #include "core/MoveKey.h"
 #include "core/Serializer.h"
 #include "core/TimeKeyType.h"
@@ -79,15 +81,20 @@ int main(int argc, char** argv) {
 
     core::TimeLine line;
     cmnd::Stack stack;
-    core::MoveKey* left = new core::MoveKey();
-    core::MoveKey* middle = new core::MoveKey();
-    core::MoveKey* right = new core::MoveKey();
-    stack.push(line.createPusher(core::TimeKeyType_Move, 0, left));
-    stack.push(line.createPusher(core::TimeKeyType_Move, 2, middle));
-    stack.push(line.createPusher(core::TimeKeyType_Move, 4, right));
-    check(line.hasTimeKey(core::TimeKeyType_Move, 0), "the left absolute key is in the map");
-    check(line.hasTimeKey(core::TimeKeyType_Move, 2), "the proportional key is in the map");
-    check(line.hasTimeKey(core::TimeKeyType_Move, 4), "the right absolute key is in the map");
+    auto makeRotate = [&](int aFrame, float aValue) {
+        auto* key = new core::ChannelKey(core::TimeKeyType_Rotate, 0);
+        key->setFrame(aFrame);
+        key->setValue(aValue);
+        stack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        stack.push(line.createChannelPusher(core::TimeKeyType_Rotate, 0, aFrame, key));
+        return key;
+    };
+    core::ChannelKey* left = makeRotate(0, 0.0f);
+    core::ChannelKey* middle = makeRotate(2, 12.0f);
+    core::ChannelKey* right = makeRotate(4, 24.0f);
+    check(line.hasChannelKey(core::TimeKeyType_Rotate, 0, 0), "the left absolute key is in the map");
+    check(line.hasChannelKey(core::TimeKeyType_Rotate, 0, 2), "the proportional key is in the map");
+    check(line.hasChannelKey(core::TimeKeyType_Rotate, 0, 4), "the right absolute key is in the map");
 
     // The stack is a separate 0.17 record: order and eye survive, and the values
     // remain the ordinary key lanes.
@@ -96,7 +103,6 @@ int main(int argc, char** argv) {
         core::FilterEntry(core::TimeKeyType_Blur, true),
     });
 
-    middle->setPos(QVector2D(12.0f, -4.0f));
     core::TimeKey::Proportional state;
     state.leftId = left->id();
     state.rightId = right->id();
@@ -104,8 +110,6 @@ int main(int argc, char** argv) {
     state.timeWeight = 0.375f; // deliberately NOT the 0.5 its frame implies
     state.valueValid[0] = true;
     state.valueWeight[0] = 0.25f;
-    state.valueValid[1] = true;
-    state.valueWeight[1] = 0.75f;
     middle->setProportionalState(state);
 
     // A LAYER MASK key: the field itself is the payload, so this is the record
@@ -157,18 +161,18 @@ int main(int argc, char** argv) {
         check(loaded.filters().at(1).enabled, "an enabled filter stays enabled");
     }
 
-    const core::TimeLine::MapType& map = loaded.map(core::TimeKeyType_Move);
+    const core::TimeLine::MapType& map = loaded.channelMap(core::TimeKeyType_Rotate, 0);
     check(map.size() == 3, "three keys survive the round trip");
-    const core::MoveKey* loadedLeft = dynamic_cast<const core::MoveKey*>(map.value(0));
-    const core::MoveKey* loadedMiddle = dynamic_cast<const core::MoveKey*>(map.value(2));
-    const core::MoveKey* loadedRight = dynamic_cast<const core::MoveKey*>(map.value(4));
+    const core::ChannelKey* loadedLeft = dynamic_cast<const core::ChannelKey*>(map.value(0));
+    const core::ChannelKey* loadedMiddle = dynamic_cast<const core::ChannelKey*>(map.value(2));
+    const core::ChannelKey* loadedRight = dynamic_cast<const core::ChannelKey*>(map.value(4));
     check(loadedLeft && loadedMiddle && loadedRight, "the key frames and types survive");
 
     if (loadedLeft && loadedMiddle && loadedRight) {
         check(loadedLeft->id() == left->id(), "the left key's stable id survives");
         check(loadedMiddle->id() == middle->id(), "the proportional key's stable id survives");
         check(loadedRight->id() == right->id(), "the right key's stable id survives");
-        check(loadedMiddle->pos() == QVector2D(12.0f, -4.0f), "the middle key's values survive");
+        check(loadedMiddle->value() == 12.0f, "the middle key's value survives");
         check(!loadedLeft->isProportional(), "an absolute key stays absolute");
         check(loadedMiddle->isProportional(), "the proportional flag survives");
         if (const core::TimeKey::Proportional* loadedState = loadedMiddle->proportionalState()) {
@@ -177,12 +181,9 @@ int main(int argc, char** argv) {
             check(loadedState->timeValid, "the time weight is still valid");
             check(std::abs(loadedState->timeWeight - 0.375f) < 1e-6f,
                   "the STORED time weight survives (not the 0.5 a re-derivation would give)");
-            check(loadedState->valueValid[0] && loadedState->valueValid[1],
-                  "both component weights are still valid");
+            check(loadedState->valueValid[0], "the component weight is still valid");
             check(std::abs(loadedState->valueWeight[0] - 0.25f) < 1e-6f,
-                  "the first component weight survives");
-            check(std::abs(loadedState->valueWeight[1] - 0.75f) < 1e-6f,
-                  "the second component weight survives");
+                  "the component weight survives");
         } else {
             check(false, "the proportional state exists after loading");
         }

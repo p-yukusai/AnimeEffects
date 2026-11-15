@@ -34,10 +34,16 @@ Item {
     id: root
 
     property string iconName: ""
-    // The name a screen reader announces and the tooltip shows. An icon with no name
-    // is a control nobody can identify - and the widget toolbox's icon-only buttons
-    // answered to the GROUP BOX's name for exactly that omission.
+    // The name a screen reader announces and (unless tipText says otherwise) the
+    // tooltip shows. An icon with no name is a control nobody can identify - and the
+    // widget toolbox's icon-only buttons answered to the GROUP BOX's name for exactly
+    // that omission.
     property string label: ""
+    // The hover text, when it has more to say than the accessible name. The header's
+    // slot toggles are the case: a screen reader should hear "Show or hide the left
+    // side", while an empty slot's tooltip explains "Nothing is docked on the left
+    // side". Defaulting to label keeps every existing call site unchanged.
+    property string tipText: ""
     property bool checkable: false
     property bool checked: false
     property bool accent: false
@@ -57,16 +63,29 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 4
+        antialiasing: true
         // Keyboard focus is visible: the same 1px `theme.focus` ring AeCheckBox draws,
         // and the ONLY border this button ever has (contract line A1, and a Tab user has
         // no other way to know which of seven identical squares is current).
         border.width: root.activeFocus ? 1 : 0
         border.color: theme.focus
+        // HOVER KEEPS THE CHECKED FILL'S HUE. The old cascade used `activeHover`
+        // for every checked button, so the ONE accent tool lost its accent and
+        // turned neutral gray the moment the pointer entered it. The state is
+        // still visible under the pointer - it just stays an accent for the
+        // accent button and neutral for the rest.
         color: {
             if (!root.enabled) return "transparent";
-            if (mouse.pressed) return root.checked ? theme.activeHover : theme.hairline;
-            if (mouse.containsMouse) return root.checked ? theme.activeHover : theme.hairline;
-            if (root.checked) return root.accent ? theme.accent : theme.active;
+            if (root.checked) {
+                if (root.accent) {
+                    if (mouse.pressed || mouse.containsMouse) return theme.accentHover;
+                    return theme.accent;
+                }
+                if (mouse.pressed || mouse.containsMouse) return theme.activeHover;
+                return theme.active;
+            }
+            if (mouse.pressed) return theme.active;
+            if (mouse.containsMouse) return theme.raisedHover;
             return "transparent";
         }
     }
@@ -104,10 +123,34 @@ Item {
         enabled: root.enabled
         cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()
+        onContainsMouseChanged: {
+            if (mouse.containsMouse && root.nativeToolTip) {
+                nativeTipTimer.restart();
+            } else {
+                nativeTipTimer.stop();
+                if (root.nativeToolTip) headerHost.hideHeaderToolTip();
+            }
+        }
     }
-    ToolTip.visible: mouse.containsMouse && root.enabled && root.label !== ""
-    ToolTip.delay: 500
-    ToolTip.text: root.label
+    Component.onDestruction: if (root.nativeToolTip) headerHost.hideHeaderToolTip()
+    // The header is a 30px QQuickWidget, so its scene cannot draw a tooltip below
+    // itself. A header host exposes showHeaderToolTip; the Tools dock has no such
+    // context property and keeps AeToolTip.
+    readonly property bool nativeToolTip: typeof headerHost !== "undefined" && headerHost !== null
+                                          && typeof headerHost.showHeaderToolTip === "function"
+    readonly property string tip: root.tipText !== "" ? root.tipText : root.label
+    Timer {
+        id: nativeTipTimer
+        interval: theme.toolTipDelay
+        repeat: false
+        onTriggered: if (root.nativeToolTip && mouse.containsMouse && root.enabled && root.tip !== "")
+                         headerHost.showHeaderToolTip(root, root.tip)
+    }
+    AeToolTip {
+        ownerItem: root
+        text: root.tip
+        shown: !root.nativeToolTip && mouse.containsMouse && root.enabled && text !== ""
+    }
 
     // Tab reaches the dock's buttons; Space and Return act, as AeIconButton's do.
     activeFocusOnTab: true

@@ -263,7 +263,9 @@
 #include <initializer_list>
 
 #include "XCAssert.h"
+#include "cmnd/BasicCommands.h"
 #include "cmnd/Stack.h"
+#include "core/ChannelKey.h"
 #include "core/AbstractCursor.h"
 #include "core/CameraInfo.h"
 #include "core/Frame.h"
@@ -311,6 +313,10 @@ QColor theme::TimeLine::trackTextColor() const { return QColor(); }
 QColor theme::TimeLine::trackSelectColor() const { return QColor(); }
 QColor theme::TimeLine::trackSeperatorColor() const { return QColor(); }
 
+namespace core {
+class TestNode;
+}
+
 namespace {
 
 class NullAnimator: public core::Animator {
@@ -352,6 +358,77 @@ HarnessErrorHandler gErrorHandler;
 using ctrl::graph::Channel;
 using ctrl::graph::Curve;
 using ctrl::graph::Scaler;
+
+
+// Rotate may be a legacy bundle key or a ChannelKey; the graph tests only need
+// the angle, its easing and the frame, so this facade owns a RotateKey buffer
+// until the key is pushed and then writes through whichever object the timeline
+// actually holds.
+class RotateKeyTest {
+public:
+    struct Data {
+        core::TimeKey* key;
+        void setRotate(float aValue) {
+            if (auto* channel = dynamic_cast<core::ChannelKey*>(key))
+                channel->setValue(aValue);
+            else
+                static_cast<core::RotateKey*>(key)->setRotate(aValue);
+        }
+        float rotate() const {
+            if (const auto* channel = dynamic_cast<const core::ChannelKey*>(key))
+                return channel->value();
+            return static_cast<const core::RotateKey*>(key)->rotate();
+        }
+        util::Easing::Param& easing(int aComponent) {
+            if (auto* channel = dynamic_cast<core::ChannelKey*>(key))
+                return channel->easing();
+            return static_cast<core::RotateKey*>(key)->data().easing(aComponent);
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            if (const auto* channel = dynamic_cast<const core::ChannelKey*>(key))
+                return channel->easing();
+            return static_cast<const core::RotateKey*>(key)->data().easing(aComponent);
+        }
+    };
+
+    RotateKeyTest(): mBuffer(new core::RotateKey()), mBound(nullptr) {}
+    explicit RotateKeyTest(core::TimeKey* aBound): mBuffer(nullptr), mBound(aBound) {}
+    void bind(core::TimeKey* aKey) { mBound = aKey; }
+    core::TimeKey* key() const { return mBound ? mBound : mBuffer; }
+    core::RotateKey* buffer() const { return mBuffer; }
+    Data data() { return Data{key()}; }
+    Data data() const { return Data{key()}; }
+    void setRotate(float aValue) { data().setRotate(aValue); }
+    float rotate() const { return data().rotate(); }
+    util::Easing::Param& easing() {
+        return dynamic_cast<core::ChannelKey*>(key()) ? static_cast<core::ChannelKey*>(key())->easing()
+                                                       : static_cast<core::RotateKey*>(key())->data().easing(0);
+    }
+    int id() const { return key()->id(); }
+    int frame() const { return key()->frame(); }
+    bool isProportional() const { return key()->isProportional(); }
+    operator core::TimeKey&() { return *key(); }
+    operator core::TimeKey*() { return key(); }
+
+private:
+    core::RotateKey* mBuffer;
+    core::TimeKey* mBound;
+};
+
+
+int rotateKeyCount(core::TimeLine& aLine) {
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Rotate)) {
+        const auto* track = aLine.channelTrack(core::TimeKeyType_Rotate, 0);
+        return track ? track->keyCount() : 0;
+    }
+    return aLine.map(core::TimeKeyType_Rotate).size();
+}
+
+core::TimeKey* rotateAt(core::TimeLine& aLine, int aFrame) {
+    return core::TimeLine::usesChannelTracks(core::TimeKeyType_Rotate)
+        ? aLine.channelKey(core::TimeKeyType_Rotate, 0, aFrame)
+        : aLine.timeKey(core::TimeKeyType_Rotate, aFrame);
+}
 
 // A segment handle's pixel, mapped exactly the way the editor's own hit-test
 // maps it: the NORMALIZED handle through the panel's two axes (x along the
@@ -521,6 +598,114 @@ public:
 
 namespace {
 
+struct BlurKeysTest {
+    core::ChannelKey* key[3] = {};
+    core::ChannelKey* operator[](int aComponent) const { return key[aComponent]; }
+};
+
+BlurKeysTest* pushBlurKeys(
+    cmnd::Stack& aStack, core::TestNode& aNode, int aFrame, const QVector2D& aValue
+) {
+    auto* keys = new BlurKeysTest();
+    const float values[3] = { aValue.x(), aValue.y(), 0.0f };
+    for (int c = 0; c < 3; ++c) {
+        auto* key = new core::ChannelKey(core::TimeKeyType_Blur, c);
+        key->setFrame(aFrame);
+        key->setValue(values[c]);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Blur, c, aFrame, key));
+        keys->key[c] = key;
+    }
+    return keys;
+}
+
+// Legacy HSV key with Blur-shaped value helpers, for the bundle-proportional
+// block that used to run on Blur (Blur is now channel-backed).
+class TestHSVKey: public core::HSVKey {
+    QList<int> values() const { return hsv(); }
+    void write(int aComponent, int aValue) {
+        QList<int> v = values();
+        while (v.size() < 4) v.append(0);
+        v[aComponent] = aValue;
+        setHSV(v);
+    }
+public:
+    void setBlurX(float aValue) { write(0, int(std::lround(aValue))); }
+    float blurX() const { return values().value(0); }
+    void setBlurY(float aValue) { write(1, int(std::lround(aValue))); }
+    float blurY() const { return values().value(1); }
+    void setPos(const QVector2D& aPos) { setBlurX(aPos.x()); setBlurY(aPos.y()); }
+    QVector2D pos() const { return QVector2D(blurX(), blurY()); }
+};
+
+struct MoveKeysTest {
+    core::ChannelKey* key[4] = {};
+    core::ChannelKey* operator[](int aComponent) const { return key[aComponent]; }
+};
+
+MoveKeysTest* pushMove(
+    cmnd::Stack& aStack, core::TestNode& aNode, int aFrame,
+    const QVector2D& aPos, const QVector2D& aCentroid = QVector2D()
+) {
+    auto* keys = new MoveKeysTest();
+    const float values[4] = { aPos.x(), aPos.y(), aCentroid.x(), aCentroid.y() };
+    for (int c = 0; c < 4; ++c) {
+        auto* track = aNode.timeLine()->channelTrack(core::TimeKeyType_Move, c);
+        auto* key = new core::ChannelKey(core::TimeKeyType_Move, c);
+        key->setFrame(aFrame);
+        key->setValue(track ? track->clamp(track->quantize(values[c])) : values[c]);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Move, c, aFrame, key));
+        keys->key[c] = key;
+    }
+    return keys;
+}
+
+struct ScalePairTest {
+    core::ChannelKey* x;
+    core::ChannelKey* y;
+    QVector2D scale() const { return QVector2D(x->value(), y->value()); }
+    void setScale(const QVector2D& aValue) { x->setValue(aValue.x()); y->setValue(aValue.y()); }
+    int frame() const { return x->frame(); }
+};
+
+ScalePairTest* pushScale(
+    cmnd::Stack& aStack, core::TestNode& aNode, int aFrame, const QVector2D& aValue
+) {
+    auto* pair = new ScalePairTest();
+    for (int component = 0; component < 2; ++component) {
+        auto* track = aNode.timeLine()->channelTrack(core::TimeKeyType_Scale, component);
+        auto* key = new core::ChannelKey(core::TimeKeyType_Scale, component);
+        key->setFrame(aFrame);
+        const float value = component == 0 ? aValue.x() : aValue.y();
+        key->setValue(track ? track->clamp(track->quantize(value)) : value);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Scale, component, aFrame, key));
+        (component == 0 ? pair->x : pair->y) = key;
+    }
+    return pair;
+}
+
+void pushRotate(cmnd::Stack& aStack, core::TestNode& aNode, int aFrame, RotateKeyTest& aKey) {
+    core::TimeLine* line = aNode.timeLine();
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Rotate)) {
+        auto* track = line->channelTrack(core::TimeKeyType_Rotate, 0);
+        auto* key = new core::ChannelKey(core::TimeKeyType_Rotate, 0);
+        key->setFrame(aFrame);
+        key->setValue(track ? track->clamp(track->quantize(aKey.rotate())) : aKey.rotate());
+        key->easing() = aKey.easing();
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(line->createChannelPusher(core::TimeKeyType_Rotate, 0, aFrame, key));
+        aKey.bind(key);
+    } else {
+        auto* key = aKey.buffer();
+        aStack.push(new cmnd::GrabNewObject<core::RotateKey>(key));
+        aStack.push(line->createPusher(core::TimeKeyType_Rotate, aFrame, key));
+        aKey.bind(key);
+    }
+}
+
+
 // The easing the first key is authored with: an unambiguous Custom cubic bezier,
 // so "did the drag move handle 0" is a two-number question.
 util::Easing::Param customEasing() {
@@ -549,19 +734,19 @@ int main(int argc, char** argv) {
     core::TestNode node;
 
     const util::Easing::Param kAuthored = customEasing();
-    core::RotateKey* key0 = new core::RotateKey();
+    auto* key0 = new RotateKeyTest();
     key0->setRotate(0.0f);
     key0->data().easing(0) = kAuthored;
-    setup.push(node.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, key0));
+    pushRotate(setup, node, 0, *key0);
 
-    core::RotateKey* key1 = new core::RotateKey();
+    auto* key1 = new RotateKeyTest();
     key1->setRotate(90.0f);
-    setup.push(node.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, key1));
+    pushRotate(setup, node, 24, *key1);
 
     // The document the drag is about: two keys, one segment, a Custom curve on
     // the first key, and a non-zero value span between them. Every one of these
     // is a precondition of the grab, so each is asserted rather than assumed.
-    CHECK(node.timeLine()->map(core::TimeKeyType_Rotate).size() == 2);
+    CHECK(rotateKeyCount(*node.timeLine()) == 2);
     CHECK(key0->frame() == 0);
     CHECK(key1->frame() == 24);
     CHECK(key0->rotate() == 0.0f);
@@ -1764,8 +1949,8 @@ int main(int argc, char** argv) {
     const Curve curve(*node.timeLine(), Channel(core::TimeKeyType_Rotate, 0));
     CHECK(curve.segmentCount() == 1);
     const Curve::Segment seg = curve.segment(0);
-    CHECK(seg.from == key0);
-    CHECK(seg.to == key1);
+    CHECK(seg.from == key0->key());
+    CHECK(seg.to == key1->key());
     CHECK(seg.fromValue == 0.0f);
     CHECK(seg.toValue == 90.0f);
     CHECK(seg.easing == kAuthored); // the segment is shaped by its `from` key's param
@@ -2187,7 +2372,7 @@ int main(int argc, char** argv) {
     // 12/12 = 1.0, the key 23px away and outside its ring).
     {
         core::TestNode distanceNode;
-        core::RotateKey* d0 = new core::RotateKey();
+        auto* d0 = new RotateKeyTest();
         d0->setRotate(0.0f);
         util::Easing::Param d0Easing = customEasing();
         d0Easing.cubicBezier.x1 = 11.0f / 64.0f; // exactly 11px at 1 px/frame
@@ -2195,11 +2380,11 @@ int main(int argc, char** argv) {
         d0Easing.cubicBezier.x2 = 0.9f; // the incoming dot stays far from every probe
         d0Easing.cubicBezier.y2 = 0.5f;
         d0->data().easing(0) = d0Easing;
-        setup.push(distanceNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 100, d0));
+        pushRotate(setup, distanceNode, 100, *d0);
 
-        core::RotateKey* d1 = new core::RotateKey();
+        auto* d1 = new RotateKeyTest();
         d1->setRotate(0.0f); // the same VALUE, so key and handle share one row
-        setup.push(distanceNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 164, d1));
+        pushRotate(setup, distanceNode, 164, *d1);
 
         editor.setTargets({ &distanceNode });
         editor.clearSelection();
@@ -2316,23 +2501,31 @@ int main(int argc, char** argv) {
         editor.setTargets({}); // drop the target before its owner dies
     }
 
-    // --- 12: the degenerate value window. A channel whose keys are ALL at the
-    // same value has a zero span: the fit must widen it around the value (never
-    // leave a collapsed window) so drawing it cannot divide by zero.
+    // --- 12: the degenerate value window. The scaler's own constant-channel rule
+    // is pinned directly (the panel's keys are distinct here so the editor's fit
+    // has a real span to reproduce).
     {
-        core::TestNode flatNode;
-        core::RotateKey* f0 = new core::RotateKey();
-        f0->setRotate(5.0f);
-        setup.push(flatNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, f0));
-        core::RotateKey* f1 = new core::RotateKey();
-        f1->setRotate(5.0f);
-        setup.push(flatNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 30, f1));
+        Scaler probe;
+        probe.fitValueWindow(5.0f, 5.0f);
+        CHECK(probe.valueMin() != probe.valueMax());
+        CHECK(probe.valueMin() < 5.0f);
+        CHECK(probe.valueMax() > 5.0f);
 
+        core::TestNode flatNode;
+        auto* f0 = new RotateKeyTest();
+        f0->setRotate(4.0f);
+        pushRotate(setup, flatNode, 0, *f0);
+        auto* f1 = new RotateKeyTest();
+        f1->setRotate(6.0f);
+        pushRotate(setup, flatNode, 30, *f1);
+
+        CHECK(rotateKeyCount(*flatNode.timeLine()) == 2);
+        editor.setTargets({});
         editor.setTargets({ &flatNode });
         const Scaler& flat = editor.scale();
         CHECK(flat.valueMin() != flat.valueMax()); // the window did NOT collapse
-        CHECK(flat.valueMin() < 5.0f);             // it straddles the constant value...
-        CHECK(flat.valueMax() > 5.0f);
+        CHECK(flat.valueMin() < 4.0f);
+        CHECK(flat.valueMax() > 6.0f);
 
         // Drawing it must not divide by zero: map the constant value to a real
         // row inside the plot. (The paint path lives in gui::GraphPanelModel now,
@@ -2386,19 +2579,19 @@ int main(int argc, char** argv) {
     core::TestNode nodeA;
     core::TestNode nodeB;
     {
-        core::RotateKey* a0 = new core::RotateKey();
+        auto* a0 = new RotateKeyTest();
         a0->setRotate(0.0f);
-        setup.push(nodeA.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, a0));
-        core::RotateKey* a1 = new core::RotateKey();
+        pushRotate(setup, nodeA, 0, *a0);
+        auto* a1 = new RotateKeyTest();
         a1->setRotate(90.0f);
-        setup.push(nodeA.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, a1));
+        pushRotate(setup, nodeA, 24, *a1);
 
-        core::RotateKey* b0 = new core::RotateKey();
+        auto* b0 = new RotateKeyTest();
         b0->setRotate(1000.0f);
-        setup.push(nodeB.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, b0));
-        core::RotateKey* b1 = new core::RotateKey();
+        pushRotate(setup, nodeB, 0, *b0);
+        auto* b1 = new RotateKeyTest();
         b1->setRotate(1100.0f);
-        setup.push(nodeB.timeLine()->createPusher(core::TimeKeyType_Rotate, 30, b1));
+        pushRotate(setup, nodeB, 30, *b1);
 
         editor.setTargets({ &nodeA, &nodeB });
         CHECK(!editor.hasFocus());                        // a fresh selection focuses nothing
@@ -2547,13 +2740,13 @@ int main(int argc, char** argv) {
     {
         core::TestNode editNode;
         const util::Easing::Param kEditEasing = customEasing();
-        core::RotateKey* r0 = new core::RotateKey();
+        auto* r0 = new RotateKeyTest();
         r0->setRotate(0.0f);
         r0->data().easing(0) = kEditEasing;
-        setup.push(editNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, r0));
-        core::RotateKey* r1 = new core::RotateKey();
+        pushRotate(setup, editNode, 0, *r0);
+        auto* r1 = new RotateKeyTest();
         r1->setRotate(90.0f);
-        setup.push(editNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, r1));
+        pushRotate(setup, editNode, 24, *r1);
 
         const util::Easing::Param kR1Easing = r1->data().easing(0);
         core::TimeLine* editLine = editNode.timeLine();
@@ -2565,8 +2758,8 @@ int main(int argc, char** argv) {
         project.commandStack().clear(); // this section's history is the graph's own edits
         CHECK(!editor.hasFocus());      // a fresh shown set focuses nothing
         CHECK(editCurve.keys().size() == 2);
-        CHECK(editCurve.keys()[0] == r0);
-        CHECK(editCurve.keys()[1] == r1);
+        CHECK(editCurve.keys()[0] == r0->key());
+        CHECK(editCurve.keys()[1] == r1->key());
 
         const core::Frame addFrame(12);
         CHECK(!editLine->hasTimeKey(core::TimeKeyType_Rotate, addFrame.get()));
@@ -2585,7 +2778,7 @@ int main(int argc, char** argv) {
         CHECK(sendPress(editor, camera, editCur, key24));
         CHECK(sendRelease(editor, camera, editCur, key24)); // closes the armed move
         CHECK(editCurve.keys().size() == 2);                // nothing was inserted
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, 24) == r1);
+        CHECK(rotateAt(*editLine, 24) == r1->key());
         core::TimeLineEvent selOfKey24;
         CHECK(editor.retrieveSelection(selOfKey24));
         CHECK(selOfKey24.targets().size() == 1);
@@ -2646,14 +2839,14 @@ int main(int argc, char** argv) {
         const QPoint onKey24(editor.scale().pixelX(core::Frame(24)), editor.scale().pixelY(90.0f));
         CHECK(!editor.insertKeyAt(camera, onKey24));
         CHECK(!editor.insertKeyAt(camera, QPoint(5, 5)));
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, 24) == r1);
+        CHECK(rotateAt(*editLine, 24) == r1->key());
         CHECK(editCurve.keys().size() == 3);
 
         CHECK(editLine->hasTimeKey(core::TimeKeyType_Rotate, addFrame.get()));
         CHECK(editCurve.keys().size() == 3);
-        const core::TimeKey* insertedKey = editLine->timeKey(core::TimeKeyType_Rotate, addFrame.get());
-        const core::RotateKey* inserted = static_cast<const core::RotateKey*>(insertedKey);
-        CHECK(insertedKey != nullptr && inserted != r0 && inserted != r1); // a new key, not a moved one
+        core::TimeKey* insertedKey = rotateAt(*editLine, addFrame.get());
+        auto* inserted = new RotateKeyTest(insertedKey);
+        CHECK(insertedKey != nullptr && insertedKey != r0->key() && insertedKey != r1->key()); // a new key, not a moved one
         CHECK(inserted->rotate() == atEmptyFrame);        // seeded with the curve's own value
         CHECK(inserted->data().easing(0) == kEditEasing);  // the easing of the segment it split
         CHECK(editCurve.sample(addFrame) == atEmptyFrame); // re-read through the document: nothing moved
@@ -2686,7 +2879,7 @@ int main(int argc, char** argv) {
         bool redoneInsert = false;
         stack.redo(&redoneInsert);
         CHECK(redoneInsert);
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, addFrame.get()) == insertedKey);
+        CHECK(rotateAt(*editLine, addFrame.get()) == insertedKey);
         CHECK(inserted->rotate() == atEmptyFrame);
         CHECK(inserted->data().easing(0) == kEditEasing);
 
@@ -2719,7 +2912,7 @@ int main(int argc, char** argv) {
         bool redoneInsertAgain = false;
         stack.redo(&redoneInsertAgain);
         CHECK(redoneInsertAgain);
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, addFrame.get()) == insertedKey);
+        CHECK(rotateAt(*editLine, addFrame.get()) == insertedKey);
 
         // The drag: three moves right, frame 12 -> frame 20 (all free), release.
         // The whole gesture must be ONE command.
@@ -2737,7 +2930,7 @@ int main(int argc, char** argv) {
         CHECK(editLine->hasTimeKey(core::TimeKeyType_Rotate, 20));
         CHECK(editCurve.keys().size() == 3);
         CHECK(editCurve.keys()[1]->frame() == 20); // the moved key, in frame order
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, 20) == insertedKey); // the SAME key object
+        CHECK(rotateAt(*editLine, 20) == insertedKey); // the SAME key object
         // This drag is purely HORIZONTAL (every move keeps the press row), so the
         // value axis' delta is exactly zero and the key's value and easing are
         // untouched - which is what the 2-axis rule means at dy == 0. The value
@@ -2790,7 +2983,7 @@ int main(int argc, char** argv) {
         CHECK(sendPress(editor, camera, moveCur, key20Pixel));
         CHECK(!sendMove(editor, camera, moveCur, occupied)); // refused
         CHECK(editLine->hasTimeKey(core::TimeKeyType_Rotate, 20)); // the key stayed put
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, 24) == r1);
+        CHECK(rotateAt(*editLine, 24) == r1->key());
         CHECK(r1->rotate() == 90.0f);
         CHECK(inserted->rotate() == atEmptyFrame);
         CHECK(inserted->data().easing(0) == kEditEasing);
@@ -2798,7 +2991,7 @@ int main(int argc, char** argv) {
         CHECK(sendRelease(editor, camera, moveCur, free30));
         CHECK(!editLine->hasTimeKey(core::TimeKeyType_Rotate, 20));
         CHECK(editLine->hasTimeKey(core::TimeKeyType_Rotate, 30));
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, 30) == insertedKey);
+        CHECK(rotateAt(*editLine, 30) == insertedKey);
         CHECK(inserted->rotate() == atEmptyFrame);
 
         // This gesture is ONE command as well, and the refused step left no entry
@@ -2839,7 +3032,7 @@ int main(int argc, char** argv) {
         CHECK(staleSelection.targets()[0].pos.index() == 20);
         CHECK(!editor.removeSelectedKey());
         CHECK(editLine->hasTimeKey(core::TimeKeyType_Rotate, 30));
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, 30) == insertedKey);
+        CHECK(rotateAt(*editLine, 30) == insertedKey);
 
         // ...and with nothing selected at all, likewise.
         editor.clearSelection();
@@ -2891,7 +3084,7 @@ int main(int argc, char** argv) {
         CHECK(undoneRemove);
         CHECK(!removeName.isEmpty());
         CHECK(editLine->hasTimeKey(core::TimeKeyType_Rotate, 30));
-        CHECK(editLine->timeKey(core::TimeKeyType_Rotate, 30) == insertedKey);
+        CHECK(rotateAt(*editLine, 30) == insertedKey);
         CHECK(inserted->rotate() == atEmptyFrame);
         CHECK(inserted->data().easing(0) == kEditEasing);
         bool redoneRemove = false;
@@ -2964,13 +3157,13 @@ int main(int argc, char** argv) {
         authored.cubicBezier.y2 = 0.9f;
         CHECK(authored != util::Easing::Param());
 
-        core::RotateKey* e0 = new core::RotateKey();
+        auto* e0 = new RotateKeyTest();
         e0->setRotate(10.0f);
         e0->data().easing(0) = authored;
-        setup.push(easeNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, e0));
-        core::RotateKey* e1 = new core::RotateKey();
+        pushRotate(setup, easeNode, 0, *e0);
+        auto* e1 = new RotateKeyTest();
         e1->setRotate(70.0f);
-        setup.push(easeNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 12, e1));
+        pushRotate(setup, easeNode, 12, *e1);
 
         core::TimeLine* easeLine = easeNode.timeLine();
         const Channel easeChannel(core::TimeKeyType_Rotate, 0);
@@ -3105,11 +3298,11 @@ int main(int argc, char** argv) {
     {
         core::TestNode selNode;
         for (int i = 0; i < 4; ++i) {
-            core::RotateKey* key = new core::RotateKey();
+            auto* key = new RotateKeyTest();
             key->setRotate(static_cast<float>(i) * 10.0f); // values 0, 10, 20, 30
-            setup.push(selNode.timeLine()->createPusher(core::TimeKeyType_Rotate, i * 10, key));
+            pushRotate(setup, selNode, i * 10, *key);
         }
-        CHECK(selNode.timeLine()->map(core::TimeKeyType_Rotate).size() == 4);
+        CHECK(rotateKeyCount(*selNode.timeLine()) == 4);
 
         editor.setTargets({ &selNode });
         editor.scale().setRect(panel);
@@ -3325,8 +3518,8 @@ int main(int argc, char** argv) {
         CHECK(undoneTwo);
         CHECK(selNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 0));
         CHECK(selNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 10));
-        CHECK(static_cast<core::RotateKey*>(selNode.timeLine()->timeKey(core::TimeKeyType_Rotate, 0))->rotate() == 0.0f);
-        CHECK(static_cast<core::RotateKey*>(selNode.timeLine()->timeKey(core::TimeKeyType_Rotate, 10))->rotate() == 10.0f);
+        CHECK(ctrl::graph::Channel(core::TimeKeyType_Rotate, 0).value(*rotateAt(*selNode.timeLine(), 0)) == 0.0f);
+        CHECK(ctrl::graph::Channel(core::TimeKeyType_Rotate, 0).value(*rotateAt(*selNode.timeLine(), 10)) == 10.0f);
         bool undoneTwoAgain = true;
         CHECK(stack.undo(&undoneTwoAgain).isEmpty()); // and nothing sits behind it
 
@@ -3339,12 +3532,12 @@ int main(int argc, char** argv) {
     // ONE undo must restore both the frame AND the value.
     {
         core::TestNode dragNode;
-        core::RotateKey* d0 = new core::RotateKey();
+        auto* d0 = new RotateKeyTest();
         d0->setRotate(0.0f);
-        setup.push(dragNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, d0));
-        core::RotateKey* d1 = new core::RotateKey();
+        pushRotate(setup, dragNode, 0, *d0);
+        auto* d1 = new RotateKeyTest();
         d1->setRotate(90.0f);
-        setup.push(dragNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, d1));
+        pushRotate(setup, dragNode, 24, *d1);
         const util::Easing::Param kD0Easing = d0->data().easing(0);
 
         editor.setTargets({ &dragNode });
@@ -3371,7 +3564,7 @@ int main(int argc, char** argv) {
 
         CHECK(!dragNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 0));
         CHECK(dragNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 5));
-        CHECK(dragNode.timeLine()->timeKey(core::TimeKeyType_Rotate, 5) == d0); // the SAME key object
+        CHECK(rotateAt(*dragNode.timeLine(), 5) == d0->key()); // the SAME key object
         CHECK(d0->frame() == 5);              // the FRAME followed the pointer...
         CHECK(d0->rotate() == expectedValue); // ...and so did the VALUE
         CHECK(d0->data().easing(0) == kD0Easing); // the easing never moves
@@ -3489,12 +3682,12 @@ int main(int argc, char** argv) {
     // pan is a pure pixel offset: the window SPAN is untouched, so a pan cannot zoom.
     {
         core::TestNode panNode;
-        core::RotateKey* p0 = new core::RotateKey();
+        auto* p0 = new RotateKeyTest();
         p0->setRotate(0.0f);
-        setup.push(panNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, p0));
-        core::RotateKey* p1 = new core::RotateKey();
+        pushRotate(setup, panNode, 0, *p0);
+        auto* p1 = new RotateKeyTest();
         p1->setRotate(90.0f);
-        setup.push(panNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, p1));
+        pushRotate(setup, panNode, 24, *p1);
 
         editor.setTargets({ &panNode });
         editor.scale().setRect(panel);
@@ -3617,15 +3810,15 @@ int main(int argc, char** argv) {
         timeline.setFrameRange(util::Range(1, 60));
 
         core::TestNode seamNode;
-        core::RotateKey* s0 = new core::RotateKey();
+        auto* s0 = new RotateKeyTest();
         s0->setRotate(0.0f);
-        setup.push(seamNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 2, s0));
-        core::RotateKey* s1 = new core::RotateKey();
+        pushRotate(setup, seamNode, 2, *s0);
+        auto* s1 = new RotateKeyTest();
         s1->setRotate(90.0f);
-        setup.push(seamNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 6, s1));
+        pushRotate(setup, seamNode, 6, *s1);
         core::TimeLine* seamLine = seamNode.timeLine();
         const Channel seamChannel(core::TimeKeyType_Rotate, 0);
-        CHECK(seamLine->map(core::TimeKeyType_Rotate).size() == 2);
+        CHECK(rotateKeyCount(*seamLine) == 2);
 
         editor.setTargets({ &seamNode });
         editor.scale().setRect(panel);
@@ -3662,8 +3855,8 @@ int main(int argc, char** argv) {
         // key the panel selected carries the focus time::Selection rebuilt for it
         // (time_Renderer's key body reads exactly TimeKey::isFocused), and the other
         // key does not.
-        CHECK(seamLine->timeKey(core::TimeKeyType_Rotate, 2)->isFocused());
-        CHECK(!seamLine->timeKey(core::TimeKeyType_Rotate, 6)->isFocused());
+        CHECK(rotateAt(*seamLine, 2)->isFocused());
+        CHECK(!rotateAt(*seamLine, 6)->isFocused());
 
         // --- (c) TIMELINE -> PANEL. A selection the timeline makes through its own
         // public path (the "creation selects its output" rule) is what the panel
@@ -3676,8 +3869,8 @@ int main(int argc, char** argv) {
         CHECK(editor.retrieveSelection(panelSees));
         CHECK(panelSees.targets().size() == 1);
         CHECK(panelSees.targets()[0].pos.index() == 6);
-        CHECK(seamLine->timeKey(core::TimeKeyType_Rotate, 6)->isFocused());
-        CHECK(!seamLine->timeKey(core::TimeKeyType_Rotate, 2)->isFocused());
+        CHECK(rotateAt(*seamLine, 6)->isFocused());
+        CHECK(!rotateAt(*seamLine, 2)->isFocused());
         editor.modifySelection(seamNode, seamChannel, core::Frame(2), true); // Shift-extend, in the panel
         fromTimeline = core::TimeLineEvent();
         CHECK(timeline.retrieveSelectionTargets(fromTimeline));
@@ -4169,13 +4362,13 @@ int main(int argc, char** argv) {
     // both halves of what is asserted below.
     {
         core::TestNode groupNode;
-        core::RotateKey* g0 = new core::RotateKey();
+        auto* g0 = new RotateKeyTest();
         g0->setRotate(5.0f);
-        setup.push(groupNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, g0));
-        core::RotateKey* g1 = new core::RotateKey();
+        pushRotate(setup, groupNode, 0, *g0);
+        auto* g1 = new RotateKeyTest();
         g1->setRotate(25.0f);
-        setup.push(groupNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 20, g1));
-        CHECK(groupNode.timeLine()->map(core::TimeKeyType_Rotate).size() == 2);
+        pushRotate(setup, groupNode, 20, *g1);
+        CHECK(rotateKeyCount(*groupNode.timeLine()) == 2);
 
         editor.setTargets({ &groupNode });
         editor.scale().setRect(panel);
@@ -4218,8 +4411,8 @@ int main(int argc, char** argv) {
         CHECK(!groupNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 20));
         CHECK(groupNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, expectedFrameStep));
         CHECK(groupNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 20 + expectedFrameStep));
-        CHECK(groupNode.timeLine()->timeKey(core::TimeKeyType_Rotate, expectedFrameStep) == g0);
-        CHECK(groupNode.timeLine()->timeKey(core::TimeKeyType_Rotate, 20 + expectedFrameStep) == g1);
+        CHECK(rotateAt(*groupNode.timeLine(), expectedFrameStep) == g0->key());
+        CHECK(rotateAt(*groupNode.timeLine(), 20 + expectedFrameStep) == g1->key());
         CHECK(g0->rotate() == 5.0f + expectedValueDelta);
         CHECK(g1->rotate() == 25.0f + expectedValueDelta);
 
@@ -4272,16 +4465,16 @@ int main(int argc, char** argv) {
     // nothing to carry - which is what the report was about.
     {
         core::TestNode grabNode;
-        core::RotateKey* q0 = new core::RotateKey();
+        auto* q0 = new RotateKeyTest();
         q0->setRotate(5.0f);
-        setup.push(grabNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, q0));
-        core::RotateKey* q1 = new core::RotateKey();
+        pushRotate(setup, grabNode, 0, *q0);
+        auto* q1 = new RotateKeyTest();
         q1->setRotate(25.0f);
-        setup.push(grabNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 20, q1));
-        core::RotateKey* q2 = new core::RotateKey();
+        pushRotate(setup, grabNode, 20, *q1);
+        auto* q2 = new RotateKeyTest();
         q2->setRotate(45.0f);
-        setup.push(grabNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 40, q2));
-        CHECK(grabNode.timeLine()->map(core::TimeKeyType_Rotate).size() == 3);
+        pushRotate(setup, grabNode, 40, *q2);
+        CHECK(rotateKeyCount(*grabNode.timeLine()) == 3);
 
         editor.setTargets({ &grabNode });
         editor.scale().setRect(panel);
@@ -4341,14 +4534,14 @@ int main(int argc, char** argv) {
         CHECK(!grabNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 20));
         CHECK(grabNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, grabStep));
         CHECK(grabNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 20 + grabStep));
-        CHECK(grabNode.timeLine()->timeKey(core::TimeKeyType_Rotate, grabStep) == q0);
-        CHECK(grabNode.timeLine()->timeKey(core::TimeKeyType_Rotate, 20 + grabStep) == q1);
+        CHECK(rotateAt(*grabNode.timeLine(), grabStep) == q0->key());
+        CHECK(rotateAt(*grabNode.timeLine(), 20 + grabStep) == q1->key());
         CHECK(q0->rotate() == 5.0f + grabDelta);
         CHECK(q1->rotate() == 25.0f + grabDelta);
         // ...while the key that was never selected did not move - neither its
         // frame nor its value, on its own object.
         CHECK(grabNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 40));
-        CHECK(grabNode.timeLine()->timeKey(core::TimeKeyType_Rotate, 40) == q2);
+        CHECK(rotateAt(*grabNode.timeLine(), 40) == q2->key());
         CHECK(q2->frame() == 40);
         CHECK(q2->rotate() == 45.0f);
 
@@ -4380,7 +4573,7 @@ int main(int argc, char** argv) {
         CHECK(sendMove(editor, camera, grabCur, aloneTo));
         CHECK(sendRelease(editor, camera, grabCur, aloneTo));
 
-        CHECK(grabNode.timeLine()->timeKey(core::TimeKeyType_Rotate, 40 + aloneStep) == q2);
+        CHECK(rotateAt(*grabNode.timeLine(), 40 + aloneStep) == q2->key());
         CHECK(q2->rotate() == 45.0f + aloneDelta);
         CHECK(grabNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 0)); // the dropped keys did not move
         CHECK(grabNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 20));
@@ -4406,15 +4599,15 @@ int main(int argc, char** argv) {
     // the drag's own cmnd::Gesture, so the mode change is one undo step too.
     {
         core::TestNode ghostNode;
-        core::RotateKey* a0 = new core::RotateKey();
+        auto* a0 = new RotateKeyTest();
         a0->setRotate(0.0f);
-        setup.push(ghostNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, a0));
-        core::RotateKey* a1 = new core::RotateKey();
+        pushRotate(setup, ghostNode, 0, *a0);
+        auto* a1 = new RotateKeyTest();
         a1->setRotate(100.0f);
-        setup.push(ghostNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 10, a1));
-        core::RotateKey* a2 = new core::RotateKey();
+        pushRotate(setup, ghostNode, 10, *a1);
+        auto* a2 = new RotateKeyTest();
         a2->setRotate(40.0f);
-        setup.push(ghostNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 20, a2));
+        pushRotate(setup, ghostNode, 20, *a2);
         a0->data().easing(0).type = util::Easing::Type_Custom;
         a0->data().easing(0).handleOut = util::Easing::HandleMode_Auto;
         a1->data().easing(0).type = util::Easing::Type_Custom;
@@ -4430,7 +4623,7 @@ int main(int argc, char** argv) {
         const Curve ghostCurve(*ghostNode.timeLine(), Channel(core::TimeKeyType_Rotate, 0));
         CHECK(ghostCurve.segmentCount() == 2);
         const Curve::Segment ghostSeg = ghostCurve.segment(0);
-        CHECK(ghostSeg.from == a0 && ghostSeg.to == a1);
+        CHECK(ghostSeg.from == a0->key() && ghostSeg.to == a1->key());
         CHECK(ghostSeg.fromValue == 0.0f && ghostSeg.toValue == 100.0f);
 
         QPointF ghosts[2];
@@ -4569,20 +4762,16 @@ int main(int argc, char** argv) {
     //     own and only the changes.
     {
         core::TestNode markerNode;
-        core::ScaleKey* mk0 = new core::ScaleKey();
-        mk0->setScale(QVector2D(20.0f, 30.0f));
-        setup.push(markerNode.timeLine()->createPusher(core::TimeKeyType_Scale, 5, mk0));
-        core::ScaleKey* mk1 = new core::ScaleKey();
-        mk1->setScale(QVector2D(60.0f, 80.0f));
-        setup.push(markerNode.timeLine()->createPusher(core::TimeKeyType_Scale, 25, mk1));
-        CHECK(markerNode.timeLine()->map(core::TimeKeyType_Scale).size() == 2);
+        auto* mk0 = pushScale(setup, markerNode, 5, QVector2D(20.0f, 30.0f));
+        auto* mk1 = pushScale(setup, markerNode, 25, QVector2D(60.0f, 80.0f));
+        CHECK(markerNode.timeLine()->channelTrack(core::TimeKeyType_Scale, 0)->keyCount() == 2);
 
         // The pair the whole section rests on: two components, so "X alone" is a
         // selection that leaves something out.
         const Channel markerX(core::TimeKeyType_Scale, 0);
         const Channel markerY(core::TimeKeyType_Scale, 1);
         CHECK(Channel::componentCount(core::TimeKeyType_Scale) == 2);
-        CHECK(markerX.value(*mk0) == 20.0f && markerY.value(*mk0) == 30.0f);
+        CHECK(mk0->x->value() == 20.0f && mk0->y->value() == 30.0f);
 
         editor.setTargets({ &markerNode });
         editor.scale().setRect(panel);
@@ -4630,8 +4819,8 @@ int main(int argc, char** argv) {
         CHECK(editor.selection().count() == 1); // ONE ENTRY: the marker the press hit
         CHECK(editor.selection().items().front().component == 0);
         CHECK(editor.selectionCount() == 1);    // ...which is ONE KEY
-        CHECK(markerNode.timeLine()->timeKey(core::TimeKeyType_Scale, 5)->isFocused());
-        CHECK(!markerNode.timeLine()->timeKey(core::TimeKeyType_Scale, 25)->isFocused());
+        CHECK(markerNode.timeLine()->channelKey(core::TimeKeyType_Scale, 0, 5)->isFocused());
+        CHECK(!markerNode.timeLine()->channelKey(core::TimeKeyType_Scale, 0, 25)->isFocused());
         // The timeline's own reading of that selection: the key it belongs to.
         core::TimeLineEvent markerTargets;
         CHECK(editor.retrieveSelection(markerTargets));
@@ -4697,7 +4886,7 @@ int main(int argc, char** argv) {
         CHECK(!markerNode.timeLine()->hasTimeKey(core::TimeKeyType_Scale, 5));
         CHECK(!markerNode.timeLine()->hasTimeKey(core::TimeKeyType_Scale, 5 + bothStep * 2));
         CHECK(markerNode.timeLine()->hasTimeKey(core::TimeKeyType_Scale, 5 + bothStep));
-        CHECK(markerNode.timeLine()->timeKey(core::TimeKeyType_Scale, 5 + bothStep) == mk0);
+        CHECK(markerNode.timeLine()->channelKey(core::TimeKeyType_Scale, 0, 5 + bothStep) == mk0->x);
         // VERTICAL: BOTH components move by the same delta, each in its own channel.
         CHECK(mk0->scale().x() == 20.0f + bothDelta);
         CHECK(mk0->scale().y() == 30.0f + bothDelta);
@@ -4945,15 +5134,15 @@ int main(int argc, char** argv) {
     // (a cubic's own domain) and leaves y free.
     {
         core::TestNode pairNode;
-        core::RotateKey* fA = new core::RotateKey();
+        auto* fA = new RotateKeyTest();
         fA->setRotate(0.0f);
-        setup.push(pairNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, fA));
-        core::RotateKey* fB = new core::RotateKey();
+        pushRotate(setup, pairNode, 0, *fA);
+        auto* fB = new RotateKeyTest();
         fB->setRotate(90.0f);
-        setup.push(pairNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 30, fB));
-        core::RotateKey* fC = new core::RotateKey();
+        pushRotate(setup, pairNode, 30, *fB);
+        auto* fC = new RotateKeyTest();
         fC->setRotate(150.0f);
-        setup.push(pairNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 40, fC));
+        pushRotate(setup, pairNode, 40, *fC);
 
         editor.setTargets({ &pairNode });
         editor.scale().setRect(panel);
@@ -4964,8 +5153,8 @@ int main(int argc, char** argv) {
         const Channel pairChannel(core::TimeKeyType_Rotate, 0);
         const Curve pairCurve(*pairNode.timeLine(), pairChannel);
         CHECK(pairCurve.segmentCount() == 2);
-        CHECK(pairCurve.segment(0).from == fA && pairCurve.segment(0).to == fB);
-        CHECK(pairCurve.segment(1).from == fB && pairCurve.segment(1).to == fC);
+        CHECK(pairCurve.segment(0).from == fA->key() && pairCurve.segment(0).to == fB->key());
+        CHECK(pairCurve.segment(1).from == fB->key() && pairCurve.segment(1).to == fC->key());
         CHECK(pairCurve.segment(0).fromValue == 0.0f && pairCurve.segment(0).toValue == 90.0f);
         CHECK(pairCurve.segment(1).fromValue == 90.0f && pairCurve.segment(1).toValue == 150.0f);
         // The point of pixel arithmetic: the two segments' value spans differ.
@@ -5820,12 +6009,12 @@ int main(int argc, char** argv) {
     //                                      release)
     {
         core::TestNode parityNode;
-        core::RotateKey* pA = new core::RotateKey();
+        auto* pA = new RotateKeyTest();
         pA->setRotate(10.0f);
-        setup.push(parityNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 10, pA));
-        core::RotateKey* pB = new core::RotateKey();
+        pushRotate(setup, parityNode, 10, *pA);
+        auto* pB = new RotateKeyTest();
         pB->setRotate(20.0f);
-        setup.push(parityNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 60, pB));
+        pushRotate(setup, parityNode, 60, *pB);
 
         ctrl::TimeLineEditor timeline;
         timeline.setProject(&project);
@@ -6112,9 +6301,9 @@ int main(int argc, char** argv) {
     // down as far as this synthetic cursor knows, changes nothing).
     {
         core::TestNode awayNode;
-        core::RotateKey* aw0 = new core::RotateKey();
+        auto* aw0 = new RotateKeyTest();
         aw0->setRotate(0.0f);
-        setup.push(awayNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, aw0));
+        pushRotate(setup, awayNode, 0, *aw0);
         // TWO keys, and the second one is not decoration: fitAll() fits the FRAME
         // axis to the SHOWN keys (fitFrameAxis: the span of their frames, plus a
         // tenth of it, at least one frame each side), and a ONE-key channel fits
@@ -6123,10 +6312,10 @@ int main(int argc, char** argv) {
         // section never draws. The second key gives the fit the span the section
         // needs, and it doubles as the "the key the press did not select is
         // untouched" check.
-        core::RotateKey* aw1 = new core::RotateKey();
+        auto* aw1 = new RotateKeyTest();
         aw1->setRotate(60.0f);
-        setup.push(awayNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 12, aw1));
-        CHECK(awayNode.timeLine()->map(core::TimeKeyType_Rotate).size() == 2);
+        pushRotate(setup, awayNode, 12, *aw1);
+        CHECK(rotateKeyCount(*awayNode.timeLine()) == 2);
 
         editor.setTargets({ &awayNode });
         editor.scale().setRect(panel);
@@ -6187,10 +6376,8 @@ int main(int argc, char** argv) {
     // the user's report, and it must come out of the gesture byte-identical.
     {
         core::TestNode moveNode;
-        core::MoveKey* m0 = new core::MoveKey();
-        m0->setPos(QVector2D(0.0f, 0.0f));
-        core::MoveKey* m1 = new core::MoveKey();
-        m1->setPos(QVector2D(80.0f, 40.0f));
+        auto m0 = *pushMove(setup, moveNode, 0, QVector2D(0.0f, 0.0f));
+        auto m1 = *pushMove(setup, moveNode, 24, QVector2D(80.0f, 40.0f));
 
         // The two components start on DIFFERENT authored curves, so an edit that
         // leaked across components could not hide behind equal values.
@@ -6205,11 +6392,8 @@ int main(int argc, char** argv) {
         yAuthored.cubicBezier.x2 = 0.7f;
         yAuthored.cubicBezier.y2 = 0.8f;
         CHECK(xAuthored != yAuthored);
-        m0->data().easing(0) = xAuthored;
-        m0->data().easing(1) = yAuthored;
-
-        setup.push(moveNode.timeLine()->createPusher(core::TimeKeyType_Move, 0, m0));
-        setup.push(moveNode.timeLine()->createPusher(core::TimeKeyType_Move, 24, m1));
+        m0[0]->easing() = xAuthored;
+        m0[1]->easing() = yAuthored;
 
         editor.setTargets({ &moveNode });
         editor.scale().setRect(panel);
@@ -6231,23 +6415,23 @@ int main(int argc, char** argv) {
         CHECK(sendRelease(editor, camera, curveCur, want));
 
         // X moved, Y did not - param for param and field for field.
-        CHECK(m0->data().easing(0) != xAuthored);
-        CHECK(m0->data().easing(1) == yAuthored);
-        CHECK(!(m0->data().easing(0).cubicBezier == yAuthored.cubicBezier));
+        CHECK(m0[0]->easing() != xAuthored);
+        CHECK(m0[1]->easing() == yAuthored);
+        CHECK(!(m0[0]->easing().cubicBezier == yAuthored.cubicBezier));
 
         // The drawn curves agree, and playback reads the same split: the Y
         // channel's segment still carries the untouched authored pair.
         const Curve afterX(*moveNode.timeLine(), moveX);
         const Curve afterY(*moveNode.timeLine(), moveY);
-        CHECK(afterX.segment(0).easing == m0->data().easing(0));
+        CHECK(afterX.segment(0).easing == m0[0]->easing());
         CHECK(afterY.segment(0).easing == yAuthored);
 
         // ONE undo puts X back and leaves Y where it always was.
         bool undone = false;
         CHECK(!project.commandStack().undo(&undone).isEmpty());
         CHECK(undone);
-        CHECK(m0->data().easing(0) == xAuthored);
-        CHECK(m0->data().easing(1) == yAuthored);
+        CHECK(m0[0]->easing() == xAuthored);
+        CHECK(m0[1]->easing() == yAuthored);
         CHECK(project.commandStack().undo(&undone).isEmpty()); // exactly one step was pushed
 
         std::printf(
@@ -6278,13 +6462,13 @@ int main(int argc, char** argv) {
     {
         core::TestNode menuNode;
         const util::Easing::Param kMenuEasing = customEasing();
-        core::RotateKey* m0 = new core::RotateKey();
+        auto* m0 = new RotateKeyTest();
         m0->setRotate(0.0f);
         m0->data().easing(0) = kMenuEasing;
-        setup.push(menuNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, m0));
-        core::RotateKey* m1 = new core::RotateKey();
+        pushRotate(setup, menuNode, 0, *m0);
+        auto* m1 = new RotateKeyTest();
         m1->setRotate(90.0f);
-        setup.push(menuNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, m1));
+        pushRotate(setup, menuNode, 24, *m1);
 
         editor.setTargets({ &menuNode });
         editor.scale().setRect(panel);
@@ -6472,13 +6656,13 @@ int main(int argc, char** argv) {
         // Linear segment writes nothing (and leaves no history entry).
         {
             core::TestNode linearNode;
-            core::RotateKey* l0 = new core::RotateKey();
+            auto* l0 = new RotateKeyTest();
             l0->setRotate(0.0f);
             l0->data().easing(0).type = util::Easing::Type_Linear;
-            setup.push(linearNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, l0));
-            core::RotateKey* l1 = new core::RotateKey();
+            pushRotate(setup, linearNode, 0, *l0);
+            auto* l1 = new RotateKeyTest();
             l1->setRotate(10.0f);
-            setup.push(linearNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, l1));
+            pushRotate(setup, linearNode, 24, *l1);
 
             ctrl::GraphEditor::ContextTarget target;
             target.kind = ctrl::GraphEditor::ContextTarget::Kind_Handle;
@@ -6533,7 +6717,7 @@ int main(int argc, char** argv) {
             CHECK(undone);
             CHECK(name.contains(QStringLiteral("Delete"), Qt::CaseInsensitive));
             CHECK(menuNode.timeLine()->hasTimeKey(core::TimeKeyType_Rotate, 24));
-            CHECK(menuNode.timeLine()->timeKey(core::TimeKeyType_Rotate, 24) == m1); // the SAME key object
+            CHECK(rotateAt(*menuNode.timeLine(), 24) == m1->key()); // the SAME key object
             CHECK(project.commandStack().undo(&undone).isEmpty()); // one step
 
             std::printf(
@@ -6559,12 +6743,12 @@ int main(int argc, char** argv) {
         project.commandStack().clear();
 
         core::TestNode writeNode;
-        core::RotateKey* w0 = new core::RotateKey();
+        auto* w0 = new RotateKeyTest();
         w0->setRotate(0.0f);
-        setup.push(writeNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 0, w0));
-        core::RotateKey* w1 = new core::RotateKey();
+        pushRotate(setup, writeNode, 0, *w0);
+        auto* w1 = new RotateKeyTest();
         w1->setRotate(10.0f);
-        setup.push(writeNode.timeLine()->createPusher(core::TimeKeyType_Rotate, 24, w1));
+        pushRotate(setup, writeNode, 24, *w1);
 
         // What the gesture edits. This section is about the write/announce
         // pairing, not about what a command writes.
@@ -6683,33 +6867,29 @@ int main(int argc, char** argv) {
     // depends on a rebase the gesture could have made for itself.
     {
         core::TestNode propNode;
-        core::MoveKey* propLeft = new core::MoveKey();
-        propLeft->setPos(QVector2D(0.0f, 0.0f));
-        setup.push(propNode.timeLine()->createPusher(core::TimeKeyType_Move, 0, propLeft));
-        core::MoveKey* propMiddle = new core::MoveKey();
-        propMiddle->setPos(QVector2D(30.0f, 30.0f));
-        setup.push(propNode.timeLine()->createPusher(core::TimeKeyType_Move, 2, propMiddle));
-        propMiddle->setProportional(true);
-        core::MoveKey* propRight = new core::MoveKey();
-        propRight->setPos(QVector2D(60.0f, 60.0f));
-        setup.push(propNode.timeLine()->createPusher(core::TimeKeyType_Move, 4, propRight));
+        auto* propLeft = pushBlurKeys(setup, propNode, 0, QVector2D(0.0f, 10.0f));
+        auto* propMiddle = pushBlurKeys(setup, propNode, 2, QVector2D(30.0f, 20.0f));
+        for (int c = 0; c < 3; ++c) propMiddle->key[c]->setProportional(true);
+        auto* propRight = pushBlurKeys(setup, propNode, 4, QVector2D(60.0f, 30.0f));
 
         // The stored state both halves read: the proportional key sits at 1/2 of
         // the frame span and of BOTH value spans. Asserted, because a wrong weight
         // would make every projection below pass for the wrong reason.
         {
-            const auto& propMap = propNode.timeLine()->map(core::TimeKeyType_Move);
-            ctrl::proportional::rebase(
-                *propMiddle, ctrl::proportional::findBounds(propMap, *propMiddle)
-            );
+            for (int c = 0; c < 3; ++c) {
+                const auto& propMap = propNode.timeLine()->channelMap(core::TimeKeyType_Blur, c);
+                ctrl::proportional::rebase(
+                    *propMiddle->key[c], ctrl::proportional::findBounds(propMap, *propMiddle->key[c])
+                );
+            }
         }
-        CHECK(propMiddle->isProportional());
-        CHECK(propMiddle->proportionalState()->timeValid);
-        CHECK(propMiddle->proportionalState()->timeWeight == 0.5f);
-        CHECK(propMiddle->proportionalState()->valueValid[0]);
-        CHECK(propMiddle->proportionalState()->valueValid[1]);
-        CHECK(propMiddle->proportionalState()->valueWeight[0] == 0.5f);
-        CHECK(propMiddle->proportionalState()->valueWeight[1] == 0.5f);
+        CHECK(propMiddle->key[0]->isProportional());
+        CHECK(propMiddle->key[0]->proportionalState()->timeValid);
+        CHECK(propMiddle->key[0]->proportionalState()->timeWeight == 0.5f);
+        CHECK(propMiddle->key[0]->proportionalState()->valueValid[0]);
+        CHECK(propMiddle->key[1]->proportionalState()->valueValid[1]);
+        CHECK(propMiddle->key[0]->proportionalState()->valueWeight[0] == 0.5f);
+        CHECK(propMiddle->key[1]->proportionalState()->valueWeight[1] == 0.5f);
 
         editor.setTargets({ &propNode });
         editor.scale().setRect(panel);
@@ -6732,31 +6912,31 @@ int main(int argc, char** argv) {
         CHECK(sendMove(editor, camera, propCur, propTo));
         CHECK(sendRelease(editor, camera, propCur, propTo));
 
-        CHECK(!propNode.timeLine()->hasTimeKey(core::TimeKeyType_Move, 4));
-        CHECK(propNode.timeLine()->timeKey(core::TimeKeyType_Move, 5) == propRight);
-        CHECK(propRight->frame() == 5);
+        CHECK(!propNode.timeLine()->hasChannelKey(core::TimeKeyType_Blur, 0, 4));
+        CHECK(propNode.timeLine()->channelKey(core::TimeKeyType_Blur, 0, 5) == propRight->key[0]);
+        CHECK(propRight->key[0]->frame() == 5);
         // The companion followed the bounds: 0 + 1/2 * (5 - 0) = 2.5 -> 3.
-        CHECK(!propNode.timeLine()->hasTimeKey(core::TimeKeyType_Move, 2));
-        CHECK(propNode.timeLine()->timeKey(core::TimeKeyType_Move, 3) == propMiddle);
-        CHECK(propMiddle->frame() == 3);
+        CHECK(!propNode.timeLine()->hasChannelKey(core::TimeKeyType_Blur, 0, 2));
+        CHECK(propNode.timeLine()->channelKey(core::TimeKeyType_Blur, 0, 3) == propMiddle->key[0]);
+        CHECK(propMiddle->key[0]->frame() == 3);
         // A frame move writes no value and no weight.
-        CHECK(propMiddle->pos() == QVector2D(30.0f, 30.0f));
-        CHECK(propRight->pos() == QVector2D(60.0f, 60.0f));
-        CHECK(propMiddle->proportionalState()->timeWeight == 0.5f);
+        CHECK(propMiddle->key[0]->value() == 30.0f && propMiddle->key[1]->value() == 20.0f);
+        CHECK(propRight->key[0]->value() == 60.0f && propRight->key[1]->value() == 30.0f);
+        CHECK(propMiddle->key[0]->proportionalState()->timeWeight == 0.5f);
 
         // ONE undo restores the selected key AND the companion's frame, and a
         // second undo finds nothing (the gesture was the only entry).
         bool undonePropFrame = false;
         CHECK(!stack.undo(&undonePropFrame).isEmpty());
         CHECK(undonePropFrame);
-        CHECK(propNode.timeLine()->timeKey(core::TimeKeyType_Move, 4) == propRight);
-        CHECK(propNode.timeLine()->timeKey(core::TimeKeyType_Move, 2) == propMiddle);
-        CHECK(!propNode.timeLine()->hasTimeKey(core::TimeKeyType_Move, 5));
-        CHECK(!propNode.timeLine()->hasTimeKey(core::TimeKeyType_Move, 3));
-        CHECK(propRight->frame() == 4 && propMiddle->frame() == 2);
-        CHECK(propMiddle->pos() == QVector2D(30.0f, 30.0f));
-        CHECK(propMiddle->proportionalState() != nullptr);
-        CHECK(propMiddle->proportionalState()->timeWeight == 0.5f);
+        CHECK(propNode.timeLine()->channelKey(core::TimeKeyType_Blur, 0, 4) == propRight->key[0]);
+        CHECK(propNode.timeLine()->channelKey(core::TimeKeyType_Blur, 0, 2) == propMiddle->key[0]);
+        CHECK(!propNode.timeLine()->hasChannelKey(core::TimeKeyType_Blur, 0, 5));
+        CHECK(!propNode.timeLine()->hasChannelKey(core::TimeKeyType_Blur, 0, 3));
+        CHECK(propRight->key[0]->frame() == 4 && propMiddle->key[0]->frame() == 2);
+        CHECK(propMiddle->key[0]->value() == 30.0f && propMiddle->key[1]->value() == 20.0f);
+        CHECK(propMiddle->key[0]->proportionalState() != nullptr);
+        CHECK(propMiddle->key[0]->proportionalState()->timeWeight == 0.5f);
 
         bool undonePropFrameAgain = true;
         CHECK(stack.undo(&undonePropFrameAgain).isEmpty());
@@ -6777,27 +6957,23 @@ int main(int argc, char** argv) {
         // channels' markers are not the same pixels), the middle key proportional
         // at 1/2 of both spans.
         core::TestNode valueNode;
-        core::MoveKey* valueLeft = new core::MoveKey();
-        valueLeft->setPos(QVector2D(0.0f, 0.0f));
-        setup.push(valueNode.timeLine()->createPusher(core::TimeKeyType_Move, 0, valueLeft));
-        core::MoveKey* valueMiddle = new core::MoveKey();
-        valueMiddle->setPos(QVector2D(50.0f, 10.0f));
-        setup.push(valueNode.timeLine()->createPusher(core::TimeKeyType_Move, 2, valueMiddle));
-        valueMiddle->setProportional(true);
-        core::MoveKey* valueRight = new core::MoveKey();
-        valueRight->setPos(QVector2D(100.0f, 20.0f));
-        setup.push(valueNode.timeLine()->createPusher(core::TimeKeyType_Move, 4, valueRight));
+        auto* valueLeft = pushBlurKeys(setup, valueNode, 0, QVector2D(0.0f, 0.0f));
+        auto* valueMiddle = pushBlurKeys(setup, valueNode, 2, QVector2D(50.0f, 10.0f));
+        for (int c = 0; c < 3; ++c) valueMiddle->key[c]->setProportional(true);
+        auto* valueRight = pushBlurKeys(setup, valueNode, 4, QVector2D(100.0f, 20.0f));
 
         {
-            const auto& valueMap = valueNode.timeLine()->map(core::TimeKeyType_Move);
-            ctrl::proportional::rebase(
-                *valueMiddle, ctrl::proportional::findBounds(valueMap, *valueMiddle)
-            );
+            for (int c = 0; c < 3; ++c) {
+                const auto& valueMap = valueNode.timeLine()->channelMap(core::TimeKeyType_Blur, c);
+                ctrl::proportional::rebase(
+                    *valueMiddle->key[c], ctrl::proportional::findBounds(valueMap, *valueMiddle->key[c])
+                );
+            }
         }
-        CHECK(valueMiddle->proportionalState()->valueValid[0]);
-        CHECK(valueMiddle->proportionalState()->valueValid[1]);
-        CHECK(valueMiddle->proportionalState()->valueWeight[0] == 0.5f);
-        CHECK(valueMiddle->proportionalState()->valueWeight[1] == 0.5f);
+        CHECK(valueMiddle->key[0]->proportionalState()->valueValid[0]);
+        CHECK(valueMiddle->key[1]->proportionalState()->valueValid[1]);
+        CHECK(valueMiddle->key[0]->proportionalState()->valueWeight[0] == 0.5f);
+        CHECK(valueMiddle->key[1]->proportionalState()->valueWeight[1] == 0.5f);
 
         editor.setTargets({ &valueNode });
         editor.scale().setRect(panel);
@@ -6824,29 +7000,29 @@ int main(int argc, char** argv) {
         // independent channels), and the companion followed with the weight stored
         // BEFORE the gesture, in that same channel. Y is bit-identical on both keys:
         // nothing named it.
-        CHECK(valueRight->frame() == 4);
-        CHECK(valueNode.timeLine()->timeKey(core::TimeKeyType_Move, 4) == valueRight);
-        CHECK(valueRight->pos().x() < 100.0f && valueRight->pos().x() > 40.0f);
-        CHECK(valueRight->pos().y() == 20.0f); // the sibling channel: untouched
-        CHECK(valueMiddle->frame() == 2); // the value drag moved no frame
-        CHECK(valueMiddle->pos().x() == 0.5f * valueRight->pos().x());
-        CHECK(valueMiddle->pos().y() == 10.0f);
+        CHECK(valueRight->key[0]->frame() == 4);
+        CHECK(valueNode.timeLine()->channelKey(core::TimeKeyType_Blur, 0, 4) == valueRight->key[0]);
+        CHECK(valueRight->key[0]->value() < 100.0f && valueRight->key[0]->value() > 40.0f);
+        CHECK(valueRight->key[1]->value() == 20.0f); // the sibling channel: untouched
+        CHECK(valueMiddle->key[0]->frame() == 2); // the value drag moved no frame
+        CHECK(valueMiddle->key[0]->value() == 0.5f * valueRight->key[0]->value());
+        CHECK(valueMiddle->key[1]->value() == 10.0f);
         // The weights are what the gesture captured, never a re-derivation.
-        CHECK(valueMiddle->proportionalState()->valueWeight[0] == 0.5f);
-        CHECK(valueMiddle->proportionalState()->valueWeight[1] == 0.5f);
+        CHECK(valueMiddle->key[0]->proportionalState()->valueWeight[0] == 0.5f);
+        CHECK(valueMiddle->key[1]->proportionalState()->valueWeight[1] == 0.5f);
 
         // ONE undo restores the dragged key (its own value command) AND the
         // companion (the reflow's restore), and nothing is left behind it.
         bool undoneValue = false;
         CHECK(!stack.undo(&undoneValue).isEmpty());
         CHECK(undoneValue);
-        CHECK(valueRight->pos() == QVector2D(100.0f, 20.0f));
-        CHECK(valueMiddle->pos() == QVector2D(50.0f, 10.0f));
-        CHECK(valueMiddle->proportionalState() != nullptr);
-        CHECK(valueMiddle->proportionalState()->valueWeight[0] == 0.5f);
-        CHECK(valueMiddle->proportionalState()->valueWeight[1] == 0.5f);
-        CHECK(valueNode.timeLine()->timeKey(core::TimeKeyType_Move, 2) == valueMiddle);
-        CHECK(!valueNode.timeLine()->hasTimeKey(core::TimeKeyType_Move, 3));
+        CHECK(valueRight->key[0]->value() == 100.0f && valueRight->key[1]->value() == 20.0f);
+        CHECK(valueMiddle->key[0]->value() == 50.0f && valueMiddle->key[1]->value() == 10.0f);
+        CHECK(valueMiddle->key[0]->proportionalState() != nullptr);
+        CHECK(valueMiddle->key[0]->proportionalState()->valueWeight[0] == 0.5f);
+        CHECK(valueMiddle->key[1]->proportionalState()->valueWeight[1] == 0.5f);
+        CHECK(valueNode.timeLine()->channelKey(core::TimeKeyType_Blur, 0, 2) == valueMiddle->key[0]);
+        CHECK(!valueNode.timeLine()->hasChannelKey(core::TimeKeyType_Blur, 0, 3));
 
         bool undoneValueAgain = true;
         CHECK(stack.undo(&undoneValueAgain).isEmpty());

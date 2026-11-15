@@ -1,6 +1,7 @@
 pragma Translator: "AnimeEffects.Properties"
 
 import QtQuick
+import QtQuick.Controls
 
 // The inspector's numeric field: the existing ScrubSpinBox, at the dock's 23px
 // field height. A scrub or typed edit commits ONCE, on release/Enter, so one
@@ -24,7 +25,23 @@ Item {
     // one that is mostly value (reported from the Tools dock, whose fields have no
     // prefix at all).
     property bool reservePrefix: true
+    // Per-field keying: the row model and the channel this field names. A
+    // right-click offers Add/Remove <channel> Key; -1 (or a row without a
+    // channel key) leaves the field with no menu.
+    property var row: null
+    property int channel: -1
+    readonly property string channelKeyAction:
+        row && channel >= 0 ? row.channelKeyAction(channel) : ""
+    // Read AGAIN when the menu opens: a Q_INVOKABLE call in a binding registers no
+    // dependency, so the label above can still name the state from before the last
+    // toggle. The open handler is the authority.
+    property string openMenuAction: ""
     readonly property bool hovered: fieldHover.hovered
+    // The field's two non-hover active states, for a live preview (the mesh
+    // overlay): a scrub keeps the pointer grabbed, so it stays true even when
+    // the pointer leaves the field's rectangle mid-drag.
+    readonly property bool scrubbing: field.scrubbing
+    readonly property bool editing: field.editing
     signal valueEdited(real value)
 
     implicitHeight: 23
@@ -81,6 +98,24 @@ Item {
     HoverHandler {
         id: fieldHover
         enabled: root.enabled
+    }
+
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        enabled: root.enabled && root.channel >= 0 && root.row
+        onSingleTapped: {
+            root.openMenuAction = root.row ? root.row.channelKeyAction(root.channel) : ""
+            if (root.openMenuAction !== "")
+                keyMenu.popup()
+        }
+    }
+
+    Menu {
+        id: keyMenu
+        MenuItem {
+            text: root.openMenuAction
+            onTriggered: if (root.row) root.row.toggleChannelKey(root.channel)
+        }
     }
 
     Connections {

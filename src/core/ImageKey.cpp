@@ -15,15 +15,15 @@
 namespace core {
 
 //-------------------------------------------------------------------------------------------------
-ImageKey::Data::Data(): mEasings(), mResHandle(), mBlendMode(img::BlendMode_Normal), mImageOffset(), mGridMesh() {}
+ImageStateKey::Data::Data(): mEasings(), mResHandle(), mBlendMode(img::BlendMode_Normal), mImageOffset(), mGridMesh() {}
 
-ImageKey::Data::Data(const Data& aRhs):
+ImageStateKey::Data::Data(const Data& aRhs):
     mEasings(aRhs.mEasings), mResHandle(aRhs.mResHandle), mBlendMode(aRhs.mBlendMode), mImageOffset() {
     setImageOffset(aRhs.mImageOffset);
     mGridMesh = aRhs.mGridMesh;
 }
 
-ImageKey::Data& ImageKey::Data::operator=(const Data& aRhs) {
+ImageStateKey::Data& ImageStateKey::Data::operator=(const Data& aRhs) {
     mEasings = aRhs.mEasings;
     mResHandle = aRhs.mResHandle;
     mBlendMode = aRhs.mBlendMode;
@@ -32,7 +32,7 @@ ImageKey::Data& ImageKey::Data::operator=(const Data& aRhs) {
     return *this;
 }
 
-void ImageKey::Data::setImageOffset(const QVector2D& aOffset) {
+void ImageStateKey::Data::setImageOffset(const QVector2D& aOffset) {
     const QVector2D offset(
         xc_clamp(aOffset.x(), Constant::transMin(), Constant::transMax()),
         xc_clamp(aOffset.y(), Constant::transMin(), Constant::transMax())
@@ -42,10 +42,10 @@ void ImageKey::Data::setImageOffset(const QVector2D& aOffset) {
 }
 
 //-------------------------------------------------------------------------------------------------
-ImageKey::Cache::Cache(): mTexture(), mVirtualTexture(), mSourceSize() {}
-ImageKey::Cache::~Cache() = default;
+ImageStateKey::Cache::Cache(): mTexture(), mVirtualTexture(), mSourceSize() {}
+ImageStateKey::Cache::~Cache() = default;
 
-bool ImageKey::Cache::buildVirtualTexture(const img::ResourceHandle& aResource, const QSize& aSize) {
+bool ImageStateKey::Cache::buildVirtualTexture(const img::ResourceHandle& aResource, const QSize& aSize) {
     resetVirtualTexture();
     auto texture = std::make_unique<VirtualTexture>();
     if (!texture->build(aResource, aSize, mTexture))
@@ -55,48 +55,48 @@ bool ImageKey::Cache::buildVirtualTexture(const img::ResourceHandle& aResource, 
     return true;
 }
 
-void ImageKey::Cache::resetVirtualTexture() { mVirtualTexture.reset(); }
+void ImageStateKey::Cache::resetVirtualTexture() { mVirtualTexture.reset(); }
 
 //-------------------------------------------------------------------------------------------------
-ImageKey::ImageKey():
-    mData(), mCache(), mSleepCount(0), mForceFullTexture(false) {
+ImageStateKey::ImageStateKey():
+    StateKey(), mData(), mCache(), mSleepCount(0), mForceFullTexture(false) {
     mData.resource().setOriginKeeping(true);
 }
 
-TimeKey* ImageKey::createClone() {
+StateKey* ImageStateKey::cloneState() const {
     auto newKey = new ImageKey();
     newKey->mData = this->mData;
     newKey->resetTextureCache();
     return newKey;
 }
 
-void ImageKey::setImage(const img::ResourceHandle& aResource, img::BlendMode aMode) {
+void ImageStateKey::setImage(const img::ResourceHandle& aResource, img::BlendMode aMode) {
     mData.setBlendMode(aMode);
     setImage(aResource);
 }
 
-void ImageKey::setImage(const img::ResourceHandle& aResource) {
+void ImageStateKey::setImage(const img::ResourceHandle& aResource) {
     mData.resource() = aResource;
     resetTextureCache();
 }
 
-void ImageKey::setForceFullTexture(bool aForce) {
+void ImageStateKey::setForceFullTexture(bool aForce) {
     if (mForceFullTexture == aForce)
         return;
     mForceFullTexture = aForce;
     resetTextureCache();
 }
 
-void ImageKey::setImageOffset(const QVector2D& aOffset) { mData.setImageOffset(aOffset); }
+void ImageStateKey::setImageOffset(const QVector2D& aOffset) { mData.setImageOffset(aOffset); }
 
-void ImageKey::setImageOffsetByCenter() {
+void ImageStateKey::setImageOffsetByCenter() {
     if (hasImage()) {
         auto size = mData.resource()->image().pixelSize();
         mData.setImageOffset(QVector2D(-size.width() * 0.5f, -size.height() * 0.5f));
     }
 }
 
-void ImageKey::resetGridMesh(int aCellSize) {
+void ImageStateKey::resetGridMesh(int aCellSize) {
     if (mData.resource()->hasImage()) {
         auto data = mData.resource()->image().data();
         auto size = mData.resource()->image().pixelSize();
@@ -111,7 +111,7 @@ void ImageKey::resetGridMesh(int aCellSize) {
     }
 }
 
-void ImageKey::resetTextureCache() {
+void ImageStateKey::resetTextureCache() {
     mCache.resetVirtualTexture();
     mCache.setSourceSize(QSize());
     if (mData.resource()->hasImage()) {
@@ -221,25 +221,25 @@ void ImageKey::resetTextureCache() {
         // trilinear minification; magnification must stay non-mipmap (see gl::Texture)
         texture.setFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
         // ZERO: the layer shader computes the level itself (LayerDrawingFrag.glsl's sampleLayer and
-        // LayerNode's uniform block), and applies ImageKey::layerLodBias() to its own LOD. A GL bias
+        // LayerNode's uniform block), and applies ImageStateKey::layerLodBias() to its own LOD. A GL bias
         // here would ALSO shift the one path that still uses texture() - magnification - and double
         // the setting if a driver ever applied it to textureLod.
         texture.setLodBias(0.0f);
         // ...and enough samples along an elongated footprint that its SHORT axis is not filtered at
-        // the level its long axis asked for. See ImageKey::layerMaxAnisotropy.
+        // the level its long axis asked for. See ImageStateKey::layerMaxAnisotropy.
         texture.setMaxAnisotropy(layerMaxAnisotropy());
         texture.setWrap(GL_CLAMP_TO_BORDER, QColor(0, 0, 0, 0));
     }
 }
 
-void ImageKey::sleep() {
+void ImageStateKey::sleep() {
     ++mSleepCount;
     if (mSleepCount == 1) {
         mData.resource().setOriginKeeping(false);
     }
 }
 
-void ImageKey::awake() {
+void ImageStateKey::awake() {
     XC_ASSERT(mSleepCount > 0);
     --mSleepCount;
     if (mSleepCount == 0) {
@@ -247,7 +247,7 @@ void ImageKey::awake() {
     }
 }
 
-QJsonObject ImageKey::serializeToJson() const {
+QJsonObject ImageStateKey::serializeToJson() const {
     QJsonObject image;
     image["Identifier"] = mData.resource()->serialAddress()->handle()->identifier();
     // The stable layer id, so a paste can tell two layers apart that were renamed
@@ -285,7 +285,7 @@ void findResourceMatches(
 }
 } // unnamed
 
-bool ImageKey::deserializeFromJson(QJsonObject json, util::LifeLink::Pointee<Project> project) {
+bool ImageStateKey::deserializeFromJson(QJsonObject json, util::LifeLink::Pointee<Project> project) {
     mData.resource().reset();
     // image id
     json = json["Image"].toObject();
@@ -334,7 +334,7 @@ bool ImageKey::deserializeFromJson(QJsonObject json, util::LifeLink::Pointee<Pro
     return true;
 }
 
-bool ImageKey::serialize(Serializer& aOut) const {
+bool ImageStateKey::serialize(Serializer& aOut) const {
     // easing
     aOut.writeEasings(&mData.easing(0), kComponents);
     // image id
@@ -351,7 +351,7 @@ bool ImageKey::serialize(Serializer& aOut) const {
     return aOut.checkStream();
 }
 
-bool ImageKey::deserialize(Deserializer& aIn) {
+bool ImageStateKey::deserialize(Deserializer& aIn) {
     mData.resource().reset();
 
     aIn.pushLogScope("ImageKey");

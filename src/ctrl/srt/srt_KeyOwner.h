@@ -36,6 +36,21 @@ namespace srt {
         bool ownsMoveKey;
         bool ownsRotateKey;
         bool ownsScaleKey;
+        // A migrated property stores its value in a channel map. The typed key
+        // above is then a PROXY owned by this object, seeded from the track and
+        // written back by the SRT command; ownsRotateKey still means "a new key
+        // must be created at the playhead".
+        bool rotateIsTrack;
+        bool rotateTrackProxy;
+        bool scaleIsTrack;
+        bool scaleTrackProxy;
+        bool moveIsTrack;
+        bool moveTrackProxy;
+        // The key pointer is the timeline's BASE VALUE (a static transform), not a
+        // key at the playhead: an edit writes it in place and must not push a key.
+        bool moveIsBaseValue;
+        bool rotateIsBaseValue;
+        bool scaleIsBaseValue;
 
         QMatrix4x4 parentMtx;
         QMatrix4x4 invParentMtx;

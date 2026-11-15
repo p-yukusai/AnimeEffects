@@ -84,7 +84,7 @@ namespace ffd {
         }
         if (aNode && aNode->timeLine())
         {
-            auto imageKey = static_cast<ImageKey *>(aNode->timeLine()->defaultKey(TimeKeyType_Image));
+            auto imageKey = static_cast<ImageKey *>(aNode->timeLine()->baseValue(TimeKeyType_Image));
             if (imageKey) return &imageKey->data().gridMesh();
         }
 #endif

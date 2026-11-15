@@ -814,7 +814,7 @@ void TimeLineHeader::refreshProportional() {
             // each key once (its two markers are one flag).
             core::TimeKeyPos pos = item.target.pos;
             core::TimeKey* key = pos.key();
-            if (!key || key->isDefaultKey() || keys.contains(key))
+            if (!key || key->isBaseValue() || keys.contains(key))
                 continue;
             keys.insert(key);
             if (key->isProportional())

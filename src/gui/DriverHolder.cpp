@@ -14,6 +14,7 @@ void DriverHolder::create(core::Project& aProject, ctrl::GraphicStyle& aGraphicS
     mTimeLineSlot = mProject->onTimeLineModified.connect(this, &DriverHolder::onTimeKeyUpdated);
     mResourceSlot = mProject->onResourceModified.connect(this, &DriverHolder::onResourceUpdated);
     mTreeSlot = mProject->onTreeRestructured.connect(this, &DriverHolder::onTreeRestructured);
+    mSkinSlot = mProject->onSkinWeightsModified.connect(this, &DriverHolder::onSkinWeightsUpdated);
 
     mDriver.reset(new ctrl::Driver(aProject, mDriverResources, aGraphicStyle, mViaPoint));
     onVisualUpdated();
@@ -25,6 +26,7 @@ void DriverHolder::destroy() {
         mProject->onTimeLineModified.disconnect(mTimeLineSlot);
         mProject->onResourceModified.disconnect(mResourceSlot);
         mProject->onTreeRestructured.disconnect(mTreeSlot);
+        mProject->onSkinWeightsModified.disconnect(mSkinSlot);
         mProject.reset();
     }
 }
@@ -53,6 +55,14 @@ void DriverHolder::onResourceUpdated(core::ResourceEvent& aEvent, bool aUndo) {
 void DriverHolder::onTreeRestructured(core::ObjectTreeEvent& aEvent, bool aUndo) {
     if (mDriver) {
         mDriver->updateTree(aEvent, aUndo);
+        onVisualUpdated();
+    }
+}
+
+void DriverHolder::onSkinWeightsUpdated(core::ObjectNode& aOwner, bool aUndo) {
+    (void)aUndo;
+    if (mDriver) {
+        mDriver->updateSkinWeights(aOwner);
         onVisualUpdated();
     }
 }

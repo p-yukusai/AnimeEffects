@@ -14,11 +14,16 @@ add_library(${PROJECT_NAME}
     BoneInfluenceMap.cpp BoneInfluenceMap.h
     BoneKey.cpp BoneKey.h
     BoneKeyUpdater.cpp BoneKeyUpdater.h
+    BonePolygonIndex.cpp BonePolygonIndex.h
     BoneShape.cpp BoneShape.h
     CameraInfo.cpp CameraInfo.h
+    ChannelKey.cpp ChannelKey.h
+    ChannelSpec.cpp ChannelSpec.h
+    ChannelTrack.cpp ChannelTrack.h
     ClippingFrame.cpp ClippingFrame.h
     Constant.h
     BlurKey.h
+    BlurStateKey.cpp BlurStateKey.h
     FormatVersion.h
     DepthKey.cpp DepthKey.h
     Deserializer.cpp Deserializer.h
@@ -31,31 +36,38 @@ add_library(${PROJECT_NAME}
     FolderNode.cpp FolderNode.h
     Frame.h
     GridMesh.cpp GridMesh.h
+    GridWeightsRemap.cpp GridWeightsRemap.h
     HSVKey.cpp
     HeightMap.cpp HeightMap.h
     HsvKey.h
+    HSVStateKey.cpp HSVStateKey.h
     ImageKey.cpp ImageKey.h
     ImagePyramid.cpp ImagePyramid.h
     MaskPyramid.cpp MaskPyramid.h
     ImageKeyUpdater.cpp ImageKeyUpdater.h
+    KeyId.cpp KeyId.h
+    KeyProportional.h
     LayerMesh.cpp LayerMesh.h
     LayerNode.cpp LayerNode.h
     MeshKey.cpp MeshKey.h
     MeshKeyUtil.cpp MeshKeyUtil.h
     MeshTransformer.cpp MeshTransformer.h
     MeshTransformerResource.cpp MeshTransformerResource.h
+    MoveEvaluator.cpp MoveEvaluator.h
     MoveKey.cpp MoveKey.h
+    MoveStateKey.cpp MoveStateKey.h
     ObjectNode.h
     ObjectNodeUtil.cpp ObjectNodeUtil.h
     ObjectTree.cpp ObjectTree.h
     ObjectTreeEvent.cpp ObjectTreeEvent.h
     ObjectTreeNotifier.cpp ObjectTreeNotifier.h
     ObjectType.h
-    OpaKey.cpp OpaKey.h
+    OpacityKey.cpp OpacityKey.h
     PoseKey.cpp PoseKey.h
     PosePalette.cpp PosePalette.h
     Project.cpp Project.h
     ProjectEvent.cpp ProjectEvent.h
+    PropertyTrack.cpp PropertyTrack.h
     RenderInfo.h
     Renderer.h
     ResourceEvent.cpp ResourceEvent.h
@@ -66,6 +78,9 @@ add_library(${PROJECT_NAME}
     ScaleKey.cpp ScaleKey.h
     Serializer.cpp Serializer.h
     ShaderHolder.cpp ShaderHolder.h
+    SkinWeights.cpp SkinWeights.h
+    StateKey.cpp StateKey.h
+    StateTrack.cpp StateTrack.h
     TimeCacheAccessor.cpp TimeCacheAccessor.h
     TimeCacheLock.cpp TimeCacheLock.h
     TimeFormat.cpp TimeFormat.h
@@ -81,6 +96,7 @@ add_library(${PROJECT_NAME}
     TimeLineEvent.cpp TimeLineEvent.h
     MaskKey.cpp MaskKey.h
     WaveKey.h
+    WaveStateKey.cpp WaveStateKey.h
     WavePass.h
     WorldBlurMath.h
 )

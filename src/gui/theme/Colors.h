@@ -228,7 +228,7 @@ inline QColor paletteColor(const char* aHex, double aAlpha = 1.0) {
 // per theme — its column is overridden in light()/dark() below.
 // ---------------------------------------------------------------------------
 enum KeyColorToken { kKeyBase, kKeyMove, kKeyRotate, kKeyScale, kKeyDepth,
-                     kKeyOpa, kKeyBone, kKeyPose, kKeyMesh, kKeyFFD,
+                     kKeyOpacity, kKeyBone, kKeyPose, kKeyMesh, kKeyFFD,
                      kKeyImage, kKeyHSV, kKeyBlur, kKeyWave, kKeyMask, kKeyCount };
 static constexpr int kKeyColorRow[] = {
     kTailwindNeutralRow, // baseKey  (neutral)
@@ -236,7 +236,7 @@ static constexpr int kKeyColorRow[] = {
     13,                  // rotateKey (purple)
     14,                  // scaleKey (fuchsia)
     16,                  // depthKey (rose)
-    2,                   // opaKey   (amber)
+    2,                   // opacityKey   (amber)
     4,                   // boneKey  (lime)
     5,                   // poseKey  (green)
     6,                   // meshKey  (emerald)
@@ -283,7 +283,7 @@ static constexpr int kKeyColorColumnDark = 4;
 // WHICH COMPONENTS LIE ON AN AXIS. The first and second component of every
 // type whose values are an X/Y pair: Move, Scale and Image (named "X"/"Y") and
 // Blur (its two radii, "Radius X"/"Radius Y"). Blur's third component is an
-// angle. Rotate's angle, Depth, Opa and HSV's three values have no axis. No
+// angle. Rotate's angle, Depth, Opacity and HSV's three values have no axis. No
 // graphable channel is a Z today: Depth is a value the design leaves on its
 // type's hue, and the two angles are not axes - the Z cell is stated for
 // completeness of the convention.
@@ -387,7 +387,7 @@ struct Colors {
     QColor rotateKey;
     QColor scaleKey; // Scale, rotate & transform
     QColor depthKey;
-    QColor opaKey;
+    QColor opacityKey;
     QColor boneKey;
     QColor poseKey;
     QColor meshKey;
@@ -474,7 +474,7 @@ struct Colors {
             paletteColor(kTailwindRows[kKeyColorRow[kKeyRotate]][kKeyColorColumnLight]), // rotateKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyScale]][kKeyColorColumnLight]), // scaleKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyDepth]][kKeyColorColumnLight]), // depthKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpa]][kKeyColorColumnLight]), // opaKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpacity]][kKeyColorColumnLight]), // opacityKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBone]][kKeyColorColumnLight]), // boneKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyPose]][kKeyColorColumnLight]), // poseKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyMesh]][kKeyColorColumnLight]), // meshKey
@@ -546,7 +546,7 @@ struct Colors {
             paletteColor(kTailwindRows[kKeyColorRow[kKeyRotate]][kKeyColorColumnDark]), // rotateKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyScale]][kKeyColorColumnDark]), // scaleKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyDepth]][kKeyColorColumnDark]), // depthKey
-            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpa]][kKeyColorColumnDark]), // opaKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyOpacity]][kKeyColorColumnDark]), // opacityKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBone]][kKeyColorColumnDark]), // boneKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyPose]][kKeyColorColumnDark]), // poseKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyMesh]][kKeyColorColumnDark]), // meshKey
@@ -643,7 +643,7 @@ inline QColor keyTypeColor(const Colors& aColors, core::TimeKeyType aType) {
     case core::TimeKeyType_Rotate: return aColors.rotateKey;
     case core::TimeKeyType_Scale: return aColors.scaleKey;
     case core::TimeKeyType_Depth: return aColors.depthKey;
-    case core::TimeKeyType_Opa: return aColors.opaKey;
+    case core::TimeKeyType_Opacity: return aColors.opacityKey;
     case core::TimeKeyType_Bone: return aColors.boneKey;
     case core::TimeKeyType_Pose: return aColors.poseKey;
     case core::TimeKeyType_Mesh: return aColors.meshKey;

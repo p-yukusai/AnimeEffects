@@ -18,7 +18,8 @@ Item {
     property string label: ""
     default property alias content: fields.data
 
-    implicitHeight: 26
+    // One 28px row with a 24px field: two pixels of breathing room above and below.
+    implicitHeight: theme.toolFieldHeight + 4
     width: parent ? parent.width : 0
 
     Text {
@@ -40,7 +41,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 16
         anchors.verticalCenter: parent.verticalCenter
-        height: 23
+        height: theme.toolFieldHeight
         spacing: 6
     }
 }

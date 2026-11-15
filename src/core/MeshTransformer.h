@@ -1,6 +1,7 @@
 #ifndef CORE_MESHTRANSFORMER_H
 #define CORE_MESHTRANSFORMER_H
 
+#include <vector>
 #include <QScopedPointer>
 #include "util/NonCopyable.h"
 #include "util/ArrayBlock.h"
@@ -44,6 +45,14 @@ private:
     gl::BufferObject* mOutPositions;
     gl::BufferObject* mOutXArrows;
     gl::BufferObject* mOutYArrows;
+    // The uniform-block palette. Allocated to the full declared block once (so
+    // the block is always backed), then only the required prefix is uploaded.
+    // Null until the first skinned draw.
+    QScopedPointer<gl::BufferObject> mPaletteBuffer;
+    // Reused padding buffer for a palette shorter than the map's bone count (a
+    // cleared palette / a pose key older than the skeleton). Empty in the common
+    // case, where the palette's own storage is uploaded.
+    std::vector<PosePalette::DualQuaternion> mPaletteUpload;
 };
 
 } // namespace core

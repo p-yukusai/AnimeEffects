@@ -57,6 +57,10 @@ public:
     util::Signaler<void()> onFrameUpdated;
     util::Signaler<void()> onTimeFormatChanged;
     util::Signaler<void(bool)> onPlayBackStateChanged;
+    // The timeline's Link/Separate Channels view state changed. The row HEIGHTS
+    // may differ after it (one grouped lane instead of N channel lanes), so the
+    // dock rebuilds the tree's rows and pushes them back. No document edit.
+    util::Signaler<void()> onChannelGroupingChanged;
     // Vertical scroll request (MMB pan or keyboard); the object tree applies
     // it, clamps to its own range, and syncs the actual value back
     util::Signaler<void(int)> onVerticalScrollRequested;

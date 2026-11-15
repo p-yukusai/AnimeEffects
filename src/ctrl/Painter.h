@@ -105,6 +105,30 @@ public:
         mDrawer.drawBrushTip(aCenter, aRadius, aHardness, aInk);
     }
 
+    // ONE AUTHORED-WEIGHT FIELD. The mesh's triangles are drawn with the heat ramp inside the
+    // fragment shader, from ONE weight per vertex: the GPU interpolates across each triangle,
+    // so the field between the control values is the surface itself. There is no image, no
+    // screen-sized intermediate and no CPU rasterisation - the primitive is resolution
+    // independent and covers exactly the triangles the mesh has.
+    //
+    // `positions` is the mesh in its own space, `modelView` takes it to clip space (the camera
+    // product the caller's mode already uses), `indices` is the mesh's own element buffer. The
+    // QPainter brush is irrelevant (this is not a QPainter primitive) and the draw lands in the
+    // CURRENT framebuffer, after the artwork: it is a surface wash over the picture.
+    struct WeightField {
+        const gl::Vector3* positions = nullptr;
+        const float* weights = nullptr;
+        int vertexCount = 0;
+        gl::BufferObject* indices = nullptr;
+        int indexCount = 0;
+        QMatrix4x4 modelView;
+    };
+    // Below this a fragment is not part of the field (the fragment shader discards it):
+    // KEEP IN STEP with the literal in the shader. It is the same number the old surface
+    // wash used, so the field's edge did not move when the rasteriser did.
+    static constexpr float kWeightFieldMinWeight = 0.002f;
+    void drawWeightField(const WeightField& aField);
+
     virtual QPaintEngine::Type type() const { return QPaintEngine::OpenGL2; }
 
     virtual bool begin(QPaintDevice* aDevPtr);
@@ -147,11 +171,16 @@ private:
     void syncBrush(const QBrush& aBrush);
     void syncPen(const QPen& aPen);
     void syncRenderHints(QPainter::RenderHints aHints);
+    // Built on the first field, not in the constructor: the overlay engine is created in
+    // initializeGL for every host, and only one tool ever draws a weight field.
+    void ensureWeightFieldProgram();
 
     gl::PrimitiveDrawer mDrawer;
     gl::FontDrawer mFontDrawer;
     TextureCaches mTextureCaches;
     TextCaches mTextCaches;
+    gl::EasyShaderProgram mWeightFieldProgram;
+    bool mWeightFieldReady = false;
 };
 
 //-------------------------------------------------------------------------------------------------

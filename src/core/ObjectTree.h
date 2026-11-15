@@ -81,6 +81,12 @@ private:
     void insertNode(const util::TreePos& aPos, ObjectNode* aNode);
     bool serializeNode(Serializer& aOut, const ObjectNode& aNode) const;
     bool deserializeNode(Deserializer& aIn, ObjectNode* aParent);
+    // Format 0.22: the authored skin-weight block carried inside every
+    // ObjNode block. Its node references are resolved by the tree's deferred
+    // ID solver, because a record names descendants that are serialized after
+    // its owner.
+    bool serializeSkinWeights(Serializer& aOut, const ObjectNode& aNode) const;
+    bool deserializeSkinWeights(Deserializer& aIn, ObjectNode& aNode);
     ObjectNode* createSerialNode(int aType);
 
     util::LifeLink mLifeLink;

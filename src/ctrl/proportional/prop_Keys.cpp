@@ -2,6 +2,8 @@
 
 #include <QtGlobal>
 #include "ctrl/graph/graph_Channel.h"
+#include "core/ChannelKey.h"
+#include "core/ChannelSpec.h"
 
 namespace ctrl {
 namespace proportional {
@@ -29,8 +31,13 @@ int weightComponentCount(core::TimeKeyType aType) {
 // that flat value, i.e. the key has no value fraction of its own but its TIME
 // fraction is a meaningful stand-in (see rebaseState's flat-span rule). Used both
 // by rebaseState and by ValueReflow's migration of states written before that rule.
+int keyComponent(const core::TimeKey& aKey);
+
 bool flatValueOnKey(const core::TimeKey& aKey, const Bounds& aBounds, int aComponent) {
     if (!aBounds.left || !aBounds.right)
+        return false;
+    const int own = keyComponent(aKey);
+    if (own >= 0 && aComponent != own)
         return false;
     const graph::Channel channel(aKey.type(), aComponent);
     const double leftValue = static_cast<double>(channel.value(*aBounds.left));
@@ -42,6 +49,15 @@ bool flatValueOnKey(const core::TimeKey& aKey, const Bounds& aBounds, int aCompo
 }
 
 double frameOf(const core::TimeKey& aKey) { return static_cast<double>(aKey.frame()); }
+
+// A channel-backed key owns exactly one component; a bundle key owns all of its
+// type's graphable components.
+int keyComponent(const core::TimeKey& aKey) {
+    if (const auto* channel = dynamic_cast<const core::ChannelKey*>(&aKey)) {
+        return channel->component();
+    }
+    return -1;
+}
 
 } // namespace
 
@@ -108,8 +124,10 @@ core::TimeKey::Proportional rebaseState(const core::TimeKey& aKey, const Bounds&
     // else: the two bounds share a frame, so there is no fraction to store; the
     // frame coordinate freezes at the key's current one.
 
-    const int count = weightComponentCount(aKey.type());
-    for (int component = 0; component < count; ++component) {
+    const int own = keyComponent(aKey);
+    const int count = own >= 0 ? 1 : weightComponentCount(aKey.type());
+    for (int index = 0; index < count; ++index) {
+        const int component = own >= 0 ? own : index;
         const graph::Channel channel(aKey.type(), component);
         const double leftValue = static_cast<double>(channel.value(*aBounds.left));
         const double rightValue = static_cast<double>(channel.value(*aBounds.right));
@@ -169,6 +187,9 @@ bool projectedValue(const core::TimeKey& aKey, const Bounds& aBounds, int aCompo
         return false;
     if (aComponent < 0 || core::TimeKey::kMaxProportionalComponents <= aComponent)
         return false;
+    const int own = keyComponent(aKey);
+    if (own >= 0 && aComponent != own)
+        return false;
     if (aComponent >= weightComponentCount(aKey.type()))
         return false;
     if (!state->valueValid[aComponent])
@@ -189,8 +210,10 @@ void projectValues(core::TimeKey& aKey, const Bounds& aBounds) {
     if (!state)
         return;
 
-    const int count = weightComponentCount(aKey.type());
-    for (int component = 0; component < count; ++component) {
+    const int own = keyComponent(aKey);
+    const int count = own >= 0 ? 1 : weightComponentCount(aKey.type());
+    for (int index = 0; index < count; ++index) {
+        const int component = own >= 0 ? own : index;
         if (!state->valueValid[component])
             continue; // frozen coordinate: leave the stored value untouched
 
@@ -223,59 +246,59 @@ void ValueReflow::capture(core::TimeLine& aLine, core::TimeKeyType aType,
         group = &mGroups.last();
     }
 
-    const core::TimeLine::MapType& map = aLine.map(aType);
-    const int count = weightComponentCount(aType);
+    const auto captureMap = [&](const core::TimeLine::MapType& aMap, int aComponent) {
+        const bool channelBacked = aComponent >= 0;
+        const int count = channelBacked ? 1 : weightComponentCount(aType);
+        for (core::TimeKey* key : aMap) {
+            if (!key || key->isBaseValue() || !key->isProportional())
+                continue;
 
-    for (core::TimeKey* key : map) {
-        // The default key is not an authored position, and an absolute key does
-        // not follow anything: neither belongs in a reflow.
-        if (!key || key->isDefaultKey() || !key->isProportional())
-            continue;
-
-        bool alreadyCaptured = false;
-        for (const Entry& entry : group->entries) {
-            if (entry.key == key) {
-                alreadyCaptured = true;
-                break;
-            }
-        }
-        if (alreadyCaptured)
-            continue;
-
-        Entry entry;
-        entry.key = key;
-        entry.edited = aEditedKeys.contains(key);
-        entry.baseState = *key->proportionalState();
-        for (int component = 0; component < count; ++component) {
-            entry.baseValues[component] = graph::Channel(aType, component).value(*key);
-        }
-
-        // The pre-edit map decides which pair this key belongs to. A stale pair
-        // is normalized here, ONCE, and the result is never re-derived by
-        // apply(): the fixed weights are what keeps the gesture drift-free.
-        const Bounds bounds = findBounds(map, *key);
-        const bool stale = boundsChanged(*key, bounds);
-        entry.nextState = stale ? rebaseState(*key, bounds) : entry.baseState;
-
-        // MIGRATION for a state written before the flat-span rule: the key sits
-        // on a flat value (so it has no fraction of its own), its time weight
-        // exists, and the old state froze the value. Adopt the time fraction for
-        // that component ONCE, exactly as a fresh rebase would, without touching
-        // the stored pair or the other components. Without this, a project
-        // authored before the rule keeps the value axis inert until the key is
-        // re-marked.
-        if (!stale) {
-            const int count = weightComponentCount(aType);
-            for (int component = 0; component < count; ++component) {
-                if (!entry.nextState.valueValid[component] && entry.nextState.timeValid
-                    && flatValueOnKey(*key, bounds, component)) {
-                    entry.nextState.valueValid[component] = true;
-                    entry.nextState.valueWeight[component] = entry.nextState.timeWeight;
+            bool alreadyCaptured = false;
+            for (const Entry& entry : group->entries) {
+                if (entry.key == key) {
+                    alreadyCaptured = true;
+                    break;
                 }
             }
-        }
+            if (alreadyCaptured)
+                continue;
 
-        group->entries.append(entry);
+            Entry entry;
+            entry.key = key;
+            entry.component = aComponent;
+            entry.edited = aEditedKeys.contains(key);
+            entry.baseState = *key->proportionalState();
+            for (int i = 0; i < count; ++i) {
+                const int component = channelBacked ? aComponent : i;
+                entry.baseValues[channelBacked ? 0 : i] =
+                    graph::Channel(aType, component).value(*key);
+            }
+
+            const Bounds bounds = findBounds(aMap, *key);
+            const bool stale = boundsChanged(*key, bounds);
+            entry.nextState = stale ? rebaseState(*key, bounds) : entry.baseState;
+
+            if (!stale) {
+                for (int i = 0; i < count; ++i) {
+                    const int component = channelBacked ? aComponent : i;
+                    if (!entry.nextState.valueValid[component] && entry.nextState.timeValid
+                        && flatValueOnKey(*key, bounds, component)) {
+                        entry.nextState.valueValid[component] = true;
+                        entry.nextState.valueWeight[component] = entry.nextState.timeWeight;
+                    }
+                }
+            }
+
+            group->entries.append(entry);
+        }
+    };
+
+    if (core::TimeLine::usesChannelTracks(aType)) {
+        for (int c = 0; c < core::propertyChannelCount(aType); ++c) {
+            captureMap(aLine.channelMap(aType, c), c);
+        }
+    } else {
+        captureMap(aLine.map(aType), -1);
     }
 }
 
@@ -292,11 +315,13 @@ void ValueReflow::apply() {
         if (!group.line)
             continue;
 
-        const core::TimeLine::MapType& map = group.line->map(group.type);
         for (Entry& entry : group.entries) {
             core::TimeKey* key = entry.key;
             if (!key)
                 continue;
+            const core::TimeLine::MapType& map = entry.component >= 0
+                ? group.line->channelMap(group.type, entry.component)
+                : group.line->map(group.type);
 
             // The key must still be the map's entry at its own frame: a key
             // deleted or replaced during the gesture has left this reflow.
@@ -306,22 +331,14 @@ void ValueReflow::apply() {
             const Bounds bounds = findBounds(map, *key);
 
             if (entry.edited) {
-                // Explicitly edited: its own weight is re-derived from the
-                // value the caller just wrote, and nothing is projected onto
-                // it. This is exact, so repeating it cannot drift.
                 rebase(*key, bounds);
                 continue;
             }
 
             if (!sameBoundIds(entry.nextState, bounds)) {
-                // A different key became a bound. Re-derive ONCE from the
-                // current position and remember it: re-deriving on every apply
-                // would freeze the key instead of letting it follow the edit.
                 rebase(*key, bounds);
                 entry.nextState = *key->proportionalState();
             } else {
-                // A bound's frame or value changed, or nothing changed: the
-                // fixed weights stay, and only the bounds are read.
                 key->setProportionalState(entry.nextState);
             }
 
@@ -335,17 +352,23 @@ void ValueReflow::restore() {
         if (!group.line)
             continue;
 
-        const core::TimeLine::MapType& map = group.line->map(group.type);
-        const int count = weightComponentCount(group.type);
         for (Entry& entry : group.entries) {
             core::TimeKey* key = entry.key;
             if (!key)
                 continue;
+            const core::TimeLine::MapType& map = entry.component >= 0
+                ? group.line->channelMap(group.type, entry.component)
+                : group.line->map(group.type);
             if (map.value(key->frame()) != key)
                 continue;
 
-            for (int component = 0; component < count; ++component) {
-                graph::Channel(group.type, component).writeValue(*key, entry.baseValues[component]);
+            if (entry.component >= 0) {
+                graph::Channel(group.type, entry.component).writeValue(*key, entry.baseValues[0]);
+            } else {
+                const int count = weightComponentCount(group.type);
+                for (int component = 0; component < count; ++component) {
+                    graph::Channel(group.type, component).writeValue(*key, entry.baseValues[component]);
+                }
             }
             key->setProportionalState(entry.baseState);
         }

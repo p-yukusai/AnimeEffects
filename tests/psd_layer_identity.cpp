@@ -686,7 +686,7 @@ int testGroupMaskBecomesAFolderMatte()
     core::MaskKey* maskKey = nullptr;
     for (core::ObjectNode* node : project.objectTree().topNode()->children()) {
         if (!node->timeLine()) continue;
-        if (auto* key = static_cast<core::MaskKey*>(node->timeLine()->defaultKey(core::TimeKeyType_Mask)))
+        if (auto* key = static_cast<core::MaskKey*>(node->timeLine()->baseValue(core::TimeKeyType_Mask)))
             maskKey = key;
     }
     CHECK(maskKey != nullptr);
@@ -744,7 +744,7 @@ int testLayerMaskIsReportedOnce()
         core::MaskKey* maskKey = nullptr;
         for (core::ObjectNode* node : project.objectTree().topNode()->children()) {
             if (!node->timeLine()) continue;
-            if (auto* key = static_cast<core::MaskKey*>(node->timeLine()->defaultKey(core::TimeKeyType_Mask)))
+            if (auto* key = static_cast<core::MaskKey*>(node->timeLine()->baseValue(core::TimeKeyType_Mask)))
                 maskKey = key;
         }
         CHECK(maskKey != nullptr);

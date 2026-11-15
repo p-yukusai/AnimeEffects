@@ -19,6 +19,7 @@
 #include "ctrl/GraphicStyle.h"
 #include "ctrl/DriverResources.h"
 #include "ctrl/UILogger.h"
+#include "util/Signaler.h"
 
 namespace ctrl {
 
@@ -60,6 +61,15 @@ public:
     void setGraphModifiers(Qt::KeyboardModifiers aModifiers);
     GraphEditor* graphEditor() { return mGraphEditor.data(); }
     MaskEditor* maskEditor() { return mMaskEditor; }
+    // The Bone editor the current tool routes to (null unless ToolType_Bone).
+    // The paint-weights panel asks it for the selected bone's state and sends it
+    // the Bake/Revert/Rebake/Clear actions; the editor owns the selection.
+    BoneEditor* boneEditor() { return mBoneEditor; }
+    const BoneEditor* boneEditor() const { return mBoneEditor; }
+    // A SkinWeights change (a stroke frame, a bake, an undo) needs one thing from
+    // the driver: a re-blend before the next frame reads the rebuilt map. The
+    // owner's key caches were already rebuilt by BoneKeyUpdater.
+    void updateSkinWeights(core::ObjectNode& aOwner);
     // the editor the current tool routes to (the mask editor among them): the viewport asks it for
     // the band a stroke changed, so a frame can repaint only that band
     IEditor* editor() { return mEditor.get(); }
@@ -76,9 +86,23 @@ public:
     // clears the mask the mask tool is editing (one undo step)
     void clearMask();
 
+    // The PaintWeights panel's actions. Each refuses (and the editor logs why)
+    // unless the Bone editor is up with a selected bone and a document key.
+    bool bakeBoneWeights(bool aReplace, QString* aError = nullptr);
+    bool revertBoneWeights(QString* aError = nullptr);
+    bool clearBoneWeights(QString* aError = nullptr);
+
+    // The selected bone or its authored state changed: the dock re-reads
+    // boneEditor()->weightsState().
+    util::Signaler<void()> onBoneWeightsStateChanged;
+
 private:
     static void drawOutline(const core::RenderInfo& aRenderInfo, QPainter& aPainter) ;
     static void drawBanMark(const core::RenderInfo& aRenderInfo, QPainter& aPainter);
+    // Merge an event into the pending blend without notifying the editor (the
+    // weight path is not a key edit; recreating the mode mid-stroke would drop
+    // the stroke's target set).
+    void markPendingBlend(core::TimeLineEvent& aEvent);
 
     core::Project& mProject;
     DriverResources& mResources;
@@ -94,6 +118,8 @@ private:
     // outlives every tool switch, so it is created once and never reset.
     QScopedPointer<GraphEditor> mGraphEditor;
     MaskEditor* mMaskEditor;
+    // raw: like mMaskEditor, cleared when the Bone tool's editor is destroyed
+    BoneEditor* mBoneEditor;
     core::ObjectNode* mCurrentNode;
     int mOnUpdating;
     bool mRejectedTarget;

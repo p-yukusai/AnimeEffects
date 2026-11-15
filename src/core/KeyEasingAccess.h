@@ -2,12 +2,13 @@
 #define CORE_KEYEASINGACCESS_H
 
 #include "core/BlurKey.h"
+#include "core/ChannelKey.h"
 #include "core/DepthKey.h"
 #include "core/FFDKey.h"
 #include "core/HsvKey.h"
 #include "core/ImageKey.h"
 #include "core/MoveKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/PoseKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
@@ -31,6 +32,9 @@ namespace core {
 //   * a type that carries no easing (Bone, Mesh) answers null, as does any
 //     out-of-range component.
 inline util::Easing::Param* keyEasingOf(TimeKey& aKey, const TimeKeyType aType, const int aComponent) {
+    if (auto* channelKey = dynamic_cast<ChannelKey*>(&aKey)) {
+        return channelKey->component() == aComponent ? &channelKey->easing() : nullptr;
+    }
     switch (aType) {
     case TimeKeyType_Move:
         return &static_cast<MoveKey&>(aKey).data().easing(aComponent);
@@ -40,8 +44,8 @@ inline util::Easing::Param* keyEasingOf(TimeKey& aKey, const TimeKeyType aType, 
         return &static_cast<ScaleKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_Depth:
         return &static_cast<DepthKey&>(aKey).data().easing(aComponent);
-    case TimeKeyType_Opa:
-        return &static_cast<OpaKey&>(aKey).data().easing(aComponent);
+    case TimeKeyType_Opacity:
+        return &static_cast<OpacityKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_Blur:
         return &static_cast<BlurKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_HSV:
@@ -61,6 +65,9 @@ inline util::Easing::Param* keyEasingOf(TimeKey& aKey, const TimeKeyType aType, 
 
 inline const util::Easing::Param* keyEasingOf(
     const TimeKey& aKey, const TimeKeyType aType, const int aComponent) {
+    if (const auto* channelKey = dynamic_cast<const ChannelKey*>(&aKey)) {
+        return channelKey->component() == aComponent ? &channelKey->easing() : nullptr;
+    }
     switch (aType) {
     case TimeKeyType_Move:
         return &static_cast<const MoveKey&>(aKey).data().easing(aComponent);
@@ -70,8 +77,8 @@ inline const util::Easing::Param* keyEasingOf(
         return &static_cast<const ScaleKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_Depth:
         return &static_cast<const DepthKey&>(aKey).data().easing(aComponent);
-    case TimeKeyType_Opa:
-        return &static_cast<const OpaKey&>(aKey).data().easing(aComponent);
+    case TimeKeyType_Opacity:
+        return &static_cast<const OpacityKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_Blur:
         return &static_cast<const BlurKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_HSV:

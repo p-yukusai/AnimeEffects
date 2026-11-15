@@ -16,6 +16,9 @@
 #include <QtConcurrent>
 #include <QApplication>
 #include <QQuickStyle>
+#include <QQuickWindow>
+#include <QStyleHints>
+#include "gui/qml/QmlTheme.h"
 
 // This MSVC debugger is not useful and only serves to pain me in the ways it unexpectedly fails,
 // I'm sure it worked wonderfully before, but it sure doesn't anymore
@@ -153,6 +156,25 @@ int entryPoint(int argc, char* argv[]) {
     // background/contentItem with the app's own, so the style contributes
     // behaviour and defaults, not paint.
     QQuickStyle::setStyle(QStringLiteral("Basic"));
+    // The header owns the view settings and the layout toggles, and they only exist
+    // inside the QML MenuBar. On macOS Qt would otherwise move the MenuBar to the
+    // native screen-top bar, where the delegates (and therefore the controls beside
+    // the menus) are not drawn; force the in-window bar so the header is the same
+    // surface on every platform. This is the documented opt-out for a native
+    // MenuBar (MenuBar QML docs, "Native menu bars").
+    QGuiApplication::setAttribute(Qt::AA_DontUseNativeMenuBar, true);
+    // The header's menu popups are Qt Quick controls in their own windows; a
+    // rounded QML background is only rounded on screen when the window behind it
+    // has an alpha buffer. Qt's own popup window asks for a transparent clear color,
+    // but the application format must allow alpha BEFORE the first QQuickWindow is
+    // created (QQuickWindow::setDefaultAlphaBuffer docs). The widget popups this
+    // replaces set WA_TranslucentBackground for the same reason.
+    QQuickWindow::setDefaultAlphaBuffer(true);
+    // One tooltip delay for both toolkits: the QML AeToolTip reads QmlTheme's token,
+    // and QWidget's QToolTip reads this platform hint.
+    QGuiApplication::styleHints()->setToolTipWakeUpDelay(
+        std::chrono::milliseconds(gui::QmlTheme::kToolTipDelayMs)
+    );
 
     // application path
     #if defined(Q_OS_DARWIN)

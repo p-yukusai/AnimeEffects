@@ -62,6 +62,10 @@ public:
     // reports the value it actually reached through onScrollUpdated.
     void setScrollOffset(int aOffset);
 
+    // The timeline's Link/Separate Channels view state changed: the row heights
+    // are derived from the lane count, so re-derive them and announce rows().
+    void refreshRows();
+
     // The dock forwards the timeline's frame notification: a mask chip previews the matte
     // at the CURRENT frame, so an animated one has to be re-rendered.
     void frameChanged();

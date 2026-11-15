@@ -317,6 +317,23 @@ void Deserializer::readGL(gl::Vector3* aArray, int aCount) {
     }
 }
 
+bool Deserializer::skipBytes(size_t aBytes) {
+    if (aBytes > getRestSize())
+        return false;
+
+    // StreamReader::skip takes an int; a run can be larger than one chunk even
+    // when it is inside the file, so consume it in chunks.
+    while (aBytes > 0) {
+        const size_t chunk = aBytes < (size_t)std::numeric_limits<int>::max()
+            ? aBytes : (size_t)std::numeric_limits<int>::max();
+        mIn.skip((int)chunk);
+        if (mIn.isFailed())
+            return false;
+        aBytes -= chunk;
+    }
+    return true;
+}
+
 bool Deserializer::bindIDData(void* aData) {
     const int id = mIn.readSInt32();
     if (id >= 0)
@@ -433,6 +450,16 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
     aValue.data = dst.release();
 
     return true;
+}
+
+bool Deserializer::hasBlock(const std::string& aSignature) {
+    if (remainingBytes() < 8) {
+        return false;
+    }
+    const auto pos = mIn.tellg();
+    const std::string bytes = mIn.readString(8);
+    mIn.skipTo(pos);
+    return bytes == aSignature;
 }
 
 bool Deserializer::beginBlock(const std::string& aSignature) {

@@ -4,11 +4,13 @@ import QtQuick
 
 // The tool's MODE row: one icon button per mode, the current one filled.
 //
-// A Flow rather than a fixed grid, because the mode count is not the same for every tool
-// and the dock is resizable: the bone editor has SEVEN (which the widget's 172px dock
-// wrapped onto a second row, leaving the paint and erase glyphs alone on it), while the
-// SR transform has two. Wrapping is therefore the honest layout at any width, and the
-// heading's trailing text is what names the highlighted one.
+// ONE ROW at the dock's width. The bone editor had EIGHT modes when the paint/erase
+// pair was two tools; a four-column grid was used then so the eighth did not sit alone
+// on a second line. The pair is now ONE Envelope brush, so seven modes fit on one row
+// again (7*26 + 6*2 = 194 inside the 212px content), and the grid was forcing a second
+// row with an empty cell for no reason. A Flow wraps only if the dock is made narrower.
+// The order still groups the modes: four rig modes, then Adjust envelope, Envelope
+// brush, Paint weights. The heading's trailing text names the highlighted mode.
 Item {
     id: root
 

@@ -143,6 +143,11 @@ public:
     void resetCamera();
     void setViewportBackground(const QColor& aColor);
     const QColor& viewportBackground() const { return mViewportBackground; }
+    // THE MESH SPACING PREVIEW. Draw this node's mesh wireframe for as long as
+    // the Properties field is hovered/scrubbed/edited, independently of the
+    // persistent "Show mesh" setting. Null clears it. Transient by design: the
+    // target is life-linked so closing the project cannot leave a dangling node.
+    void setMeshPreviewTarget(core::ObjectNode* aNode);
 
     QReadWriteLock& renderingLock() { return mRenderingLock; }
     const QReadWriteLock& renderingLock() const { return mRenderingLock; }
@@ -298,6 +303,7 @@ private:
     QColor mViewportBackground;
     bool mUsingTablet;
     MainViewSetting mViewSetting;
+    util::LinkPointer<core::ObjectNode> mMeshPreviewTarget;
     CanvasMover mCanvasMover;
     bool mMovingCanvasByTool;
     bool mMovingCanvasByKey;

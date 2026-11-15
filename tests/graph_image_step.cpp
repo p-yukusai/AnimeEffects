@@ -38,25 +38,40 @@
 #include <QSurfaceFormat>
 #include <QPointF>
 #include <QString>
+#include <QVersionNumber>
 #include <QVector2D>
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <initializer_list>
+#include <memory>
+#include <sstream>
 
 #include "XCAssert.h"
 #include "cmnd/Stack.h"
 #include "gl/Global.h"
 #include "gl/DeviceInfo.h"
 #include "core/Animator.h"
+#include "core/ChannelKey.h"
+#include "core/Deserializer.h"
+#include "core/FFDKey.h"
 #include "core/Frame.h"
+#include "core/FormatVersion.h"
 #include "core/ImageKey.h"
 #include "core/ObjectNode.h"
 #include "core/Project.h"
+#include "core/Serializer.h"
 #include "core/TimeKeyType.h"
 #include "core/TimeLine.h"
 #include "ctrl/graph/graph_Channel.h"
 #include "ctrl/graph/graph_Curve.h"
+#include "img/ResourceNode.h"
 #include "util/Easing.h"
+#include "util/IDSolver.h"
+#include "util/IProgressReporter.h"
+#include "util/StreamReader.h"
+#include "util/StreamWriter.h"
 
 // The same three GUI stubs graph_curve / creation_select_keys use: core's
 // Project.cpp references AudioPlaybackWidget::deserialize (only for the .aemus
@@ -75,6 +90,14 @@ public:
     void suspend() override {}
     void resume() override {}
     bool isSuspended() const override { return false; }
+};
+
+class NullReporter: public util::IProgressReporter {
+public:
+    void setSection(const QString&) override {}
+    void setMaximum(int) override {}
+    void setProgress(int) override {}
+    bool wasCanceled() const override { return false; }
 };
 
 class HarnessAssertHandler: public XCAssertHandler {
@@ -105,6 +128,8 @@ HarnessErrorHandler gErrorHandler;
             return 1;                                                                                  \
         }                                                                                              \
     } while (false)
+
+bool nearlyEqual(float aLeft, float aRight) { return std::fabs(aLeft - aRight) < 1.0e-5f; }
 
 // The linear value the drawn polyline holds at aFrame: the point is bracketed by
 // the two consecutive emitted points, and a vertical run (the riser) reports its
@@ -316,6 +341,179 @@ int sectionImageOffsetStaircase() {
     return 0;
 }
 
+int sectionImageStateStorage() {
+    core::TimeLine line;
+    auto* base = new core::ImageKey();
+    line.setBaseValue(core::TimeKeyType_Image, base);
+    CHECK(line.baseValue(core::TimeKeyType_Image) == base);
+    CHECK(line.map(core::TimeKeyType_Image).isEmpty());
+    CHECK(line.property(core::TimeKeyType_Image) != nullptr);
+    CHECK(line.property(core::TimeKeyType_Image)->state().baseState() == base);
+
+    auto* key = new core::ImageKey();
+    CHECK(line.adoptKey(core::TimeKeyType_Image, 5, key));
+    CHECK(line.map(core::TimeKeyType_Image).size() == 1);
+    CHECK(line.map(core::TimeKeyType_Image).value(5) == key);
+    CHECK(line.timeKey(core::TimeKeyType_Image, 5) == key);
+    CHECK(!line.isEmpty(core::TimeKeyType_Image));
+
+    CHECK(line.move(core::TimeKeyType_Image, 5, 6));
+    CHECK(line.timeKey(core::TimeKeyType_Image, 5) == nullptr);
+    CHECK(line.timeKey(core::TimeKeyType_Image, 6) == key);
+    return 0;
+}
+
+// An Image state key owns the FFD keys attached to it. Deleting the state key
+// must take those children out of the FFD map in the same undo step, and undo
+// must put both the state key and its children back. This is the path
+// TimeLine::pushRemoveStateCommands exists for; a child left behind would be
+// orphaned in the FFD lane and dangle after the parent is freed.
+int sectionImageStateRemoval() {
+    core::TimeLine line;
+    auto* image = new core::ImageKey();
+    CHECK(line.adoptKey(core::TimeKeyType_Image, 5, image));
+
+    auto* ffd = new core::FFDKey();
+    ffd->data().alloc(4);
+    CHECK(line.adoptKey(core::TimeKeyType_FFD, 5, ffd));
+    image->children().pushBack(ffd);
+
+    cmnd::Stack stack;
+    stack.push(line.createRemover(core::TimeKeyType_Image, 5));
+    CHECK(line.timeKey(core::TimeKeyType_Image, 5) == nullptr);
+    CHECK(line.timeKey(core::TimeKeyType_FFD, 5) == nullptr);
+
+    bool undone = false;
+    stack.undo(&undone);
+    CHECK(undone);
+    CHECK(line.timeKey(core::TimeKeyType_Image, 5) == image);
+    CHECK(line.timeKey(core::TimeKeyType_FFD, 5) == ffd);
+    CHECK(image->children().size() == 1 && image->children().front() == ffd);
+
+    bool redone = false;
+    stack.redo(&redone);
+    CHECK(redone);
+    CHECK(line.timeKey(core::TimeKeyType_Image, 5) == nullptr);
+    CHECK(line.timeKey(core::TimeKeyType_FFD, 5) == nullptr);
+    return 0;
+}
+
+// The legacy Image block is the on-disk shape, but the in-memory key is a
+// StateTrack entry. A load that inserts it into the empty legacy map passes
+// deserialization and then loses every image key. Round-trip one key with a
+// real resource and check the state track, the offset field and the restored
+// offset channels (the 0.24 migration path).
+void fillSolidResource(img::ResourceNode& aResource, const QSize& aSize) {
+    const size_t bytes = size_t(aSize.width()) * aSize.height() * 4;
+    uint8* pixels = new uint8[bytes];
+    std::fill(pixels, pixels + bytes, uint8(255));
+    aResource.updateHandle(XCMemBlock(pixels, bytes), QRect(QPoint(0, 0), aSize));
+}
+
+std::unique_ptr<core::TimeLine> deserializeTimeline(
+    const std::string& aData, img::ResourceNode& aResource, const QVersionNumber& aVersion,
+    bool& aSolved
+) {
+    std::istringstream input(aData);
+    util::LEStreamReader reader(input);
+    util::IDSolver<void*> solver;
+    // The serializer reserves id 0 for null, the one key gets id 1, and its
+    // resource is the next assigned id.
+    solver.pushData(2, &aResource);
+    NullReporter reporter;
+    gl::DeviceInfo device;
+    core::Deserializer in(
+        reader, solver, aData.size() + 1, aVersion, device, reporter, 0
+    );
+    auto loaded = std::unique_ptr<core::TimeLine>(new core::TimeLine());
+    if (!loaded->deserialize(in))
+        return nullptr;
+    aSolved = solver.solve();
+    return loaded;
+}
+
+int sectionImageStateRoundTrip() {
+    img::ResourceNode resource(QStringLiteral("image-state-roundtrip"));
+    fillSolidResource(resource, QSize(32, 32));
+
+    // (a) Authored offset channels round-trip in the 0.25 block. The legacy
+    // ImageKey field stays zero here; playback must take the channels.
+    {
+        core::TimeLine line;
+        auto* key = new core::ImageKey();
+        key->setImage(resource.handle());
+        key->resetGridMesh(8);
+        CHECK(key->data().gridMesh().vertexCount() > 0);
+        CHECK(line.adoptKey(core::TimeKeyType_Image, 5, key));
+        core::ChannelKey& x = line.channelTrack(core::TimeKeyType_Image, 0)->insertKey(5, 12.0f);
+        core::ChannelKey& y = line.channelTrack(core::TimeKeyType_Image, 1)->insertKey(5, -3.0f);
+        CHECK(x.value() == 12.0f && y.value() == -3.0f);
+
+        std::ostringstream bytes;
+        util::StreamWriter writer(bytes);
+        core::Serializer out(writer);
+        CHECK(line.serialize(out));
+
+        bool solved = false;
+        auto loaded = deserializeTimeline(
+            bytes.str(), resource, QVersionNumber(0, AE_PROJECT_FORMAT_MINOR_VERSION), solved
+        );
+        CHECK(loaded != nullptr);
+        CHECK(solved);
+        CHECK(loaded->map(core::TimeKeyType_Image).size() == 1);
+        auto* loadedKey = dynamic_cast<core::ImageKey*>(
+            loaded->timeKey(core::TimeKeyType_Image, 5)
+        );
+        CHECK(loadedKey != nullptr);
+        CHECK(loadedKey == loaded->map(core::TimeKeyType_Image).value(5));
+        CHECK(static_cast<bool>(loadedKey->data().resource()));
+        CHECK(loaded->channelKey(core::TimeKeyType_Image, 0, 5) != nullptr);
+        CHECK(loaded->channelKey(core::TimeKeyType_Image, 1, 5) != nullptr);
+        CHECK(nearlyEqual(loaded->channelKey(core::TimeKeyType_Image, 0, 5)->value(), 12.0f));
+        CHECK(nearlyEqual(loaded->channelKey(core::TimeKeyType_Image, 1, 5)->value(), -3.0f));
+    }
+
+    // (b) A legacy ImageKey offset is migrated by a < 0.25 reader. The same
+    // bytes read as 0.25 carry no offset channel (the block is absent because
+    // no offset was authored), so the compatibility field is not resurrected.
+    {
+        core::TimeLine line;
+        auto* key = new core::ImageKey();
+        key->setImage(resource.handle());
+        key->resetGridMesh(8);
+        key->data().setImageOffset(QVector2D(12.0f, -3.0f));
+        CHECK(line.adoptKey(core::TimeKeyType_Image, 5, key));
+
+        std::ostringstream bytes;
+        util::StreamWriter writer(bytes);
+        core::Serializer out(writer);
+        CHECK(line.serialize(out));
+
+        bool solved = false;
+        auto legacy = deserializeTimeline(bytes.str(), resource, QVersionNumber(0, 24), solved);
+        CHECK(legacy != nullptr);
+        CHECK(solved);
+        CHECK(legacy->map(core::TimeKeyType_Image).size() == 1);
+        CHECK(legacy->channelKey(core::TimeKeyType_Image, 0, 5) != nullptr);
+        CHECK(legacy->channelKey(core::TimeKeyType_Image, 1, 5) != nullptr);
+        CHECK(nearlyEqual(legacy->channelKey(core::TimeKeyType_Image, 0, 5)->value(), 12.0f));
+        CHECK(nearlyEqual(legacy->channelKey(core::TimeKeyType_Image, 1, 5)->value(), -3.0f));
+
+        solved = false;
+        auto current = deserializeTimeline(
+            bytes.str(), resource, QVersionNumber(0, AE_PROJECT_FORMAT_MINOR_VERSION), solved
+        );
+        CHECK(current != nullptr);
+        CHECK(solved);
+        CHECK(current->map(core::TimeKeyType_Image).size() == 1);
+        CHECK(current->channelKey(core::TimeKeyType_Image, 0, 5) == nullptr);
+        CHECK(current->channelKey(core::TimeKeyType_Image, 1, 5) == nullptr);
+        CHECK(nearlyEqual(current->channelBaseValue(core::TimeKeyType_Image, 0), 0.0f));
+        CHECK(nearlyEqual(current->channelBaseValue(core::TimeKeyType_Image, 1), 0.0f));
+    }
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -351,13 +549,15 @@ int main(int argc, char** argv) {
     gl::DeviceInfo dev = makeDeviceInfo();
     gl::DeviceInfo::setInstance(&dev);
 
-    if (sectionImageOffsetStaircase())
+    if (sectionImageOffsetStaircase() || sectionImageStateStorage()
+        || sectionImageStateRemoval() || sectionImageStateRoundTrip())
         return 1;
 
     std::printf(
         "graph_image_step: image-offset staircase proven on a live GL context -- two ImageKeys at "
         "frames 0/24, both components step-held (a Custom easing on the first key leaks nothing at "
-        "frames 1/5/12/23), and buildPolyline draws the step ending on the second key at frame 24\n"
+        "frames 1/5/12/23), and buildPolyline draws the step ending on the second key at frame 24; "
+        "Image state keys round-trip into the state track and removal takes FFD children with them\n"
     );
     return 0;
 }

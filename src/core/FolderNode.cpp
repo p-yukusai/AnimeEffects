@@ -76,17 +76,36 @@ FolderNode::FolderNode(const QString& aName):
 FolderNode::~FolderNode() { qDeleteAll(children()); }
 
 void FolderNode::setDefaultPosture(const QVector2D& aPos) {
-    getOrCreateDefaultKey<MoveKey, TimeKeyType_Move>(mTimeLine)->data().setPos(aPos);
-    getOrCreateDefaultKey<RotateKey, TimeKeyType_Rotate>(mTimeLine);
-    getOrCreateDefaultKey<ScaleKey, TimeKeyType_Scale>(mTimeLine);
+    if (TimeLine::usesChannelTracks(TimeKeyType_Move)) {
+        mTimeLine.setChannelBaseValue(TimeKeyType_Move, 0, aPos.x());
+        mTimeLine.setChannelBaseValue(TimeKeyType_Move, 1, aPos.y());
+        mTimeLine.setChannelBaseValue(TimeKeyType_Move, 2, 0.0f);
+        mTimeLine.setChannelBaseValue(TimeKeyType_Move, 3, 0.0f);
+    } else {
+        getOrCreateBaseValue<MoveKey, TimeKeyType_Move>(mTimeLine)->data().setPos(aPos);
+    }
+    if (!TimeLine::usesChannelTracks(TimeKeyType_Rotate)) {
+        getOrCreateBaseValue<RotateKey, TimeKeyType_Rotate>(mTimeLine);
+    }
+    if (!TimeLine::usesChannelTracks(TimeKeyType_Scale)) {
+        getOrCreateBaseValue<ScaleKey, TimeKeyType_Scale>(mTimeLine);
+    }
 }
 
 void FolderNode::setDefaultDepth(float aValue) {
-    getOrCreateDefaultKey<DepthKey, TimeKeyType_Depth>(mTimeLine)->setDepth(aValue);
+    if (TimeLine::usesChannelTracks(TimeKeyType_Depth)) {
+        mTimeLine.setChannelBaseValue(TimeKeyType_Depth, 0, aValue);
+    } else {
+        getOrCreateBaseValue<DepthKey, TimeKeyType_Depth>(mTimeLine)->setDepth(aValue);
+    }
 }
 
 void FolderNode::setDefaultOpacity(float aValue) {
-    getOrCreateDefaultKey<OpaKey, TimeKeyType_Opa>(mTimeLine)->setOpacity(aValue);
+    if (TimeLine::usesChannelTracks(TimeKeyType_Opacity)) {
+        mTimeLine.setChannelBaseValue(TimeKeyType_Opacity, 0, aValue);
+    } else {
+        getOrCreateBaseValue<OpacityKey, TimeKeyType_Opacity>(mTimeLine)->setOpacity(aValue);
+    }
 }
 
 void FolderNode::grabHeightMap(HeightMap* aNode) { mHeightMap.reset(aNode); }
@@ -99,7 +118,7 @@ bool FolderNode::isCompositeFolder(const TimeInfo&, const TimeCacheAccessor& aAc
     // value is above its epsilon puts the folder on the composite path. The frame
     // is no longer part of the test: the value that plays is already the blended
     // one, so the old "a key exists at or before this frame" proxy only hid static
-    // filters (values on the lane's default key) - see core/FilterActivity.h.
+    // filters (values on the lane's base value) - see core/FilterActivity.h.
     if (mBlendMode != img::BlendMode_Normal)
         return true;
     // A folder with a MATTE composites too, and for the same reason the filter case
@@ -127,7 +146,7 @@ bool FolderNode::isCompositeFolder(const TimeInfo&, const TimeCacheAccessor& aAc
 void FolderNode::prerender(const RenderInfo&, const TimeCacheAccessor&) {}
 
 void FolderNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor) {
-    if (!mIsVisible || aAccessor.get(mTimeLine).opa().isZero() || aInfo.isGrid) return;
+    if (!mIsVisible || aAccessor.get(mTimeLine).opacity().isZero() || aInfo.isGrid) return;
 
     // the export's demand-only pass: the sorted top-level list holds a COMPOSITE folder as one
     // unit, so its children are not visited by the caller - walk them here, mark, draw nothing
@@ -176,7 +195,7 @@ void FolderNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccesso
     gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
 
-    const float ownOpacity = aAccessor.get(mTimeLine).opa().opacity();
+    const float ownOpacity = aAccessor.get(mTimeLine).opacity().opacity();
 
     {
         std::vector<Renderer::SortUnit> units;
@@ -461,7 +480,10 @@ void FolderNode::renderClipper(const RenderInfo& aInfo, const TimeCacheAccessor&
 }
 
 float FolderNode::initialDepth() const {
-    auto key = (DepthKey*)mTimeLine.defaultKey(TimeKeyType_Depth);
+    if (TimeLine::usesChannelTracks(TimeKeyType_Depth)) {
+        return mTimeLine.channelBaseValue(TimeKeyType_Depth, 0);
+    }
+    auto key = (DepthKey*)mTimeLine.baseValue(TimeKeyType_Depth);
     return key ? key->depth() : 0.0f;
 }
 

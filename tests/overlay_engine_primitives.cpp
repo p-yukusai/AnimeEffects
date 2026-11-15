@@ -58,6 +58,7 @@
 #include <QFontMetrics>
 #include <QImage>
 #include <QJsonObject>
+#include <QMatrix4x4>
 #include <QOpenGLFunctions_4_0_Core>
 #include <QOpenGLVersionFunctionsFactory>
 #include <QOpenGLWidget>
@@ -201,7 +202,54 @@ struct Probe {
     int cell;         // kWholeImage, or a 100x150 cell index
     bool expectPainted;
     std::function<void(QPainter&, const QPoint&)> draw; // (painter, cell origin)
+    // A painted probe may also require at least this many pixels: a single
+    // 10px point must be a disc, not the 1px a GL_POINTS draw falls back to
+    // when glPointSize is not applied.
+    int minPixels = 0;
 };
+
+// One weight-field quad at `aOrigin`: a 60x60 square whose weight rises left to right.
+// The geometry is the harness's own, in the scene coordinates the PainterHandle's view
+// matrix uses; the model-view is the same ortho, so the quad lands where it is asked to.
+void drawWeightFieldQuad(QPainter& aPainter, const QPoint& aOrigin, float aLeft, float aRight) {
+    auto* engine = dynamic_cast<ctrl::GLCorePaintEngine*>(aPainter.paintEngine());
+    if (!engine) {
+        std::fprintf(stderr, "FAIL: the weight field was asked to draw without the GL engine\n");
+        std::abort();
+    }
+
+    gl::BufferObject indices(GL_ELEMENT_ARRAY_BUFFER);
+    const GLuint indexData[6] = {0, 1, 2, 0, 2, 3};
+    indices.resetData(6, GL_STATIC_DRAW, indexData);
+
+    const float x0 = aOrigin.x() + 20.0f;
+    const float y0 = aOrigin.y() + 45.0f;
+    const float x1 = x0 + 60.0f;
+    const float y1 = y0 + 60.0f;
+    const gl::Vector3 positions[4] = {
+        gl::Vector3::make(x0, y0, 0.0f),
+        gl::Vector3::make(x1, y0, 0.0f),
+        gl::Vector3::make(x1, y1, 0.0f),
+        gl::Vector3::make(x0, y1, 0.0f),
+    };
+    const float weights[4] = {aLeft, aRight, aRight, aLeft};
+
+    QMatrix4x4 modelView;
+    modelView.ortho(0.0f, kWidth, kHeight, 0.0f, -1.0f, 1.0f);
+
+    ctrl::GLCorePaintEngine::WeightField field;
+    field.positions = positions;
+    field.weights = weights;
+    field.vertexCount = 4;
+    field.indices = &indices;
+    field.indexCount = 6;
+    field.modelView = modelView;
+    engine->drawWeightField(field);
+}
+
+const uchar* pixelAt(const QImage& aImage, int aX, int aY) {
+    return aImage.constScanLine(aY) + 4 * aX;
+}
 
 } // namespace
 
@@ -449,6 +497,68 @@ int main(int argc, char** argv) {
              p.setBrush(Qt::NoBrush);
              p.drawText(QPointF(o.x() + 24, o.y() + 90), labelText);
          }},
+
+        // 10: the engine's batched GL_POINTS path (the weight heatmap is a GPU
+        //     triangle surface now, but this remains the point primitive's contract).
+        //     The pen width is the point size: one 10px point must paint far more
+        //     than a 1px point would, which is what minPixels pins.
+        {"points",
+         "one 10px point must paint a disc, not a 1px speck: the heatmap cannot carry its field without the"
+         " engine applying the pen width as glPointSize",
+         0,
+         true,
+         [](QPainter& p, const QPoint& o) {
+             p.setPen(QPen(kInk, 10.0));
+             p.setBrush(Qt::NoBrush);
+             const QPointF point(o.x() + 50, o.y() + 75);
+             p.drawPoints(&point, 1);
+         },
+         50},
+
+        // 11: the batch split. The overlay's drawer holds 8192 vertices per slot,
+        //     so drawPoints() must split a cloud across slots instead of dropping
+        //     what does not fit. The cloud covers the cell; if only the first
+        //     chunk were drawn the second half of the cell would stay clear.
+        {"points_batch",
+         "a 9000-point cloud (past the drawer's 8192-vertex slot) must paint across the whole cell: a"
+         " dropped second chunk leaves the lower half clear",
+         2,
+         true,
+         [](QPainter& p, const QPoint& o) {
+             p.setPen(QPen(kInk, 2.0));
+             p.setBrush(Qt::NoBrush);
+             std::vector<QPointF> cloud;
+             cloud.reserve(9000);
+             for (int y = 0; y < 90; ++y) {
+                 for (int x = 0; x < 100; ++x) {
+                     cloud.emplace_back(o.x() + 1 + x, o.y() + 1 + y * 1.6);
+                 }
+             }
+             p.drawPoints(cloud.data(), int(cloud.size()));
+         },
+         8000},
+
+        // 12: the authored-weight field is a GPU triangle surface, not an image:
+        //     one indexed quad with per-vertex weights must paint its whole area.
+        //     A regression to "draw the vertices" would leave the middle clear, and
+        //     a missing draw leaves the whole cell magenta.
+        {"weight_field_surface",
+         "a 60x60 weight quad (weights 0.25..0.75) must paint its whole area: a point cloud would paint"
+         " the four corners only, and an absent draw paints nothing",
+         5,
+         true,
+         [](QPainter& p, const QPoint& o) { drawWeightFieldQuad(p, o, 0.25f, 0.75f); },
+         3000},
+
+        // 13: the same quad with every weight below the field threshold must paint
+        //     NOTHING. The fragment shader's discard is the whole difference between
+        //     "a field over the bone's area" and "a blue wash over the layer".
+        {"weight_field_below_threshold",
+         "a weight quad whose weights are all below the field threshold must paint 0 pixels: the"
+         " fragment shader discards them instead of washing the layer blue",
+         6,
+         false,
+         [](QPainter& p, const QPoint& o) { drawWeightFieldQuad(p, o, 0.0f, 0.001f); }},
     };
 
     for (const Probe& probe : probes) {
@@ -480,12 +590,15 @@ int main(int argc, char** argv) {
         std::printf("MEASURED %s pixels=%d\n", probe.name, pixels);
 
         char message[1024];
+        const int minPixels = probe.minPixels > 0 ? probe.minPixels : 1;
         std::snprintf(
             message,
             sizeof(message),
             "%s: expected %s but counted %d pixels%s - %s",
             probe.name,
-            probe.expectPainted ? "> 0" : "0",
+            probe.expectPainted ? (probe.minPixels > 0 ? "at least the pixel count"
+                                                       : "> 0")
+                                : "0",
             pixels,
             probe.expectPainted
                 ? " (a 0 here is either the engine dropping the draw or the readback geometry moving: the GL"
@@ -493,7 +606,60 @@ int main(int argc, char** argv) {
                 : " (a change here means this harness no longer pins what it claims)",
             probe.note
         );
-        CHECK_MSG(probe.expectPainted ? (pixels > 0) : (pixels == 0), message);
+        CHECK_MSG(probe.expectPainted ? (pixels >= minPixels) : (pixels == 0), message);
+    }
+
+    // ---- the weight field's INK: ramp, per-fragment interpolation, orientation ----
+    // A separate pass, counted not by "did anything arrive" but by reading three pixels.
+    // The quad's weight rises left to right (0.2 at x=120 to 0.8 at x=180), so the left
+    // sample must be the cool end (blue), the middle the green stop and the right the hot
+    // end (red). A mirrored model-view, a swapped weight attribute, a ramp evaluated once
+    // per vertex or a flat vertex colour changes one of them.
+    {
+        fbo.bind();
+        funcs->glViewport(0, 0, kWidth, kHeight);
+        funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        funcs->glClear(GL_COLOR_BUFFER_BIT);
+
+        {
+            ctrl::PainterHandle handle;
+            QPainter* p = handle.begin(glWidget);
+            CHECK_MSG(p->isActive(), "the weight-field ink pass got no painter");
+            drawWeightFieldQuad(*p, QPoint(100, 100), 0.2f, 0.8f);
+            handle.end();
+        }
+
+        const QImage frame = readFboTopDown();
+        fbo.release();
+
+        // The quad spans x 120..180, y 145..205. The three samples are 30/50/70 px in.
+        const uchar* left = pixelAt(frame, 130, 175);
+        const uchar* mid = pixelAt(frame, 150, 175);
+        const uchar* right = pixelAt(frame, 170, 175);
+        std::printf(
+            "MEASURED weight_field_ink left=%d,%d,%d,%d middle=%d,%d,%d,%d right=%d,%d,%d,%d\n",
+            left[0], left[1], left[2], left[3], mid[0], mid[1], mid[2], mid[3],
+            right[0], right[1], right[2], right[3]
+        );
+        CHECK_MSG(
+            right[0] > left[0] + 50,
+            "the ramp must run cool to hot left-to-right: the hot end is not redder than the cool one"
+            " (a mirrored model-view or a swapped weight attribute puts 0.8 on the left)"
+        );
+        CHECK_MSG(
+            left[2] > right[2] + 50,
+            "the cool end must keep more blue than the hot end (the ramp is not applied, or the"
+            " interpolation is not per fragment)"
+        );
+        CHECK_MSG(
+            mid[1] > mid[0] + 50,
+            "the field's middle must reach the ramp's green stop: a flat vertex colour or a per-vertex"
+            " ramp would not"
+        );
+        CHECK_MSG(
+            left[3] == 255 && mid[3] == 255 && right[3] == 255,
+            "the wash must keep the canvas OPAQUE: a hole here composites the window behind the viewport"
+        );
     }
 
     std::printf("OK: overlay engine primitive subset pinned (%d probes)\n", int(probes.size()));

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor">
+<!-- Phosphor "sidebar-simple" fill, rebuilt on the same landscape frame as the
+     outline family: the sidebar region is solid and the main area is the hole.
+     The header uses this for a slot that is showing and the outline for one that
+     is not, so the state is the glyph's form rather than a tint. -->
+<path fill-rule="evenodd" d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM40,56H160V200H40Z"/></svg>

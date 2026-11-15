@@ -1,16 +1,28 @@
 #include "ctrl/Painter.h"
 #include <QImage>
+#include "XC.h"
+#include "gl/Global.h"
+#include "gl/Util.h"
 
 namespace ctrl {
 
 #if USE_GL_CORE_PROFILE
+namespace {
+// The drawer's slot is the batch size for every primitive it schedules. The
+// default 512 is right for strokes; a 9000-point cloud (the point primitive's
+// own gate) fits two slots, and eight slots of two vertex buffers is ~1 MB,
+// allocated once. The weight field is not a point cloud: it is one indexed
+// triangle draw per mesh through drawWeightField, below.
+constexpr int kOverlayVtxPerSlot = 8192;
+} // namespace
+
 //-------------------------------------------------------------------------------------------------
 GLCorePaintEngine::GLCorePaintEngine():
     QPaintEngine(
         QPaintEngine::AlphaBlend | QPaintEngine::Antialiasing | QPaintEngine::ConstantOpacity |
         QPaintEngine::PrimitiveTransform
     ),
-    mDrawer(),
+    mDrawer(kOverlayVtxPerSlot),
     mFontDrawer(),
     mTextureCaches(),
     mTextCaches() {}
@@ -91,13 +103,17 @@ void GLCorePaintEngine::updateState(const QPaintEngineState& aState) {
 }
 
 void GLCorePaintEngine::drawPoints(const QPoint* aPoints, int aCount) {
+    QVector<QPointF> points;
+    points.reserve(aCount);
     for (int i = 0; i < aCount; ++i)
-        mDrawer.drawPoint(QPointF(aPoints[i]));
+        points.append(QPointF(aPoints[i]));
+    mDrawer.drawPoints(points.constData(), int(points.size()));
 }
 
 void GLCorePaintEngine::drawPoints(const QPointF* aPoints, int aCount) {
-    for (int i = 0; i < aCount; ++i)
-        mDrawer.drawPoint(aPoints[i]);
+    // One command per slot, not one tiny ellipse per point: a heatmap's point
+    // cloud is thousands of samples and the per-point path could not carry it.
+    mDrawer.drawPoints(aPoints, aCount);
 }
 
 void GLCorePaintEngine::drawLines(const QLine* aLines, int aCount) {
@@ -163,7 +179,12 @@ void GLCorePaintEngine::drawImage(
 
     auto texture = mTextureCaches.get(key, [=]() {
         auto cache = new TextureCaches::Cache();
-        cache->obj.reset(new QOpenGLTexture(ptr->flipped(Qt::Horizontal | Qt::Vertical)));
+        // VERTICAL ONLY. The drawer's quad maps the texture's v axis
+        // bottom-up, so the vertical flip is what makes a QImage's top row
+        // land at the top. Flipping horizontally as well mirrored every image
+        // (the weight heatmap's wash came out 180-degree wrong in x; the icons
+        // were mirrored too, which was easy to miss).
+        cache->obj.reset(new QOpenGLTexture(ptr->flipped(Qt::Vertical)));
         cache->key = key;
         cache->size = (size_t)ptr->sizeInBytes();
 
@@ -183,7 +204,7 @@ void GLCorePaintEngine::drawPixmap(const QRectF& aRect, const QPixmap& aPixmap, 
         auto texture = mTextureCaches.get(key, [=]() {
             auto cache = new TextureCaches::Cache();
             auto image = ptr->toImage();
-            cache->obj.reset(new QOpenGLTexture(image.flipped(Qt::Horizontal | Qt::Vertical)));
+            cache->obj.reset(new QOpenGLTexture(image.flipped(Qt::Vertical)));
             cache->key = key;
             cache->size = (size_t)image.sizeInBytes();
 
@@ -215,6 +236,91 @@ void GLCorePaintEngine::drawTextItem(const QPointF& aPos, const QTextItem& aText
     mDrawer.begin();
     auto pos = aPos.toPoint() + QPoint(0.0f, -aTextItem.ascent());
     mDrawer.drawTexture(QRect(pos, textObj->texture().size()), textObj->texture());
+}
+
+//-------------------------------------------------------------------------------------------------
+// THE AUTHORED-WEIGHT FIELD. A tiny program of its own, because this is not one of the
+// QPainter primitives the drawer batches: it is an indexed triangle draw of the mesh
+// itself, one weight per vertex. The GPU interpolates the weight across the triangle and
+// the fragment shader evaluates the ramp - a vertex is a control value, the surface between
+// vertices is the field. No image, no readback, no resolution.
+void GLCorePaintEngine::ensureWeightFieldProgram() {
+    if (mWeightFieldReady)
+        return;
+
+    static const char* const kVertexSource = R"(#version 330
+in vec3 inPosition;
+in float inWeight;
+uniform mat4 uModelView;
+out float vWeight;
+void main() {
+    gl_Position = uModelView * vec4(inPosition, 1.0);
+    vWeight = inWeight;
+}
+)";
+    // The ramp is the heat ramp the state colours and the plan's figures use: cool = weak,
+    // hot = strong. KEEP the alpha and the threshold in step with
+    // GLCorePaintEngine::kWeightFieldMinWeight (GLSL cannot read the C++ constant).
+    static const char* const kFragmentSource = R"(#version 330
+in float vWeight;
+out vec4 oColor;
+
+vec3 heatRamp(float t) {
+    if (t <= 0.25) return mix(vec3(0.156863, 0.274510, 1.0), vec3(0.0, 0.862745, 1.0), t / 0.25);
+    if (t <= 0.50) return mix(vec3(0.0, 0.862745, 1.0), vec3(0.0, 0.901961, 0.313725), (t - 0.25) / 0.25);
+    if (t <= 0.75) return mix(vec3(0.0, 0.901961, 0.313725), vec3(1.0, 0.862745, 0.0), (t - 0.50) / 0.25);
+    return mix(vec3(1.0, 0.862745, 0.0), vec3(1.0, 0.156863, 0.156863), (t - 0.75) / 0.25);
+}
+
+void main() {
+    // Not part of the field: transparent, never a faint wash over the whole layer.
+    if (vWeight < 0.002) discard;
+    // The wash has to read over artwork of any colour without hiding it; the skeleton and
+    // the brush stay legible above it.
+    oColor = vec4(heatRamp(clamp(vWeight, 0.0, 1.0)), 120.0 / 255.0);
+}
+)";
+
+    if (!mWeightFieldProgram.setVertexSource(QString::fromLatin1(kVertexSource))
+        || !mWeightFieldProgram.setFragmentSource(QString::fromLatin1(kFragmentSource))
+        || !mWeightFieldProgram.link()) {
+        XC_FATAL_ERROR(
+            "OpenGL Error", "Failed to build the weight-field shader.",
+            mWeightFieldProgram.log()
+        );
+    }
+    mWeightFieldReady = true;
+}
+
+void GLCorePaintEngine::drawWeightField(const WeightField& aField) {
+    if (!aField.positions || !aField.weights || aField.vertexCount <= 0 || !aField.indices
+        || aField.indexCount < 3) {
+        return;
+    }
+    ensureWeightFieldProgram();
+
+    gl::Global::Functions& ggl = gl::Global::functions();
+
+    // OVER the artwork: no depth test, source-over with the destination kept opaque (the
+    // same blend the ink pass uses, so a translucent wash never punches a hole through the
+    // window). MSAA is on because the widget's framebuffer is multisampled and a surface's
+    // silhouette is a pixel event like any other; the drawer re-applies its own AA state.
+    gl::Util::resetRenderState();
+    ggl.glEnable(GL_BLEND);
+    ggl.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    ggl.glEnable(GL_MULTISAMPLE);
+
+    mWeightFieldProgram.bind();
+    mWeightFieldProgram.setAttributeArray("inPosition", aField.positions, aField.vertexCount);
+    mWeightFieldProgram.setAttributeArray("inWeight", aField.weights, aField.vertexCount);
+    mWeightFieldProgram.setUniformValue("uModelView", aField.modelView);
+
+    aField.indices->bind();
+    ggl.glDrawElements(GL_TRIANGLES, aField.indexCount, GL_UNSIGNED_INT, nullptr);
+    aField.indices->release();
+    mWeightFieldProgram.release();
+
+    GL_CHECK_ERROR();
 }
 
 //-------------------------------------------------------------------------------------------------

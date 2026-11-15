@@ -237,7 +237,10 @@ ComboBox {
         // The old control's own sizing rule, kept: a short list is its
         // contentHeight, a long one caps at 220.
         height: Math.min(220, list.contentHeight + 8)
-        padding: 4                  // the old ListView's anchors.margins
+        // NO POPUP PADDING. The 4px inset belongs to the list; keeping it on the
+        // popup moved the scroll bar's lane 4px in from the popup edge on top of
+        // the lane's own 4px pill inset (the reported "scrollbar is inset").
+        padding: 0
 
         background: Rectangle {
             radius: 4
@@ -264,20 +267,24 @@ ComboBox {
         // The list and its bar share a wrapper so the bar can sit OUTSIDE the
         // ListView's clip. `id: list` and its contentHeight stay where the
         // popup's own height binding expects them (Math.min(220, contentHeight +
-        // 8) above), and the 12px lane is carved off the list's width instead of
-        // being drawn over its rows.
+        // 8) above). The 4px inset is the list's (top/bottom/left), and the
+        // 12px lane is reserved ONLY while the bar is actually visible: a short
+        // list has no dead strip on its right, and a long one stops short of the
+        // pill exactly as before.
         contentItem: Item {
             id: popupContent
+            objectName: "aeComboPopupContent"
 
             ListView {
                 id: list
+                objectName: "aeComboList"
                 anchors.left: parent.left
+                anchors.leftMargin: 4
                 anchors.top: parent.top
+                anchors.topMargin: 4
                 anchors.bottom: parent.bottom
-                // The lane below is reserved the way DestinationPicker reserves
-                // its own (`width: parent.width - 12`): a row's hover/highlight
-                // stops short of the pill instead of running under it.
-                width: parent.width - 12
+                anchors.bottomMargin: 4
+                width: parent.width - 8 - (vbar.visible ? 12 : 0)
                 model: root.options
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
@@ -312,7 +319,11 @@ ComboBox {
                 // bar to the list area.
                 ScrollBar.vertical: AeScrollBar {
                     id: vbar
+                    objectName: "aeComboBar"
                     parent: popupContent
+                    // The lane is flush with the popup's inner edge, so the
+                    // AeScrollBar's own 4px padding is the pill's entire inset:
+                    // the pill ends 4px from the popup edge, not 8px.
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom

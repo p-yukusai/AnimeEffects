@@ -24,8 +24,9 @@ namespace tool {
     void BonePanel::applyIcons() {
         mTypeGroup->setIcons(
             QVector<QIcon>() << mResources.icon("plus-bold") << mResources.icon("minus-bold") << mResources.icon("navigation-arrow")
-                             << mResources.icon("link") << mResources.icon("broadcast") << mResources.icon("paint-brush")
-                             << mResources.icon("eraser")
+                             << mResources.icon("link") << mResources.icon("envelope")
+                             << mResources.icon("paint-envelope") << mResources.icon("eraser")
+                             << mResources.icon("paint-brush")
         , QSize(18, 18));
     }
 
@@ -40,7 +41,8 @@ namespace tool {
         mTypeGroup->setChoice(mParam.mode);
         mTypeGroup->setToolTips(
             QStringList() << tr("Add bones") << tr("Remove bones") << tr("Move joints") << tr("Bind bone to node")
-                          << tr("Adjust influence") << tr("Paint influence") << tr("Erase influence")
+                          << tr("Adjust envelope") << tr("Grow envelope") << tr("Shrink envelope")
+                          << tr("Paint weights")
         );
         applyIcons();
 
@@ -55,7 +57,8 @@ namespace tool {
     }
 
     void BonePanel::updateTypeParam(ctrl::BoneEditMode aType) {
-        const bool influencing = (aType == ctrl::BoneEditMode_PaintInfl || aType == ctrl::BoneEditMode_EraseInfl);
+        const bool influencing = (aType == ctrl::BoneEditMode_PaintInfl
+            || aType == ctrl::BoneEditMode_EraseInfl || aType == ctrl::BoneEditMode_PaintWeights);
         mBrush->setVisible(influencing);
     }
 
@@ -70,7 +73,8 @@ namespace tool {
         // type
         curPos.setY(mTypeGroup->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
 
-        if (mParam.mode == ctrl::BoneEditMode_PaintInfl || mParam.mode == ctrl::BoneEditMode_EraseInfl) {
+        if (mParam.mode == ctrl::BoneEditMode_PaintInfl || mParam.mode == ctrl::BoneEditMode_EraseInfl
+            || mParam.mode == ctrl::BoneEditMode_PaintWeights) {
             // the brush block answers an ABSOLUTE bottom edge, so a bare gap
             curPos.setY(mBrush->updateGeometry(curPos, itemWidth) + 5);
         }

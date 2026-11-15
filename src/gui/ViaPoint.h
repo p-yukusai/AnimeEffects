@@ -41,6 +41,9 @@ public:
     ViaPoint(QWidget* aParent);
 
     void setProject(core::Project* aProject);
+    // The current project, for hosts that need to derive UI state from the document
+    // (the Tools panel's mask targets) without owning a second project reference.
+    core::Project* project() const { return mProject; }
 
     void setMainMenuBar(MainMenuBar* aMainMenuBar);
     MainMenuBar* mainMenuBar() const { return mMainMenuBar; }

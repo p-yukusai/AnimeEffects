@@ -25,10 +25,10 @@
 #include <QTextStream>
 #include <QVariantList>
 #include <QVariantMap>
+#include <QVector>
 
 #include <cmath>
 
-#include "gui/MainViewSetting.h"
 #include "gui/qml/ToolViewModel.h"
 
 namespace {
@@ -55,9 +55,7 @@ bool near(double aLhs, double aRhs) { return std::fabs(aLhs - aRhs) < 1.0e-5; }
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
 
-    gui::MainViewSetting view;
     gui::ToolViewModel model;
-    model.setViewSetting(&view);
 
     // ---- signal bookkeeping ----------------------------------------------------
     int toolChangedCount = 0;
@@ -66,8 +64,6 @@ int main(int argc, char** argv) {
     int changedCount = 0;
     int stateCount = 0;
     int modeCount = 0;
-    int viewCount = 0;
-    int viewSettingsCount = 0;
     int clearCount = 0;
     int driverCount = 0;
     QObject::connect(&model, &gui::ToolViewModel::toolChanged, [&](int aOld, int aNew) {
@@ -78,8 +74,6 @@ int main(int argc, char** argv) {
     QObject::connect(&model, &gui::ToolViewModel::changed, [&]() { ++changedCount; });
     QObject::connect(&model, &gui::ToolViewModel::stateChanged, [&]() { ++stateCount; });
     QObject::connect(&model, &gui::ToolViewModel::modeChanged, [&]() { ++modeCount; });
-    QObject::connect(&model, &gui::ToolViewModel::viewChanged, [&]() { ++viewCount; });
-    QObject::connect(&model, &gui::ToolViewModel::viewSettingsChanged, [&]() { ++viewSettingsCount; });
     QObject::connect(&model, &gui::ToolViewModel::clearMaskRequested, [&]() { ++clearCount; });
     QObject::connect(&model, &gui::ToolViewModel::driverActiveChanged, [&]() { ++driverCount; });
 
@@ -170,8 +164,17 @@ int main(int argc, char** argv) {
     check(near(model.brush()->radius(), 50.0), QStringLiteral("bone: the brush points at the BONE copy (50)"));
 
     model.setMode(int(ctrl::BoneEditMode_PaintInfl));
-    check(model.brushVisible(), QStringLiteral("bone: Paint influence shows the brush"));
-    check(model.modeName() == QStringLiteral("Paint influence"), QStringLiteral("bone: the caption names it"));
+    check(model.brushVisible(), QStringLiteral("bone: Envelope brush shows the brush"));
+    check(model.modeName() == QStringLiteral("Envelope brush"), QStringLiteral("bone: the caption names it"));
+    check(model.envelopeBrushVisible(), QStringLiteral("bone: the Value row is offered"));
+    check(near(model.envelopeValue(), 50.0), QStringLiteral("bone: the envelope brush starts at value 50"));
+    model.setEnvelopeValue(123.0);
+    check(near(model.envelopeValue(), 123.0) && near(model.boneParam().envelopeValue, 123.0),
+          QStringLiteral("bone: the Value row reaches the param"));
+    model.setEnvelopeValue(2000.0);
+    check(near(model.envelopeValue(), model.envelopeValueMax()),
+          QStringLiteral("bone: Value clamps at its maximum (%1)").arg(model.envelopeValueMax()));
+    model.setEnvelopeValue(50.0);
     // NOT shown: nothing in ctrl/bone reads BrushParam::opacity (the influence weight is
     // `stamp.amount * falloff` alone), so the row would do nothing.
     check(!model.opacityVisible(), QStringLiteral("bone: no Opacity row (the influence brush ignores it)"));
@@ -180,6 +183,100 @@ int main(int argc, char** argv) {
     check(near(model.boneParam().brush.radius, 123.0), QStringLiteral("bone: the write lands on the bone param"));
     check(near(model.poseParam().brush.radius, 200.0),
           QStringLiteral("bone: and the pose brush is untouched (%1)").arg(model.poseParam().brush.radius));
+
+    // ---- paint weights: the state panel and its four actions --------------------
+    model.setMode(6);
+    check(model.modeName() == QStringLiteral("Paint weights"), QStringLiteral("bone: Paint weights is the seventh mode"));
+    check(model.modeIndex() == 6, QStringLiteral("bone: the weights index is 6 in the seven-entry row"));
+    check(!model.envelopeBrushVisible(), QStringLiteral("bone: the envelope Value row is gone on weights"));
+    check(model.brushVisible(), QStringLiteral("weights: the shared brush is shown"));
+    check(model.weightHeatmapVisible(), QStringLiteral("weights: the heatmap toggle is offered"));
+    check(model.weightsStateVisible(), QStringLiteral("weights: the state panel is shown"));
+    check(model.weightsState().kind == ctrl::bone::WeightState::Kind_None,
+          QStringLiteral("weights: the model starts from the editor's empty state"));
+    check(model.weightsStateText() == QStringLiteral("No bone key"),
+          QStringLiteral("weights: the empty state is a status word, not a sentence"));
+    check(model.weightsStateRole() == QStringLiteral("none"),
+          QStringLiteral("weights: the empty state has no status ink"));
+    check(!model.brushEnabled() && !model.weightsBakeVisible() && !model.weightsActionsVisible(),
+          QStringLiteral("weights: no actions before a bone is selected"));
+    {
+        ctrl::bone::WeightState state;
+        state.kind = ctrl::bone::WeightState::Kind_Envelope;
+        state.boneIndex = 2;
+        state.liveNodes = 3;
+        model.setWeightsState(state);
+        check(model.weightsStateText() == QStringLiteral("Envelope"),
+              QStringLiteral("weights: the envelope state is named"));
+        check(model.weightsStateRole() == QStringLiteral("envelope"),
+              QStringLiteral("weights: and gets the neutral status ink"));
+        check(model.weightsStateTip().contains(QStringLiteral("Bake")),
+              QStringLiteral("weights: the explanation lives in the state tooltip"));
+        check(model.weightsBakeVisible() && model.weightsBakeEnabled(),
+              QStringLiteral("weights: an envelope bone offers an enabled Bake"));
+        check(!model.weightsRebakeVisible() && !model.weightsClearVisible(),
+              QStringLiteral("weights: and no baked-field actions"));
+        check(!model.brushEnabled() && !model.weightsPaintEnabled(),
+              QStringLiteral("weights: the brush is disabled until the bone is baked"));
+        const int before = model.weightPaintMode();
+        model.setWeightPaintMode(int(ctrl::WeightPaint_Replace));
+        check(model.weightPaintMode() == int(ctrl::WeightPaint_Replace)
+                  && model.boneParam().weightMode == ctrl::WeightPaint_Replace,
+              QStringLiteral("weights: the chooser writes the shared param"));
+        model.setWeightPaintMode(before);
+    }
+    {
+        ctrl::bone::WeightState state;
+        state.kind = ctrl::bone::WeightState::Kind_Baked;
+        state.boneIndex = 0;
+        state.bakedNodes = 2;
+        state.bakedVertices = 12;
+        state.meshMismatch = true;
+        model.setWeightsState(state);
+        check(model.weightsStateText() == QStringLiteral("Baked"),
+              QStringLiteral("weights: the baked state is one word (%1)").arg(model.weightsStateText()));
+        check(!model.weightsStateText().contains(QStringLiteral("·")),
+              QStringLiteral("weights: the state is not a dot-separated token (%1)")
+                  .arg(model.weightsStateText()));
+        // The count is a diagnostic, not a state: it belongs to the tooltip, where
+        // a reader can ask for it, never to the row.
+        check(model.weightsStateTip().contains(QStringLiteral("12"))
+                  && model.weightsStateTip().contains(QStringLiteral("vert")),
+              QStringLiteral("weights: the authored count is in the state tooltip (%1)")
+                  .arg(model.weightsStateTip()));
+        check(model.weightsStateRole() == QStringLiteral("baked"),
+              QStringLiteral("weights: and gets the authored status ink"));
+        check(model.weightsRebakeVisible() && model.weightsRevertVisible() && model.weightsClearVisible(),
+              QStringLiteral("weights: a baked bone offers Rebake/Revert/Clear"));
+        check(!model.weightsBakeVisible(),
+              QStringLiteral("weights: and Bake is not offered (it would do nothing)"));
+        check(model.brushEnabled() && model.weightsPaintEnabled(),
+              QStringLiteral("weights: the brush is enabled on a baked field"));
+        check(model.weightsMeshWarningVisible(),
+              QStringLiteral("weights: a mesh-signature mismatch is surfaced"));
+    }
+    {
+        ctrl::bone::WeightState state;
+        state.kind = ctrl::bone::WeightState::Kind_Mixed;
+        state.bakedNodes = 1;
+        state.liveNodes = 2;
+        state.bakedVertices = 5;
+        model.setWeightsState(state);
+        check(model.weightsStateText() == QStringLiteral("Partly baked"),
+              QStringLiteral("weights: a mixed rig names the state in words (%1)").arg(model.weightsStateText()));
+        check(model.weightsStateTip().contains(QStringLiteral("2"))
+                  && model.weightsStateTip().contains(QStringLiteral("layer")),
+              QStringLiteral("weights: and counts the nodes still live in its tooltip (%1)")
+                  .arg(model.weightsStateTip()));
+        check(model.weightsBakeVisible() && model.weightsBakeEnabled(),
+              QStringLiteral("weights: a mixed rig offers Bake for its live layers"));
+        check(model.weightsRebakeVisible() && model.weightsClearVisible(),
+              QStringLiteral("weights: and the baked-field actions"));
+    }
+    model.setWeightsState(ctrl::bone::WeightState());
+    model.setMode(int(ctrl::BoneEditMode_PaintInfl));
+    check(!model.weightsStateVisible(), QStringLiteral("weights: leaving the mode hides the state panel"));
+    check(model.brushEnabled(), QStringLiteral("weights: the brush enablement does not leak into other modes"));
 
     // the [ ] notches, on the ACTIVE tool's brush
     model.adjustBrush(+1, -1);
@@ -261,54 +358,107 @@ int main(int argc, char** argv) {
 
     // ---- mask ------------------------------------------------------------------
     model.activate(int(ctrl::ToolType_Mask));
-    check(model.title() == QStringLiteral("Filter mask"), QStringLiteral("mask: opens on a filter mask"));
-    // ONE field chooser: the six filter inputs and the matte, named with a translatable
-    // format ("<filter> amount"), never two selectors or a separator-joined label.
-    check(describe(model.maskFields())
-              == QStringLiteral("HSV amount, HSV time offset, Blur amount, Blur time offset, "
-                                "Wave Deform amount, Wave Deform time offset, Layer mask"),
-          QStringLiteral("mask: seven addressable fields: %1").arg(describe(model.maskFields())));
-    check(model.maskFieldIndex() == 4, QStringLiteral("mask: the default field is Wave Deform amount (%1)")
-                                           .arg(model.maskFieldIndex()));
-    check(model.maskFieldLabel() == QStringLiteral("Wave Deform amount"),
-          QStringLiteral("mask: and it names itself: %1").arg(model.maskFieldLabel()));
-    check(!model.maskPinned(), QStringLiteral("mask: picked from the toolbox, the field is a QUESTION"));
+    check(model.title() == QStringLiteral("Mask"), QStringLiteral("mask: the heading names the tool"));
+    // The chooser is host-fed: the host derives it from the node/frame, the model
+    // owns selection and labels. With no fields nothing is paintable and the empty
+    // state says why; a field the document cannot paint is never offered.
+    check(model.maskFields().isEmpty(), QStringLiteral("mask: no host fields, no choices"));
+    check(!model.maskPaintable(), QStringLiteral("mask: and nothing is paintable"));
+    check(model.maskFieldIndex() == -1, QStringLiteral("mask: no field is selected"));
+    check(model.maskFieldLabel().isEmpty(), QStringLiteral("mask: and no label is invented"));
+    check(model.maskEmptyText() == QStringLiteral("Select a layer to paint a mask."),
+          QStringLiteral("mask: the empty state names the missing context (%1)").arg(model.maskEmptyText()));
     // MaskEditor.cpp:319 DOES read brush.opacity (`amount * opacity`), so this row is
     // reachable and must be offered - it used to be hidden while working.
     check(model.brushVisible() && model.opacityVisible(),
           QStringLiteral("mask: the brush is up WITH its Opacity row (MaskEditor reads it)"));
 
+    QVector<gui::MaskField> fields;
+    fields.append(gui::MaskField{ctrl::MaskTargetKind_FilterInput, core::TimeKeyType_HSV,
+                                 core::FilterMaskChannel_Amount, QStringLiteral("HSV amount")});
+    fields.append(gui::MaskField{ctrl::MaskTargetKind_FilterInput, core::TimeKeyType_Wave,
+                                 core::FilterMaskChannel_Amount, QStringLiteral("Wave Deform amount")});
+    fields.append(gui::MaskField{ctrl::MaskTargetKind_FilterInput, core::TimeKeyType_Wave,
+                                 core::FilterMaskChannel_TimeOffset,
+                                 QStringLiteral("Wave Deform time offset")});
+    model.setMaskFields(fields, QString());
+    check(describe(model.maskFields())
+              == QStringLiteral("HSV amount, Wave Deform amount, Wave Deform time offset"),
+          QStringLiteral("mask: the host's derived list is the chooser: %1")
+              .arg(describe(model.maskFields())));
+    check(model.maskPaintable() && model.maskEmptyText().isEmpty(),
+          QStringLiteral("mask: a non-empty list is paintable and has no empty text"));
+    check(model.maskFieldIndex() == 1 && model.maskFieldLabel() == QStringLiteral("Wave Deform amount"),
+          QStringLiteral("mask: the current valid field keeps its place (%1)")
+              .arg(model.maskFieldLabel()));
+    check(model.maskParam().lane == core::TimeKeyType_Wave
+              && model.maskParam().channel == core::FilterMaskChannel_Amount,
+          QStringLiteral("mask: still Wave amount"));
+
     model.setMaskValue(0.42);
     check(near(model.maskParam().value, 0.42), QStringLiteral("mask: the value writes the param"));
-    check(model.maskParam().kind == ctrl::MaskTargetKind_FilterInput
-              && model.maskParam().lane == core::TimeKeyType_Wave,
-          QStringLiteral("mask: still Wave, still a filter input"));
 
-    // the SAME list addresses a channel change: index 5 is Wave Deform's time offset
-    model.setMaskField(5);
+    model.setMaskField(2);
     check(model.maskParam().channel == core::FilterMaskChannel_TimeOffset,
-          QStringLiteral("mask: field 5 is a channel change"));
+          QStringLiteral("mask: choosing the time-offset row changes the channel"));
     check(near(model.maskParam().value, 1.0),
           QStringLiteral("mask: a time offset mask starts at 1 (add the delay), not 0 (%1)")
               .arg(model.maskParam().value));
-    model.setMaskField(4);
+    check(model.maskFieldIndex() == 2, QStringLiteral("mask: and the chooser follows"));
+    model.setMaskField(1);
     check(near(model.maskParam().value, 0.0),
-          QStringLiteral("mask: and an amount mask starts at 0 (reduce the effect)"));
+          QStringLiteral("mask: an amount mask starts at 0 (reduce the effect)"));
 
-    model.setMaskField(6);
-    check(model.maskParam().isLayerMask(), QStringLiteral("mask: field 6 is the layer's own matte"));
-    // UNPINNED the heading names the KIND and the chooser carries the field; a card entry
-    // pins it and the heading becomes the field's own name (asserted further down).
-    check(model.title() == QStringLiteral("Filter mask"),
-          QStringLiteral("mask: unpinned, the heading names the kind (%1)").arg(model.title()));
-    check(model.maskFieldLabel() == QStringLiteral("Layer mask"), QStringLiteral("mask: the label names it"));
+    fields.append(gui::MaskField{ctrl::MaskTargetKind_LayerMask, core::TimeKeyType_TERM,
+                                 core::FilterMaskChannel_Amount, QStringLiteral("Layer mask")});
+    model.setMaskFields(fields, QString());
+    model.setMaskField(3);
+    check(model.maskParam().isLayerMask(), QStringLiteral("mask: the matte is the last addressable field"));
     check(near(model.maskParam().value, 0.0), QStringLiteral("mask: a matte starts at 0 (hide)"));
-    model.setMaskField(6);
-    check(stateCount >= 1, QStringLiteral("mask: re-picking the same field is harmless"));
+
+    // A list that no longer contains the current field must not leave the brush aimed
+    // at it: the model takes the first remaining target.
+    QVector<gui::MaskField> onlyAmount;
+    onlyAmount.append(fields.first());
+    model.setMaskFields(onlyAmount, QString());
+    check(model.maskFieldIndex() == 0 && !model.maskParam().isLayerMask()
+              && model.maskParam().lane == core::TimeKeyType_HSV,
+          QStringLiteral("mask: a vanished target falls back to the first paintable field"));
+
+    // The host explains an empty list (missing filter, disabled filter, unkeyed matte).
+    model.setMaskFields({}, QStringLiteral("Enable a filter to paint its mask."));
+    check(!model.maskPaintable() && model.maskFields().isEmpty(),
+          QStringLiteral("mask: an empty derived list is not paintable"));
+    check(model.maskEmptyText() == QStringLiteral("Enable a filter to paint its mask."),
+          QStringLiteral("mask: the host's reason is the visible explanation (%1)")
+              .arg(model.maskEmptyText()));
     model.setMaskField(0);
-    check(model.maskParam().lane == core::TimeKeyType_HSV && !model.maskParam().isLayerMask(),
-          QStringLiteral("mask: back to an HSV filter input"));
-    check(model.title() == QStringLiteral("Filter mask"), QStringLiteral("mask: heading follows"));
+    check(model.maskFields().isEmpty(), QStringLiteral("mask: choosing from an empty list is a no-op"));
+
+    // The card entries select the right lane/channel and seed the channel's useful
+    // value even when the host has no target list yet.
+    model.activate(int(ctrl::ToolType_SRT));
+    model.beginFilterMaskPaint(core::TimeKeyType_Blur, core::FilterMaskChannel_TimeOffset);
+    check(model.tool() == int(ctrl::ToolType_Mask), QStringLiteral("beginFilterMaskPaint switches the tool"));
+    check(model.maskParam().lane == core::TimeKeyType_Blur
+              && model.maskParam().channel == core::FilterMaskChannel_TimeOffset
+              && !model.maskParam().isLayerMask(),
+          QStringLiteral("mask: beginFilterMaskPaint selects Blur time offset"));
+    check(near(model.maskParam().value, 1.0),
+          QStringLiteral("mask: a time offset mask starts at 1 (add the delay), not 0 (%1)")
+              .arg(model.maskParam().value));
+    check(model.title() == QStringLiteral("Mask"),
+          QStringLiteral("mask: a card entry keeps the one Target control (%1)").arg(model.title()));
+
+    model.activate(int(ctrl::ToolType_SRT));
+    model.beginLayerMaskPaint();
+    check(model.maskParam().isLayerMask(), QStringLiteral("mask: the mask card's Paint selects the matte"));
+    check(near(model.maskParam().value, 0.0), QStringLiteral("mask: a matte starts at 0 (hide)"));
+    check(model.title() == QStringLiteral("Mask"),
+          QStringLiteral("mask: and the heading still names the tool (%1)").arg(model.title()));
+    model.requestClearMask();
+    check(clearCount == 1, QStringLiteral("mask: Clear asks the host"));
+    check(!model.maskValueHint().isEmpty(), QStringLiteral("mask: the eyedropper hint exists"));
 
     // ---- the value: the keyboard swap is the painter's X ----------------------
     model.setMaskValue(0.0);
@@ -322,35 +472,6 @@ int main(int argc, char** argv) {
     check(near(model.maskParam().value, 1.0),
           QStringLiteral("swap: an in-between value goes to the FAR end, not to a mirrored "
                          "number (%1)").arg(model.maskParam().value));
-
-    // a filter card's "paint mask" and the card's own Paint: both name what is painted,
-    // PIN it (the card chose it, so the panel must not ask) and switch the tool
-    model.activate(int(ctrl::ToolType_SRT)); // leave the mask tool first
-    model.beginFilterMaskPaint(core::TimeKeyType_Blur, core::FilterMaskChannel_TimeOffset);
-    check(model.tool() == int(ctrl::ToolType_Mask), QStringLiteral("beginFilterMaskPaint switches the tool"));
-    check(model.maskParam().lane == core::TimeKeyType_Blur
-              && model.maskParam().channel == core::FilterMaskChannel_TimeOffset
-              && !model.maskParam().isLayerMask(),
-          QStringLiteral("mask: beginFilterMaskPaint selects Blur time offset"));
-    check(model.maskPinned(), QStringLiteral("mask: and PINS it (the card answered the question)"));
-    check(model.title() == QStringLiteral("Blur time offset"),
-          QStringLiteral("mask: pinned, the HEADING is the field's name: %1").arg(model.title()));
-    model.unpinMaskTarget();
-    check(!model.maskPinned(), QStringLiteral("mask: the caption's disclosure re-opens the chooser"));
-
-    model.activate(int(ctrl::ToolType_SRT));
-    model.beginLayerMaskPaint();
-    check(model.maskParam().isLayerMask() && model.maskPinned(),
-          QStringLiteral("mask: the mask card's Paint pins the matte too"));
-    check(model.title() == QStringLiteral("Layer mask"),
-          QStringLiteral("mask: and the matte names itself (%1)").arg(model.title()));
-    // a TOOLBOX entry clears the pin: picking the tool means asking which field
-    model.activate(int(ctrl::ToolType_SRT));
-    model.activate(int(ctrl::ToolType_Mask));
-    check(!model.maskPinned(), QStringLiteral("mask: entering from the toolbox asks the question again"));
-    model.requestClearMask();
-    check(clearCount == 1, QStringLiteral("mask: Clear asks the host"));
-    check(!model.maskValueHint().isEmpty(), QStringLiteral("mask: the eyedropper hint exists"));
 
     // ---- tool memory -----------------------------------------------------------
     model.activate(int(ctrl::ToolType_SRT));
@@ -369,66 +490,17 @@ int main(int argc, char** argv) {
     check(lastOld == int(ctrl::ToolType_Mask) && lastNew == int(ctrl::ToolType_SRT),
           QStringLiteral("the last change still carried its (old, new) pair"));
 
-    // ---- view settings ---------------------------------------------------------
-    {
-        // the three ROTATION verbs are triggers: the flag is up while the signal runs and
-        // down again afterwards (a latched flag would rotate on every later view change)
-        bool sawAcw = false;
-        bool sawReset = false;
-        bool sawCw = false;
-        QObject::connect(&model, &gui::ToolViewModel::viewSettingsChanged, [&]() {
-            sawAcw = sawAcw || view.rotateViewACW;
-            sawReset = sawReset || view.resetRotateView;
-            sawCw = sawCw || view.rotateViewCW;
-        });
-        model.rotateCounterClockwise();
-        model.resetRotation();
-        model.rotateClockwise();
-        check(sawAcw && sawReset && sawCw, QStringLiteral("view: each rotation verb raises its flag"));
-        check(!view.rotateViewACW && !view.resetRotateView && !view.rotateViewCW,
-              QStringLiteral("view: and lowers it again"));
-    }
-    model.setShowMesh(true);
-    check(view.showLayerMesh && model.showMesh(), QStringLiteral("view: Show mesh writes the setting"));
-    const int afterMesh = viewSettingsCount;
-    model.setShowMesh(true);
-    check(viewSettingsCount == afterMesh, QStringLiteral("view: writing the same value notifies nothing"));
-    model.setCutOutsideFrame(true);
-    model.setFlipCanvas(true);
-    check(view.cutImagesByTheFrame && view.flipCanvas,
-          QStringLiteral("view: the other two toggles write their settings"));
-    check(!model.viewTitle().isEmpty() && !model.showMeshTip().isEmpty()
-              && !model.cutOutsideFrameTip().isEmpty() && !model.flipCanvasTip().isEmpty(),
-          QStringLiteral("view: every strip action has its words"));
-
     // ---- the key hints the dock speaks -----------------------------------------
     gui::ToolKeyHints hints;
-    hints.rotateCounterClockwise = QStringLiteral("Alt+Q");
-    hints.resetRotation = QStringLiteral("F1");
-    hints.rotateClockwise = QStringLiteral("Alt+E");
     hints.brushSizeDecrease = QStringLiteral("[");
     hints.brushSizeIncrease = QStringLiteral("]");
     hints.brushHardnessDecrease = QStringLiteral("Shift+[");
     hints.brushHardnessIncrease = QStringLiteral("Shift+]");
     model.setKeyHints(hints);
-    check(model.rotateCounterClockwiseTip().contains(QStringLiteral("Alt+Q")),
-          QStringLiteral("the rotation tooltip names the inspired binding: %1")
-              .arg(model.rotateCounterClockwiseTip()));
-    check(model.resetRotationTip().contains(QStringLiteral("F1")), QStringLiteral("reset: F1"));
-    check(model.rotateClockwiseTip().contains(QStringLiteral("Alt+E")), QStringLiteral("clockwise: Alt+E"));
     check(model.sizeKeyTip().contains(QStringLiteral("[")) && model.sizeKeyTip().contains(QStringLiteral("]")),
           QStringLiteral("the Size row's tooltip names both notches: %1").arg(model.sizeKeyTip()));
     check(model.hardnessKeyTip().contains(QStringLiteral("Shift+]")),
           QStringLiteral("the Hardness row's tooltip names the shifted pair: %1").arg(model.hardnessKeyTip()));
-
-    // ---- a link-free view setting is a no-op, not a crash -----------------------
-    {
-        gui::ToolViewModel offline;
-        offline.setShowMesh(true);
-        offline.rotateClockwise();
-        offline.adjustBrush(+1, +1);
-        check(!offline.showMesh(), QStringLiteral("a model with no view setting answers safely"));
-    }
 
     if (failures) {
         QTextStream(stdout) << "FAILED " << failures << " check(s)\n";

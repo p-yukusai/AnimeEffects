@@ -19,7 +19,7 @@
 #include "cmnd/Stack.h"
 #include "core/MoveKey.h"
 #include "core/ObjectNode.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/ScaleKey.h"
 #include "core/TimeLine.h"
 #include "ctrl/TimeLineRow.h"
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
         singleType.rect = QRect(0, 65, kWidth, 22);
         ctrl::time::Label singleLabel;
         singleLabel.box = QRect(kWidth / 2 - 50, 65, 100, 22);
-        singleLabel.text = QStringLiteral("Opa");
+        singleLabel.text = QStringLiteral("Opacity");
         singleLabel.ink = label.ink;
         singleType.labels.append(singleLabel);
         f.lines.lanes.append(singleType);
@@ -162,7 +162,7 @@ int main(int argc, char** argv) {
             ctrl::time::KeyMark diamond;
             diamond.shape = ctrl::time::KeyShape::Polygon;
             diamond.centre = QPointF(320.5, 30.5);
-            diamond.fill = theme::channelColor(theme::Colors::current(), core::TimeKeyType_Opa, 0);
+            diamond.fill = theme::channelColor(theme::Colors::current(), core::TimeKeyType_Opacity, 0);
             diamond.polygon << QPointF(320.5, 26.3) << QPointF(324.7, 30.5) << QPointF(320.5, 34.7)
                             << QPointF(316.3, 30.5);
             f.keys.marks.append(diamond);

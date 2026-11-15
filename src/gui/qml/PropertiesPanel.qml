@@ -12,6 +12,18 @@ Rectangle {
 
     color: theme.base
 
+    // THE MESH SPACING PREVIEW. Hover arms the overlay after the same delay as
+    // the field's tooltip; a scrub or a text edit shows it immediately. It hides
+    // immediately when none of hover/edit/scrub holds: this is a live view of the
+    // control, not a message, so it must not inherit the tooltip's 10 s timeout.
+    property bool meshPreviewArmed: false
+    function refreshMeshPreview() {
+        const field = meshSpacingField;
+        const active = inspector.image.visible && field.enabled
+                    && (field.editing || field.scrubbing
+                        || (root.meshPreviewArmed && field.hovered));
+        inspector.setMeshPreviewActive(active);
+    }
     ScrollView {
         id: scroll
         anchors.fill: parent
@@ -70,6 +82,8 @@ Rectangle {
                 InspectorNumberField {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 84
+                    row: inspector.move
+                    channel: 0
                     value: inspector.move.x
                     from: inspector.translateMin
                     to: inspector.translateMax
@@ -81,6 +95,8 @@ Rectangle {
                 InspectorNumberField {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 84
+                    row: inspector.move
+                    channel: 1
                     value: inspector.move.y
                     from: inspector.translateMin
                     to: inspector.translateMax
@@ -98,6 +114,8 @@ Rectangle {
                 InspectorNumberField {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 84
+                    row: inspector.move
+                    channel: 2
                     value: inspector.move.centroidX
                     from: inspector.translateMin
                     to: inspector.translateMax
@@ -109,6 +127,8 @@ Rectangle {
                 InspectorNumberField {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 84
+                    row: inspector.move
+                    channel: 3
                     value: inspector.move.centroidY
                     from: inspector.translateMin
                     to: inspector.translateMax
@@ -131,9 +151,11 @@ Rectangle {
                     textFont: uiFont
                                 checked: inspector.move.smooth
                     onToggled: inspector.move.setSmooth(checked)
-                    ToolTip.visible: hovered
-                    ToolTip.delay: 500
-                    ToolTip.text: inspector.smoothTooltip
+                    AeToolTip {
+                        ownerItem: smoothPath
+                        text: inspector.smoothTooltip
+                        shown: smoothPath.hovered
+                    }
                 }
             }
             Item { width: 1; height: inspector.move.visible ? 4 : 0 }
@@ -148,6 +170,8 @@ Rectangle {
                 onToggleKey: inspector.rotate.toggleKey()
                 InspectorNumberField {
                     Layout.fillWidth: true
+                    row: inspector.rotate
+                    channel: 0
                     value: inspector.rotate.angle
                     from: inspector.rotateMin
                     to: inspector.rotateMax
@@ -170,6 +194,8 @@ Rectangle {
                 InspectorNumberField {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 84
+                    row: inspector.scale
+                    channel: 0
                     value: inspector.scale.scaleX
                     from: inspector.scaleMin
                     to: inspector.scaleMax
@@ -181,6 +207,8 @@ Rectangle {
                 InspectorNumberField {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 84
+                    row: inspector.scale
+                    channel: 1
                     value: inspector.scale.scaleY
                     from: inspector.scaleMin
                     to: inspector.scaleMax
@@ -201,6 +229,8 @@ Rectangle {
                 onToggleKey: inspector.depth.toggleKey()
                 InspectorNumberField {
                     Layout.fillWidth: true
+                    row: inspector.depth
+                    channel: 0
                     value: inspector.depth.depth
                     from: inspector.translateMin
                     to: inspector.translateMax
@@ -221,6 +251,8 @@ Rectangle {
                 onToggleKey: inspector.opacity.toggleKey()
                 InspectorNumberField {
                     Layout.fillWidth: true
+                    row: inspector.opacity
+                    channel: 0
                     value: inspector.opacity.opacity
                     from: 0
                     to: 1
@@ -262,6 +294,8 @@ Rectangle {
                     step: 1
                     label: qsTr("Image center X")
                     prefix: "X"
+                    row: inspector.image
+                    channel: 0
                     onValueEdited: (value) => inspector.image.setCenterX(value)
                 }
                 InspectorNumberField {
@@ -273,6 +307,8 @@ Rectangle {
                     step: 1
                     label: qsTr("Image center Y")
                     prefix: "Y"
+                    row: inspector.image
+                    channel: 1
                     onValueEdited: (value) => inspector.image.setCenterY(value)
                 }
             }
@@ -282,6 +318,7 @@ Rectangle {
                 label: inspector.meshCellLabel
                 keyState: ""
                 InspectorNumberField {
+                    id: meshSpacingField
                     Layout.fillWidth: true
                     value: inspector.image.cellSize
                     from: inspector.imageCellMin
@@ -290,9 +327,11 @@ Rectangle {
                     decimals: 0
                     label: inspector.meshCellLabel
                     prefixIcon: "grid-four"
-                    ToolTip.visible: hovered
-                    ToolTip.delay: 500
-                    ToolTip.text: inspector.meshCellTooltip
+                    AeToolTip {
+                        ownerItem: meshSpacingField
+                        text: inspector.meshCellTooltip
+                        shown: meshSpacingField.hovered
+                    }
                     onValueEdited: (value) => inspector.image.setCellSize(Math.round(value))
                 }
             }
@@ -338,4 +377,59 @@ Rectangle {
             Item { width: 1; height: 12 }
         }
     }
+
+    Timer {
+        id: meshPreviewTimer
+        interval: theme.toolTipDelay
+        repeat: false
+        onTriggered: {
+            root.meshPreviewArmed = true;
+            root.refreshMeshPreview();
+        }
+    }
+    Connections {
+        target: meshSpacingField
+        function onHoveredChanged() {
+            if (meshSpacingField.hovered) {
+                if (meshSpacingField.editing || meshSpacingField.scrubbing) {
+                    root.meshPreviewArmed = true;
+                    root.refreshMeshPreview();
+                } else {
+                    meshPreviewTimer.restart();
+                }
+            } else {
+                meshPreviewTimer.stop();
+                root.meshPreviewArmed = false;
+                root.refreshMeshPreview();
+            }
+        }
+        function onScrubbingChanged() {
+            if (meshSpacingField.scrubbing) {
+                root.meshPreviewArmed = true;
+                meshPreviewTimer.stop();
+            }
+            root.refreshMeshPreview();
+        }
+        function onEditingChanged() {
+            if (meshSpacingField.editing) {
+                root.meshPreviewArmed = true;
+                meshPreviewTimer.stop();
+            }
+            root.refreshMeshPreview();
+        }
+    }
+    Connections {
+        // A target change is the inspector's `changed`; the field itself can stay
+        // alive across nodes, so the preview must follow the row's visibility.
+        target: inspector
+        function onChanged() {
+            if (!inspector.image.visible) {
+                meshPreviewTimer.stop();
+                root.meshPreviewArmed = false;
+            }
+            root.refreshMeshPreview();
+        }
+    }
+    Component.onDestruction: inspector.setMeshPreviewActive(false)
+
 }

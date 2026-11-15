@@ -59,7 +59,12 @@ class InspectorViewModel: public QObject {
     // The Mask tool is up and its paint target is this node, i.e. the card's Paint button would
     // re-arm what is already armed. The host says so (it is the only place that knows the active
     // tool), and the card disables the button rather than pretending to do something.
-    Q_PROPERTY(bool maskPaintActive READ maskPaintActive NOTIFY maskPaintActiveChanged)
+    Q_PROPERTY(bool maskPaintActive READ maskPaintActive NOTIFY maskPaintStateChanged)
+    // Filter cards need the same fact per field: which lane/channel the Mask tool is
+    // painting on THIS node. The layer-mask flag above is the matte half of it.
+    Q_PROPERTY(bool maskPaintIsFilter READ maskPaintIsFilter NOTIFY maskPaintStateChanged)
+    Q_PROPERTY(int maskPaintLane READ maskPaintLane NOTIFY maskPaintStateChanged)
+    Q_PROPERTY(int maskPaintChannel READ maskPaintChannel NOTIFY maskPaintStateChanged)
 
     Q_PROPERTY(QString blendLabel READ blendLabel CONSTANT)
     Q_PROPERTY(QString clippedLabel READ clippedLabel CONSTANT)
@@ -114,7 +119,11 @@ public:
     void setProject(core::Project* aProject);
     void setTarget(core::ObjectNode* aTarget);
     void setPlaybackActive(bool aActive);
-    void setMaskPaintActive(bool aActive);
+    // The host's tool state. Only a target that is this inspector's node counts:
+    // switching layers while the Mask tool stays in layer-mask mode must not leave
+    // every other layer's Paint button disabled.
+    void setMaskPaintState(core::ObjectNode* aNode, bool aLayerMask, bool aFilterInput,
+                           core::TimeKeyType aLane, core::FilterMaskChannel aChannel);
     void refresh();
     void refreshAttributes();
     void refreshKeys();
@@ -134,6 +143,9 @@ public:
     bool hasTarget() const { return mProject && mTarget && mTarget->timeLine(); }
     bool playbackActive() const { return mPlaybackActive; }
     bool maskPaintActive() const { return mMaskPaintActive; }
+    bool maskPaintIsFilter() const { return mMaskPaintIsFilter; }
+    int maskPaintLane() const { return int(mMaskPaintLane); }
+    int maskPaintChannel() const { return int(mMaskPaintChannel); }
     core::TimeLine* timeLine() const;
     int frame() const;
     gui::prop::KeyAccessor& accessor() { return mAccessor; }
@@ -191,6 +203,14 @@ public:
     // for the tool on its own signal rather than by a sentinel channel value.
     util::Signaler<void()> onLayerMaskPaintRequested;
 
+    // THE MESH SPACING PREVIEW. The Properties field asks for the inspected
+    // node's mesh overlay while it is hovered (after the tooltip delay), being
+    // scrubbed or being text-edited; the host hands the node to the viewport.
+    // Separate from MainViewSetting::showLayerMesh: this is a transient view of
+    // one value, not the user's persistent mesh toggle.
+    Q_INVOKABLE void setMeshPreviewActive(bool aActive);
+    util::Signaler<void(core::ObjectNode*, bool)> onMeshPreviewRequested;
+
     bool maskPresent() const;
     bool maskKeyed() const;
     bool maskHasKeyAtFrame() const;
@@ -217,7 +237,7 @@ public:
 
 signals:
     void changed();
-    void maskPaintActiveChanged();
+    void maskPaintStateChanged();
 
 private:
     friend class InspectorRowModel;
@@ -232,6 +252,10 @@ private:
     core::ObjectNode* mTarget = nullptr;
     bool mPlaybackActive = false;
     bool mMaskPaintActive = false;
+    bool mMaskPaintIsFilter = false;
+    core::TimeKeyType mMaskPaintLane = core::TimeKeyType_TERM;
+    core::FilterMaskChannel mMaskPaintChannel = core::FilterMaskChannel_Amount;
+    bool mMeshPreviewActive = false;
     gui::prop::KeyAccessor mAccessor;
 
     InspectorRowModel* mMove = nullptr;

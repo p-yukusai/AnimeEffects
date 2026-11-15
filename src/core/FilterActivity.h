@@ -18,9 +18,9 @@ inline bool hsvDataIsIdentity(const QList<int>& aHSV) {
 // IS THIS FILTER DOING ANYTHING ON THIS FRAME?
 //
 // The question is asked of the BLENDED expansions, never of the key map. A value
-// edited while a lane has no explicit key is written to that lane's DEFAULT key
+// edited while a lane has no explicit key is written to that lane's BASE VALUE
 // (see gui/prop/prop_KeyAccessor.cpp's editFrame, "Model 2"), and TimeKeyBlender
-// reads the default key between keys - falling back to the type's identity Data
+// reads the base value between keys - falling back to the type's identity Data
 // only when there is none. So the blended value IS the picture, and "the filter is
 // enabled AND that value is above the type's identity epsilon" is the only honest
 // test of live.

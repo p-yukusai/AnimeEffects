@@ -130,7 +130,10 @@ Item {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 // Reserve the lane the ScrollBar below stands in, so a row's
-                // hover highlight stops short of it.
+                // hover highlight stops short of it. (The combo dropdown derives
+                // this from the bar's visibility; here the list is a page-height
+                // Flickable whose height is the popup's, so an unconditional lane
+                // avoids a width/visibility feedback cycle.)
                 width: parent.width - 12
                 clip: true
                 model: picker

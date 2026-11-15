@@ -399,11 +399,8 @@ namespace graph {
 
         double lo = std::min(aMin, aMax);
         double hi = std::max(aMin, aMax);
-        const double span = hi - lo;
-        // The window is stored in float, so a span that does not survive the
-        // round trip is a constant channel as far as the axis can tell - and a
-        // degenerate window would leave pixelY with nothing to divide by.
-        if (!(static_cast<float>(span) > 0.f)) {
+
+        const auto widenConstant = [&lo, &hi]() {
             // Constant channel: centre it with room to breathe, or the curve
             // would be glued to the edge of a zero-height window and its keys
             // would be unreachable. The padding scales with the value so 1000
@@ -412,12 +409,26 @@ namespace graph {
             const double pad = std::max(1.0, std::fabs(value) * 0.1);
             lo = value - pad;
             hi = value + pad;
+        };
+
+        // The window is stored in float, so bounds that round to one float are a
+        // constant channel as far as the axis can tell - and a degenerate window
+        // would leave pixelY with nothing to divide by. Test the STORED bounds,
+        // not the span: two values can differ by a tiny double span and still
+        // round to the same pair of floats.
+        if (!(static_cast<float>(lo) < static_cast<float>(hi))) {
+            widenConstant();
         } else {
             // 5% of the span on each side, so an extreme key is drawn inside
             // the plot instead of on its border.
-            const double pad = span * 0.05;
+            const double pad = (hi - lo) * 0.05;
             lo -= pad;
             hi += pad;
+            // A near-constant span can survive the double pad and still round
+            // to one float pair; widen THAT case too.
+            if (!(static_cast<float>(lo) < static_cast<float>(hi))) {
+                widenConstant();
+            }
         }
         setValueWindow(static_cast<float>(lo), static_cast<float>(hi));
     }

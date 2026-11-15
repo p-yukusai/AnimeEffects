@@ -47,16 +47,17 @@ public:
     void pushTarget(ObjectNode& aNode, TimeKeyType aType, int aIndex);
     void pushTarget(ObjectNode& aNode, TimeKeyType aType, int aIndex, int aSubIndex);
 
-    void pushDefaultTarget(ObjectNode& aNode, TimeKeyType aType);
+    // Announces an edit to an unkeyed value (targets() uses authored frames).
+    void pushBaseValueTarget(ObjectNode& aNode, TimeKeyType aType);
 
     Type type() const { return mType; }
     QVector<Target>& targets() { return mTargets; }
     const QVector<Target>& targets() const { return mTargets; }
 
-    QVector<Target>& defaultTargets() { return mDefaultTargets; }
-    const QVector<Target>& detaulTargets() const { return mDefaultTargets; }
+    QVector<Target>& baseValueTargets() { return mBaseValueTargets; }
+    const QVector<Target>& baseValueTargets() const { return mBaseValueTargets; }
 
-    bool hasAnyTargets() const { return !mTargets.empty() || !mDefaultTargets.empty(); }
+    bool hasAnyTargets() const { return !mTargets.empty() || !mBaseValueTargets.empty(); }
 
     // set a project by a project
     void setProject(Project& aProject) { mProject = &aProject; }
@@ -69,7 +70,7 @@ private:
     Project* mProject;
     Type mType;
     QVector<Target> mTargets;
-    QVector<Target> mDefaultTargets;
+    QVector<Target> mBaseValueTargets;
 };
 
 } // namespace core

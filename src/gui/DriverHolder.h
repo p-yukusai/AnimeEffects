@@ -30,6 +30,11 @@ public:
     void onTimeKeyUpdated(core::TimeLineEvent& aEvent, bool aUndo);
     void onResourceUpdated(core::ResourceEvent& aEvent, bool aUndo);
     void onTreeRestructured(core::ObjectTreeEvent& aEvent, bool aUndo);
+    // One authored-weight field changed (a stroke frame, a bake, an undo). The
+    // owner's key caches are already rebuilt; this re-derives the blend and
+    // repaints. It is NOT a timeline event: a key event would reset the editing
+    // mode mid-stroke.
+    void onSkinWeightsUpdated(core::ObjectNode& aOwner, bool aUndo);
     void onSelectionChanged(core::ObjectNode* aRepresentNode);
     void onProjectAttributeUpdated();
 
@@ -41,6 +46,7 @@ private:
     util::SlotId mTimeLineSlot;
     util::SlotId mResourceSlot;
     util::SlotId mTreeSlot;
+    util::SlotId mSkinSlot;
 };
 
 } // namespace gui

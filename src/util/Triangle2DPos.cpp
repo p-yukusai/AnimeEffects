@@ -61,6 +61,15 @@ Triangle2DPos::Triangle2DPos(int aIndex, float aFirst, float aSecond):
     XC_ASSERT(xc_contains(aSecond, 0.0f, 1.0f));
 }
 
+std::array<float, 3> Triangle2DPos::weights() const {
+    XC_ASSERT(isValid());
+    std::array<float, 3> result = {0.0f, 0.0f, 0.0f};
+    result[mIndex] = mFirst * mSecond;
+    result[(mIndex + 1) % 3] = (1.0f - mFirst) * mSecond;
+    result[(mIndex + 2) % 3] = 1.0f - mSecond;
+    return result;
+}
+
 QVector2D Triangle2DPos::get(const Triangle2D& aTriangle) const {
     XC_ASSERT(isValid());
     const QVector2D first = aTriangle.v[mIndex] * mFirst + aTriangle.v[(mIndex + 1) % 3] * (1.0f - mFirst);

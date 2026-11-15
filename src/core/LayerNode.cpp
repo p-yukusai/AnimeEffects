@@ -51,7 +51,7 @@ void LayerNode::setDefaultImage(const img::ResourceHandle& aHandle, img::BlendMo
         return; // fail safe
 
     auto key = new ImageKey();
-    mTimeLine.grabDefaultKey(TimeKeyType_Image, key);
+    mTimeLine.setBaseValue(TimeKeyType_Image, key);
     key->setImage(aHandle, aBlendMode);
     key->resetGridMesh();
     key->setImageOffsetByCenter();
@@ -66,21 +66,43 @@ void LayerNode::setDefaultImage(const img::ResourceHandle& aHandle, img::BlendMo
 }
 
 void LayerNode::setDefaultPosture(const QVector2D& aPos) {
-    getOrCreateDefaultKey<MoveKey, TimeKeyType_Move>(mTimeLine)->data().setPos(aPos);
-    getOrCreateDefaultKey<RotateKey, TimeKeyType_Rotate>(mTimeLine);
-    getOrCreateDefaultKey<ScaleKey, TimeKeyType_Scale>(mTimeLine);
+    if (TimeLine::usesChannelTracks(TimeKeyType_Move)) {
+        mTimeLine.setChannelBaseValue(TimeKeyType_Move, 0, aPos.x());
+        mTimeLine.setChannelBaseValue(TimeKeyType_Move, 1, aPos.y());
+        mTimeLine.setChannelBaseValue(TimeKeyType_Move, 2, 0.0f);
+        mTimeLine.setChannelBaseValue(TimeKeyType_Move, 3, 0.0f);
+    } else {
+        getOrCreateBaseValue<MoveKey, TimeKeyType_Move>(mTimeLine)->data().setPos(aPos);
+    }
+    if (!TimeLine::usesChannelTracks(TimeKeyType_Rotate)) {
+        getOrCreateBaseValue<RotateKey, TimeKeyType_Rotate>(mTimeLine);
+    }
+    if (!TimeLine::usesChannelTracks(TimeKeyType_Scale)) {
+        getOrCreateBaseValue<ScaleKey, TimeKeyType_Scale>(mTimeLine);
+    }
 }
 
 void LayerNode::setDefaultDepth(float aValue) {
-    getOrCreateDefaultKey<DepthKey, TimeKeyType_Depth>(mTimeLine)->setDepth(aValue);
+    if (TimeLine::usesChannelTracks(TimeKeyType_Depth)) {
+        mTimeLine.setChannelBaseValue(TimeKeyType_Depth, 0, aValue);
+    } else {
+        getOrCreateBaseValue<DepthKey, TimeKeyType_Depth>(mTimeLine)->setDepth(aValue);
+    }
 }
 
 void LayerNode::setDefaultOpacity(float aValue) {
-    getOrCreateDefaultKey<OpaKey, TimeKeyType_Opa>(mTimeLine)->setOpacity(aValue);
+    if (TimeLine::usesChannelTracks(TimeKeyType_Opacity)) {
+        mTimeLine.setChannelBaseValue(TimeKeyType_Opacity, 0, aValue);
+    } else {
+        getOrCreateBaseValue<OpacityKey, TimeKeyType_Opacity>(mTimeLine)->setOpacity(aValue);
+    }
 }
 
 float LayerNode::initialDepth() const {
-    auto key = (DepthKey*)mTimeLine.defaultKey(TimeKeyType_Depth);
+    if (TimeLine::usesChannelTracks(TimeKeyType_Depth)) {
+        return mTimeLine.channelBaseValue(TimeKeyType_Depth, 0);
+    }
+    auto key = (DepthKey*)mTimeLine.baseValue(TimeKeyType_Depth);
     return key ? key->depth() : 0.0f;
 }
 
@@ -89,12 +111,12 @@ void LayerNode::setClipped(bool aIsClipped) { mIsClipped = aIsClipped; }
 bool LayerNode::isClipper()  const { return ObjectNodeUtil::isClipper(this); }
 
 img::BlendMode LayerNode::blendMode() const {
-    auto key = (ImageKey*)mTimeLine.defaultKey(TimeKeyType_Image);
+    auto key = (ImageKey*)mTimeLine.baseValue(TimeKeyType_Image);
     return key ? key->data().blendMode() : img::BlendMode_Normal;
 }
 
 void LayerNode::setBlendMode(img::BlendMode aMode) {
-    auto key = (ImageKey*)mTimeLine.defaultKey(TimeKeyType_Image);
+    auto key = (ImageKey*)mTimeLine.baseValue(TimeKeyType_Image);
     if (key) {
         key->data().setBlendMode(aMode);
         const bool pageable = key->data().resource() && key->data().resource()->hasImage()
@@ -224,7 +246,7 @@ void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccess
             frameStats.layerConsidered();
     }
 
-    if (!mIsVisible || aAccessor.get(mTimeLine).opa().isZero()) {
+    if (!mIsVisible || aAccessor.get(mTimeLine).opacity().isZero()) {
         if (countsLayer)
             frameStats.layerCulled();
         return;
@@ -252,7 +274,7 @@ void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccess
     }
 
     // The direct path's HSV comes from the BLENDED value, like every other filter
-    // decision: an HSV edited on its default key must bake into the layer shader
+    // decision: an HSV edited on its base value must bake into the layer shader
     // even though the lane has no explicit key at all.
     const bool useHSV = mTimeLine.filterEnabled(TimeKeyType_HSV)
         && filterValueIsActive(TimeKeyType_HSV, aAccessor.get(mTimeLine));
@@ -456,7 +478,7 @@ bool LayerNode::isCompositeLayer(const TimeCacheAccessor& aAccessor) const {
     // layer (filterValueIsActive carries each type's test: HSV's inert Data,
     // FilterFrame::kMinActiveBlurRadius, WaveKey::Data::isActive). Testing the
     // blended value - not "some key exists at or before this frame" - is what keeps
-    // a filter edited on its default key from being dropped here. The composite
+    // a filter edited on its base value from being dropped here. The composite
     // path then applies the whole stack in order; HSV alone stays on the direct
     // path, where it is baked into the layer shader exactly as before.
     const TimeKeyExpans& expans = aAccessor.get(mTimeLine);
@@ -1181,7 +1203,7 @@ void LayerNode::reserveShadersFromTimeline() {
         mShaderHolder.reserveShaders(k->data().blendMode(), pageable);
     };
 
-    if (auto def = static_cast<ImageKey*>(mTimeLine.defaultKey(TimeKeyType_Image)))
+    if (auto def = static_cast<ImageKey*>(mTimeLine.baseValue(TimeKeyType_Image)))
         reserveOne(def);
 
     for (auto key : mTimeLine.map(TimeKeyType_Image))

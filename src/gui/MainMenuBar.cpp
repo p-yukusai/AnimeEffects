@@ -1,24 +1,41 @@
+#include <QApplication>
+#include <QClipboard>
+#include <QColor>
+#include <QDesktopServices>
+#include <QDir>
 #include <QFile>
-#include <QDomDocument>
-#include <qstandardpaths.h>
-#include "qprocess.h"
-#include "util/TextUtil.h"
+#include <QFont>
+#include <QGuiApplication>
+#include <QIcon>
+#include <QMessageBox>
+#include <QProcess>
+#include <QRegularExpression>
+#include <QScopedPointer>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QSysInfo>
+#include <QThread>
+#include <QUrl>
+
+#include <cmath>
+#include <limits>
+
 #include "cmnd/BasicCommands.h"
 #include "cmnd/ScopedMacro.h"
 #include "core/FormatVersion.h"
-#include "core/ObjectNodeUtil.h"
 #include "ctrl/CmndName.h"
-#include "ctrl/ExportTarget.h"
+#include "gui/GeneralSettingDialog.h"
+#include "gui/KeyBindingDialog.h"
 #include "gui/MainMenuBar.h"
 #include "gui/MainWindow.h"
-#include "media/FFmpegHelpers.h"
-#include "gui/ResourceDialog.h"
 #include "gui/ProjectSettingDialog.h"
-#include "gui/KeyBindingDialog.h"
-#include "gui/GeneralSettingDialog.h"
+#include "gui/ResourceDialog.h"
+#include "gui/ViaPoint.h"
+#include "gui/qml/MenuCommand.h"
+#include "media/FFmpegHelpers.h"
 #include "util/NetworkUtil.h"
-#include <algorithm>
-#include <limits>
+#include "util/TextUtil.h"
+
 #ifdef Q_OS_WINDOWS
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -68,7 +85,7 @@ static void cpuid_vendor_id(char vendor[VENDOR_ID_LEN]) {
     cpuid_t v = {};
     native_cpuid(0, v);
 
-    // https://learn.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex?view=msvc-170#example
+    // https://learn.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidx#example
     ((unsigned int *) vendor)[0] = v[EBX];
     ((unsigned int *) vendor)[1] = v[EDX];
     ((unsigned int *) vendor)[2] = v[ECX];
@@ -77,490 +94,363 @@ static void cpuid_vendor_id(char vendor[VENDOR_ID_LEN]) {
 
 #endif
 //-------------------------------------------------------------------------------------------------
-MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResources& aGUIResources, QWidget* aParent):
-    QMenuBar(aParent),
-    mProcess(),
+MainMenuBar::MainMenuBar(MainWindow& aMainWindow,
+                         ViaPoint& aViaPoint,
+                         GUIResources& aGUIResources,
+                         QObject* aParent):
+    QObject(aParent),
+    mMainWindow(&aMainWindow),
     mViaPoint(aViaPoint),
-    mProject(),
-    mProjectActions(),
     mGUIResources(aGUIResources) {
-    // load the list of video formats from a setting file.
+    // ---- File ---------------------------------------------------------------
+    addCommand("newProject", tr("New project"), [this]() { mMainWindow->onNewProjectTriggered(); });
+    addCommand("openProject", tr("Open project"), [this]() { mMainWindow->onOpenProjectTriggered(); });
+    mProjectActions.push_back(
+        addCommand("saveProject", tr("Save project"), [this]() { mMainWindow->onSaveProjectTriggered(); }));
+    mProjectActions.push_back(addCommand("saveProjectAs", tr("Save project as"), [this]() {
+        mMainWindow->onSaveProjectAsTriggered();
+    }));
+    mProjectActions.push_back(addCommand("exportProject", tr("Export project as"), [this]() {
+        mMainWindow->onExportTriggered();
+    }));
+    // "Quickly export as" is a QUICK action: the destination picker first, then the
+    // export with no further dialogs. It is not a fifty-five-row tree.
+    mProjectActions.push_back(addCommand("quickExport", tr("Quickly export as..."), [this]() {
+        mMainWindow->onQuickExportTriggered();
+    }));
+    // Re-export: the same export, one click, no dialogs. Disabled until an export
+    // has succeeded, because "again" has nothing to repeat before there has been one.
+    mExportAgain = addCommand("exportAgain", tr("Export again"), [this]() {
+        mMainWindow->onExportAgainTriggered();
+    });
+    mExportAgain->setEnabled(false);
+    mProjectActions.push_back(
+        addCommand("closeProject", tr("Close project"), [this]() { mMainWindow->onCloseProjectTriggered(); }));
 
-    MainWindow* mainWindow = &aMainWindow;
-    mMainWindow = &aMainWindow;
-
-    auto fileMenu = new QMenu(tr("File"), this);
+    // "Open recent" is a submenu. Its rows are the scene's Instantiator over this
+    // list, because the paths are dynamic and a menu is the documented place for a
+    // dynamic list (Menu docs, "Dynamically Generating Menu Items"): each path is an
+    // Action, and the Instantiator's onObjectAdded adds it to the recent Menu.
     {
-        auto newProject = new QAction(tr("New project"), this);
-        auto openProject = new QAction(tr("Open project"), this);
-        auto openRecent = new QMenu(tr("Open recent"), this);
-        {
-            // Get settings
-            QSettings settings;
-            settings.sync();
-            recentfiles = settings.value("projectloader/recents").toStringList();
-
-            // Path placeholders
-            if (recentfiles.length() != 8) {
-                while (recentfiles.length() != 8) {
-                    recentfiles.append("Path placeholder");
-                }
-            }
-            QString firstPath = recentfiles[0];
-            QString secondPath = recentfiles[1];
-            QString thirdPath = recentfiles[2];
-            QString fourthPath = recentfiles[3];
-            QString fifthPath = recentfiles[4];
-            QString sixthPath = recentfiles[5];
-            QString seventhPath = recentfiles[6];
-            QString eigthPath = recentfiles[7];
-            QStringList list;
-            list << firstPath << secondPath << thirdPath << fourthPath << fifthPath << sixthPath << seventhPath
-                 << eigthPath;
-
-            // Path actions
-            auto placeholderAction = new QAction(tr("No other projects"), this);
-            auto firstPathAction = new QAction(firstPath);
-            auto secondPathAction = new QAction(secondPath);
-            auto thirdPathAction = new QAction(thirdPath);
-            auto fourthPathAction = new QAction(fourthPath);
-            auto fifthPathAction = new QAction(fifthPath);
-            auto sixthPathAction = new QAction(sixthPath);
-            auto seventhPathAction = new QAction(seventhPath);
-            auto eigthPathAction = new QAction(eigthPath);
-            // Path addition
-            // Better than before, but still not very DRY code.
-            for (int x = 0; x <= 7; x += 1) {
-                if (list[x] == QString("Path placeholder")) {
-                    openRecent->addAction(placeholderAction);
-                } else {
-                    switch (x) {
-                    case 0:
-                        openRecent->addAction(firstPathAction);
-                        break;
-                    case 1:
-                        openRecent->addAction(secondPathAction);
-                        break;
-                    case 2:
-                        openRecent->addAction(thirdPathAction);
-                        break;
-                    case 3:
-                        openRecent->addAction(fourthPathAction);
-                        break;
-                    case 4:
-                        openRecent->addAction(fifthPathAction);
-                        break;
-                    case 5:
-                        openRecent->addAction(sixthPathAction);
-                        break;
-                    case 6:
-                        openRecent->addAction(seventhPathAction);
-                        break;
-                    case 7:
-                        openRecent->addAction(eigthPathAction);
-                        break;
-                    default:
-                        openRecent->addAction(placeholderAction);
-                    }
-                }
-            }
-
-            // Connections
-            connect(placeholderAction, &QAction::triggered, [=]() { qDebug() << "You've earned yourself a cookie!"; });
-            connect(firstPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(firstPath); });
-            connect(secondPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(secondPath); });
-            connect(thirdPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(thirdPath); });
-            connect(fourthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fourthPath); });
-            connect(fifthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(fifthPath); });
-            connect(sixthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(sixthPath); });
-            connect(seventhPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(seventhPath); });
-            connect(eigthPathAction, &QAction::triggered, [=]() { mainWindow->onOpenRecentTriggered(eigthPath); });
+        QSettings settings;
+        settings.sync();
+        const QStringList paths = settings.value("projectloader/recents").toStringList();
+        for (const QString& path : paths) {
+            if (mRecentFiles.size() >= 8)
+                break;
+            if (path.isEmpty() || path == QStringLiteral("Path placeholder"))
+                continue;
+            QVariantMap item;
+            item.insert(QStringLiteral("text"), path);
+            item.insert(QStringLiteral("path"), path);
+            item.insert(QStringLiteral("enabled"), true);
+            mRecentFiles.push_back(item);
         }
-        auto saveProject = new QAction(tr("Save project"), this);
-        auto saveProjectAs = new QAction(tr("Save project as"), this);
-        auto closeProject = new QAction(tr("Close project"), this);
-        auto exportWindow = new QAction(tr("Export project as"), this);
-        // "Quickly export as" is a QUICK action, so it leads with what this user
-        // actually exports to. It used to list all fifty-five destinations in six
-        // groups, which is a browsing list wearing a shortcut's name -- and it grew
-        // a second column the moment the chat and post families arrived. The
-        // recents come first and the full grouped list is one level down, so
-        // nothing became unreachable.
-        // "Quickly export as..." opens the destination picker (see
-        // gui/DestinationPicker) and exports as soon as one is chosen: no dialogs
-        // after that, the folder is remembered per destination.
-        //
-        // It was a submenu per family, which made this four levels deep
-        // (File -> Quickly export as -> family -> destination) and, at any level, a
-        // list of fifty-five rows. A menu cannot be searched; the picker can.
-        auto quickExport = new QAction(tr("Quickly export as..."), this);
-        quickExport->setObjectName(QString::fromUtf8("quickExportAction"));
-        connect(quickExport, &QAction::triggered, [mainWindow]() {
-            mainWindow->onQuickExportTriggered();
-        });
-
-        mProjectActions.push_back(saveProject);
-        mProjectActions.push_back(saveProjectAs);
-        mProjectActions.push_back(closeProject);
-        mProjectActions.push_back(exportWindow);
-        mProjectActions.push_back(quickExport);
-
-        // Re-export: the same export, one click, no dialogs. Export is not a
-        // one-shot here — the same sticker gets exported a dozen times while the
-        // art is adjusted — and until now every one of those runs meant re-walking
-        // the menu, the destination and the file dialog from scratch.
-        mExportAgainAction = new QAction(tr("Export again"), this);
-        mExportAgainAction->setEnabled(false);
-        connect(mExportAgainAction, &QAction::triggered, mainWindow,
-                &MainWindow::onExportAgainTriggered);
-
-        connect(newProject, &QAction::triggered, mainWindow, &MainWindow::onNewProjectTriggered);
-        connect(openProject, &QAction::triggered, mainWindow, &MainWindow::onOpenProjectTriggered);
-        connect(saveProject, &QAction::triggered, mainWindow, &MainWindow::onSaveProjectTriggered);
-        connect(saveProjectAs, &QAction::triggered, mainWindow, &MainWindow::onSaveProjectAsTriggered);
-        connect(closeProject, &QAction::triggered, mainWindow, &MainWindow::onCloseProjectTriggered);
-        connect(exportWindow, &QAction::triggered, mainWindow, &MainWindow::onExportTriggered);
-
-        fileMenu->addAction(newProject);
-        fileMenu->addAction(openProject);
-        fileMenu->addAction(openRecent->menuAction());
-        fileMenu->addSeparator();
-        fileMenu->addAction(saveProject);
-        fileMenu->addAction(saveProjectAs);
-        fileMenu->addAction(exportWindow);
-        fileMenu->addAction(quickExport);
-        fileMenu->addAction(mExportAgainAction);
-        fileMenu->addSeparator();
-        fileMenu->addAction(closeProject);
+        if (mRecentFiles.isEmpty()) {
+            QVariantMap item;
+            item.insert(QStringLiteral("text"), tr("No other projects"));
+            item.insert(QStringLiteral("path"), QString());
+            item.insert(QStringLiteral("enabled"), false);
+            mRecentFiles.push_back(item);
+        }
     }
 
-    auto editMenu = new QMenu(tr("Edit"), this);
-    {
-        auto undo = new QAction(tr("Undo"), this);
-        auto redo = new QAction(tr("Redo"), this);
-        auto projectSettings = new QAction(tr("Project settings"), this);
-        auto assets = new QAction(tr("Assets"), this);
+    // ---- Edit ---------------------------------------------------------------
+    mProjectActions.push_back(
+        addCommand("undo", tr("Undo"), [this]() { mMainWindow->onUndoTriggered(); }));
+    mProjectActions.push_back(
+        addCommand("redo", tr("Redo"), [this]() { mMainWindow->onRedoTriggered(); }));
+    mProjectActions.push_back(addCommand("projectSettings", tr("Project settings"), [this]() {
+        onProjectSettingsTriggered();
+    }));
+    mProjectActions.push_back(addCommand("assets", tr("Assets"), [this]() {
+        if (mViaPoint.resourceDialog())
+            mViaPoint.resourceDialog()->setVisible(!mViaPoint.resourceDialog()->isVisible());
+    }));
 
-        mProjectActions.push_back(undo);
-        mProjectActions.push_back(redo);
-        mProjectActions.push_back(projectSettings);
-        mProjectActions.push_back(assets);
+    // The Panels commands are added by MainWindow once the docks exist: the menu
+    // structure is in QML, but the text of a panel row is the dock's own title and
+    // the toggle is the window's. They are added before HeaderBar loads.
 
-        connect(undo, &QAction::triggered, mainWindow, &MainWindow::onUndoTriggered);
-        connect(redo, &QAction::triggered, mainWindow, &MainWindow::onRedoTriggered);
-        connect(projectSettings, &QAction::triggered, this, &MainMenuBar::onProjectSettingsTriggered);
-        connect(assets, &QAction::triggered, [&] {
-            if (aViaPoint.resourceDialog()) {
-                aViaPoint.resourceDialog()->setVisible(!aViaPoint.resourceDialog()->isVisible());
-            }
-        });
+    // ---- Preferences --------------------------------------------------------
+    addCommand("settings", tr("Settings"), [this]() {
+        auto* generalSettingsDialog = new GeneralSettingDialog(mGUIResources, mViaPoint, mMainWindow);
+        QScopedPointer<GeneralSettingDialog> dialog(generalSettingsDialog);
+        if (dialog->exec() == QDialog::DialogCode::Accepted) {
+            if (generalSettingsDialog->timeFormatHasChanged())
+                onTimeFormatChanged();
+            if (generalSettingsDialog->themeHasChanged())
+                mGUIResources.setTheme(generalSettingsDialog->theme());
+            if (generalSettingsDialog->accentHasChanged())
+                mGUIResources.setAccent(generalSettingsDialog->accent());
+            // Autosave enable/delay are applied live (start/stop/re-arm the timer)
+            // rather than waiting for the next app launch.
+            mViaPoint.onGeneralSettingsChanged();
+        }
+    });
+    addCommand("keybindings", tr("Keybindings"), [this]() {
+        XC_PTR_ASSERT(mViaPoint.keyCommandMap());
+        QScopedPointer<KeyBindingDialog> dialog(new KeyBindingDialog(*mViaPoint.keyCommandMap(), mMainWindow));
+        dialog->exec();
+    });
 
-        editMenu->addAction(undo);
-        editMenu->addAction(redo);
-        editMenu->addSeparator();
-        editMenu->addAction(projectSettings);
-        editMenu->addAction(assets);
-    }
+    // ---- Help ---------------------------------------------------------------
+    addCommand("about", tr("About AnimeEffects"), []() {
+        QMessageBox msgBox;
+        msgBox.setWindowIcon(QIcon("../src/AnimeEffects.ico"));
+        auto versionString = QString::number(AE_MAJOR_VERSION) + "." + QString::number(AE_MINOR_VERSION) + "."
+                             + QString::number(AE_MICRO_VERSION);
+        auto platform = QSysInfo::productType();
+        platform[0] = platform[0].toUpper();
+        QString msgStr = tr("### AnimeEffects for ") + platform + tr(" version ") + versionString + "<br />"
+                         + tr("An easy to use 2D animation software maintained by the "
+                              "[AnimeEffectsDevs](https://github.com/AnimeEffectsDevs)."
+                              "<br />Licensed under the GPL v3.0 and powered by various open source libraries.");
+        msgStr.append(tr("<br /><br />Video/audio encoding uses the FFmpeg libraries "
+                         "(https://ffmpeg.org), which are licensed under the GNU Lesser GPL "
+                         "v2.1+ (or GPL, depending on the build). Their corresponding source "
+                         "is available as required by that license."));
+        msgStr.append(tr("<br /><br />Contributors:<br />"
+                         "[Hidefuku](https://github.com/hidefuku), "
+                         "[Yukusai](https://github.com/p-yukusai), "
+                         "[Gambot](https://github.com/GbotHQ), "
+                         "[Arrangemonk](https://github.com/Arrangemonk), "
+                         "[OneByStudio](https://onebystudio.com), "
+                         "[Larpon](https://github.com/larpon), "
+                         "[Herace](https://github.com/herace), "
+                         "[Aodaruma](https://github.com/Aodaruma), "
+                         "[Azagaya](https://github.com/azagaya), "
+                         "[FoxyHawk](https://github.com/FoxyHawk), "
+                         "[Nanashia](https://github.com/Nanashia), "
+                         "[Henrich](https://github.com/henrich), "
+                         "[mcddx330](https://github.com/mcddx330), "
+                         "[Freddii](https://github.com/freddii), "
+                         "[Aki017](https://github.com/aki017), "
+                         "[PicoHz](https://github.com/picoHz), "
+                         "[Peter9811](https://github.com/peter9811), "
+                         "[GES233](https://github.com/GES233), "
+                         "[h-banii](https://github.com/h-banii), "
+                         "[henrich](https://github.com/henrich), "
+                         "[Nanashia](https://github.com/Nanashia).\n"
+                         "If we forgot to include you please let us know or open a PR!"));
+        msgBox.setTextFormat(Qt::TextFormat::MarkdownText);
+        msgBox.setText(msgStr);
+        QFont font = msgBox.font();
+        font.setPointSize(10);
+        msgBox.setFont(font);
+        msgBox.setWindowTitle(tr("About us"));
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.setDefaultButton(QMessageBox::Ok);
+        msgBox.exec();
+    });
+    addCommand("checkUpdates", tr("Check for updates"), [this]() {
+        const QString url("https://api.github.com/repos/AnimeEffectsDevs/AnimeEffects/tags");
+        util::NetworkUtil::checkForUpdate(url, mMainWindow);
+    });
+    addCommand("telemetry", tr("System telemetry"), [this]() {
+        QString system_info = "Unknown";
+        #ifdef Q_OS_WIN
+        MEMORYSTATUSEX memory_status;
+        ZeroMemory(&memory_status, sizeof(MEMORYSTATUSEX));
+        memory_status.dwLength = sizeof(MEMORYSTATUSEX);
+        if (GlobalMemoryStatusEx(&memory_status)) {
+            system_info = QString(" RAM: %1 MB").arg(memory_status.ullTotalPhys / (1024 * 1024));
+        } else {
+            system_info = " RAM: Unknown";
+        }
+        #elif defined(Q_OS_MACOS)
+        QProcess p;
+        p.start("system_profiler", QStringList() << "SPHardwareDataType" << "| grep" << " Memory:");
+        p.waitForFinished();
+        system_info = p.readAllStandardOutput();
+        p.close();
+        #elif defined(Q_OS_LINUX)
+        QProcess p;
+        p.start("awk", QStringList() << "/MemTotal/ { print $2 }" << "/proc/meminfo");
+        p.waitForFinished();
+        QString memory = p.readAllStandardOutput();
+        system_info = (QString("; RAM: %1 MB").arg(memory.toLong() / 1024));
+        p.close();
+        #endif
+        std::string cpuVendor;
+        QMessageBox msgBox;
+        msgBox.setWindowIcon(QIcon("../src/AnimeEffects.ico"));
+        auto versionString = QString::number(AE_MAJOR_VERSION) + "." + QString::number(AE_MINOR_VERSION) + "."
+                             + QString::number(AE_MICRO_VERSION);
+        auto formatVersionString = QString::number(AE_PROJECT_FORMAT_MAJOR_VERSION) + "."
+                                   + QString::number(AE_PROJECT_FORMAT_MINOR_VERSION);
+        auto platform = QSysInfo::productType();
+        auto qtVersion = QString::number(QT_VERSION_MAJOR) + "." + QString::number(QT_VERSION_MINOR) + "."
+                         + QString::number(QT_VERSION_PATCH);
+        platform[0] = platform[0].toUpper();
+        QString detail;
+        detail += tr("Version: ") + versionString + "\n";
+        detail += tr("Format version: ") + formatVersionString + "\n";
+        detail += tr("Platform: ") + platform + " " + QSysInfo::productVersion() + "\n";
+        detail += tr("Build ABI: ") + QSysInfo::buildAbi() + "\n";
+        #ifdef Q_OS_MACOS
+        cpuVendor = "Apple";
+        #endif
 
-    auto preferenceMenu = new QMenu(tr("Preferences"), this);
-    {
-        auto general = new QAction(tr("Settings"), this);
-        auto keyBind = new QAction(tr("Keybindings"), this);
+        #ifdef Q_PROCESSOR_X86_64
+        char s[VENDOR_ID_LEN];
+        cpuid_vendor_id(s);
+        cpuVendor = s;
 
-        connect(general, &QAction::triggered, [&](bool) {
-            auto generalSettingsDialog = new GeneralSettingDialog(mGUIResources, aViaPoint, this);
-            QScopedPointer<GeneralSettingDialog> dialog(generalSettingsDialog);
-            if (dialog->exec() == QDialog::DialogCode::Accepted) {
-                if (generalSettingsDialog->timeFormatHasChanged())
-                    this->onTimeFormatChanged();
-                if (generalSettingsDialog->themeHasChanged())
-                    this->mGUIResources.setTheme(generalSettingsDialog->theme());
-                if (generalSettingsDialog->accentHasChanged())
-                    this->mGUIResources.setAccent(generalSettingsDialog->accent());
-                // Autosave enable/delay are applied live (start/stop/re-arm
-                // the timer) rather than waiting for the next app launch.
-                mViaPoint.onGeneralSettingsChanged();
-            }
-        });
+        #else
+        cpuVendor = "Unknown";
+        #endif
 
-        connect(keyBind, &QAction::triggered, [&](bool) {
-            XC_PTR_ASSERT(aViaPoint.keyCommandMap());
-            QScopedPointer<KeyBindingDialog> dialog(new KeyBindingDialog(*aViaPoint.keyCommandMap(), this));
-            dialog->exec();
-        });
-
-        preferenceMenu->addAction(general);
-        preferenceMenu->addAction(keyBind);
-    }
-
-    auto helpMenu = new QMenu(tr("Help"), this);
-        {
-            auto aboutMe = new QAction(tr("About AnimeEffects"), this);
-        connect(aboutMe, &QAction::triggered, [=]() {
-            QMessageBox msgBox;
-            msgBox.setWindowIcon(QIcon("../src/AnimeEffects.ico"));
-            auto versionString = QString::number(AE_MAJOR_VERSION) + "." + QString::number(AE_MINOR_VERSION) + "." +
-                QString::number(AE_MICRO_VERSION);
-            auto platform = QSysInfo::productType();
-            platform[0] = platform[0].toUpper();
-            QString msgStr =
-                tr("### AnimeEffects for ") + platform + tr(" version ") + versionString + "<br />" +
-                tr("An easy to use 2D animation software maintained by the [AnimeEffectsDevs](https://github.com/AnimeEffectsDevs)."
-                   "<br />Licensed under the GPL v3.0 and powered by various open source libraries.");
-            msgStr.append(
-                tr("<br /><br />Video/audio encoding uses the FFmpeg libraries "
-                   "(https://ffmpeg.org), which are licensed under the GNU Lesser GPL "
-                   "v2.1+ (or GPL, depending on the build). Their corresponding source "
-                   "is available as required by that license."));
-            msgStr.append(
-                tr("<br /><br />Contributors:<br />"
-                "[Hidefuku](https://github.com/hidefuku), "
-                "[Yukusai](https://github.com/p-yukusai), "
-                "[Gambot](https://github.com/GbotHQ), "
-                "[Arrangemonk](https://github.com/Arrangemonk), "
-                "[OneByStudio](https://onebystudio.com), "
-                "[Larpon](https://github.com/larpon), "
-                "[Herace](https://github.com/herace), "
-                "[Aodaruma](https://github.com/Aodaruma), "
-                "[Azagaya](https://github.com/azagaya), "
-                "[FoxyHawk](https://github.com/FoxyHawk), "
-                "[Nanashia](https://github.com/Nanashia), "
-                "[Henrich](https://github.com/henrich), "
-                "[mcddx330](https://github.com/mcddx330), "
-                "[Freddii](https://github.com/freddii), "
-                "[Aki017](https://github.com/aki017), "
-                "[PicoHz](https://github.com/picoHz), "
-                "[Peter9811](https://github.com/peter9811), "
-                "[GES233](https://github.com/GES233), "
-                "[h-banii](https://github.com/h-banii), "
-                "[henrich](https://github.com/henrich), "
-                "[Nanashia](https://github.com/Nanashia).\n"
-                "If we forgot to include you please let us know or open a PR!"
-                ));
-            msgBox.setTextFormat(Qt::TextFormat::MarkdownText);
-            msgBox.setText(msgStr);
-            QFont font = msgBox.font();
-            font.setPointSize(10);
-            msgBox.setFont(font);
-            msgBox.setWindowTitle(tr("About us"));
-            msgBox.setStandardButtons(QMessageBox::Ok);
-            msgBox.setDefaultButton(QMessageBox::Ok);
-            msgBox.exec();
-        });
-
-        auto checkForUpdates = new QAction(tr("Check for updates"), this);
-        connect(checkForUpdates, &QAction::triggered, [=]() {
-            const QString url("https://api.github.com/repos/AnimeEffectsDevs/AnimeEffects/tags");
-            util::NetworkUtil::checkForUpdate(url, this);
-        });
-        auto diagnostics = new QAction(tr("System telemetry"), this);
-        connect(diagnostics, &QAction::triggered, [=] {
-            #ifdef Q_OS_WIN
-            MEMORYSTATUSEX memory_status;
-            ZeroMemory(&memory_status, sizeof(MEMORYSTATUSEX));
-            memory_status.dwLength = sizeof(MEMORYSTATUSEX);
-            if (GlobalMemoryStatusEx(&memory_status)) {
-              system_info = QString(" RAM: %1 MB").arg(memory_status.ullTotalPhys / (1024 * 1024));
-            }
-            else {
-                system_info = " RAM: Unknown";
-            }
-
-            #elif defined(Q_OS_MACOS)
-            QProcess p;
-            p.start("system_profiler", QStringList() << "SPHardwareDataType" << "| grep" << " Memory:");
-            p.waitForFinished();
-            system_info = p.readAllStandardOutput();
-            p.close();
-
-            #elif defined(Q_OS_LINUX)
-            QProcess p;
-            p.start("awk", QStringList() << "/MemTotal/ { print $2 }" << "/proc/meminfo");
-            p.waitForFinished();
-            QString memory = p.readAllStandardOutput();
-            system_info = (QString("; RAM: %1 MB").arg(memory.toLong() / 1024));
-            p.close();
-            #endif
-            std::string cpuVendor;
-            QMessageBox msgBox;
-            msgBox.setWindowIcon(QIcon("../src/AnimeEffects.ico"));
-            auto versionString = QString::number(AE_MAJOR_VERSION) + "." + QString::number(AE_MINOR_VERSION) + "." +
-                QString::number(AE_MICRO_VERSION);
-            auto formatVersionString = QString::number(AE_PROJECT_FORMAT_MAJOR_VERSION) + "." +
-                QString::number(AE_PROJECT_FORMAT_MINOR_VERSION);
-            auto platform = QSysInfo::productType();
-            auto qtVersion = QString::number(QT_VERSION_MAJOR) + "." + QString::number(QT_VERSION_MINOR) + "." +
-                QString::number(QT_VERSION_PATCH);
-            platform[0] = platform[0].toUpper();
-            QString detail;
-            detail += tr("Version: ") + versionString + "\n";
-            detail += tr("Format version: ") + formatVersionString + "\n";
-            detail += tr("Platform: ") + platform + " " + QSysInfo::productVersion() + "\n";
-            detail += tr("Build ABI: ") + QSysInfo::buildAbi() + "\n";
-            #ifdef Q_OS_MACOS
-            cpuVendor = "Apple";
-            #endif
-
-            #ifdef Q_PROCESSOR_X86_64
-            char s[VENDOR_ID_LEN];
-            cpuid_vendor_id(s);
-            cpuVendor = s;
-
-            #else
-            cpuVendor = "Unknown";
-            #endif
-
-            QString vendor = "Unknown";
-            if (cpuVendor == "GenuineIntel"){
-                vendor = "Intel";
-            }
-            else if (cpuVendor == "AuthenticAMD"){
-                vendor = "AMD";
-            }
-            else if (cpuVendor == "Unknown" || cpuVendor == "Apple") {
-                vendor = "Apple";
-            }
-            // ---------------------- //
-            detail += tr("CPU vendor: ") + vendor + "\n";
-            detail += tr("CPU architecture: ") + QSysInfo::currentCpuArchitecture() + "\n";
-            detail += tr("CPU threads: ") + QString::number(QThread::idealThreadCount()) + "\n";
-            #ifdef Q_OS_APPLE
-            QRegularExpression regexp = QRegularExpression("(?<=Memory:)(.*?)(?=\r?\n)");
-            QString ram = regexp.match(system_info).captured(0);
-            detail += tr("System RAM:") + ram + "\n"; //RAM
-            #else
-            detail += tr("System ") + system_info + "\n"; //RAM
-            #endif
-            detail += tr("Current GPU: ") + QString(this->mViaPoint.glDeviceInfo().renderer.c_str()) + "\n";
-            QString vramString;
-            int vram = this->mViaPoint.getVRAM();
-            if (vram == -1) {
-                vramString = "Unknown VRAM";
+        QString vendor = "Unknown";
+        if (cpuVendor == "GenuineIntel") {
+            vendor = "Intel";
+        } else if (cpuVendor == "AuthenticAMD") {
+            vendor = "AMD";
+        } else if (cpuVendor == "Unknown" || cpuVendor == "Apple") {
+            vendor = "Apple";
+        }
+        // ---------------------- //
+        detail += tr("CPU vendor: ") + vendor + "\n";
+        detail += tr("CPU architecture: ") + QSysInfo::currentCpuArchitecture() + "\n";
+        detail += tr("CPU threads: ") + QString::number(QThread::idealThreadCount()) + "\n";
+        #ifdef Q_OS_APPLE
+        QRegularExpression regexp = QRegularExpression("(?<=Memory:)(.*?)(?=\r?\n)");
+        QString ram = regexp.match(system_info).captured(0);
+        detail += tr("System RAM:") + ram + "\n"; //RAM
+        #else
+        detail += tr("System ") + system_info + "\n"; //RAM
+        #endif
+        detail += tr("Current GPU: ") + QString(mViaPoint.glDeviceInfo().renderer.c_str()) + "\n";
+        QString vramString;
+        int vram = mViaPoint.getVRAM();
+        if (vram == -1) {
+            vramString = "Unknown VRAM";
+        }
+        #ifdef Q_OS_APPLE
+        if (vram == -2) {
+            QRegularExpression captureNumber = QRegularExpression("\\d+");
+            vramString = "Roughly "
+                         + QString::number(captureNumber.match(ram).captured(0).toInt() * 75 / 100) + ".5 GB";
+        }
+        #endif
+        else {
+            int digits = 1 + std::log10(vram);
+            QString format = "MB";
+            if (digits >= 4) {
+                format = "GB";
             }
             #ifdef Q_OS_APPLE
-            if (vram == -2) {
-                QRegularExpression captureNumber = QRegularExpression("\\d+");
-                vramString = "Roughly " + QString::number(captureNumber.match(ram).captured(0).toInt() * 75 / 100) + ".5 GB";
-            }
+            format = "GB";
             #endif
-            else {
-                int digits = 1 + log10(vram);
-                QString format = "MB";
-                if (digits >= 4) {
-                    format = "GB";
+            int threes = digits / 3;
+            bool numNotOdd = digits % 2;
+            for (; threes > 0; --threes) {
+                int padding = numNotOdd ? 0 : 1;
+                if (digits > 3 && threes * 3 + 1 == digits && padding == 1) {
+                    vramString = QString::number(vram).insert(digits - (digits - 1), ',');
+                } else {
+                    vramString = QString::number(vram).insert(threes * 3 + padding, ',');
                 }
-                #ifdef Q_OS_APPLE
-                    format = "GB";
-                #endif
-                int threes = digits / 3;
-                bool numNotOdd = digits % 2;
-                for (; threes > 0; --threes) {
-                    int padding = numNotOdd ? 0 : 1;
-                    if (digits > 3 && threes * 3 + 1 == digits && padding == 1) {
-                        vramString = QString::number(vram).insert(digits - (digits - 1), ',');
-                    } else {
-                        vramString = QString::number(vram).insert(threes * 3 + padding, ',');
-                    }
-                }
-                vramString.append(format);
             }
-            detail += tr("GPU Vendor: ") + QString(this->mViaPoint.glDeviceInfo().vender.c_str()) + "\n";
-            detail += tr("Max VRAM: ") + vramString + "\n";
-            detail += tr("OpenGL version: ") + QString(this->mViaPoint.glDeviceInfo().version.c_str()) + "\n";
-            detail += tr("Qt Version: ") + qtVersion + "\n";
-            detail += tr("System locale: ") + QLocale::system().name() + "\n";
+            vramString.append(format);
+        }
+        detail += tr("GPU Vendor: ") + QString(mViaPoint.glDeviceInfo().vender.c_str()) + "\n";
+        detail += tr("Max VRAM: ") + vramString + "\n";
+        detail += tr("OpenGL version: ") + QString(mViaPoint.glDeviceInfo().version.c_str()) + "\n";
+        detail += tr("Qt Version: ") + qtVersion + "\n";
+        detail += tr("System locale: ") + QLocale::system().name() + "\n";
 
-            // Unicode Check
-            auto nonAscii = QRegularExpression("[^\\x00-\\x7F]+");
-            QString hasUnicode = QApplication::applicationFilePath().contains(nonAscii) ? "True" : "False";
-            detail += tr("Location Has Unicode: ") + hasUnicode + "\n";
-            // Write Check: the app's writable storage is the cache (and
-            // QSettings); probe the cache dir rather than the old co-located
-            // data dir (which no longer exists).
-            QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
-            QFile file(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/.writeTest");
-            bool isWritable = true;
-            if (!file.open(QIODevice::WriteOnly)) {
-                isWritable = false;
-            } else {
-                file.close();
-            }
-            const QString isFolderWritable = isWritable ? "True" : "False";
-            detail += tr("Location Is Writable: ") + isFolderWritable + "\n";
-            // THE MEDIA BACKEND, AS LINKED. There is no ffmpeg process to check for:
-            // media/ links libav* directly, so what a bug report needs is the build
-            // of those libraries, not the reachability of a binary nothing invokes.
-            // licence() and configuration() are libav's own answers, and the
-            // configuration line is what names the encoders this build carries.
-            detail += tr("libav licence: ") + media::ffmpeg::license() + "\n";
-            detail += tr("libav configuration: ") + media::ffmpeg::configuration() + "\n";
-            msgBox.setText(tr("System specs successfully copied to the clipboard"));
-            QClipboard *clipboard = QGuiApplication::clipboard();
-            clipboard->setText(detail);
-            msgBox.setDetailedText(detail);
-            msgBox.setWindowTitle(tr("System telemetry"));
-            msgBox.setStandardButtons(QMessageBox::Ok);
-            msgBox.setDefaultButton(QMessageBox::Ok);
-            msgBox.exec();
-        });
+        // Unicode Check
+        auto nonAscii = QRegularExpression("[^\\x00-\\x7F]+");
+        QString hasUnicode = QApplication::applicationFilePath().contains(nonAscii) ? "True" : "False";
+        detail += tr("Location Has Unicode: ") + hasUnicode + "\n";
+        // Write Check: the app's writable storage is the cache (and QSettings);
+        // probe the cache dir rather than the old co-located data dir.
+        QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+        QFile file(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/.writeTest");
+        bool isWritable = true;
+        if (!file.open(QIODevice::WriteOnly)) {
+            isWritable = false;
+        } else {
+            file.close();
+        }
+        const QString isFolderWritable = isWritable ? "True" : "False";
+        detail += tr("Location Is Writable: ") + isFolderWritable + "\n";
+        // THE MEDIA BACKEND, AS LINKED. There is no ffmpeg process to check for:
+        // media/ links libav* directly, so what a bug report needs is the build of
+        // those libraries, not the reachability of a binary nothing invokes.
+        detail += tr("libav licence: ") + media::ffmpeg::license() + "\n";
+        detail += tr("libav configuration: ") + media::ffmpeg::configuration() + "\n";
+        msgBox.setText(tr("System specs successfully copied to the clipboard"));
+        QClipboard* clipboard = QGuiApplication::clipboard();
+        clipboard->setText(detail);
+        msgBox.setDetailedText(detail);
+        msgBox.setWindowTitle(tr("System telemetry"));
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.setDefaultButton(QMessageBox::Ok);
+        msgBox.exec();
+    });
 
-        helpMenu->addAction(aboutMe);
-        helpMenu->addAction(checkForUpdates);
-        helpMenu->addAction(diagnostics);
-    }
-
-    auto donateMenu = new QAction(tr("Donate"), this);
-    {
-        connect(donateMenu, &QAction::triggered, [=](){
-            QDesktopServices::openUrl(QUrl("https://ko-fi.com/yukusai"));
-        });
-    }
-
-    this->addAction(fileMenu->menuAction());
-    this->addAction(editMenu->menuAction());
-    this->addAction(preferenceMenu->menuAction());
-    this->addAction(helpMenu->menuAction());
+    // ---- Donate -------------------------------------------------------------
+    // A top-level BUTTON in the bar (see HeaderBar.qml), not a menu: it has no
+    // submenu and one command. The registry makes it the same kind of command as
+    // every row; only the scene's placement differs.
     QSettings settings;
     bool donationAllowed = !settings.value("generalsettings/ui/donationAllowed").isValid()
-                            || settings.value("generalsettings/ui/donationAllowed").toBool();
-    if(donationAllowed) { this->addAction(donateMenu); }
+                           || settings.value("generalsettings/ui/donationAllowed").toBool();
+    if (donationAllowed) {
+        addCommand("donate", tr("Donate"),
+                   []() { QDesktopServices::openUrl(QUrl("https://ko-fi.com/yukusai")); });
+    }
 
-    // reset status
     setProject(nullptr);
 }
 
+//-------------------------------------------------------------------------------------------------
+MenuCommand* MainMenuBar::addCommand(const QString& aId,
+                                     const QString& aText,
+                                     std::function<void()> aCallback,
+                                     bool aCheckable) {
+    Q_ASSERT_X(!mCommands.contains(aId), "MainMenuBar::addCommand", "duplicate command id");
+    auto* command = new MenuCommand(aText, std::move(aCallback), aCheckable, this);
+    mCommands.insert(aId, command);
+    return command;
+}
+
+QObject* MainMenuBar::command(const QString& aId) const {
+    auto it = mCommands.constFind(aId);
+    Q_ASSERT_X(it != mCommands.constEnd(), "MainMenuBar::command", "unknown command id");
+    return it == mCommands.constEnd() ? nullptr : it.value();
+}
+
 void MainMenuBar::setExportAgainEnabled(bool aOn) {
-    if (mExportAgainAction) mExportAgainAction->setEnabled(aOn);
+    if (mExportAgain) mExportAgain->setEnabled(aOn);
 }
 
 void MainMenuBar::setProject(core::Project* aProject) {
-    mProject = aProject;
-
-    if (mProject) {
-        for (auto action : mProjectActions) {
-            action->setEnabled(true);
-        }
-    } else {
-        for (auto action : mProjectActions) {
-            action->setEnabled(false);
-        }
-    }
+    for (MenuCommand* action : mProjectActions)
+        action->setEnabled(aProject != nullptr);
 }
 
+void MainMenuBar::openRecentPath(const QString& aPath) {
+    if (!aPath.isEmpty())
+        mMainWindow->onOpenRecentTriggered(aPath);
+}
 
 void MainMenuBar::onProjectSettingsTriggered() {
-    if (!mProject)
+    core::Project* project = mViaPoint.project();
+    if (!project)
         return;
 
-    auto curSize = mProject->attribute().imageSize();
-    auto curRange = mProject->attribute().frameRange();
-    auto curLoop = mProject->attribute().loop();
-    auto curFPS = mProject->attribute().fps();
-    auto curHasViewportBackground = mProject->attribute().hasViewportBackground();
-    auto curViewportBackground = mProject->attribute().viewportBackground();
+    auto curSize = project->attribute().imageSize();
+    auto curRange = project->attribute().frameRange();
+    auto curLoop = project->attribute().loop();
+    auto curFPS = project->attribute().fps();
+    auto curHasViewportBackground = project->attribute().hasViewportBackground();
+    auto curViewportBackground = project->attribute().viewportBackground();
 
     // create dialog
-    QScopedPointer<ProjectSettingDialog> dialog(new ProjectSettingDialog(mViaPoint, *mProject, this));
+    QScopedPointer<ProjectSettingDialog> dialog(new ProjectSettingDialog(mViaPoint, *project, mMainWindow));
 
     // execute dialog
     dialog->exec();
@@ -573,9 +463,9 @@ void MainMenuBar::onProjectSettingsTriggered() {
         const QSize newSize = dialog->canvasSize();
         XC_ASSERT(!newSize.isEmpty());
         if (curSize != newSize) {
-            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the canvas size"));
+            cmnd::ScopedMacro macro(project->commandStack(), CmndName::tr("Change the canvas size"));
 
-            core::Project* projectPtr = mProject;
+            core::Project* projectPtr = project;
             auto command = new cmnd::Delegatable(
                 [=]() {
                     projectPtr->attribute().setImageSize(newSize);
@@ -586,17 +476,16 @@ void MainMenuBar::onProjectSettingsTriggered() {
                     projectPtr->attribute().setImageSize(curSize);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
-                }
-            );
-            mProject->commandStack().push(command);
+                });
+            project->commandStack().push(command);
         }
 
         // frame range
         const util::Range newRange = dialog->frameRange();
         if (curRange != newRange) {
-            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the frame range"));
+            cmnd::ScopedMacro macro(project->commandStack(), CmndName::tr("Change the frame range"));
 
-            core::Project* projectPtr = mProject;
+            core::Project* projectPtr = project;
             auto command = new cmnd::Delegatable(
                 [=]() {
                     projectPtr->attribute().setFrameRange(newRange);
@@ -607,17 +496,16 @@ void MainMenuBar::onProjectSettingsTriggered() {
                     projectPtr->attribute().setFrameRange(curRange);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
-                }
-            );
-            mProject->commandStack().push(command);
+                });
+            project->commandStack().push(command);
         }
 
         // loop animation
         const bool newLoop = dialog->loop();
         if (curLoop != newLoop) {
-            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change loop settings"));
+            cmnd::ScopedMacro macro(project->commandStack(), CmndName::tr("Change loop settings"));
 
-            core::Project* projectPtr = mProject;
+            core::Project* projectPtr = project;
             auto command = new cmnd::Delegatable(
                 [=]() {
                     projectPtr->attribute().setLoop(newLoop);
@@ -628,18 +516,17 @@ void MainMenuBar::onProjectSettingsTriggered() {
                     projectPtr->attribute().setLoop(curLoop);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
-                }
-            );
-            mProject->commandStack().push(command);
+                });
+            project->commandStack().push(command);
         }
 
         // frames per second
         const int newFPS = dialog->fps();
         XC_ASSERT(newFPS > 0);
         if (curFPS != newFPS) {
-            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the FPS"));
+            cmnd::ScopedMacro macro(project->commandStack(), CmndName::tr("Change the FPS"));
 
-            core::Project* projectPtr = mProject;
+            core::Project* projectPtr = project;
             auto command = new cmnd::Delegatable(
                 [=]() {
                     projectPtr->attribute().setFps(newFPS);
@@ -650,9 +537,8 @@ void MainMenuBar::onProjectSettingsTriggered() {
                     projectPtr->attribute().setFps(curFPS);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
-                }
-            );
-            mProject->commandStack().push(command);
+                });
+            project->commandStack().push(command);
         }
 
         // viewport background: its own command so one undo takes the colour back,
@@ -661,13 +547,14 @@ void MainMenuBar::onProjectSettingsTriggered() {
         // colour).
         const bool newHasViewportBackground = !dialog->viewportBackgroundIsThemeDefault();
         const QColor newViewportBackground = dialog->viewportBackground();
-        const bool viewportBackgroundChanged =
-            (curHasViewportBackground != newHasViewportBackground)
-            || (newHasViewportBackground && curViewportBackground != newViewportBackground);
+        const bool viewportBackgroundChanged = (curHasViewportBackground != newHasViewportBackground)
+                                               || (newHasViewportBackground
+                                                   && curViewportBackground != newViewportBackground);
         if (viewportBackgroundChanged) {
-            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the viewport background"));
+            cmnd::ScopedMacro macro(project->commandStack(),
+                                    CmndName::tr("Change the viewport background"));
 
-            core::Project* projectPtr = mProject;
+            core::Project* projectPtr = project;
             auto command = new cmnd::Delegatable(
                 [=]() {
                     if (newHasViewportBackground)
@@ -684,9 +571,8 @@ void MainMenuBar::onProjectSettingsTriggered() {
                         projectPtr->attribute().clearViewportBackground();
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
-                }
-            );
-            mProject->commandStack().push(command);
+                });
+            project->commandStack().push(command);
         }
     }
 }

@@ -15,7 +15,7 @@
 //     which channel is step-held, and that value() reads the component the
 //     blender blends for that channel
 //   2 the sampler equals playback frame by frame over a span, plus the no-key,
-//     default-key and one-key cases playback handles differently
+//     base-value and one-key cases playback handles differently
 //   3 the easing identities the graph is built on: a Linear midpoint is the
 //     exact average, Floor holds the lower key, a Custom bezier passes through
 //     a point stated in closed form
@@ -54,6 +54,7 @@
 #include <cstdlib>
 
 #include "XCAssert.h"
+#include "cmnd/BasicCommands.h"
 #include "cmnd/Stack.h"
 #include "core/BlurKey.h"
 #include "core/DepthKey.h"
@@ -62,8 +63,10 @@
 #include "core/Frame.h"
 #include "core/HsvKey.h"
 #include "core/MoveKey.h"
+#include "core/MoveStateKey.h"
 #include "core/ObjectNode.h"
-#include "core/OpaKey.h"
+#include "core/ChannelKey.h"
+#include "core/OpacityKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
 #include "core/Serializer.h"
@@ -158,6 +161,64 @@ constexpr float kSampleEps = 1e-4f;
 
 bool nearly(float a, float b, float aEps = kSampleEps) { return std::fabs(a - b) <= aEps; }
 
+// The Rotate sections were written against the bundle key's Data. Rotate now
+// stores a ChannelKey; this view preserves the test's setRotate/rotate/easing(0)
+// spelling while every write goes to the real channel key. It is a TEST view
+// only - the document has no RotateKey object for a track-backed property.
+class RotateKeyView {
+public:
+    struct Data {
+        core::TimeKey* key;
+        void setRotate(float aValue) {
+            if (auto* channelKey = dynamic_cast<core::ChannelKey*>(key))
+                channelKey->setValue(aValue);
+            else
+                static_cast<core::RotateKey*>(key)->setRotate(aValue);
+        }
+        float rotate() const {
+            if (const auto* channelKey = dynamic_cast<const core::ChannelKey*>(key))
+                return channelKey->value();
+            return static_cast<const core::RotateKey*>(key)->rotate();
+        }
+        util::Easing::Param& easing(int aComponent) {
+            if (auto* channelKey = dynamic_cast<core::ChannelKey*>(key))
+                return channelKey->easing();
+            return static_cast<core::RotateKey*>(key)->data().easing(aComponent);
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            if (const auto* channelKey = dynamic_cast<const core::ChannelKey*>(key))
+                return channelKey->easing();
+            return static_cast<const core::RotateKey*>(key)->data().easing(aComponent);
+        }
+    };
+
+    explicit RotateKeyView(core::TimeKey* aKey): mKey(aKey) {}
+    Data data() { return Data{mKey}; }
+    Data data() const { return Data{mKey}; }
+    void setRotate(float aValue) { data().setRotate(aValue); }
+    float rotate() const { return data().rotate(); }
+    util::Easing::Param& easing() {
+        if (auto* channelKey = dynamic_cast<core::ChannelKey*>(mKey))
+            return channelKey->easing();
+        return static_cast<core::RotateKey*>(mKey)->data().easing(0);
+    }
+    const util::Easing::Param& easing() const {
+        if (const auto* channelKey = dynamic_cast<const core::ChannelKey*>(mKey))
+            return channelKey->easing();
+        return static_cast<const core::RotateKey*>(mKey)->data().easing(0);
+    }
+    int id() const { return mKey->id(); }
+    int frame() const { return mKey->frame(); }
+    bool isProportional() const { return mKey->isProportional(); }
+    operator core::TimeKey&() { return *mKey; }
+    operator const core::TimeKey&() const { return *mKey; }
+    operator core::TimeKey*() { return mKey; }
+    operator const core::TimeKey*() const { return mKey; }
+
+private:
+    core::TimeKey* mKey;
+};
+
 // The real blender's evaluation of a node at one frame. Running it once per
 // frame and reading every channel out of the same cache is what playback does:
 // core::TimeCacheAccessor hands the renderer exactly this TimeKeyExpans after
@@ -190,7 +251,7 @@ public:
         case core::TimeKeyType_Rotate: return expans.srt().rotate();
         case core::TimeKeyType_Scale: return (comp == 0) ? expans.srt().scale().x() : expans.srt().scale().y();
         case core::TimeKeyType_Depth: return expans.depth();
-        case core::TimeKeyType_Opa: return expans.opa().opacity();
+        case core::TimeKeyType_Opacity: return expans.opacity().opacity();
         case core::TimeKeyType_Blur:
             switch (comp) {
             case 0: return expans.blurX();
@@ -248,6 +309,117 @@ tKey* pushKey(core::TestNode& aNode, cmnd::Stack& aStack, core::TimeKeyType aTyp
     return key;
 }
 
+// Opacity is migrated to a channel track; its keys are ChannelKeys, not OpacityKeys.
+core::ChannelKey* pushDepth(
+    core::TestNode& aNode, cmnd::Stack& aStack, int aFrame, float aValue = 0.0f
+) {
+    auto* track = aNode.timeLine()->channelTrack(core::TimeKeyType_Depth, 0);
+    auto* key = new core::ChannelKey(core::TimeKeyType_Depth, 0);
+    key->setFrame(aFrame);
+    key->setValue(track ? track->clamp(track->quantize(aValue)) : aValue);
+    aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+    aStack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Depth, 0, aFrame, key));
+    return key;
+}
+
+core::ChannelKey* pushOpacity(
+    core::TestNode& aNode, cmnd::Stack& aStack, int aFrame, float aValue = 1.0f
+) {
+    auto* track = aNode.timeLine()->channelTrack(core::TimeKeyType_Opacity, 0);
+    auto* key = new core::ChannelKey(core::TimeKeyType_Opacity, 0);
+    key->setFrame(aFrame);
+    key->setValue(track ? track->clamp(track->quantize(aValue)) : aValue);
+    aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+    aStack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Opacity, 0, aFrame, key));
+    return key;
+}
+
+core::TimeKey* editRotate(core::TimeLine& aLine, int aFrame) {
+    return core::TimeLine::usesChannelTracks(core::TimeKeyType_Rotate)
+        ? aLine.channelKey(core::TimeKeyType_Rotate, 0, aFrame)
+        : aLine.timeKey(core::TimeKeyType_Rotate, aFrame);
+}
+
+RotateKeyView* rotateViewAt(core::TimeLine& aLine, int aFrame) {
+    return new RotateKeyView(editRotate(aLine, aFrame));
+}
+
+struct MoveChannelKeys {
+    core::ChannelKey* key[4] = {};
+    core::ChannelKey* operator[](int aComponent) const { return key[aComponent]; }
+};
+
+MoveChannelKeys pushMove(
+    core::TestNode& aNode, cmnd::Stack& aStack, int aFrame,
+    const QVector2D& aPos, const QVector2D& aCentroid = QVector2D()
+) {
+    const float values[4] = { aPos.x(), aPos.y(), aCentroid.x(), aCentroid.y() };
+    MoveChannelKeys keys;
+    for (int c = 0; c < 4; ++c) {
+        auto* track = aNode.timeLine()->channelTrack(core::TimeKeyType_Move, c);
+        auto* key = new core::ChannelKey(core::TimeKeyType_Move, c);
+        key->setFrame(aFrame);
+        key->setValue(track ? track->clamp(track->quantize(values[c])) : values[c]);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Move, c, aFrame, key));
+        keys.key[c] = key;
+    }
+    return keys;
+}
+
+void setMoveSpline(core::TestNode& aNode, int aFrame, core::MoveKey::SplineType aSpline) {
+    core::PropertyTrack* prop = aNode.timeLine()->property(core::TimeKeyType_Move);
+    if (!prop) {
+        return;
+    }
+    prop->state().removeKey(aFrame);
+    auto state = std::make_unique<core::MoveStateKey>();
+    state->setSpline(aSpline);
+    prop->state().insertKey(aFrame, std::move(state));
+}
+
+struct ScaleChannelKeys {
+    core::ChannelKey* x;
+    core::ChannelKey* y;
+    core::ChannelKey* operator[](int aComponent) const { return aComponent == 1 ? y : x; }
+};
+
+ScaleChannelKeys pushScale(
+    core::TestNode& aNode, cmnd::Stack& aStack, int aFrame, const QVector2D& aValue
+) {
+    ScaleChannelKeys keys {};
+    for (int component = 0; component < 2; ++component) {
+        auto* track = aNode.timeLine()->channelTrack(core::TimeKeyType_Scale, component);
+        auto* key = new core::ChannelKey(core::TimeKeyType_Scale, component);
+        key->setFrame(aFrame);
+        const float value = component == 0 ? aValue.x() : aValue.y();
+        key->setValue(track ? track->clamp(track->quantize(value)) : value);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Scale, component, aFrame, key));
+        (component == 0 ? keys.x : keys.y) = key;
+    }
+    return keys;
+}
+
+RotateKeyView* pushRotate(
+    core::TestNode& aNode, cmnd::Stack& aStack, int aFrame, float aValue = 0.0f
+) {
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Rotate)) {
+        auto* track = aNode.timeLine()->channelTrack(core::TimeKeyType_Rotate, 0);
+        auto* key = new core::ChannelKey(core::TimeKeyType_Rotate, 0);
+        key->setFrame(aFrame);
+        key->setValue(track ? track->clamp(track->quantize(aValue)) : aValue);
+        aStack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        aStack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Rotate, 0, aFrame, key));
+        return new RotateKeyView(key);
+    }
+
+    auto* key = new core::RotateKey();
+    key->setRotate(aValue);
+    aStack.push(aNode.timeLine()->createPusher(core::TimeKeyType_Rotate, aFrame, key));
+    return new RotateKeyView(key);
+}
+
 // Every graphable channel of a timeline, in the key types' drawing order.
 QVector<ctrl::graph::Curve> allCurves(const core::TimeLine& aLine) {
     QVector<ctrl::graph::Curve> curves;
@@ -277,7 +449,7 @@ int sectionChannelTable() {
     CHECK(Channel::componentCount(core::TimeKeyType_Rotate) == 1);
     CHECK(Channel::componentCount(core::TimeKeyType_Scale) == 2);
     CHECK(Channel::componentCount(core::TimeKeyType_Depth) == 1);
-    CHECK(Channel::componentCount(core::TimeKeyType_Opa) == 1);
+    CHECK(Channel::componentCount(core::TimeKeyType_Opacity) == 1);
     CHECK(Channel::componentCount(core::TimeKeyType_Blur) == 3);
     CHECK(Channel::componentCount(core::TimeKeyType_HSV) == 3);
     CHECK(Channel::componentCount(core::TimeKeyType_Image) == 2);
@@ -304,26 +476,21 @@ int sectionChannelTable() {
     const QVector<TimeKeyType> types = Channel::graphableTypes();
     // Nine: the eight easing types plus the Wave deform filter, which publishes
     // five graphable components (strength, wavelength, direction, phase, mix).
-    CHECK(types.size() == 9);
-    CHECK(types.at(0) == core::TimeKeyType_Image);
-    CHECK(types.at(1) == core::TimeKeyType_Move);
-    CHECK(types.at(2) == core::TimeKeyType_Rotate);
-    CHECK(types.at(3) == core::TimeKeyType_Scale);
-    CHECK(types.at(4) == core::TimeKeyType_Depth);
-    CHECK(types.at(5) == core::TimeKeyType_Opa);
-    CHECK(types.at(6) == core::TimeKeyType_HSV);
-    CHECK(types.at(7) == core::TimeKeyType_Blur);
-    CHECK(types.at(8) == core::TimeKeyType_Wave);
+    CHECK(types.size() == 8);
+    CHECK(types.at(0) == core::TimeKeyType_Move);
+    CHECK(types.at(1) == core::TimeKeyType_Rotate);
+    CHECK(types.at(2) == core::TimeKeyType_Scale);
+    CHECK(types.at(3) == core::TimeKeyType_Depth);
+    CHECK(types.at(4) == core::TimeKeyType_Opacity);
+    CHECK(types.at(5) == core::TimeKeyType_HSV);
+    CHECK(types.at(6) == core::TimeKeyType_Blur);
+    CHECK(types.at(7) == core::TimeKeyType_Wave);
 
-    // Exactly one graphable channel is step-held: the image offset, which
-    // playback holds rather than blends (see section 5).
-    for (int i = 0; i < core::TimeKeyType_TERM; ++i) {
-        const TimeKeyType type = static_cast<TimeKeyType>(i);
-        if (Channel::componentCount(type) == 0)
-            continue;
-        CHECK(Channel(type, 0).isInterpolated() == (type != core::TimeKeyType_Image));
+    // Every GRAPHABLE channel now interpolates; Image is a structural key and
+    // publishes no graph channel at all.
+    for (const TimeKeyType type : types) {
+        CHECK(Channel(type, 0).isInterpolated());
     }
-    CHECK(!Channel(core::TimeKeyType_Image, 1).isInterpolated());
 
     // value() reads the component the blender blends for that channel.
     core::MoveKey move;
@@ -344,9 +511,9 @@ int sectionChannelTable() {
     depth.data().setDepth(12.0f);
     CHECK(Channel(core::TimeKeyType_Depth, 0).value(depth) == 12.0f);
 
-    core::OpaKey opa;
+    core::OpacityKey opa;
     opa.data().setOpacity(0.375f);
-    CHECK(Channel(core::TimeKeyType_Opa, 0).value(opa) == 0.375f);
+    CHECK(Channel(core::TimeKeyType_Opacity, 0).value(opa) == 0.375f);
 
     core::BlurKey blur;
     blur.data().setBlurX(5.0f);
@@ -393,13 +560,13 @@ void buildSamplerNode(core::TestNode& aNode, cmnd::Stack& aStack) {
     // 1/3 and 2/3, which make its x the normalized progress exactly (x(s)=s),
     // so its y is the rate at any frame without the test solving the curve.
     {
-        auto* k0 = pushKey<core::RotateKey>(aNode, aStack, core::TimeKeyType_Rotate, 0);
-        auto* k1 = pushKey<core::RotateKey>(aNode, aStack, core::TimeKeyType_Rotate, 10);
-        auto* k2 = pushKey<core::RotateKey>(aNode, aStack, core::TimeKeyType_Rotate, 20);
+        auto* k0 = pushRotate(aNode, aStack, 0);
+        auto* k1 = pushRotate(aNode, aStack, 10);
+        auto* k2 = pushRotate(aNode, aStack, 20);
         k0->data().setRotate(0.0f);
         k1->data().setRotate(100.0f);
         k2->data().setRotate(40.0f);
-        util::Easing::Param& e0 = k0->data().easing(0);
+        util::Easing::Param& e0 = k0->easing();
         e0.type = util::Easing::Type_Custom;
         e0.cubicBezier.x1 = 1.0f / 3.0f;
         e0.cubicBezier.y1 = 0.0f;
@@ -409,53 +576,44 @@ void buildSamplerNode(core::TestNode& aNode, cmnd::Stack& aStack) {
         k1->data().easing(0).range = util::Easing::Range_Out;
     }
 
-    // Opa: Quad/InOut then Floor, so the second segment is a step-held one.
+    // Opacity: Quad/InOut then Floor, so the second segment is a step-held one.
     // Both segments stay inside [0,1] on purpose: playback clamps the blended
-    // opacity through OpaKey::Data::setOpacity, and this section is about the
+    // opacity through OpacityKey::Data::setOpacity, and this section is about the
     // easing and the lerp, not about that clamp.
     {
-        auto* k0 = pushKey<core::OpaKey>(aNode, aStack, core::TimeKeyType_Opa, 0);
-        auto* k1 = pushKey<core::OpaKey>(aNode, aStack, core::TimeKeyType_Opa, 10);
-        auto* k2 = pushKey<core::OpaKey>(aNode, aStack, core::TimeKeyType_Opa, 20);
-        k0->data().setOpacity(0.25f);
-        k1->data().setOpacity(1.0f);
-        k2->data().setOpacity(0.5f);
-        k0->data().easing(0).type = util::Easing::Type_Quad;
-        k0->data().easing(0).range = util::Easing::Range_InOut;
-        k1->data().easing(0).type = util::Easing::Type_Floor;
+        auto* k0 = pushOpacity(aNode, aStack, 0, 0.25f);
+        auto* k1 = pushOpacity(aNode, aStack, 10, 1.0f);
+        pushOpacity(aNode, aStack, 20, 0.5f);
+        k0->easing().type = util::Easing::Type_Quad;
+        k0->easing().range = util::Easing::Range_InOut;
+        k1->easing().type = util::Easing::Type_Floor;
     }
 
     // Scale: Back/Out overshoots the segment's value span (the scale setter
     // clamps at +-10000, so the overshoot reaches the cache unclipped), then
     // Cubic/In.
     {
-        auto* k0 = pushKey<core::ScaleKey>(aNode, aStack, core::TimeKeyType_Scale, 0);
-        auto* k1 = pushKey<core::ScaleKey>(aNode, aStack, core::TimeKeyType_Scale, 10);
-        auto* k2 = pushKey<core::ScaleKey>(aNode, aStack, core::TimeKeyType_Scale, 20);
-        k0->data().setScale(QVector2D(2.0f, 3.0f));
-        k1->data().setScale(QVector2D(6.0f, 0.5f));
-        k2->data().setScale(QVector2D(1.0f, 1.0f));
+        const auto k0 = pushScale(aNode, aStack, 0, QVector2D(2.0f, 3.0f));
+        const auto k1 = pushScale(aNode, aStack, 10, QVector2D(6.0f, 0.5f));
+        pushScale(aNode, aStack, 20, QVector2D(1.0f, 1.0f));
         // Every component carries the curve: each channel is sampled against
         // playback on its own, and per-component storage means component 1 would
         // otherwise be Linear.
-        for (int component = 0; component < core::ScaleKey::kComponents; ++component) {
-            k0->data().easing(component).type = util::Easing::Type_Back;
-            k0->data().easing(component).range = util::Easing::Range_Out;
-            k1->data().easing(component).type = util::Easing::Type_Cubic;
-            k1->data().easing(component).range = util::Easing::Range_In;
+        for (int component = 0; component < 2; ++component) {
+            k0[component]->easing().type = util::Easing::Type_Back;
+            k0[component]->easing().range = util::Easing::Range_Out;
+            k1[component]->easing().type = util::Easing::Type_Cubic;
+            k1[component]->easing().range = util::Easing::Range_In;
         }
     }
 
     // Depth: Linear then Expo/InOut.
     {
-        auto* k0 = pushKey<core::DepthKey>(aNode, aStack, core::TimeKeyType_Depth, 0);
-        auto* k1 = pushKey<core::DepthKey>(aNode, aStack, core::TimeKeyType_Depth, 10);
-        auto* k2 = pushKey<core::DepthKey>(aNode, aStack, core::TimeKeyType_Depth, 20);
-        k0->data().setDepth(5.0f);
-        k1->data().setDepth(25.0f);
-        k2->data().setDepth(10.0f);
-        k1->data().easing(0).type = util::Easing::Type_Expo;
-        k1->data().easing(0).range = util::Easing::Range_InOut;
+        pushDepth(aNode, aStack, 0, 5.0f);
+        auto* k1 = pushDepth(aNode, aStack, 10, 25.0f);
+        pushDepth(aNode, aStack, 20, 10.0f);
+        k1->easing().type = util::Easing::Type_Expo;
+        k1->easing().range = util::Easing::Range_InOut;
     }
 
     // Blur: Elastic/Out (a rate that overshoots and oscillates, so the three
@@ -500,12 +658,9 @@ void buildSamplerNode(core::TestNode& aNode, cmnd::Stack& aStack) {
     // Move: three positions, so the first segment has a neighbour key that
     // bends the Catmull-Rom path (section 4 pins that on its own).
     {
-        auto* k0 = pushKey<core::MoveKey>(aNode, aStack, core::TimeKeyType_Move, 0);
-        auto* k1 = pushKey<core::MoveKey>(aNode, aStack, core::TimeKeyType_Move, 10);
-        auto* k2 = pushKey<core::MoveKey>(aNode, aStack, core::TimeKeyType_Move, 20);
-        k0->data().setPos(QVector2D(0.0f, 0.0f));
-        k1->data().setPos(QVector2D(100.0f, 40.0f));
-        k2->data().setPos(QVector2D(120.0f, -60.0f));
+        pushMove(aNode, aStack, 0, QVector2D(0.0f, 0.0f));
+        pushMove(aNode, aStack, 10, QVector2D(100.0f, 40.0f));
+        pushMove(aNode, aStack, 20, QVector2D(120.0f, -60.0f));
     }
 }
 
@@ -514,13 +669,10 @@ int sectionSamplerMatchesPlayback() {
     cmnd::Stack stack;
     buildSamplerNode(node, stack);
 
-    // The image channel has no keys here (a real one cannot be built headless,
-    // see section 5), so its curve only participates through the no-key case.
     const QVector<ctrl::graph::Curve> curves = allCurves(*node.timeLine());
-    // 2+2+1+2+1+1+3+3 components plus the wave's five (strength, wavelength,
-    // direction, phase, mix), which have no keys here and so exercise the
-    // no-key/default-key path on both sides of the comparison.
-    CHECK(curves.size() == 20);
+    // 2+1+2+1+1+3+3 graphable components plus the wave's five, which have no
+    // keys here and so exercise the no-key/base-value path on both sides.
+    CHECK(curves.size() == 18);
 
     for (int frame = 1; frame <= 19; ++frame) {
         const BlenderOracle oracle(node, core::Frame(frame));
@@ -531,22 +683,22 @@ int sectionSamplerMatchesPlayback() {
 
     // The easing that shapes a segment is the FROM key's, and the arrival key's
     // must not leak into it: restyling the second key's easing leaves the first
-    // segment's samples untouched (playback reads k0->data().easing(0) for the
+    // segment's samples untouched (playback reads k0->easing() for the
     // whole interval, whatever the arrival key carries).
     {
         const ctrl::graph::Curve rotate(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Rotate, 0));
         const float before = rotate.sample(core::Frame(5));
-        auto* arrival = static_cast<core::RotateKey*>(node.timeLine()->timeKey(core::TimeKeyType_Rotate, 10));
+        auto* arrival = rotateViewAt(*node.timeLine(), 10);
         CHECK(arrival);
-        arrival->data().easing(0).type = util::Easing::Type_Elastic;
-        arrival->data().easing(0).range = util::Easing::Range_InOut;
-        arrival->data().easing(0).weight = 0.25f;
+        arrival->easing().type = util::Easing::Type_Elastic;
+        arrival->easing().range = util::Easing::Range_InOut;
+        arrival->easing().weight = 0.25f;
         CHECK(rotate.sample(core::Frame(5)) == before);
     }
     return 0;
 }
 
-// 2b. An unkeyed channel reads what playback holds there. With no default key
+// 2b. An unkeyed channel reads what playback holds there. With no base value
 // that is the key type's own default Data -- not zero: an unkeyed layer plays at
 // scale 1, full opacity, HSV saturation 100. Created layers DO carry default
 // keys, so this is the case the graph shows for a freshly added layer.
@@ -577,7 +729,7 @@ int sectionSamplerWithoutKeys() {
         const float sampled = curve.sample(core::Frame(7));
         if (channel.type() == core::TimeKeyType_Scale)
             CHECK(sampled == 1.0f);
-        if (channel.type() == core::TimeKeyType_Opa)
+        if (channel.type() == core::TimeKeyType_Opacity)
             CHECK(sampled == 1.0f);
         if (channel.type() == core::TimeKeyType_HSV && channel.component() > 0)
             CHECK(sampled == 100.0f);
@@ -589,16 +741,18 @@ int sectionSamplerWithoutKeys() {
             CHECK(sampled == 0.0f);
     }
 
-    // ...and once the timeline HAS a default key, that key is the value: it is
-    // what the blender reads when the key map is empty (getDefaultKeyData).
+    // ...and once the timeline HAS a base value, that key is the value: it is
+    // what the blender reads when the key map is empty (getBaseValueData).
     auto* defaultScale = new core::ScaleKey();
     defaultScale->data().setScale(QVector2D(5.0f, 7.0f));
-    node.timeLine()->grabDefaultKey(core::TimeKeyType_Scale, defaultScale);
-    CHECK(node.timeLine()->defaultKey(core::TimeKeyType_Scale) == defaultScale);
+    node.timeLine()->setBaseValue(core::TimeKeyType_Scale, defaultScale);
+    CHECK(node.timeLine()->baseValue(core::TimeKeyType_Scale) == nullptr);
+    CHECK(node.timeLine()->channelBaseValue(core::TimeKeyType_Scale, 0) == 5.0f);
+    CHECK(node.timeLine()->channelBaseValue(core::TimeKeyType_Scale, 1) == 7.0f);
 
-    auto* defaultOpa = new core::OpaKey();
-    defaultOpa->data().setOpacity(0.4f);
-    node.timeLine()->grabDefaultKey(core::TimeKeyType_Opa, defaultOpa);
+    node.timeLine()->setChannelBaseValue(core::TimeKeyType_Opacity, 0, 0.4f);
+    CHECK(node.timeLine()->baseValue(core::TimeKeyType_Opacity) == nullptr);
+    CHECK(node.timeLine()->channelBaseValue(core::TimeKeyType_Opacity, 0) == 0.4f);
 
     for (int frame = 0; frame <= 20; frame += 5) {
         const BlenderOracle oracle(node, core::Frame(frame));
@@ -608,7 +762,7 @@ int sectionSamplerWithoutKeys() {
     }
 
     bool sawScale = false;
-    bool sawOpa = false;
+    bool sawOpacity = false;
     for (const ctrl::graph::Curve& curve : allCurves(*node.timeLine())) {
         const Channel channel = curve.channel();
         if (channel == Channel(core::TimeKeyType_Scale, 0)) {
@@ -617,12 +771,12 @@ int sectionSamplerWithoutKeys() {
         }
         if (channel == Channel(core::TimeKeyType_Scale, 1))
             CHECK(curve.sample(core::Frame(3)) == 7.0f);
-        if (channel == Channel(core::TimeKeyType_Opa, 0)) {
-            sawOpa = true;
+        if (channel == Channel(core::TimeKeyType_Opacity, 0)) {
+            sawOpacity = true;
             CHECK(curve.sample(core::Frame(3)) == 0.4f);
         }
     }
-    CHECK(sawScale && sawOpa);
+    CHECK(sawScale && sawOpacity);
     return 0;
 }
 
@@ -632,10 +786,9 @@ int sectionSamplerWithoutKeys() {
 int sectionSamplerWithOneKey() {
     core::TestNode node;
     cmnd::Stack stack;
-    auto* key = pushKey<core::OpaKey>(node, stack, core::TimeKeyType_Opa, 10);
-    key->data().setOpacity(0.6f);
+    pushOpacity(node, stack, 10, 0.6f);
 
-    const ctrl::graph::Curve curve(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Opa, 0));
+    const ctrl::graph::Curve curve(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Opacity, 0));
     CHECK(curve.keys().size() == 1);
     CHECK(curve.segmentCount() == 0); // no segment to draw, but still a value
     for (int frame = 0; frame <= 20; frame += 5) {
@@ -656,8 +809,8 @@ int sectionSamplerWithOneKey() {
 int sectionEasingIdentities() {
     core::TestNode node;
     cmnd::Stack stack;
-    auto* k0 = pushKey<core::RotateKey>(node, stack, core::TimeKeyType_Rotate, 0);
-    auto* k1 = pushKey<core::RotateKey>(node, stack, core::TimeKeyType_Rotate, 10);
+    auto* k0 = pushRotate(node, stack, 0);
+    auto* k1 = pushRotate(node, stack, 10);
     k0->data().setRotate(0.0f);
     k1->data().setRotate(100.0f);
 
@@ -665,7 +818,7 @@ int sectionEasingIdentities() {
 
     // Linear: the rate at the midpoint is exactly 0.5, so the sample is the
     // exact average of the two keys (0 -> 100 is 50).
-    CHECK(k0->data().easing(0).type == util::Easing::Type_Linear);
+    CHECK(k0->easing().type == util::Easing::Type_Linear);
     CHECK(curve.sample(core::Frame(5)) == 50.0f);
     CHECK(curve.sample(core::Frame(0)) == 0.0f);
     CHECK(curve.sample(core::Frame(10)) == 100.0f);
@@ -673,7 +826,7 @@ int sectionEasingIdentities() {
     // Floor: the rate is 0 across the whole interval, so every interior frame
     // holds the lower key's value; the next key's own frame is that key's value
     // (the gatherer's hasSameFrame path, not the easing).
-    k0->data().easing(0).type = util::Easing::Type_Floor;
+    k0->easing().type = util::Easing::Type_Floor;
     for (int frame = 1; frame <= 9; ++frame) {
         CHECK(curve.sample(core::Frame(frame)) == 0.0f);
     }
@@ -687,7 +840,7 @@ int sectionEasingIdentities() {
     // (x(s)=s), so the rate at a frame is y(s) for the same s. For y1=0, y2=0.5
     // the curve is y(s) = 1.5s^2 - 0.5s^3: 0.0859375 at s=0.25 and 0.3125 at
     // s=0.5. Those are points ON the curve, not a second implementation of it.
-    util::Easing::Param& easing = k0->data().easing(0);
+    util::Easing::Param& easing = k0->easing();
     easing.type = util::Easing::Type_Custom;
     easing.cubicBezier.x1 = 1.0f / 3.0f;
     easing.cubicBezier.y1 = 0.0f;
@@ -710,14 +863,14 @@ int sectionEasingIdentities() {
     // The param a segment carries is the FROM key's -- the one the handle editor
     // writes and playback reads -- and it is present for every graphable type.
     const ctrl::graph::Curve::Segment segment = curve.segment(0);
-    CHECK(segment.from == k0 && segment.to == k1);
+    CHECK(segment.from == &static_cast<core::TimeKey&>(*k0) && segment.to == &static_cast<core::TimeKey&>(*k1));
     CHECK(segment.fromValue == 0.0f && segment.toValue == 100.0f);
     CHECK(curve.isCustom(segment));
     CHECK(segment.easing.type == util::Easing::Type_Custom);
-    CHECK(ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Rotate, 0) == &k0->data().easing(0));
+    CHECK(ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Rotate, 0) == &k0->easing());
     CHECK(
-        ctrl::graph::Curve::easingOf(static_cast<const core::RotateKey&>(*k0), core::TimeKeyType_Rotate, 0) ==
-        &k0->data().easing(0)
+        ctrl::graph::Curve::easingOf(static_cast<const core::TimeKey&>(*k0), core::TimeKeyType_Rotate, 0) ==
+        &k0->easing()
     );
     return 0;
 }
@@ -735,18 +888,15 @@ int sectionMoveSpline() {
 
     core::TestNode node;
     cmnd::Stack stack;
-    auto* a = pushKey<MoveKey>(node, stack, core::TimeKeyType_Move, 0);
-    auto* b = pushKey<MoveKey>(node, stack, core::TimeKeyType_Move, 10);
-    auto* c = pushKey<MoveKey>(node, stack, core::TimeKeyType_Move, 20);
-    a->data().setPos(QVector2D(0.0f, 0.0f));
-    b->data().setPos(QVector2D(100.0f, 0.0f));
-    c->data().setPos(QVector2D(100.0f, 100.0f)); // the neighbour that bends the path
+    pushMove(node, stack, 0, QVector2D(0.0f, 0.0f));
+    pushMove(node, stack, 10, QVector2D(100.0f, 0.0f));
+    pushMove(node, stack, 20, QVector2D(100.0f, 100.0f)); // the neighbour that bends the path
     // MoveKey's own default spline is Linear, so the Catmull-Rom case has to be
     // asked for explicitly -- which is also the point: the flag decides whether
     // the neighbour is used at all.
-    a->data().setSpline(MoveKey::SplineType_CatmullRom);
-    b->data().setSpline(MoveKey::SplineType_CatmullRom);
-    c->data().setSpline(MoveKey::SplineType_CatmullRom);
+    setMoveSpline(node, 0, MoveKey::SplineType_CatmullRom);
+    setMoveSpline(node, 10, MoveKey::SplineType_CatmullRom);
+    setMoveSpline(node, 20, MoveKey::SplineType_CatmullRom);
 
     const ctrl::graph::Curve cx(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Move, 0));
     const ctrl::graph::Curve cy(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Move, 1));
@@ -793,8 +943,8 @@ int sectionMoveSpline() {
     // Linear), so the segment is the straight chord again and the midpoint IS
     // the average. Playback must do the same, so the sampler is checked against
     // it, not against the chord formula.
-    a->data().setSpline(MoveKey::SplineType_Linear);
-    b->data().setSpline(MoveKey::SplineType_Linear);
+    setMoveSpline(node, 0, MoveKey::SplineType_Linear);
+    setMoveSpline(node, 10, MoveKey::SplineType_Linear);
     CHECK(nearly(cy.sample(core::Frame(5)), 0.0f, 1e-3f));
     CHECK(nearly(cx.sample(core::Frame(5)), 50.0f, 1e-3f));
     {
@@ -821,7 +971,7 @@ int sectionImageOffsetStaircase() {
     CHECK(!Channel(core::TimeKeyType_Image, 1).isInterpolated());
 
     // The half that IS observable without a key: with neither an image key nor
-    // an image default key, playback holds the (0,0) offset
+    // an image base value, playback holds the (0,0) offset
     // (TimeKeyBlender::getImageOffset), and the sampler reads the same square.
     core::TestNode node;
     const ctrl::graph::Curve cx(*node.timeLine(), Channel(core::TimeKeyType_Image, 0));
@@ -866,22 +1016,20 @@ int sectionImageOffsetStaircase() {
 int sectionEasingHandles() {
     core::TestNode node;
     cmnd::Stack stack;
-    auto* k0 = pushKey<core::OpaKey>(node, stack, core::TimeKeyType_Opa, 0);
-    auto* k1 = pushKey<core::OpaKey>(node, stack, core::TimeKeyType_Opa, 10);
-    k0->data().setOpacity(0.0f);
-    k1->data().setOpacity(1.0f);
+    auto* k0 = pushOpacity(node, stack, 0, 0.0f);
+    auto* k1 = pushOpacity(node, stack, 10, 1.0f);
 
-    util::Easing::Param& easing = k0->data().easing(0);
+    util::Easing::Param& easing = k0->easing();
     easing.type = util::Easing::Type_Custom;
     easing.cubicBezier.x1 = 0.2f;
     easing.cubicBezier.y1 = -0.4f;
     easing.cubicBezier.x2 = 0.8f;
     easing.cubicBezier.y2 = 1.3f;
 
-    const ctrl::graph::Curve curve(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Opa, 0));
+    const ctrl::graph::Curve curve(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Opacity, 0));
     CHECK(curve.segmentCount() == 1);
     const ctrl::graph::Curve::Segment segment = curve.segment(0);
-    CHECK(segment.from == k0 && segment.to == k1);
+    CHECK(segment.from == &static_cast<core::TimeKey&>(*k0) && segment.to == &static_cast<core::TimeKey&>(*k1));
     CHECK(segment.fromValue == 0.0f && segment.toValue == 1.0f);
     CHECK(curve.isCustom(segment));
     CHECK(segment.easing.type == util::Easing::Type_Custom);
@@ -915,14 +1063,14 @@ int sectionEasingHandles() {
     CHECK(r0.y() == -0.75);
 
     // A segment that is not Custom exposes no handles to draw.
-    k0->data().easing(0).type = util::Easing::Type_Linear;
+    k0->easing().type = util::Easing::Type_Linear;
     CHECK(!curve.isCustom(curve.segment(0)));
 
     // The drag writes the document's own param (Curve::easingOf is that bridge),
     // so moving a handle moves the curve the panel draws. Going back to Custom
     // first, because that is the only type that has handles.
-    util::Easing::Param* live = ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Opa, 0);
-    CHECK(live == &k0->data().easing(0));
+    util::Easing::Param* live = ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Opacity, 0);
+    CHECK(live == &k0->easing());
     live->type = util::Easing::Type_Custom;
     ctrl::graph::Curve::setHandle(*live, 0, QPointF(0.25, 0.0));
     ctrl::graph::Curve::setHandle(*live, 1, QPointF(0.75, 0.5));
@@ -939,12 +1087,12 @@ int sectionEasingHandles() {
 int sectionPolyline() {
     core::TestNode node;
     cmnd::Stack stack;
-    auto* k0 = pushKey<core::RotateKey>(node, stack, core::TimeKeyType_Rotate, 0);
-    auto* k1 = pushKey<core::RotateKey>(node, stack, core::TimeKeyType_Rotate, 10);
+    auto* k0 = pushRotate(node, stack, 0);
+    auto* k1 = pushRotate(node, stack, 10);
     k0->data().setRotate(0.0f);
     k1->data().setRotate(100.0f);
-    k0->data().easing(0).type = util::Easing::Type_Cubic;
-    k0->data().easing(0).range = util::Easing::Range_InOut;
+    k0->easing().type = util::Easing::Type_Cubic;
+    k0->easing().range = util::Easing::Range_InOut;
 
     const ctrl::graph::Curve curve(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Rotate, 0));
     const core::Frame from(0);
@@ -1007,7 +1155,7 @@ int sectionPolyline() {
     // hold. The keys here sit on the range's own ends (0 and 10 of a 0..10 range, span 11), so the
     // wrapped segment is the last key's easing over the one frame that is left of the period.
     {
-        k0->data().easing(0).type = util::Easing::Type_Linear; // linear, so the wrapped values are readable
+        k0->easing().type = util::Easing::Type_Linear; // linear, so the wrapped values are readable
         // A range ONE PERIOD wide with the keys inside it (0..20, keys at 0 and 10): past the last key
         // the wrap runs to the first key one span ahead, and past the RANGE the frame clamps, so the
         // curve is flat there rather than extrapolating.
@@ -1046,7 +1194,7 @@ int sectionPolyline() {
             if (point.x() > 20.0 + 1e-6)
                 CHECK(nearly(static_cast<float>(point.y()), atRangeEnd));
         }
-        k0->data().easing(0).type = util::Easing::Type_Cubic;
+        k0->easing().type = util::Easing::Type_Cubic;
     }
 
     // The value HOLDS outside the keys (what sample() reports there), so the polyline reaches the
@@ -1074,7 +1222,7 @@ int sectionPolyline() {
     // carries the lower key's value and the window end carries the arrival
     // key's. (The image channel is the other step-held one and cannot be built
     // headless -- section 5.)
-    k0->data().easing(0).type = util::Easing::Type_Floor;
+    k0->easing().type = util::Easing::Type_Floor;
     QVector<QPointF> steps;
     curve.buildPolyline(from, to, 10, steps);
     CHECK(steps.size() >= 2);
@@ -1103,11 +1251,11 @@ int sectionPolyline() {
 int sectionPolylineHoldOutsideKeys() {
     core::TestNode node;
     cmnd::Stack stack;
-    auto* k0 = pushKey<core::RotateKey>(node, stack, core::TimeKeyType_Rotate, 10);
-    auto* k1 = pushKey<core::RotateKey>(node, stack, core::TimeKeyType_Rotate, 20);
+    auto* k0 = pushRotate(node, stack, 10);
+    auto* k1 = pushRotate(node, stack, 20);
     k0->data().setRotate(30.0f);
     k1->data().setRotate(70.0f);
-    k0->data().easing(0).type = util::Easing::Type_Linear;
+    k0->easing().type = util::Easing::Type_Linear;
 
     const ctrl::graph::Curve curve(*node.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Rotate, 0));
     CHECK(!curve.isLooped()); // loop OFF: the rule under test is the HOLD
@@ -1208,21 +1356,20 @@ int sectionPolylineHoldOutsideKeys() {
     {
         core::TestNode single;
         cmnd::Stack singleStack;
-        auto* only = pushKey<core::OpaKey>(single, singleStack, core::TimeKeyType_Opa, 10);
-        only->data().setOpacity(0.25f);
-        const ctrl::graph::Curve flat(*single.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Opa, 0));
+        auto* only = pushOpacity(single, singleStack, 10, 0.25f);
+        const ctrl::graph::Curve flat(*single.timeLine(), ctrl::graph::Channel(core::TimeKeyType_Opacity, 0));
         CHECK(flat.keys().size() == 1);
         CHECK(holdsAcross(flat, 0.0f, 30.0f, flat.sample(core::Frame(0)), "one key, window around it"));
         CHECK(holdsAcross(flat, 40.0f, 60.0f, flat.sample(core::Frame(40)), "one key, window right of it"));
         CHECK(holdsAcross(flat, -30.0f, -10.0f, flat.sample(core::Frame(-20)), "one key, window left of it"));
         // The key sits ON a window edge (a panned plot puts it there): still a two-point hold,
         // because one point would be dropped and the key would look like an empty channel.
-        CHECK(holdsAcross(flat, 10.0f, 30.0f, only->data().opacity(), "one key at the window's left edge"));
-        CHECK(holdsAcross(flat, 0.0f, 10.0f, only->data().opacity(), "one key at the window's right edge"));
+        CHECK(holdsAcross(flat, 10.0f, 30.0f, only->value(), "one key at the window's left edge"));
+        CHECK(holdsAcross(flat, 0.0f, 10.0f, only->value(), "one key at the window's right edge"));
         // The value is the key's own everywhere in the window.
-        CHECK(nearly(flat.sample(core::Frame(0)), only->data().opacity()));
-        CHECK(nearly(flat.sample(core::Frame(10)), only->data().opacity()));
-        CHECK(nearly(flat.sample(core::Frame(60)), only->data().opacity()));
+        CHECK(nearly(flat.sample(core::Frame(0)), only->value()));
+        CHECK(nearly(flat.sample(core::Frame(10)), only->value()));
+        CHECK(nearly(flat.sample(core::Frame(60)), only->value()));
     }
 
     return 0;
@@ -1548,23 +1695,23 @@ int sectionAutoEasing() {
     using core::TimeKeyType;
     using core::TimeKeyType_Rotate;
     using core::TimeKeyType_Scale;
-    using core::TimeKeyType_Opa;
+    using core::TimeKeyType_Opacity;
 
     // P -50@-10, A 0@0, B 100@10, C 40@20. A Custom+Auto pair on A and B; every
     // other key's sides stay stored.
     core::TestNode node;
     cmnd::Stack stack;
     {
-        auto* kp = pushKey<core::RotateKey>(node, stack, TimeKeyType_Rotate, -10);
-        auto* k0 = pushKey<core::RotateKey>(node, stack, TimeKeyType_Rotate, 0);
-        auto* k1 = pushKey<core::RotateKey>(node, stack, TimeKeyType_Rotate, 10);
-        auto* k2 = pushKey<core::RotateKey>(node, stack, TimeKeyType_Rotate, 20);
+        auto* kp = pushRotate(node, stack, -10);
+        auto* k0 = pushRotate(node, stack, 0);
+        auto* k1 = pushRotate(node, stack, 10);
+        auto* k2 = pushRotate(node, stack, 20);
         kp->data().setRotate(-50.0f);
         k0->data().setRotate(0.0f);
         k1->data().setRotate(100.0f);
         k2->data().setRotate(40.0f);
-        k0->data().easing(0).type = util::Easing::Type_Custom;
-        k0->data().easing(0).handleOut = util::Easing::HandleMode_Auto;
+        k0->easing().type = util::Easing::Type_Custom;
+        k0->easing().handleOut = util::Easing::HandleMode_Auto;
         k1->data().easing(0).type = util::Easing::Type_Custom;
         k1->data().easing(0).handleOut = util::Easing::HandleMode_AutoClamped;
         k1->data().easing(0).handleIn = util::Easing::HandleMode_Auto;
@@ -1590,9 +1737,9 @@ int sectionAutoEasing() {
         // The DOCUMENT's modes first (the fixture's own state), then the modes the
         // segment carries - a segment that read the wrong key would otherwise agree
         // with derivesHandle in being wrong.
-        const util::Easing::Param& a = static_cast<const core::RotateKey*>(ab.from)->data().easing(0);
-        const util::Easing::Param& b = static_cast<const core::RotateKey*>(ab.to)->data().easing(0);
-        const util::Easing::Param& c = static_cast<const core::RotateKey*>(bc.to)->data().easing(0);
+        const util::Easing::Param& a = *ctrl::graph::Curve::easingOf(*ab.from, core::TimeKeyType_Rotate, 0);
+        const util::Easing::Param& b = *ctrl::graph::Curve::easingOf(*ab.to, core::TimeKeyType_Rotate, 0);
+        const util::Easing::Param& c = *ctrl::graph::Curve::easingOf(*bc.to, core::TimeKeyType_Rotate, 0);
         CHECK(a.handleOut == util::Easing::HandleMode_Auto);
         CHECK(b.handleOut == util::Easing::HandleMode_AutoClamped);
         CHECK(b.handleIn == util::Easing::HandleMode_Auto);    // set by this fixture
@@ -1616,8 +1763,8 @@ int sectionAutoEasing() {
     {
         core::TestNode mirrored;
         cmnd::Stack mirroredStack;
-        auto* a = pushKey<core::RotateKey>(mirrored, mirroredStack, TimeKeyType_Rotate, 0);
-        auto* b = pushKey<core::RotateKey>(mirrored, mirroredStack, TimeKeyType_Rotate, 10);
+        auto* a = pushRotate(mirrored, mirroredStack, 0);
+        auto* b = pushRotate(mirrored, mirroredStack, 10);
         a->data().setRotate(0.0f);
         b->data().setRotate(90.0f);
         a->data().easing(0).type = util::Easing::Type_Custom;
@@ -1696,14 +1843,14 @@ int sectionAutoEasing() {
         }
         const auto before = controlsOf();
 
-        auto* kp = static_cast<core::RotateKey*>(node.timeLine()->timeKey(TimeKeyType_Rotate, -10));
+        auto* kp = rotateViewAt(*node.timeLine(), -10);
         CHECK(kp);
         kp->setRotate(-80.0f); // P changed: py = -0.8 -> slope 0.8 -> y1 = 0.2667
         const auto afterPrev = controlsOf();
         CHECK(afterPrev.first != before.first); // A's outgoing is STILL DERIVING
         CHECK(afterPrev.second == before.second); // ... and B's incoming did not move
 
-        auto* k2 = static_cast<core::RotateKey*>(node.timeLine()->timeKey(TimeKeyType_Rotate, 20));
+        auto* k2 = rotateViewAt(*node.timeLine(), 20);
         CHECK(k2);
         k2->setRotate(10.0f); // C changed: ny = 0.1 -> slope -0.9 -> y2 = 1.3
         const auto afterNext = controlsOf();
@@ -1716,11 +1863,11 @@ int sectionAutoEasing() {
     // side is still Auto and still follows C. This is the defect the retired
     // whole-key Auto type had: it converted BOTH tangents to manual.
     {
-        auto* k0 = static_cast<core::RotateKey*>(node.timeLine()->timeKey(TimeKeyType_Rotate, 0));
+        auto* k0 = rotateViewAt(*node.timeLine(), 0);
         CHECK(k0);
-        k0->data().easing(0).handleOut = util::Easing::HandleMode_Free;
-        k0->data().easing(0).cubicBezier.x1 = 0.4f;
-        k0->data().easing(0).cubicBezier.y1 = 0.25f;
+        k0->easing().handleOut = util::Easing::HandleMode_Free;
+        k0->easing().cubicBezier.x1 = 0.4f;
+        k0->easing().cubicBezier.y1 = 0.25f;
 
         const ctrl::graph::Curve freed(*node.timeLine(), ctrl::graph::Channel(TimeKeyType_Rotate, 0));
         QPointF pair[2];
@@ -1728,7 +1875,7 @@ int sectionAutoEasing() {
         CHECK(pair[0] == QPointF(0.4f, 0.25f)); // the stored (dragged) value is the truth
 
         const QPointF incomingBefore = pair[1];
-        auto* k2 = static_cast<core::RotateKey*>(node.timeLine()->timeKey(TimeKeyType_Rotate, 20));
+        auto* k2 = rotateViewAt(*node.timeLine(), 20);
         k2->setRotate(80.0f);
         const ctrl::graph::Curve after(*node.timeLine(), ctrl::graph::Channel(TimeKeyType_Rotate, 0));
         CHECK(after.effectiveHandles(after.segment(1), pair));
@@ -1741,8 +1888,8 @@ int sectionAutoEasing() {
     {
         core::TestNode plain;
         cmnd::Stack plainStack;
-        auto* a = pushKey<core::RotateKey>(plain, plainStack, TimeKeyType_Rotate, 0);
-        auto* b = pushKey<core::RotateKey>(plain, plainStack, TimeKeyType_Rotate, 10);
+        auto* a = pushRotate(plain, plainStack, 0);
+        auto* b = pushRotate(plain, plainStack, 10);
         a->data().setRotate(0.0f);
         b->data().setRotate(90.0f);
         a->data().easing(0).type = util::Easing::Type_Custom;
@@ -1772,18 +1919,15 @@ int sectionAutoEasing() {
     {
         core::TestNode scaleNode;
         cmnd::Stack scaleStack;
-        auto* s0 = pushKey<core::ScaleKey>(scaleNode, scaleStack, TimeKeyType_Scale, 0);
-        auto* s1 = pushKey<core::ScaleKey>(scaleNode, scaleStack, TimeKeyType_Scale, 10);
-        auto* s2 = pushKey<core::ScaleKey>(scaleNode, scaleStack, TimeKeyType_Scale, 20);
-        s0->data().setScale(QVector2D(1.0f, 1.0f));
-        s1->data().setScale(QVector2D(1.0f, 3.0f));
-        s2->data().setScale(QVector2D(1.0f, 2.0f));
-        for (int component = 0; component < core::ScaleKey::kComponents; ++component) {
-            s0->data().easing(component).type = util::Easing::Type_Custom;
-            s0->data().easing(component).handleOut = util::Easing::HandleMode_Auto;
-            s1->data().easing(component).type = util::Easing::Type_Custom;
-            s1->data().easing(component).handleOut = util::Easing::HandleMode_AutoClamped;
-            s1->data().easing(component).handleIn = util::Easing::HandleMode_Auto;
+        const auto s0 = pushScale(scaleNode, scaleStack, 0, QVector2D(1.0f, 1.0f));
+        const auto s1 = pushScale(scaleNode, scaleStack, 10, QVector2D(1.0f, 3.0f));
+        pushScale(scaleNode, scaleStack, 20, QVector2D(1.0f, 2.0f));
+        for (int component = 0; component < 2; ++component) {
+            s0[component]->easing().type = util::Easing::Type_Custom;
+            s0[component]->easing().handleOut = util::Easing::HandleMode_Auto;
+            s1[component]->easing().type = util::Easing::Type_Custom;
+            s1[component]->easing().handleOut = util::Easing::HandleMode_AutoClamped;
+            s1[component]->easing().handleIn = util::Easing::HandleMode_Auto;
         }
 
         const ctrl::graph::Curve scaleY(*scaleNode.timeLine(), ctrl::graph::Channel(TimeKeyType_Scale, 1));
@@ -1804,14 +1948,12 @@ int sectionAutoEasing() {
     {
         core::TestNode solo;
         cmnd::Stack soloStack;
-        auto* a = pushKey<core::OpaKey>(solo, soloStack, TimeKeyType_Opa, 0);
-        auto* b = pushKey<core::OpaKey>(solo, soloStack, TimeKeyType_Opa, 8);
-        a->data().setOpacity(0.2f);
-        b->data().setOpacity(1.0f);
-        a->data().easing(0).type = util::Easing::Type_Custom;
-        a->data().easing(0).handleOut = util::Easing::HandleMode_Auto;
-        b->data().easing(0).handleIn = util::Easing::HandleMode_Auto;
-        const ctrl::graph::Curve line(*solo.timeLine(), ctrl::graph::Channel(TimeKeyType_Opa, 0));
+        auto* a = pushOpacity(solo, soloStack, 0, 0.2f);
+        auto* b = pushOpacity(solo, soloStack, 8, 1.0f);
+        a->easing().type = util::Easing::Type_Custom;
+        a->easing().handleOut = util::Easing::HandleMode_Auto;
+        b->easing().handleIn = util::Easing::HandleMode_Auto;
+        const ctrl::graph::Curve line(*solo.timeLine(), ctrl::graph::Channel(TimeKeyType_Opacity, 0));
         for (int frame = 0; frame <= 8; ++frame) {
             const float t = float(frame) / 8.0f;
             CHECK(nearly(line.sample(core::Frame(frame)), 0.2f + 0.8f * t));
@@ -2043,21 +2185,19 @@ int sectionPerComponentEasing() {
     {
         core::TestNode node;
         cmnd::Stack stack;
-        auto* k0 = pushKey<core::MoveKey>(node, stack, core::TimeKeyType_Move, 0);
-        auto* k1 = pushKey<core::MoveKey>(node, stack, core::TimeKeyType_Move, 10);
-        k0->setPos(QVector2D(0.0f, 0.0f));
-        k1->setPos(QVector2D(100.0f, 100.0f));
+        auto k0 = pushMove(node, stack, 0, QVector2D(0.0f, 0.0f));
+        auto k1 = pushMove(node, stack, 10, QVector2D(100.0f, 100.0f));
         // Both components start on the same curve, then X ALONE is edited
         // through the graph's own write bridge (Curve::easingOf names the
         // component, so it cannot reach Y).
-        k0->data().easing(0) = yCurve;
-        k0->data().easing(1) = yCurve;
-        util::Easing::Param* liveX = ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Move, 0);
-        CHECK(liveX == &k0->data().easing(0));
+        k0[0]->easing() = yCurve;
+        k0[1]->easing() = yCurve;
+        util::Easing::Param* liveX = ctrl::graph::Curve::easingOf(*k0[0], core::TimeKeyType_Move, 0);
+        CHECK(liveX == &k0[0]->easing());
         *liveX = xCurve;
-        CHECK(k0->data().easing(0) == xCurve);
-        CHECK(k0->data().easing(1) == yCurve); // untouched by the X edit
-        CHECK(k0->data().easing(0) != k0->data().easing(1));
+        CHECK(k0[0]->easing() == xCurve);
+        CHECK(k0[1]->easing() == yCurve); // untouched by the X edit
+        CHECK(k0[0]->easing() != k0[1]->easing());
 
         const BlenderOracle oracle(node, core::Frame(5));
         const float x = oracle.value(Channel(core::TimeKeyType_Move, 0));

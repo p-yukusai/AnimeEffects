@@ -142,6 +142,7 @@ private:
         core::TimeKey::Proportional baseState;
         core::TimeKey::Proportional nextState;
         float baseValues[core::TimeKey::kMaxProportionalComponents] = {};
+        int component = -1; // channel-backed keys: the one component this key is
     };
     struct Group {
         core::TimeLine* line = nullptr;

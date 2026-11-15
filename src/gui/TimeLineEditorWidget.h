@@ -89,6 +89,11 @@ public:
     // on the keys, not on the selection, so the selection's own onChanged does
     // not fire for this edit; the header's button re-reads through this signal.
     Q_SIGNAL void keyProportionalChanged();
+    // THE TIMELINE'S VIEW GROUPING CHANGED (Link/Separate Channels). The document
+    // did not: the property's rows may have changed HEIGHT (one grouped lane
+    // instead of N channel lanes), so the dock must rebuild its row list before
+    // the next paint. This is not an undoable edit and emits no document signal.
+    Q_SIGNAL void channelGroupingChanged();
 
     void setProject(core::Project* aProject);
     void setFrame(core::Frame aFrame);
@@ -160,7 +165,7 @@ public:
     // selection actions rather than duplicating the toggle in the bar.
     //
     // FALSE when there is nothing to act on: no project/editor, an empty
-    // selection, or only default keys (which have no authored position).
+    // selection, or only base values (which have no authored position).
     bool setSelectionProportional(bool aEnabled);
 
     // THE BACKGROUND MENU, for a caller whose pointer is in ANOTHER view's space: the

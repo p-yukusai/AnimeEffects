@@ -82,17 +82,14 @@ import QtQuick.Templates
 // TIMING (contract line E26): it appears after a delay and never instantly, and it
 // hides after a timeout or as soon as the pointer leaves.
 //
-// The delay is a CONSTANT of the design rather than a value read from Qt, and that
-// is measured, not assumed: it was chosen on Qt 6.11.2, where there was nothing to
-// read at all - that release ships no tooltip-delay API (the whole installed header
-// tree matches no showDelay, toolTipDelay or hideDelay), Qt Quick Controls' ToolTip.delay
-// defaults to 0, no installed style overrides it, and Qt's own QToolTip fires 1-2 ms
-// after the hover (measured, this spike: ENTER 2846 ms / TOOLTIP 2848 ms). So "the
-// platform's wake-up delay" here means the conventional desktop one: 500 ms, then 10 s
-// before the tip retires itself. NOTE for whoever moves this next: the tree's floor is
-// Qt 6.12 now, and 6.12 DOES have QStyleHints::toolTipWakeUpDelay (read-only) - the
-// constant can become the platform's value, and that is a deliberate design change to
-// make, not a rename.
+// The two values are the app's, exposed once by gui::QmlTheme (toolTipDelay /
+// toolTipTimeout). They were measured on Qt 6.11.2, when there was no tooltip-delay
+// API at all and Qt Quick Controls' ToolTip.delay defaulted to 0: the conventional
+// desktop 500 ms, then 10 s before the tip retires itself. Qt 6.12 has
+// QStyleHints::toolTipWakeUpDelay (settable) but no timeout hint, and the design
+// wants both values to agree with the widgets and the mesh overlay, so the app
+// token stays the authority; Main.cpp mirrors the delay into QStyleHints so widget
+// tooltips agree.
 Item {
     id: root
 
@@ -104,11 +101,10 @@ Item {
     // Driven by the owner: true while the pointer is on the control.
     property bool shown: false
 
-    // The two E26 timings. Named and at the top because the contract calls them
-    // out, and because if the project moves to Qt 6.12 the first one should become
-    // `Qt.styleHints.toolTipWakeUpDelay` (read-only there) rather than a constant.
-    property int delay: 500
-    property int timeout: 10000
+    // The two E26 timings, from the one UI token (see QmlTheme). A call site may
+    // override either when it has a measured reason; none currently does.
+    property int delay: theme.toolTipDelay
+    property int timeout: theme.toolTipTimeout
 
     // Whether the label is actually on screen: `shown` only REQUESTS it, after
     // `delay`. Keeping the two apart is what makes "the pointer left while the
@@ -122,12 +118,14 @@ Item {
     parent: (revealed && ownerItem) ? ownerItem.Overlay.overlay : null
     z: 1000000
     enabled: false
-    implicitWidth: label.implicitWidth + 14
-    // 22 is the single-line look as it stands; a multi-line tooltip (the picker
-    // row's full label + identification) grows to fit rather than spilling out
-    // of a fixed-height bubble - "shows it in full" (E29) and "never clipped"
-    // (E28) both require the bubble to fit its text.
-    implicitHeight: label.lineCount > 1 ? label.implicitHeight + 8 : 22
+    // E28 applies to the BUBBLE as well as its position: a sentence longer than
+    // the window used to keep its natural width and run off the edge. The bubble
+    // stops at the window's inner width and the text wraps inside it.
+    readonly property real maxWidth: parent ? Math.max(96, parent.width - 16) : 10000
+    implicitWidth: Math.min(label.implicitWidth + 14, maxWidth)
+    // 22 is the single-line look as it stands; a wrapped/multi-line tooltip grows
+    // to fit rather than spilling out of a fixed-height bubble.
+    implicitHeight: Math.max(22, label.implicitHeight + 8)
 
     // The owner's rectangle in the OWNER's coordinates (0-relative to ownerItem
     // unless a call site moves it). ownerW/H follow the owner's own size, which
@@ -266,8 +264,10 @@ Item {
     Text {
         id: label
         anchors.centerIn: parent
+        width: root.width - 14
         text: root.text
         color: theme.text
         font.pixelSize: 11
+        wrapMode: Text.Wrap
     }
 }

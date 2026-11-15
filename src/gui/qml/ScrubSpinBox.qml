@@ -54,6 +54,10 @@ Item {
     // frozen field from a live one. The fields below bind to root.enabled and the
     // scrub/edit handlers gate on it.
 
+    // In-field text editing. Exposed so a caller can keep a live preview (the
+    // Properties panel's mesh overlay) up while the value is being typed.
+    readonly property bool editing: editInput.activeFocus
+
     // Our OWN scrub flag, set on press and cleared on release / popup hide. The
     // QML scrub must gate on this, not the MouseArea's `pressed`: Qt's popup path
     // can present an outside move with buttons()=NoButton, whose delivery can
@@ -92,6 +96,32 @@ Item {
         editInput.editStartValue = root.value;
         editInput.text = root.fmt(root.value);
         editInput.forceActiveFocus();
+    }
+
+    // TYPE-STEPPING. The old widget fields were QAbstractSpinBoxes: Up/Down and
+    // the wheel stepped the value (Shift x10), and their stepBy emitted
+    // editingFinished. The QML replacement had neither, which is the reported
+    // regression. While the text editor is open a step only moves the local
+    // value/text - Enter or focus-out commits it, and Escape still restores the
+    // value the edit began with. Outside the editor a wheel notch is a complete
+    // edit and commits immediately.
+    property real wheelAccumulator: 0
+
+    function stepBy(aSteps, aModifiers) {
+        if (!root.enabled || aSteps === 0)
+            return;
+        const rate = (aModifiers & Qt.ShiftModifier) ? 10 : 1;
+        const next = root.clampNv(root.value + aSteps * rate * root.step);
+        if (next === root.value)
+            return;
+        root.value = next;
+        if (editInput.activeFocus) {
+            editInput.text = root.fmt(next);
+            editInput.selectAll();
+        }
+        root.changed(next);
+        if (!editInput.activeFocus)
+            root.committed(next);
     }
 
     // Raised input field matching the app's dock input fields (propertywidget.ssa
@@ -167,6 +197,28 @@ Item {
         enabled: !editInput.activeFocus
     }
 
+    // THE WHEEL STEPS ONLY IN TEXT EDIT, as the old fields did: outside the editor
+    // the wheel belongs to the surrounding ScrollView (a form full of fields must
+    // still scroll). One notch is one step (Shift x10); high-resolution deltas are
+    // accumulated so a touchpad cannot fire a step per pixel.
+    WheelHandler {
+        enabled: root.enabled && editInput.activeFocus
+        onWheel: (wheel) => {
+            const hasAngle = wheel.angleDelta.y !== 0;
+            const delta = hasAngle ? wheel.angleDelta.y : wheel.pixelDelta.y;
+            if (delta === 0)
+                return;
+            const unit = hasAngle ? 120.0 : 15.0;
+            root.wheelAccumulator += delta;
+            const steps = Math.trunc(root.wheelAccumulator / unit);
+            if (steps !== 0) {
+                root.wheelAccumulator -= steps * unit;
+                root.stepBy(steps, wheel.modifiers);
+            }
+            wheel.accepted = true;
+        }
+    }
+
     // Scrub + click-to-edit, ABOVE the value text so it reliably receives the
     // hover and pointer events. A click (press with no drag) enters edit mode;
     // a drag scrubs the value. Enabled only while not editing so the (on-top)
@@ -189,8 +241,8 @@ Item {
         // propagates to the scroll area. This leads to the user accidentally scrolling
         // while changing values"). preventStealing is the documented way to say the
         // control owns the gesture that started on it; the steal was real enough that
-        // the onCanceled handler below exists for it. The wheel still scrolls over this
-        // field, and a drag starting anywhere else still scrolls the page.
+        // the onCanceled handler below exists for it. A drag starting anywhere else
+        // still scrolls the page; the wheel is the spin box's own (see stepBy).
         preventStealing: true
 
         property real pressX: 0
@@ -299,6 +351,14 @@ Item {
             cancelEdit = true;
             focus = false;
             event.accepted = true; // swallow: do not let the dialog close
+        }
+        Keys.onUpPressed: (event) => {
+            root.stepBy(1, event.modifiers);
+            event.accepted = true;
+        }
+        Keys.onDownPressed: (event) => {
+            root.stepBy(-1, event.modifiers);
+            event.accepted = true;
         }
         onAccepted: focus = false // commit via onActiveFocusChanged
         onActiveFocusChanged: {

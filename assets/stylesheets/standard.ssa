@@ -1456,6 +1456,74 @@ QDockWidget
     titlebar-normal-icon: url(@icondir@/transparent.svg);
 }
 
+/**
+ *  A floating panel carries a ring of its own, carved by a transparent border.
+ *  It has to be the border: QDockWidgetLayout insets the header and the content
+ *  by PM_DockWidgetFrameWidth, and QStyleSheetStyle takes that metric from the
+ *  QSS border width - so this one line is what gives the window an edge band at
+ *  all, since on Wayland the panel is a frameless tool window and Qt paints no
+ *  frame once a custom title bar exists. The border and the rounding inside the
+ *  ring are drawn in DockPanel; the ring is also the band the compositor's edge
+ *  grabs resize from. A docked panel is unaffected: its frame width is ignored
+ *  while docked.
+ *
+ *  The 10px here is DockPanel::kGrabMargin + DockPanel::kRing, and it has to
+ *  stay in step with those: 4px of it is an unpainted margin outside the frame,
+ *  which is what gives the user somewhere to grab that is not inside the panel.
+ */
+QDockWidget[aeFloating="true"]
+{
+    border: 10px solid transparent;
+}
+
+/**
+ *  A dock group's tab strip - Qt's tab bar for the group, adopted and named by
+ *  MainWindow - is a row of titles, so it is dressed as one and not as the
+ *  project tabs, which are documents: no rounded shoulders, no side or bottom
+ *  borders, no pill. An unselected tab is dimmed text on the panel surface; the
+ *  selected one is the panel's own title, lit, with the focus rule *under* it -
+ *  the strip sits above the panel it names, so a rule underneath reads as that
+ *  tab owning the content below, which is also how a floating header's tab marks
+ *  itself. The padding matches the title inset in DockTabBar's tab.
+ */
+QTabBar#dockTabBar
+{
+    background: transparent;
+    qproperty-drawBase: 0;
+}
+
+QTabBar#dockTabBar::tab:top
+{
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: @textMuted@;
+    /* Do NOT add `text-align: left` here: Qt's style-sheet parser rejects it for
+       this subcontrol and drops the whole declaration block with it, so the tabs
+       silently fall back to the shared document-tab rule (measured: boxes and a
+       stray underline reappeared). QTabBar centres tab text and there is no
+       public API to change it, so the tab text stays centred while the dock's own
+       header is the same widget. */
+    padding-left: 0.85em;
+    padding-right: 0.85em;
+    padding-top: 0.3em;
+    padding-bottom: 0.25em;
+}
+
+QTabBar#dockTabBar::tab:top:hover
+{
+    color: @text@;
+    background-color: @accentOverlay@;
+}
+
+QTabBar#dockTabBar::tab:top:selected
+{
+    background-color: @base@;
+    color: @text@;
+    /* the rule is the boundary between the tab and the panel it names */
+    border-bottom: 0.09em solid @focus@;
+}
+
 /* the dock title text sits off the left edge */
 QDockWidget::title {
     /* the margin insets the title text; a matching background

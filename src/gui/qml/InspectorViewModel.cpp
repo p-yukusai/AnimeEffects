@@ -11,7 +11,7 @@
 #include "core/HsvKey.h"
 #include "core/ImageKey.h"
 #include "core/MoveKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/PoseKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
@@ -157,14 +157,19 @@ QString InspectorViewModel::centerLabel() const {
     return QCoreApplication::translate("gui::prop::ImageKeyGroup", "Center");
 }
 QString InspectorViewModel::meshCellLabel() const {
-    return QCoreApplication::translate("gui::prop::ImageKeyGroup", "Mesh cell");
+    // The internal value is a grid CELL size, but the user authors the distance
+    // between mesh vertices. "Cell" exposed the implementation and named nothing
+    // they could see; "spacing" is the picture, and smaller = denser.
+    return QCoreApplication::translate("gui::prop::ImageKeyGroup", "Mesh spacing");
 }
 QString InspectorViewModel::meshCellTooltip() const {
     return QCoreApplication::translate("gui::prop::ImageKeyGroup",
-        "Pixel size of each image mesh cell.");
+        "Distance between mesh vertices, in pixels. Smaller values create a denser mesh.");
 }
 
 void InspectorViewModel::setProject(core::Project* aProject) {
+    setMeshPreviewActive(false);
+    setMaskPaintState(nullptr, false, false, core::TimeKeyType_TERM, core::FilterMaskChannel_Amount);
     mProject = aProject;
     mTarget = nullptr;
     mAccessor.setProject(aProject);
@@ -175,6 +180,10 @@ void InspectorViewModel::setProject(core::Project* aProject) {
 }
 
 void InspectorViewModel::setTarget(core::ObjectNode* aTarget) {
+    // A preview belongs to the node the field was hovering. Do not let it follow
+    // a selection change onto a different mesh.
+    setMeshPreviewActive(false);
+    setMaskPaintState(nullptr, false, false, core::TimeKeyType_TERM, core::FilterMaskChannel_Amount);
     mTarget = aTarget;
     mAccessor.setTarget(aTarget);
     mFilters->setTarget(aTarget);
@@ -189,11 +198,39 @@ void InspectorViewModel::setPlaybackActive(bool aActive) {
     emit changed();
 }
 
-void InspectorViewModel::setMaskPaintActive(bool aActive) {
-    if (mMaskPaintActive == aActive)
+void InspectorViewModel::setMeshPreviewActive(bool aActive) {
+    if (!aActive) {
+        if (!mMeshPreviewActive)
+            return;
+        mMeshPreviewActive = false;
+        onMeshPreviewRequested(nullptr, false);
         return;
-    mMaskPaintActive = aActive;
-    emit maskPaintActiveChanged();
+    }
+    if (mMeshPreviewActive || !mTarget || !mTarget->timeLine())
+        return;
+    mMeshPreviewActive = true;
+    onMeshPreviewRequested(mTarget, true);
+}
+
+void InspectorViewModel::setMaskPaintState(
+    core::ObjectNode* aNode, bool aLayerMask, bool aFilterInput, core::TimeKeyType aLane,
+    core::FilterMaskChannel aChannel
+) {
+    const bool onTarget = aNode && aNode == mTarget;
+    const bool layer = onTarget && aLayerMask;
+    const bool filter = onTarget && aFilterInput;
+    const auto lane = filter ? aLane : core::TimeKeyType_TERM;
+    const auto channel = filter ? aChannel : core::FilterMaskChannel_Amount;
+    if (mMaskPaintActive == layer && mMaskPaintIsFilter == filter && mMaskPaintLane == lane
+        && mMaskPaintChannel == channel) {
+        return;
+    }
+    mMaskPaintActive = layer;
+    mMaskPaintIsFilter = filter;
+    mMaskPaintLane = lane;
+    mMaskPaintChannel = channel;
+    mFilters->refreshMaskPaintState();
+    emit maskPaintStateChanged();
 }
 
 
@@ -213,7 +250,7 @@ const core::TimeLine* maskLine(const core::ObjectNode* aTarget) {
 
 bool InspectorViewModel::maskPresent() const {
     const core::TimeLine* line = maskLine(mTarget);
-    return line && (line->defaultKey(core::TimeKeyType_Mask) || !line->map(core::TimeKeyType_Mask).isEmpty());
+    return line && (line->baseValue(core::TimeKeyType_Mask) || !line->map(core::TimeKeyType_Mask).isEmpty());
 }
 
 bool InspectorViewModel::maskKeyed() const {
@@ -237,14 +274,14 @@ QImage InspectorViewModel::maskThumbnail(const QSize& aRequested) const {
         return QImage();
 
     // The field the frame SHOWS: the key at the playhead when there is one,
-    // otherwise the default key. A blended frame's thumbnail is the blended field,
+    // otherwise the base value. A blended frame's thumbnail is the blended field,
     // which is what makes the card's between-keys state legible ("this is what you
     // are looking at, and it is read-only").
     const core::MaskKey* key = nullptr;
     if (const core::TimeKey* atFrame = line->map(core::TimeKeyType_Mask).value(frame()))
         key = static_cast<const core::MaskKey*>(atFrame);
     else
-        key = static_cast<const core::MaskKey*>(line->defaultKey(core::TimeKeyType_Mask));
+        key = static_cast<const core::MaskKey*>(line->baseValue(core::TimeKeyType_Mask));
     if (!key || !key->data().isValid())
         return QImage();
 

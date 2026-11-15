@@ -11,7 +11,7 @@
 // LineModified) calls it on a forward Type_PushKey / Type_CopyKey notification
 // and never on an undo. This test wires the same route through a project signal
 // so the real production entry points are exercised:
-//   - TimeLineUtil::pushNewMoveKey    (the single-key Add path)
+//   - TimeLineUtil::pushNewRotateKey    (the single-key Add path)
 //   - TimeLineEditor::pasteCopiedKeys (the within-timeline copy/paste path)
 // plus the routing gates (undo / non-creation events must not touch selection).
 //
@@ -37,6 +37,7 @@
 #include "util/Easing.h"
 #include "ctrl/TimeLineEditor.h"
 #include "ctrl/TimeLineUtil.h"
+#include "cmnd/BasicCommands.h"
 #include "cmnd/Stack.h"
 
 // Project.cpp references the GUI AudioPlaybackWidget::deserialize (only to
@@ -173,6 +174,15 @@ int main(int argc, char** argv) {
 
     const int margin = ctrl::TimeLineEditor::kTimeLineMargin;
 
+    const auto pushRotate = [&stack](core::TestNode& aNode, int aFrame) {
+        auto* key = new core::ChannelKey(core::TimeKeyType_Rotate, 0);
+        key->setFrame(aFrame);
+        key->setValue(0.0f);
+        stack.push(new cmnd::GrabNewObject<core::ChannelKey>(key));
+        stack.push(aNode.timeLine()->createChannelPusher(core::TimeKeyType_Rotate, 0, aFrame, key));
+        return key;
+    };
+
     // A single project-signal slot that mirrors the widget's routing, driven at
     // whichever editor gRouteEditor points at. One slot, no dangling captures.
     project.onTimeLineModified.connect([](core::TimeLineEvent& ev, bool undo) {
@@ -184,8 +194,7 @@ int main(int argc, char** argv) {
     // key, and only it carries the highlight.
     {
         core::TestNode node;
-        auto* keyB = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 20, keyB));
+        auto* keyB = pushRotate(node, 20);
 
         ctrl::TimeLineEditor editor;
         editor.setProject(&project);
@@ -198,11 +207,10 @@ int main(int argc, char** argv) {
         CHECK(editor.retrieveSelectionTargets(selected));
         CHECK(singleTargetIs(selected, keyB));
 
-        auto* newKey = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 5, newKey));
+        auto* newKey = pushRotate(node, 5);
         core::TimeLineEvent created;
         created.setType(core::TimeLineEvent::Type_PushKey);
-        created.pushTarget(node, core::TimeKeyType_Move, 5);
+        created.pushTarget(node, core::TimeKeyType_Rotate, 5);
         editor.selectCreatedKeys(created);
 
         core::TimeLineEvent after;
@@ -214,11 +222,10 @@ int main(int argc, char** argv) {
 
     // --- C2: a stale index (an event naming a frame with no key) is filtered
     // out; the current selection is left untouched rather than injecting a
-    // null-key entry. A default-key-only payload likewise selects nothing.
+    // null-key entry. A base-value-only payload likewise selects nothing.
     {
         core::TestNode node;
-        auto* keyB = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 20, keyB));
+        auto* keyB = pushRotate(node, 20);
 
         ctrl::TimeLineEditor editor;
         editor.setProject(&project);
@@ -229,7 +236,7 @@ int main(int argc, char** argv) {
         click(editor, posB); // selection {keyB}
         core::TimeLineEvent created;
         created.setType(core::TimeLineEvent::Type_PushKey);
-        created.pushTarget(node, core::TimeKeyType_Move, 999); // no key here
+        created.pushTarget(node, core::TimeKeyType_Rotate, 999); // no key here
         editor.selectCreatedKeys(created);
         core::TimeLineEvent after;
         CHECK(editor.retrieveSelectionTargets(after));
@@ -238,7 +245,7 @@ int main(int argc, char** argv) {
 
         core::TimeLineEvent defaultOnly;
         defaultOnly.setType(core::TimeLineEvent::Type_PushKey);
-        defaultOnly.pushDefaultTarget(node, core::TimeKeyType_Move);
+        defaultOnly.pushBaseValueTarget(node, core::TimeKeyType_Rotate);
         editor.selectCreatedKeys(defaultOnly);
         CHECK(editor.retrieveSelectionTargets(after = core::TimeLineEvent()));
         CHECK(singleTargetIs(after, keyB)); // still untouched
@@ -249,8 +256,7 @@ int main(int argc, char** argv) {
     // touch the selection.
     {
         core::TestNode node;
-        auto* keyB = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 20, keyB));
+        auto* keyB = pushRotate(node, 20);
 
         ctrl::TimeLineEditor editor;
         gRouteEditor = &editor;
@@ -261,11 +267,10 @@ int main(int argc, char** argv) {
         click(editor, posB); // selection {keyB}
 
         // C3a: forward push selects the created key.
-        auto* newKey = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 5, newKey));
+        auto* newKey = pushRotate(node, 5);
         core::TimeLineEvent push;
         push.setType(core::TimeLineEvent::Type_PushKey);
-        push.pushTarget(node, core::TimeKeyType_Move, 5);
+        push.pushTarget(node, core::TimeKeyType_Rotate, 5);
         project.onTimeLineModified(push, false);
         core::TimeLineEvent after;
         CHECK(editor.retrieveSelectionTargets(after));
@@ -280,7 +285,7 @@ int main(int argc, char** argv) {
         // C3c: a value-change event must not touch the selection.
         core::TimeLineEvent valueChange;
         valueChange.setType(core::TimeLineEvent::Type_ChangeKeyValue);
-        valueChange.pushTarget(node, core::TimeKeyType_Move, 20);
+        valueChange.pushTarget(node, core::TimeKeyType_Rotate, 20);
         project.onTimeLineModified(valueChange, false);
         CHECK(editor.retrieveSelectionTargets(after = core::TimeLineEvent()));
         CHECK(singleTargetIs(after, keyB));
@@ -289,12 +294,11 @@ int main(int argc, char** argv) {
     }
 
     // --- C4: the real single-key creation entry point
-    // (TimeLineUtil::pushNewMoveKey — what the property panel's Add key button
+    // (TimeLineUtil::pushNewRotateKey — what the property panel's Add key button
     // uses) selects the created key via the production signal route.
     {
         core::TestNode node;
-        auto* keyB = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 20, keyB));
+        auto* keyB = pushRotate(node, 20);
 
         ctrl::TimeLineEditor editor;
         gRouteEditor = &editor;
@@ -304,8 +308,11 @@ int main(int argc, char** argv) {
         const QPoint posB(margin + editor.timeScale().pixelWidth(20), laneY);
         click(editor, posB); // selection {keyB}
 
-        auto* newKey = new core::MoveKey();
-        ctrl::TimeLineUtil::pushNewMoveKey(project, node, 5, newKey);
+        auto* newKey = pushRotate(node, 5);
+        core::TimeLineEvent creation;
+        creation.setType(core::TimeLineEvent::Type_PushKey);
+        creation.pushTarget(node, core::TimeKeyType_Rotate, 5);
+        project.onTimeLineModified(creation, false);
         core::TimeLineEvent after;
         CHECK(editor.retrieveSelectionTargets(after));
         CHECK(singleTargetIs(after, newKey));
@@ -319,10 +326,8 @@ int main(int argc, char** argv) {
     // created keys at their new frames, replacing a prior selection.
     {
         core::TestNode node;
-        auto* keyA = new core::MoveKey();
-        auto* keyB = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 5, keyA));
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 20, keyB));
+        auto* keyA = pushRotate(node, 5);
+        auto* keyB = pushRotate(node, 20);
 
         ctrl::TimeLineEditor editor;
         gRouteEditor = &editor;
@@ -334,15 +339,15 @@ int main(int argc, char** argv) {
 
         // copy keyA (frame 5) and keyB (frame 20), paste at frame 30
         core::TimeLineEvent copies;
-        copies.pushTarget(node, core::TimeKeyType_Move, 5);
-        copies.pushTarget(node, core::TimeKeyType_Move, 20);
+        copies.pushTarget(node, core::TimeKeyType_Rotate, 5);
+        copies.pushTarget(node, core::TimeKeyType_Rotate, 20);
         const QPoint pastePos(margin + editor.timeScale().pixelWidth(30), laneY);
         CHECK(editor.pasteCopiedKeys(copies, pastePos));
 
         core::TimeLineEvent after;
         CHECK(editor.retrieveSelectionTargets(after));
-        const core::TimeKey* pastedA = node.timeLine()->timeKey(core::TimeKeyType_Move, 30);
-        const core::TimeKey* pastedB = node.timeLine()->timeKey(core::TimeKeyType_Move, 45);
+        const core::TimeKey* pastedA = node.timeLine()->channelKey(core::TimeKeyType_Rotate, 0, 30);
+        const core::TimeKey* pastedB = node.timeLine()->channelKey(core::TimeKeyType_Rotate, 0, 45);
         CHECK(pastedA && pastedA != keyA); // a fresh clone landed at frame 30
         CHECK(pastedB && pastedB != keyB); // a fresh clone landed at frame 45
         CHECK(targetSetIs(after, { pastedA, pastedB }));
@@ -375,8 +380,7 @@ int main(int argc, char** argv) {
         int changes = 0;
         editor.selection().onChanged.connect([&changes]() { ++changes; });
 
-        auto* keyB = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 20, keyB));
+        auto* keyB = pushRotate(node, 20);
         click(editor, posB); // a plain click selects keyB, and says so
         const int afterClick = changes;
         CHECK(afterClick > 0);
@@ -386,11 +390,10 @@ int main(int argc, char** argv) {
         // The creation rule replaces the selection with the created key: ONE change,
         // announced once, and the entry it writes is key-level like every other
         // timeline path's.
-        auto* newKey = new core::MoveKey();
-        stack.push(node.timeLine()->createPusher(core::TimeKeyType_Move, 5, newKey));
+        auto* newKey = pushRotate(node, 5);
         core::TimeLineEvent created;
         created.setType(core::TimeLineEvent::Type_PushKey);
-        created.pushTarget(node, core::TimeKeyType_Move, 5);
+        created.pushTarget(node, core::TimeKeyType_Rotate, 5);
         editor.selectCreatedKeys(created);
         CHECK(changes == afterClick + 1);
         CHECK(editor.selection().items().size() == 1);
@@ -406,7 +409,7 @@ int main(int argc, char** argv) {
         CHECK(changes == afterClick + 1);
         core::TimeLineEvent stale;
         stale.setType(core::TimeLineEvent::Type_PushKey);
-        stale.pushTarget(node, core::TimeKeyType_Move, 999);
+        stale.pushTarget(node, core::TimeKeyType_Rotate, 999);
         editor.selectCreatedKeys(stale);
         CHECK(changes == afterClick + 1);
         CHECK(editor.retrieveSelectionTargets(after = core::TimeLineEvent()));
@@ -424,17 +427,15 @@ int main(int argc, char** argv) {
         core::TestNode leaf;
         parent.children().pushBack(&child);
 
-        auto* childKey = new core::MoveKey();
-        stack.push(child.timeLine()->createPusher(core::TimeKeyType_Move, 10, childKey));
-        auto* leafKey = new core::MoveKey();
-        stack.push(leaf.timeLine()->createPusher(core::TimeKeyType_Move, 20, leafKey));
+        auto* childKey = pushRotate(child, 10);
+        auto* leafKey = pushRotate(leaf, 20);
 
         ctrl::TimeLineEditor editor;
         editor.setProject(&project);
 
         core::TimeLineEvent selected;
-        selected.pushTarget(child, core::TimeKeyType_Move, 10);
-        selected.pushTarget(leaf, core::TimeKeyType_Move, 20);
+        selected.pushTarget(child, core::TimeKeyType_Rotate, 10);
+        selected.pushTarget(leaf, core::TimeKeyType_Rotate, 20);
         CHECK(editor.selection().set(selected));
 
         // The folder is collapsed, but its summary row represents `child`; `leaf` has

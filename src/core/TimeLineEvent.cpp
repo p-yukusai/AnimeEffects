@@ -3,7 +3,7 @@
 
 namespace core {
 
-TimeLineEvent::TimeLineEvent(): mProject(nullptr), mType(Type_TERM), mTargets(), mDefaultTargets() {}
+TimeLineEvent::TimeLineEvent(): mProject(nullptr), mType(Type_TERM), mTargets(), mBaseValueTargets() {}
 
 void TimeLineEvent::pushTarget(ObjectNode& aNode, const TimeKeyPos& aPos) {
     Target target(aNode, aPos, aPos.index());
@@ -27,10 +27,10 @@ void TimeLineEvent::pushTarget(ObjectNode& aNode, TimeKeyType aType, int aIndex,
     mTargets.push_back(target);
 }
 
-void TimeLineEvent::pushDefaultTarget(ObjectNode& aNode, TimeKeyType aType) {
+void TimeLineEvent::pushBaseValueTarget(ObjectNode& aNode, TimeKeyType aType) {
     XC_PTR_ASSERT(aNode.timeLine());
-    Target target(aNode, TimeKeyPos(*aNode.timeLine(), aType, TimeLine::kDefaultKeyIndex), TimeLine::kDefaultKeyIndex);
-    mDefaultTargets.push_back(target);
+    Target target(aNode, TimeKeyPos(*aNode.timeLine(), aType, TimeLine::kBaseValueIndex), TimeLine::kBaseValueIndex);
+    mBaseValueTargets.push_back(target);
 }
 
 } // namespace core

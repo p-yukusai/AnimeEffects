@@ -2,13 +2,15 @@
 
 #include <QObject>
 
+#include "core/ChannelKey.h"
+#include "core/ChannelSpec.h"
 #include "core/KeyEasing.h"
 #include "core/TimeLine.h"
 #include "core/MoveKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
 #include "core/DepthKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/BlurKey.h"
 #include "core/HsvKey.h"
 #include "core/ImageKey.h"
@@ -46,7 +48,9 @@ QVector<core::TimeKeyType> Channel::graphableTypes() {
     types.reserve(core::TimeKeyType_TERM);
     for (int i = 0; i < core::TimeKeyType_TERM; ++i) {
         const core::TimeKeyType type = core::TimeLine::getTimeKeyTypeInOrderOfOperations(i);
-        if (componentCount(type) > 0) {
+        // Image is a STRUCTURAL key: resource, grid mesh and FFD children travel
+        // with it, and its offset is step-held. It has no graphable channels.
+        if (type != core::TimeKeyType_Image && componentCount(type) > 0) {
             types.append(type);
         }
     }
@@ -59,6 +63,12 @@ float Channel::value(const core::TimeKey& aKey) const {
     // one must stay harmless rather than read past a vector's end.
     if (mComponent < 0 || componentCount(mType) <= mComponent) {
         return 0.0f;
+    }
+
+    // The per-channel storage's key is ONE channel already; there is no
+    // sibling to select between.
+    if (const auto* channelKey = dynamic_cast<const core::ChannelKey*>(&aKey)) {
+        return channelKey->component() == mComponent ? channelKey->value() : 0.0f;
     }
 
     // Each read mirrors core::TimeKeyBlender's accessor for the same channel,
@@ -81,8 +91,8 @@ float Channel::value(const core::TimeKey& aKey) const {
         const core::DepthKey& key = static_cast<const core::DepthKey&>(aKey);
         return key.data().depth();
     }
-    case core::TimeKeyType_Opa: {
-        const core::OpaKey& key = static_cast<const core::OpaKey&>(aKey);
+    case core::TimeKeyType_Opacity: {
+        const core::OpacityKey& key = static_cast<const core::OpacityKey&>(aKey);
         return key.data().opacity();
     }
     case core::TimeKeyType_Blur: {
@@ -126,6 +136,19 @@ bool Channel::writeValue(core::TimeKey& aKey, float aValue) const {
         return false;
     }
 
+    if (auto* channelKey = dynamic_cast<core::ChannelKey*>(&aKey)) {
+        if (channelKey->component() != mComponent) {
+            return false;
+        }
+        const core::ChannelSpec spec = core::channelSpec(mType, mComponent);
+        float value = qBound(spec.minValue, aValue, spec.maxValue);
+        if (spec.integral) {
+            value = static_cast<float>(static_cast<int>(value));
+        }
+        channelKey->setValue(value);
+        return true;
+    }
+
     // Each write mirrors value()'s read of the SAME field through the key's own
     // setter, so the type's own clamp (a Move value's +-10000, opacity's 0..1, an
     // HSV component's integer range) still applies and the key's payload - the
@@ -162,8 +185,8 @@ bool Channel::writeValue(core::TimeKey& aKey, float aValue) const {
         static_cast<core::DepthKey&>(aKey).data().setDepth(aValue);
         return true;
     }
-    case core::TimeKeyType_Opa: {
-        static_cast<core::OpaKey&>(aKey).data().setOpacity(aValue);
+    case core::TimeKeyType_Opacity: {
+        static_cast<core::OpacityKey&>(aKey).data().setOpacity(aValue);
         return true;
     }
     case core::TimeKeyType_Blur: {
@@ -230,7 +253,7 @@ QString Channel::componentName() const {
         return QObject::tr("Angle");
     case core::TimeKeyType_Depth:
         return QObject::tr("Depth");
-    case core::TimeKeyType_Opa:
+    case core::TimeKeyType_Opacity:
         return QObject::tr("Opacity");
     case core::TimeKeyType_Blur:
         switch (mComponent) {

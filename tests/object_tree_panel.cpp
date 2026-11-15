@@ -227,7 +227,7 @@ int main(int argc, char** argv) {
     group->children().pushBack(innerB);
     auto* leaf = new core::LayerNode(QStringLiteral("leaf"), project.objectTree().shaderHolder());
     top->children().pushBack(leaf);
-    ctrl::tree::addDefaultKeys(project, *leaf);
+    ctrl::tree::addKeysAtPlayhead(project, *leaf);
 
     gui::ObjectTreeModel model;
     model.setProject(&project);
@@ -337,10 +337,10 @@ int main(int argc, char** argv) {
             check(std::abs(contentBefore - 22.0) < 0.5,
                   QStringLiteral("the list is scrolled to the model's offset (%1)").arg(contentBefore));
 
-            // THE REBUILD: default keys push Type_PushKey. On a CHILD the fixture left keyless, so
+            // THE REBUILD: playhead keys push Type_PushKey. On a CHILD the fixture left keyless, so
             // this phase's push is its own macro - the leaf's keys are the fixture's and must not
             // be undone below.
-            ctrl::tree::addDefaultKeys(project, *innerA);
+            ctrl::tree::addKeysAtPlayhead(project, *innerA);
             QCoreApplication::processEvents();
             QCoreApplication::processEvents();   // the deferred re-apply
             const qreal contentAfter = listItem->property("contentY").toReal();
@@ -948,7 +948,7 @@ int main(int argc, char** argv) {
     check(!model.isAddAssetsOpen(), "with no resource trees there is nothing to choose from");
     check(model.assetTrees().isEmpty(), "and the list is empty");
 
-    // BOTH PHASES ABOVE CHANGE THE DOCUMENT (one macro each: default keys, then a mask), so they
+    // BOTH PHASES ABOVE CHANGE THE DOCUMENT (one macro each: playhead keys, then a mask), so they
     // hand it back - exactly those two, because the fixture's own setup commands are older than
     // them and the later checks (renames, restructures, drags) must see the document as it was.
     project.commandStack().undo();

@@ -48,6 +48,9 @@
     <file>icons/ph/crosshair.svg</file>
     <file>icons/ph/cube.svg</file>
     <file>icons/ph/dot-outline.svg</file>
+    <file>icons/ph/dots-three.svg</file>
+    <file>icons/ph/drop.svg</file>
+    <file>icons/ph/envelope.svg</file>
     <file>icons/ph/eraser.svg</file>
     <file>icons/ph/faders-horizontal.svg</file>
     <file>icons/ph/file-dashed.svg</file>
@@ -59,11 +62,20 @@
     <file>icons/ph/images.svg</file>
     <file>icons/ph/image.svg</file>
     <file>icons/ph/link.svg</file>
+    <file>icons/ph/sidebar-bottom.svg</file>
+    <file>icons/ph/sidebar-bottom-fill.svg</file>
+    <file>icons/ph/sidebar-left.svg</file>
+    <file>icons/ph/sidebar-left-fill.svg</file>
+    <file>icons/ph/sidebar-right.svg</file>
+    <file>icons/ph/sidebar-right-fill.svg</file>
+    <file>icons/ph/sidebar-top.svg</file>
+    <file>icons/ph/sidebar-top-fill.svg</file>
     <file>icons/ph/magnifying-glass.svg</file>
     <file>icons/ph/minus-bold.svg</file>
     <file>icons/ph/minus.svg</file>
     <file>icons/ph/navigation-arrow.svg</file>
     <file>icons/ph/paint-brush.svg</file>
+    <file>icons/ph/paint-envelope.svg</file>
     <file>icons/ph/pause.svg</file>
     <file>icons/ph/pencil-simple.svg</file>
     <file>icons/ph/play.svg</file>

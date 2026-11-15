@@ -1623,14 +1623,19 @@ core::LayerNode* addScaledLayer(
 ) {
     auto* layer = new core::LayerNode(aName, aTree.shaderHolder());
     layer->setDefaultImage(aRes->handle(), aMode);
-    // setDefaultPosture is what creates the Move/Rotate/Scale default keys the transform
+    // setDefaultPosture is what creates the Move/Rotate/Scale base values the transform
     // chain reads; without it the layer is never laid out and renders nothing. The position
     // matters too: the camera maps world (0,0) to the canvas ORIGIN, not its centre, so an
     // image centred on the world origin would hang off the top-left of the canvas.
     layer->setDefaultPosture(aPos);
     layer->setDefaultOpacity(1.0f);
-    core::getOrCreateDefaultKey<core::ScaleKey, core::TimeKeyType_Scale>(*layer->timeLine())
-        ->setScale(QVector2D(aScale, aScale));
+    if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Scale)) {
+        layer->timeLine()->setChannelBaseValue(core::TimeKeyType_Scale, 0, aScale);
+        layer->timeLine()->setChannelBaseValue(core::TimeKeyType_Scale, 1, aScale);
+    } else {
+        core::getOrCreateBaseValue<core::ScaleKey, core::TimeKeyType_Scale>(*layer->timeLine())
+            ->setScale(QVector2D(aScale, aScale));
+    }
     aParent->children().pushBack(layer);
     return layer;
 }
@@ -1681,7 +1686,7 @@ std::vector<uint8_t> renderLayer(
     // here: they are policies on top of the chain, measured separately.
     fx.render(tree, camera, 0, aBackdrop ? aBackdrop : black);
     if (layer && layer->timeLine()) {
-        if (auto* key = dynamic_cast<core::ImageKey*>(layer->timeLine()->defaultKey(core::TimeKeyType_Image))) {
+        if (auto* key = dynamic_cast<core::ImageKey*>(layer->timeLine()->baseValue(core::TimeKeyType_Image))) {
             if (key->cache().texture().id() != 0) {
                 gl::Texture& tex = key->cache().texture();
                 tex.setLodBias(0.0f);
@@ -2192,10 +2197,15 @@ void suiteVirtualTexture() {
             img::BlendMode_Normal
         );
         if (c.scaleY != c.scale) {
-            core::getOrCreateDefaultKey<core::ScaleKey, core::TimeKeyType_Scale>(*layer->timeLine())
-                ->setScale(QVector2D(c.scale, c.scaleY));
+            if (core::TimeLine::usesChannelTracks(core::TimeKeyType_Scale)) {
+                layer->timeLine()->setChannelBaseValue(core::TimeKeyType_Scale, 0, c.scale);
+                layer->timeLine()->setChannelBaseValue(core::TimeKeyType_Scale, 1, c.scaleY);
+            } else {
+                core::getOrCreateBaseValue<core::ScaleKey, core::TimeKeyType_Scale>(*layer->timeLine())
+                    ->setScale(QVector2D(c.scale, c.scaleY));
+            }
         }
-        auto* imageKey = dynamic_cast<core::ImageKey*>(layer->timeLine()->defaultKey(core::TimeKeyType_Image));
+        auto* imageKey = dynamic_cast<core::ImageKey*>(layer->timeLine()->baseValue(core::TimeKeyType_Image));
         expect(imageKey != nullptr, QString("V1 scale %1: the layer must have an image key").arg(scaleText));
         if (!imageKey)
             continue;
@@ -2295,7 +2305,7 @@ void suiteVirtualTexture() {
             1.0f,
             img::BlendMode_Normal
         );
-        auto* imageKey = dynamic_cast<core::ImageKey*>(layer->timeLine()->defaultKey(core::TimeKeyType_Image));
+        auto* imageKey = dynamic_cast<core::ImageKey*>(layer->timeLine()->baseValue(core::TimeKeyType_Image));
         if (!imageKey)
             return;
 
@@ -2383,7 +2393,7 @@ void suiteClipper() {
     };
     const auto keyOf = [](core::LayerNode* aLayer) {
         return aLayer ? dynamic_cast<core::ImageKey*>(
-                            aLayer->timeLine()->defaultKey(core::TimeKeyType_Image))
+                            aLayer->timeLine()->baseValue(core::TimeKeyType_Image))
                       : nullptr;
     };
 
@@ -2537,7 +2547,7 @@ void suiteMaskPaged() {
         tree, root, res, "layer", QVector2D(canvas.width() * 0.5f, canvas.height() * 0.5f),
         0.6f, img::BlendMode_Normal
     );
-    auto* imageKey = dynamic_cast<core::ImageKey*>(layer->timeLine()->defaultKey(core::TimeKeyType_Image));
+    auto* imageKey = dynamic_cast<core::ImageKey*>(layer->timeLine()->baseValue(core::TimeKeyType_Image));
     expect(imageKey != nullptr, "MA1 the layer must have an image key");
     if (!imageKey)
         return;
@@ -2545,7 +2555,7 @@ void suiteMaskPaged() {
     // THE FIELD: hidden on its left half, revealed on its right - a hard vertical edge, so the
     // screen's left half of the layer must be empty and its right half covered
     auto* maskKey = new core::MaskKey();
-    layer->timeLine()->grabDefaultKey(core::TimeKeyType_Mask, maskKey);
+    layer->timeLine()->setBaseValue(core::TimeKeyType_Mask, maskKey);
     maskKey->data().alloc(QSize(900, 700), QRectF(0, 0, 900, 700), core::MaskKey::kNeutral);
     QImage& field = maskKey->data().field();
     for (int y = 0; y < field.height(); ++y)
@@ -2700,7 +2710,7 @@ void suiteMaskPagedUpdate() {
         tree, root, res, "layer", QVector2D(canvas.width() * 0.5f, canvas.height() * 0.5f),
         0.6f, img::BlendMode_Normal
     );
-    auto* imageKey = dynamic_cast<core::ImageKey*>(layer->timeLine()->defaultKey(core::TimeKeyType_Image));
+    auto* imageKey = dynamic_cast<core::ImageKey*>(layer->timeLine()->baseValue(core::TimeKeyType_Image));
     expect(imageKey != nullptr, "MX3 the layer must have an image key");
     if (!imageKey)
         return;
@@ -2708,7 +2718,7 @@ void suiteMaskPagedUpdate() {
     // the field starts hidden on its left half and revealed on its right; the stroke below hides
     // the middle band, leaving only content x >= 675 visible (device x >= ~295 at scale 0.6)
     auto* maskKey = new core::MaskKey();
-    layer->timeLine()->grabDefaultKey(core::TimeKeyType_Mask, maskKey);
+    layer->timeLine()->setBaseValue(core::TimeKeyType_Mask, maskKey);
     maskKey->data().alloc(QSize(900, 700), QRectF(0, 0, 900, 700), core::MaskKey::kNeutral);
     QImage& field = maskKey->data().field();
     for (int y = 0; y < field.height(); ++y)
@@ -3507,7 +3517,7 @@ void suiteFolderMask() {
         );
         auto* maskKey = new core::MaskKey();
         maskKey->data().setForceFullTexture(aForceFull);
-        root->timeLine()->grabDefaultKey(core::TimeKeyType_Mask, maskKey);
+        root->timeLine()->setBaseValue(core::TimeKeyType_Mask, maskKey);
         maskKey->data().alloc(QSize(640, 640), QRectF(0, 0, 640, 640), core::MaskKey::kNeutral);
         QImage& field = maskKey->data().field();
         for (int y = 0; y < field.height(); ++y)
@@ -3892,7 +3902,7 @@ void suiteDemandReplay() {
             QVector2D(canvas.width() * 0.5f, canvas.height() * 0.5f), 0.3f, img::BlendMode_Normal
         );
         auto* imageKey =
-            dynamic_cast<core::ImageKey*>(layer->timeLine()->defaultKey(core::TimeKeyType_Image));
+            dynamic_cast<core::ImageKey*>(layer->timeLine()->baseValue(core::TimeKeyType_Image));
         if (imageKey)
             imageKey->setForceFullTexture(false);
         return imageKey;
@@ -4181,7 +4191,7 @@ void suiteDeformedDemand() {
             QVector2D(canvas.width() * 0.5f, canvas.height() * 0.5f), 1.0f, img::BlendMode_Normal
         );
         t.imageKey =
-            dynamic_cast<core::ImageKey*>(t.layer->timeLine()->defaultKey(core::TimeKeyType_Image));
+            dynamic_cast<core::ImageKey*>(t.layer->timeLine()->baseValue(core::TimeKeyType_Image));
         if (t.imageKey)
             t.imageKey->setForceFullTexture(false);
         return t;
@@ -4237,7 +4247,7 @@ void suiteDeformedDemand() {
     // half is hidden (content x < 1024) whatever the warp does. It is paged (2048^2 is pageable)
     // and its demand must be the screen's affine extent, not a walk of the warped triangles.
     auto* maskKey = new core::MaskKey();
-    warped.layer->timeLine()->grabDefaultKey(core::TimeKeyType_Mask, maskKey);
+    warped.layer->timeLine()->setBaseValue(core::TimeKeyType_Mask, maskKey);
     maskKey->data().alloc(
         source, QRectF(0, 0, source.width(), source.height()), core::MaskKey::kNeutral
     );

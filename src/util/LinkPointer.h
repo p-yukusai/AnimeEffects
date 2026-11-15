@@ -20,6 +20,19 @@ public:
         mAddress = aOther.mAddress;
     }
 
+    // Required by value containers that move objects around (QVector). The
+    // implicit form was deprecated because the copy constructor is user
+    // provided; writing it explicitly keeps the link registration correct.
+    LinkPointer& operator=(const LinkPointer<tObject>& aOther) {
+        // LinkPointer links twice in the assignment (unlink old, link new), so
+        // self-assignment would unlink and then read its own now-null link.
+        if (this != &aOther) {
+            LifeLink::Node::operator=(aOther);
+            mAddress = aOther.mAddress;
+        }
+        return *this;
+    }
+
     template<typename tPointeeObject>
     explicit LinkPointer(const LifeLink::Pointee<tPointeeObject>& aPointee) {
         if (aPointee) {

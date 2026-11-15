@@ -10,6 +10,7 @@
 #include "img/ResourceHandle.h"
 #include "img/BlendMode.h"
 #include "core/GridMesh.h"
+#include "core/StateKey.h"
 #include "core/TimeKey.h"
 #include "util/LifeLink.h"
 
@@ -18,7 +19,7 @@ namespace core {
 class Project;
 class VirtualTexture;
 
-class ImageKey: public TimeKey {
+class ImageStateKey: public StateKey {
 public:
     // One easing per graph channel: 0 offset x, 1 offset y. The offset is
     // step-held, so playback does not consult either param; they are stored so
@@ -87,7 +88,7 @@ public:
 
     enum { kDefaultMeshCellSize = 16 };
 
-    ImageKey();
+    ImageStateKey();
 
     Data& data() { return mData; }
     const Data& data() const { return mData; }
@@ -109,14 +110,14 @@ public:
     void resetGridMesh(int CellSize = kDefaultMeshCellSize);
     QJsonObject serializeToJson() const;
     bool deserializeFromJson(QJsonObject json, util::LifeLink::Pointee<Project> project);
-    virtual TimeKeyType type() const { return TimeKeyType_Image; }
-    virtual bool canHoldChild() const { return true; }
-    virtual TimeKey* createClone();
-    virtual bool serialize(Serializer& aOut) const;
-    virtual bool deserialize(Deserializer& aIn);
+    TimeKeyType type() const override { return TimeKeyType_Image; }
+    virtual bool canHoldChild() const override { return true; }
+    StateKey* cloneState() const override;
+    virtual bool serialize(Serializer& aOut) const override;
+    virtual bool deserialize(Deserializer& aIn) override;
 
-    virtual void sleep();
-    virtual void awake();
+    virtual void sleep() override;
+    virtual void awake() override;
 
     /// The LOD bias the LAYER SHADER applies, in levels (see LayerDrawingFrag.glsl's sampleLayer and
     /// LayerNode's uniform block). -1.35 = -0.5 for the bilinear read's second moment (derivation on
@@ -164,6 +165,10 @@ private:
     int mSleepCount;
     bool mForceFullTexture;
 };
+
+// The payload an Image owns is now a state key. The historical spelling stays a
+// type alias so every existing ImageKey* stays source-stable.
+using ImageKey = ImageStateKey;
 
 } // namespace core
 

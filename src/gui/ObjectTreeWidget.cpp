@@ -202,6 +202,8 @@ const AnimationRows& ObjectTreeWidget::rows() const { return mModel->rows(); }
 
 void ObjectTreeWidget::setScrollOffset(int aOffset) { mModel->setScrollOffset(aOffset); }
 
+void ObjectTreeWidget::refreshRows() { mModel->refreshRows(); }
+
 void ObjectTreeWidget::frameChanged() { mModel->frameChanged(); }
 
 void ObjectTreeWidget::refreshTheme() {
@@ -246,7 +248,7 @@ void ObjectTreeWidget::showMenu(int aRow, const QPoint& aScenePos) {
         menu.addSeparator();
         menu.addAction(trTree("Paste from clipboard"), [this, pasteTarget]() { pasteKeys(*pasteTarget); });
         menu.addAction(trTree("Duplicate node"), [this]() { mModel->duplicateSelection(); });
-        menu.addAction(trTree("Add default keys"), [this]() { mModel->addDefaultKeysToSelection(); });
+        menu.addAction(trTree("Add keys at playhead"), [this]() { mModel->addKeysAtPlayheadToSelection(); });
         menu.addSeparator();
         menu.addAction(trTree("Delete"), [this]() { mModel->deleteSelection(); });
     }
