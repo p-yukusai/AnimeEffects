@@ -15,7 +15,7 @@ namespace res {
 
     class ChangeFilePathNotifier: public cmnd::Listener {
     public:
-        ChangeFilePathNotifier(ViaPoint& aViaPoint, const img::ResourceNode& aNode);
+        ChangeFilePathNotifier(ViaPoint& aViaPoint);
 
         void notify(bool aIsUndo = false);
 
@@ -27,7 +27,6 @@ namespace res {
 
     private:
         ViaPoint& mViaPoint;
-        const img::ResourceNode& mNode;
     };
 
     class ModificationNotifier: public cmnd::Listener {
@@ -54,7 +53,7 @@ namespace res {
 
     class AddNewOneNotifier: public cmnd::Listener {
     public:
-        AddNewOneNotifier(ViaPoint& aViaPoint, core::Project& aProject);
+        AddNewOneNotifier(core::Project& aProject);
 
         core::ResourceEvent& event() { return mEvent; }
         const core::ResourceEvent& event() const { return mEvent; }
@@ -68,14 +67,13 @@ namespace res {
         virtual void onRedone() { notify(); }
 
     private:
-        ViaPoint& mViaPoint;
         core::Project& mProject;
         core::ResourceEvent mEvent;
     };
 
     class DeleteNotifier: public cmnd::Listener {
     public:
-        DeleteNotifier(ViaPoint& aViaPoint, core::Project& aProject);
+        DeleteNotifier(core::Project& aProject);
 
         core::ResourceEvent& event() { return mEvent; }
         const core::ResourceEvent& event() const { return mEvent; }
@@ -89,14 +87,13 @@ namespace res {
         virtual void onRedone() { notify(); }
 
     private:
-        ViaPoint& mViaPoint;
         core::Project& mProject;
         core::ResourceEvent mEvent;
     };
 
     class RenameNotifier: public cmnd::Listener {
     public:
-        RenameNotifier(ViaPoint& aViaPoint, core::Project& aProject, const util::TreePos& aRootPos);
+        RenameNotifier(core::Project& aProject, const util::TreePos& aRootPos);
 
         core::ResourceEvent& event() { return mEvent; }
         const core::ResourceEvent& event() const { return mEvent; }
@@ -110,7 +107,6 @@ namespace res {
         virtual void onRedone() { notify(); }
 
     private:
-        ViaPoint& mViaPoint;
         core::Project& mProject;
         core::ResourceEvent mEvent;
         util::TreePos mRootPos;

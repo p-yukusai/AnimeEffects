@@ -265,14 +265,12 @@ void CentroidMover::redo()
 #else
     //-------------------------------------------------------------------------------------------------
     CentroidMover::CentroidMover(
-        Project& aProject,
         ObjectNode& aTarget,
         const QVector2D& aCentroidMove,
         const QVector2D& aPositionMove,
         int aFrame,
         bool aAdjustPos
     ):
-        mProject(aProject),
         mTarget(aTarget),
         mKey(),
         mCentroidMove(aCentroidMove),

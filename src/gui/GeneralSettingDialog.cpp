@@ -255,9 +255,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
         auto isAutoCbCopy = settings.value("generalsettings/keys/autocb");
         bAutoCbCopy = !isAutoCbCopy.isValid()? isAutoCbCopy.toBool() : false;
 
-        auto isAutoFFmpegCheck = settings.value("ffmpeg_check");
 
-        mAutoFFmpegCheck = isAutoFFmpegCheck.isValid()? isAutoFFmpegCheck.toBool() : true;
 
         auto isResIDCheck = settings.value("res_id_check");
         bResIDCheck = isResIDCheck.isValid()?  isResIDCheck.toBool() : true;
@@ -393,9 +391,6 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
         mAutoCbCopy->setChecked(bAutoCbCopy);
         projectSaving->addRow(tr("On copy send keys to the clipboard"), mAutoCbCopy);
 
-        mAutoFFmpegBox = new QCheckBox();
-        mAutoFFmpegBox->setChecked(mAutoFFmpegCheck);
-        projectSaving->addRow(tr("Always check for FFmpeg on export"), mAutoFFmpegBox);
 
         bResIDBox = new QCheckBox();
         bResIDBox->setChecked(bResIDCheck);
@@ -499,8 +494,6 @@ bool GeneralSettingDialog::autoSaveHasChanged() { return bAutoSave != mAutoSave-
 
 bool GeneralSettingDialog::autoSaveDelayHasChanged() { return mAutoSaveDelay != mAutoSaveDelayBox->value(); }
 
-bool GeneralSettingDialog::autoFFmpegHasChanged() { return mAutoFFmpegCheck != mAutoFFmpegBox->isChecked(); }
-
 bool GeneralSettingDialog::resIDCheckHasChanged() { return bResIDCheck != bResIDBox->isChecked(); }
 
 bool GeneralSettingDialog::cbCopyHasChanged() { return bAutoCbCopy != mAutoCbCopy->isChecked(); }
@@ -568,9 +561,6 @@ void GeneralSettingDialog::saveSettings() {
     }
     if (autoSaveDelayHasChanged()) {
         settings.setValue("generalsettings/projects/autosaveDelay", mAutoSaveDelayBox->value());
-    }
-    if (autoFFmpegHasChanged()){
-        settings.setValue("ffmpeg_check", mAutoFFmpegBox->isChecked());
     }
     if (resIDCheckHasChanged()) {
         settings.setValue("res_id_check", bResIDBox->isChecked());

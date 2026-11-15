@@ -18,8 +18,11 @@
 #include <QFile>
 #include <QTextStream>
 #include <QByteArray>
+#include <QHashFunctions>
 #include <QtMath>
 
+#include "decode_util.h"
+#include "temp_util.h"
 #include "media/VideoEncoder.h"
 #include "media/FFmpegHelpers.h"
 #include "media/AudioMixer.h"
@@ -110,11 +113,8 @@ static QList<QImage> decodeFrames(const QString& path, int* outW, int* outH, int
     AVPacket* pkt = ::av_packet_alloc();
 
     auto pull = [&](AVFrame* f) {
-        QImage img(ctx->width, ctx->height, QImage::Format_RGBA8888);
-        uint8_t* dst[4] = { img.bits(), nullptr, nullptr, nullptr };
-        const int dstStride[4] = { static_cast<int>(img.bytesPerLine()), 0, 0, 0 };
-        ::sws_scale(sws, f->data, f->linesize, 0, ctx->height, dst, dstStride);
-        frames.append(img);
+        // Padded destination: see decode_util.h for why a tight buffer is unsafe.
+        frames.append(scaleToRgba(sws, f, ctx->width, ctx->height));
     };
 
     while (::av_read_frame(fmt, pkt) >= 0) {
@@ -137,7 +137,7 @@ static QList<QImage> decodeFrames(const QString& path, int* outW, int* outH, int
 
 static bool run_lossless_roundtrip() {
     const QList<QImage> src = { makeFrame(64, 48, 0), makeFrame(64, 48, 1), makeFrame(64, 48, 2) };
-    const QString out = QDir::temp().filePath("ae_v1_lossless.avi");
+    const QString out = aeTestTempPath("ae_v1_lossless.avi");
 
     // Lossless codec that accepts 8-bit BGRA (huffyuv is lossless). We feed
     // RGBA; the RGBA<->BGRA sws shuffle is a byte reorder that cancels out on
@@ -175,7 +175,7 @@ static bool run_lossless_roundtrip() {
 static bool run_mp4_x264() {
     const QList<QImage> src = { makeFrame(320, 240, 0), makeFrame(320, 240, 1), makeFrame(320, 240, 2),
                                 makeFrame(320, 240, 3), makeFrame(320, 240, 4) };
-    const QString out = QDir::temp().filePath("ae_v1_x264.mp4");
+    const QString out = aeTestTempPath("ae_v1_x264.mp4");
 
     media::VideoEncoder::Config cfg;
     cfg.outputPath = out;
@@ -204,7 +204,7 @@ static bool run_mp4_x264() {
 
 static bool run_single_frame() {
     const QList<QImage> src = { makeFrame(80, 60, 0) };
-    const QString out = QDir::temp().filePath("ae_v1_single.png.mp4");
+    const QString out = aeTestTempPath("ae_v1_single.png.mp4");
     media::VideoEncoder enc;
     media::VideoEncoder::Config cfg;
     cfg.outputPath = out; cfg.container = "mp4"; cfg.codec = "ffv1";
@@ -220,7 +220,7 @@ static bool run_single_frame() {
 static bool run_bad_params() {
     media::VideoEncoder enc;
     media::VideoEncoder::Config cfg;
-    cfg.outputPath = QDir::temp().filePath("ae_v1_bad.mp4");
+    cfg.outputPath = aeTestTempPath("ae_v1_bad.mp4");
     cfg.container = "mp4"; cfg.codec = "libx264"; cfg.width = 64; cfg.height = 64; cfg.fps = 0; // invalid
     check(!enc.open(cfg), "fps=0 rejected (open returns false)");
     return true;
@@ -250,7 +250,7 @@ static bool run_container_coverage() {
                                 << " (encoder absent in this build)\n";
             continue;
         }
-        const QString out = QDir::temp().filePath(QString("ae_v1_%1.%2").arg(c.container, c.container));
+        const QString out = aeTestTempPath(QString("ae_v1_%1.%2").arg(c.container, c.container));
         media::VideoEncoder enc;
         media::VideoEncoder::Config cfg;
         cfg.outputPath = out; cfg.container = c.container; cfg.codec = c.codec;
@@ -334,8 +334,8 @@ static bool probeStreams(const QString& path, bool* hasVideo, bool* hasAudio, do
 // Mux a video stream (frames) + one audio stream (from AudioMixer) in a single
 // pass, and verify both streams + that the audio is non-silent.
 static bool run_video_audio_mux() {
-    const QString out = QDir::temp().filePath("ae_v3_mux.mp4");
-    const QString wav = QDir::temp().filePath("ae_v3_tone.wav");
+    const QString out = aeTestTempPath("ae_v3_mux.mp4");
+    const QString wav = aeTestTempPath("ae_v3_tone.wav");
 
     // Generate a stereo 48k sine WAV (1 s), then mix it as the audio track.
     const int rate = 48000;
@@ -427,7 +427,7 @@ static bool run_make_config() {
     // Live: build a config via makeConfig, then encode + decode-verify.
     auto cfg = media::VideoEncoder::makeConfig("mp4", "libx264", "yuv420p", false,
                                                64, 64, 10, 1000, &err);
-    cfg.outputPath = QDir::temp().filePath("ae_v4_cfg.mp4");
+    cfg.outputPath = aeTestTempPath("ae_v4_cfg.mp4");
     media::VideoEncoder enc;
     const QList<QImage> frames = { makeFrame(64, 64, 0), makeFrame(64, 64, 1) };
     check(enc.writeAll(frames, cfg), "makeConfig-built config encodes successfully");
@@ -470,14 +470,16 @@ static bool decodeFirstAlpha(const QString& path, const char* aDecoderName, int*
                     SwsContext* sws = ::sws_getContext(ctx->width, ctx->height, fFmt,
                                                        ctx->width, ctx->height, AV_PIX_FMT_RGBA,
                                                        SWS_BILINEAR, nullptr, nullptr, nullptr);
-                    QImage img(ctx->width, ctx->height, QImage::Format_RGBA8888);
-                    uint8_t* dst[4] = { img.bits(), nullptr, nullptr, nullptr };
-                    const int dstStride[4] = { static_cast<int>(img.bytesPerLine()), 0, 0, 0 };
-                    ::sws_scale(sws, frame->data, frame->linesize, 0, ctx->height, dst, dstStride);
+                    // Padded destination: see decode_util.h.
+                    const QImage img = scaleToRgba(sws, frame, ctx->width, ctx->height);
                     ::sws_freeContext(sws);
-                    for (int i = 3; i < img.width() * img.height() * 4; i += 4) {
-                        const int a = img.constBits()[i];
-                        minA = std::min(minA, a); maxA = std::max(maxA, a);
+                    // Scan by row: a QImage is not required to be tightly packed.
+                    for (int y = 0; y < img.height(); ++y) {
+                        const uchar* line = img.constScanLine(y);
+                        for (int x = 0; x < img.width(); ++x) {
+                            const int a = line[4 * x + 3];
+                            minA = std::min(minA, a); maxA = std::max(maxA, a);
+                        }
                     }
                     got = true;
                 }
@@ -508,7 +510,7 @@ static bool run_vp9_webm_alpha() {
     QList<QImage> src;
     for (int i = 0; i < 3; ++i) src.append(makeFrame(w, h, i));
 
-    const QString out = QDir::temp().filePath("ae_v1_vp9a.webm");
+    const QString out = aeTestTempPath("ae_v1_vp9a.webm");
     media::VideoEncoder::Config cfg;
     cfg.outputPath = out; cfg.container = "webm"; cfg.codec = "libvpx-vp9";
     cfg.width = w; cfg.height = h; cfg.fps = 24; cfg.pixFmt = "yuva420p"; cfg.transparent = true;
@@ -546,7 +548,7 @@ static bool run_png_anim_alpha() {
             QTextStream(stdout) << "SKIP  " << c.codec << " (absent)\n";
             continue;
         }
-        const QString out = QDir::temp().filePath(c.file);
+        const QString out = aeTestTempPath(c.file);
         media::VideoEncoder::Config cfg;
         cfg.outputPath = out; cfg.container = c.cont; cfg.codec = c.codec;
         cfg.width = w; cfg.height = h; cfg.fps = 10; cfg.pixFmt = "rgba"; cfg.transparent = true;
@@ -578,7 +580,7 @@ static bool run_png_anim_alpha() {
 // In-process GIF encode (media::GifEncoder): valid .gif, correct frame count/dims.
 static bool run_gif() {
     const QList<QImage> frames = { makeFrame(64, 48, 0), makeFrame(64, 48, 1), makeFrame(64, 48, 2) };
-    const QString out = QDir::temp().filePath("ae_gif.gif");
+    const QString out = aeTestTempPath("ae_gif.gif");
     media::GifEncoder g;
     media::GifEncoder::Config c;
     c.outputPath = out; c.fps = 10; c.transparent = false;
@@ -588,6 +590,119 @@ static bool run_gif() {
     int w = 0, h = 0, fps = 0;
     const QList<QImage> dec = decodeFrames(out, &w, &h, &fps);
     check(w == 64 && h == 48 && dec.size() == 3, "gif decodes to 3 frames at 64x48");
+
+    // The loop count is part of the file, and it is a MUXER option: it only lands
+    // there when it is passed at header time. Config::loop was declared and never
+    // read, so a GIF looped forever no matter what the export dialog's Loop box
+    // said, and unticking that box changed nothing. The NETSCAPE2.0 application
+    // extension is where a GIF records this: present with a count of 0 for
+    // "forever", absent entirely for "play once".
+    auto loopBlock = [](const QString& path) -> int {
+        QFile f(path);
+        if (!f.open(QIODevice::ReadOnly)) return -2;
+        const QByteArray all = f.readAll();
+        const int at = all.indexOf("NETSCAPE2.0");
+        if (at < 0) return -1; // no loop extension at all
+        if (at + 15 > all.size()) return -2;
+        // "NETSCAPE2.0" (11) + block size 0x03 + sub-block id 0x01 + count (2, LE)
+        return uchar(all[at + 13]) | (uchar(all[at + 14]) << 8);
+    };
+
+    media::GifEncoder::Config loopForever = c;
+    loopForever.outputPath = aeTestTempPath("ae_gif_loop0.gif");
+    loopForever.loop = 0;
+    const bool loopForeverOk = g.encode(frames, loopForever, &err);
+    check(loopForeverOk, "gif encode with loop=0 succeeds");
+    const QByteArray infiniteMsg =
+        QStringLiteral("loop=0 records an infinite loop (NETSCAPE count %1, -1 = absent)")
+            .arg(loopBlock(loopForever.outputPath))
+            .toUtf8();
+    check(loopBlock(loopForever.outputPath) == 0, infiniteMsg.constData());
+
+    media::GifEncoder::Config once = c;
+    once.outputPath = aeTestTempPath("ae_gif_noloop.gif");
+    once.loop = -1;
+    check(g.encode(frames, once, &err), "gif encode with loop=-1 succeeds");
+    const QByteArray onceMsg =
+        QStringLiteral("loop=-1 records NO loop extension, so it plays once (got %1)")
+            .arg(loopBlock(once.outputPath))
+            .toUtf8();
+    check(loopBlock(once.outputPath) == -1, onceMsg.constData());
+    check(QFile(once.outputPath).size() > 0, "the play-once GIF is a real file");
+
+    // A finite count, so the check reads a NON-zero value: with only 0 and "absent"
+    // cases every byte in the extension is zero and a wrong offset would pass.
+    media::GifEncoder::Config thrice = c;
+    thrice.outputPath = aeTestTempPath("ae_gif_loop3.gif");
+    thrice.loop = 3;
+    check(g.encode(frames, thrice, &err), "gif encode with loop=3 succeeds");
+    const QByteArray thriceMsg = QStringLiteral("loop=3 is carried into the file (got %1)")
+                                     .arg(loopBlock(thrice.outputPath))
+                                     .toUtf8();
+    check(loopBlock(thrice.outputPath) == 3, thriceMsg.constData());
+
+    // The same frames must produce the same file, whatever Qt's per-process hash seed
+    // is. The adaptive palette keeps the most frequent colours, ties are the common case
+    // rather than the exception (every shade of a gradient counts once, and flat regions
+    // produce whole families of equal-frequency shades), and the tie-break used to be
+    // QHash iteration order - which Qt randomizes per PROCESS. Measured: one 6-frame
+    // export came out at 348001 bytes, the next at 348367, the next at 348093 for
+    // identical input. That is not merely unrepeatable output: a capped destination's
+    // fit loop re-encodes its winner to prove the file on disk is inside the cap, and a
+    // size that moves by a few tenths of a percent between process runs can make that
+    // check fail on a file that was perfectly fine.
+    //
+    // The seed is re-randomized between the two encodes because that is the only way to
+    // see the defect from inside ONE process: an ordinary pair of encodes in one run
+    // shares the seed and would agree even with the bug present.
+    {
+        media::GifEncoder::Config det1 = c;
+        det1.outputPath = aeTestTempPath("ae_gif_determinism_a.gif");
+        check(g.encode(frames, det1, &err), "gif encode (first of the pair) succeeds");
+        // QFile::readAll() returns nothing unless the file was opened first, which made
+        // this check compare two empty arrays until the non-empty half of it fired.
+        auto readFile = [](const QString& aPath) {
+            QFile f(aPath);
+            return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
+        };
+        const QByteArray firstBytes = readFile(det1.outputPath);
+
+        QHashSeed::resetRandomGlobalSeed(); // what a new process would have done anyway
+
+        media::GifEncoder::Config det2 = c;
+        det2.outputPath = aeTestTempPath("ae_gif_determinism_b.gif");
+        check(g.encode(frames, det2, &err), "gif encode (second of the pair) succeeds");
+        const QByteArray secondBytes = readFile(det2.outputPath);
+
+        const QByteArray detMsg =
+            QStringLiteral("the same frames give the same file under a different hash seed "
+                           "(%1 vs %2 bytes)")
+                .arg(firstBytes.size())
+                .arg(secondBytes.size())
+                .toUtf8();
+        check(!firstBytes.isEmpty() && firstBytes == secondBytes, detMsg.constData());
+    }
+
+    // An unknown muxer option must be reported, not swallowed: an option that is
+    // silently ignored is how a control stops meaning anything. Config::loop is
+    // the only option here today, so this drives the same code path with a value
+    // the muxer rejects (outside its -1..65535 range).
+    media::GifEncoder::Config bogus = c;
+    bogus.outputPath = aeTestTempPath("ae_gif_bogus.gif");
+    bogus.loop = 999999;
+    QString berr;
+    // The message is built AFTER the call, or the failure text would name an
+    // empty error and say nothing about why it was refused.
+    const bool bogusOk = g.encode(frames, bogus, &berr);
+    const QByteArray bogusMsg = QStringLiteral("an out-of-range loop value is refused, not ignored (%1)")
+                                    .arg(berr)
+                                    .toUtf8();
+    check(!bogusOk && !berr.isEmpty(), bogusMsg.constData());
+
+    QFile::remove(loopForever.outputPath);
+    QFile::remove(once.outputPath);
+    QFile::remove(thrice.outputPath);
+    QFile::remove(bogus.outputPath);
     QFile::remove(out);
     return true;
 }
@@ -598,7 +713,7 @@ static bool run_gif() {
 static bool run_custom_palette_gif() {
     // Build a small palette PNG: 4 columns => the colors red/green/blue/white,
     // plus a fully-transparent pixel to reserve a transparent entry.
-    const QString palPng = QDir::temp().filePath("ae_custom_pal.png");
+    const QString palPng = aeTestTempPath("ae_custom_pal.png");
     QImage palImg(3, 2, QImage::Format_RGBA8888);
     palImg.fill(Qt::transparent);
     // Row 0: red, green, blue. Row 1: white, (transparent pixel stays), spare.
@@ -615,7 +730,7 @@ static bool run_custom_palette_gif() {
         makeSolid(16, 16, QColor(0, 0, 255)),
         makeSolid(16, 16, QColor(255, 255, 255)),
     };
-    const QString out = QDir::temp().filePath("ae_custom_pal.gif");
+    const QString out = aeTestTempPath("ae_custom_pal.gif");
     media::GifEncoder g;
     media::GifEncoder::Config c;
     c.outputPath = out; c.fps = 10; c.palettePath = palPng; c.transparent = true;
@@ -629,8 +744,8 @@ static bool run_custom_palette_gif() {
     // Invalid palette path must fail cleanly, not silently adapt.
     media::GifEncoder g2;
     media::GifEncoder::Config c2;
-    c2.outputPath = QDir::temp().filePath("ae_custom_bad.gif");
-    c2.fps = 10; c2.palettePath = QDir::temp().filePath("ae_missing_palette.png");
+    c2.outputPath = aeTestTempPath("ae_custom_bad.gif");
+    c2.fps = 10; c2.palettePath = aeTestTempPath("ae_missing_palette.png");
     QString err2;
     check(!g2.encode(frames, c2, &err2), "custom-palette: missing palette path rejected cleanly");
     check(!err2.isEmpty(), "custom-palette: missing palette reports an error");
@@ -645,7 +760,7 @@ static bool run_custom_palette_gif() {
 // allocation. We assert a valid, even-sized, decodable file (and no crash).
 static bool run_odd_size_live_encode() {
     const QList<QImage> src = { makeFrame(321, 241, 0), makeFrame(321, 241, 1) };
-    const QString out = QDir::temp().filePath("ae_v1_odd.mp4");
+    const QString out = aeTestTempPath("ae_v1_odd.mp4");
 
     media::VideoEncoder enc;
     media::VideoEncoder::Config cfg;
@@ -680,7 +795,7 @@ static bool run_alpha_roundtrip() {
     for (int i = 0; i < 3; ++i)
         src.append(makeFrame(w, h, i));
 
-    const QString out = QDir::temp().filePath("ae_v1_alpha.mkv");
+    const QString out = aeTestTempPath("ae_v1_alpha.mkv");
     media::VideoEncoder::Config cfg;
     cfg.outputPath = out; cfg.container = "mkv"; cfg.codec = "ffv1";
     cfg.width = w; cfg.height = h; cfg.fps = 24; cfg.pixFmt = "yuva420p";
@@ -734,7 +849,7 @@ static bool run_unwritable_path() {
     media::VideoEncoder enc;
     media::VideoEncoder::Config cfg;
     // A path that points AT an existing directory -> avio_open must fail.
-    const QString dirTarget = QDir::temp().filePath("ae_v1_unwritable.mp4");
+    const QString dirTarget = aeTestTempPath("ae_v1_unwritable.mp4");
     QDir().mkpath(dirTarget);                    // make it a DIRECTORY
     cfg.outputPath = dirTarget; cfg.container = "mp4"; cfg.codec = "libx264";
     cfg.width = 64; cfg.height = 64; cfg.fps = 24; cfg.pixFmt = "yuv420p";
@@ -753,7 +868,7 @@ static bool run_absent_encoder() {
     // Unknown encoder -> open() must reject cleanly.
     media::VideoEncoder e1;
     media::VideoEncoder::Config c1;
-    c1.outputPath = QDir::temp().filePath("ae_v1_nocodec.mp4");
+    c1.outputPath = aeTestTempPath("ae_v1_nocodec.mp4");
     c1.container = "mp4"; c1.codec = "no_such_encoder_xyz";
     c1.width = 64; c1.height = 64; c1.fps = 24; c1.pixFmt = "yuv420p";
     bool ok1 = e1.open(c1);
@@ -767,7 +882,7 @@ static bool run_absent_encoder() {
         }
         media::VideoEncoder e2;
         media::VideoEncoder::Config c2;
-        c2.outputPath = QDir::temp().filePath(QString("ae_v1_hw_%1.mp4").arg(hw));
+        c2.outputPath = aeTestTempPath(QString("ae_v1_hw_%1.mp4").arg(hw));
         c2.container = "mp4"; c2.codec = hw;
         c2.width = 128; c2.height = 128; c2.fps = 24; c2.pixFmt = "yuv420p";
         bool ok2 = e2.open(c2);   // no device context in a headless run -> expected false, no crash
@@ -783,7 +898,7 @@ static bool run_absent_encoder() {
 static bool run_zero_negative_size() {
     media::VideoEncoder enc;
     media::VideoEncoder::Config c;
-    c.outputPath = QDir::temp().filePath("ae_v1_z.mp4"); c.container = "mp4";
+    c.outputPath = aeTestTempPath("ae_v1_z.mp4"); c.container = "mp4";
     c.codec = "libx264"; c.width = 0; c.height = 64; c.fps = 24; c.pixFmt = "yuv420p";
     check(!enc.open(c) && !enc.error().isEmpty(), "zero width rejected");
 
@@ -823,8 +938,8 @@ int main(int argc, char** argv) {
     // crash is a separate, pre-existing framebuffer-lifecycle issue. This locks
     // in the media-only half of that guarantee (see the e2e harness comment).
     {
-        const QString o1 = QDir::temp().filePath("ae_reuse1.mp4");
-        const QString o2 = QDir::temp().filePath("ae_reuse2.mp4");
+        const QString o1 = aeTestTempPath("ae_reuse1.mp4");
+        const QString o2 = aeTestTempPath("ae_reuse2.mp4");
         media::VideoEncoder enc;
         auto go = [&](const QString& out) {
             media::VideoEncoder::Config cfg;

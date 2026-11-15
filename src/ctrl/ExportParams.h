@@ -34,43 +34,25 @@
 #include "qurl.h"
 #include "util/SelectArgs.h"
 #include "gui/AudioPlaybackWidget.h"
+#include "ExportTarget.h"   // ctrl::QualityBucket
 
 #include <QBuffer>
 #include <QDesktopServices>
 // I was not meant to do OOP...
 
-// Formats other than video and image are for internal use only, ***DO NOT*** use them on export
-enum class exportTarget { video, image, pxFmt, aviEnc, mkvEnc, movEnc, mp4Enc, webmEnc };
+// What the export produces. Video is a container with a codec; an image export
+// is a directory of numbered stills.
+enum class exportTarget { video, image };
 enum targetRatio { oneToOne, keep, custom };
-enum class availableVideoFormats { apng, avi, f4v, flv, gif, mkv, mov, mp2, mp4, ogv, swf, webm, webp };
-enum class availableImageFormats { bmp, jpeg, jpg, png, ppm, xbm, xpm, tiff, webp };
-enum class availableIntermediateFormats { png, bmp, jpg, jpeg, ppm };
-enum class pixelFormats { Auto, yuv420p, yuva420p, rgb24, rgba, bgr24, bgra, gray };
 
-enum class aviEncoders { Auto, mpeg2, mpeg4 };
-enum class mkvEncoders { Auto, x264, x265, vp8, vp9, av1, ffv1, magicyuv, huffyuv, theora };
-enum class movEncoders { Auto, libx264, h264, prores_ks, utvideo };
-enum class mp4Encoders { Auto, mpeg4, h264 };
-enum class webmEncoders { Auto, vp8, vp9 };
-
-struct defaultEncoders {
-    aviEncoders avi = aviEncoders::Auto;
-    mkvEncoders mkv = mkvEncoders::Auto;
-    movEncoders mov = movEncoders::Auto;
-    mp4Encoders mp4 = mp4Encoders::Auto;
-    webmEncoders webm = webmEncoders::Auto;
-};
-
-QStringList const videoFormats{ "apng", "avi", "f4v", "flv", "gif", "mkv", "mov", "mp2", "mp4", "ogv", "swf", "webm", "webp"};
-QStringList const audioTargettable{ "avi", "mkv", "mov", "mp4", "webm"};
-QStringList const imageFormats{"bmp", "jpeg", "jpg", "png", "ppm", "xbm", "xpm", "tiff", "webp"};
-QStringList const intermediateImageFormats{"PNG", "BMP", "JPG", "JPEG", "PPM"};
-QStringList const pxFormats{"Auto", "yuv420p", "yuva420p", "rgb24", "rgba", "bgr24", "bgra", "gray"};
-QStringList const aviEnc{"Auto", "mpeg2", "mpeg4"};
-QStringList const mkvEnc{"Auto", "x264", "x265", "vp8", "vp9", "av1", "ffv1", "magicyuv", "huffyuv", "theora"};
-QStringList const movEnc{"Auto", "libx264", "h264", "prores_ks", "utvideo"};
-QStringList const mp4Enc{"Auto", "mpeg4", "h264"};
-QStringList const webmEnc{"Auto", "vp8", "vp9"};
+// The containers this build can write, and the codecs it can write into them, are
+// PROBED (media::ffmpeg::writableContainers / usableCodecsForContainer) rather
+// than enumerated here. What used to live at this spot was five hand-written
+// lists of encoder names — "Auto", "h264", "vp8", "magicyuv" — which were not
+// libav encoder names at all, plus "f4v", "flv", "swf", "mp2" and "xbm" among the
+// offered formats: artifacts nothing downstream could produce. The escape hatch
+// offers what exists; a fabricated option is worse than a missing one, because it
+// fails after the user has committed to it.
 
 struct frameExportRange {
     int firstFrame = 0;
@@ -90,35 +72,36 @@ struct GeneralParams {
     targetRatio aspectRatio = keep;
     int nativeFPS = 24;
     int fps = 24;
+    // Bitrate is only for a codec with no quality knob at all (ProRes, FFV1,
+    // MJPEG); for everything else the knob below carries the user's intent.
     int bitrate = 0;
+    // The explicit value for the codec's own quality knob (CRF for the
+    // x264/x265/VP9/AV1 families, "quality" for WebP), or -1 for "the quality
+    // level decides". The dialog's Advanced section is the only writer.
+    int qualityOverride = -1;
     bool allowTransparency = true;
-    bool forcePipe = false;
     bool loop = true;
     bool exportWithAudio = false;
-    bool useCustomParam = false;
-    bool useIntermediate = true;
-    bool usePost = true;
     bool useCustomPalette = false;
     QDir palettePath = QDir();
+    // Which frames, as the ranges the dialog collected. This is the ONLY frame
+    // selection: the old single-count inputs (`framesToBeExported`, plus the
+    // `exportAllFrames` / `exportToLast` flags that chose between them) were
+    // carried here and read by nothing for as long as the ranges have existed.
     QVector<frameExportRange> exportRange = QVector<frameExportRange>();
-    QString customInterCommand = "";
-    QString customPostCommand = "";
-    QVector<int> framesToBeExported = QVector<int>();
     frameExportRange nativeFrameRange = frameExportRange();
-    bool exportAllFrames = false;
-    bool exportToLast = false;
     int imageExportQuality = -1;
 };
 
+// The artifact chosen in the escape hatch (the dialog's Format row), used only
+// when no destination is set: a destination decides both of these.
 struct VideoParams {
-    availableVideoFormats format = availableVideoFormats::gif;
-    availableIntermediateFormats intermediateFormat = availableIntermediateFormats::png;
-    pixelFormats pixelFormat = pixelFormats::Auto;
-    defaultEncoders encoders;
+    QString container; // "mp4", "webm", "mkv", "mov", "gif", ... empty = "mp4"
+    QString codec;     // a libav encoder name; empty = the container's probed default
 };
 
 struct ImageParams {
-    availableImageFormats format = availableImageFormats::png;
+    QString suffix; // "png" or "jpg" — a directory of numbered frames
 };
 
 class exportParam {
@@ -126,147 +109,74 @@ public:
     exportParam();
     exportTarget exportType = exportTarget::video;
     GeneralParams generalParams;
+    // The chosen destination row from assets/export/ExportTargets.txt. Empty means
+    // the export is driven by the individual controls instead. When set,
+    // ctrl::planExport() decides the container, codec, its private options and
+    // stream tag, transparency, the exact size, the caps and the audio.
+    QString destinationId;
+    ctrl::QualityBucket qualityBucket = ctrl::QualityBucket::Balanced;
+    // The frame the timeline was showing when the export was asked for. A
+    // destination that produces ONE image exports this frame; everything else
+    // ignores it. It travels here because exportProject() is a free function and
+    // the playhead belongs to the GUI.
+    int playhead = 0;
     // One of these will be ignored on export //
     VideoParams videoParams;
     ImageParams imageParams;
     // They are available for ease of access ///
 };
 
-template<typename formatEnum>
-QString getFormatAsString(exportTarget target, formatEnum formatIndex) {
-    switch (target) {
-    case exportTarget::video:
-        return videoFormats[formatIndex];
-    case exportTarget::image:
-        return imageFormats[formatIndex];
-    case exportTarget::pxFmt:
-        return pxFormats[formatIndex];
-    case exportTarget::aviEnc:
-        return aviEnc[formatIndex];
-    case exportTarget::mkvEnc:
-        return mkvEnc[formatIndex];
-    case exportTarget::movEnc:
-        return movEnc[formatIndex];
-    case exportTarget::mp4Enc:
-        return mp4Enc[formatIndex];
-    case exportTarget::webmEnc:
-        return webmEnc[formatIndex];
-    }
-    return nullptr;
-}
-inline int getFormatAsInt(exportTarget target, const QString& format) {
-    qsizetype index = -1;
-    switch (target) {
-    case exportTarget::video:
-        index = videoFormats.indexOf(format);
-    case exportTarget::image:
-        index = imageFormats.indexOf(format);
-    case exportTarget::pxFmt:
-        index = pxFormats.indexOf(format);
-    case exportTarget::aviEnc:
-        index = aviEnc.indexOf(format);
-    case exportTarget::mkvEnc:
-        index = mkvEnc.indexOf(format);
-    case exportTarget::movEnc:
-        index = movEnc.indexOf(format);
-    case exportTarget::mp4Enc:
-        index = mp4Enc.indexOf(format);
-    case exportTarget::webmEnc:
-        index = webmEnc.indexOf(format);
-    default:
-        index =  0;
-    }
-    // Error handling for out of bound encoders and formats
-    if(index == -1){ return 0; }
-    return static_cast<int>(index);
-}
-
-inline bool formatAllowsTransparency(const QString& format) {
-    QStringList formatsWithTransparency{"apng", "gif", "png", "webp", "webm", "tiff"};
-    return formatsWithTransparency.contains(format.toLower());
-}
-inline bool pixelFormatAllowsTransparency(const QString& format) {
-    QStringList pxWithTransparency{"Auto", "yuva420p", "rgba", "bgra"};
-    return pxWithTransparency.contains(format);
-}
+// getFormatAsString()/getFormatAsInt() used to live here, mapping a combo index
+// to a container or encoder name and back. getFormatAsInt() had no breaks between
+// its switch cases, so every path fell through to `default: index = 0` and it
+// returned 0 for EVERY input — which is why the dialog's pixel-format and
+// per-container codec choices were silently discarded for as long as those
+// controls existed. The names now travel as names (QString), so there is nothing
+// to convert and nothing to get wrong.
 
 inline QString q_translate(const QString& str) { return QCoreApplication::translate("ExportParams", str.toStdString().c_str(), nullptr); }
 
 // #define tr(str) QCoreApplication::translate("exportParam", str, nullptr)
 
+// Validation for what the export dialog still genuinely owns.
+//
+// The previous version was ~340 lines, and its job was reconciling choices the
+// user could make independently and get wrong: transparency against the
+// container, against the pixel format, against the intermediate format; the
+// per-container codec; the custom command lines; the bitrate. A destination makes
+// those contradictions UNREPRESENTABLE — transparency is a property of the row,
+// the codec is dictated or picked by the ladder, the pixel format follows from
+// alpha — so reconciling them is no longer a thing that can fail.
+//
+// What is left is what the user still decides: where the file goes, how big, how
+// fast, which frames, and the GIF palette file.
 inline bool isExportParamValid(exportParam* exParam, QWidget* widget, std::vector<audioConfig>* pConf) {
+    Q_UNUSED(pConf);
     QStringList warnings;
     QStringList warningDetail;
     QStringList errors;
     QStringList errorDetail;
-    // For convenience
     auto* params = &exParam->generalParams;
+
+    // Export name / path
     if (params->osExportTarget.contains("&#32")) {
         errors.append(q_translate("Export name or location contains an invalid character (\"&#32\")"));
         errorDetail.append(q_translate("Export name or location has the invalid character, please rename it to proceed."));
     }
-    if (params->allowTransparency && exParam->exportType == exportTarget::video && exParam->videoParams.intermediateFormat != availableIntermediateFormats::png){
-        warnings.append(q_translate("Transparent export does not have PNG intermediate"));
-        warningDetail.append(q_translate("Export was set to allow transparency but the intermediate format does not support it, "
-            "please change it to PNG."));
-    }
-    if (params->exportWithAudio && pConf->empty()){
-        warnings.append(q_translate("No valid audio streams."));
-        warningDetail.append(q_translate("Export with audio was selected but the audio player does not contain any valid audio streams, "
-            "please check if the audio files exist and the playback for them is enabled. If the export proceeds no audio will be added."));
-    }
-    if (exParam->exportType == exportTarget::image && params->allowTransparency &&
-        !formatAllowsTransparency(getFormatAsString(exportTarget::image, (int)exParam->imageParams.format))) {
-        warnings.append(q_translate("IExport target does not support transparency"));
-        warningDetail.append(
-            q_translate("Export with transparency was marked but the selected image format "
-               "does not support alpha layers, this means that if the export proceeds it will not have transparency.")
-        );
-    }
-    if (params->exportHeight == 0) {
-        errors.append(q_translate("Export height is zero"));
-        errorDetail.append(q_translate("Export height was set to zero, please increase the resolution."));
-    }
-    if (params->exportWidth == 0) {
-        errors.append(q_translate("Export width is zero"));
-        errorDetail.append(q_translate("Export width was set to zero, please increase the resolution."));
-    }
-    // Generic indivisible by two resolution error for all video targets,
-    // as I don't wanna go through each format to check :P
-    if (params->exportHeight % 2 != 0 && exParam->exportType == exportTarget::video) {
-        errors.append(q_translate("Export height contains an odd number."));
-        errorDetail.append(
-            q_translate("Height is ") + QString::number(params->exportHeight) + q_translate(", please change it to ") +
-            QString::number(params->exportHeight + 1) + q_translate(" or to ") + QString::number(params->exportHeight - 1) +
-            q_translate(" to continue with the export, as animation exports do not support resolutions that cannot be "
-               "divided by two.")
-        );
-    }
-    if (params->exportWidth % 2 != 0 && exParam->exportType == exportTarget::video) {
-        errors.append(q_translate("Export width contains an odd number."));
-        errorDetail.append(
-            q_translate("Width is ") + QString::number(params->exportWidth) + q_translate(", please change it to ") +
-            QString::number(params->exportWidth + 1) + q_translate(" or to ") + QString::number(params->exportWidth - 1) +
-            q_translate(" to continue with the export, as animation exports do not support resolutions that cannot be "
-               "divided by two.")
-        );
+
+    // Size and rate. Odd dimensions are NOT rejected: the encoder rounds a frame
+    // up to an even size and the real-path harness asserts that a 321x241 export
+    // succeeds, so refusing odd numbers here contradicted the encoder.
+    if (params->exportWidth == 0 || params->exportHeight == 0) {
+        errors.append(q_translate("Export size is zero"));
+        errorDetail.append(q_translate("The export width or height is zero, please increase the resolution."));
     }
     if (params->fps == 0) {
         errors.append(q_translate("Export FPS is equal to zero."));
         errorDetail.append(q_translate("Target FPS was set to zero, cannot proceed with a framerate lower than 1."));
     }
-    double a = static_cast<double>(params->nativeHeight) / static_cast<double>(params->nativeWidth);
-    double b = static_cast<double>(params->exportHeight) / static_cast<double>(params->exportWidth);
-    double epsilon = std::numeric_limits<double>::epsilon();
-    bool aspectRatioKindaEqual = fabs(a - b) <= (fabs(a) > fabs(b) ? fabs(b) : fabs(a)) * epsilon;
-    if (params->aspectRatio == keep && !aspectRatioKindaEqual) {
-        warnings.append(q_translate("Target aspect ratio is not met"));
-        warningDetail.append(
-            q_translate("The aspect ratio was set to keep but the aspect ratio of the export is very "
-               "different to that of the original image, consider setting the aspect ratio to \"Custom\" or to change"
-               " the resolution while having \"Keep aspect ratio\" selected.")
-        );
-    }
+
+    // Destination directory
     if (!params->exportDirectory.exists()) {
         errors.append(q_translate("Target directory could not be found"));
         errorDetail.append(q_translate("The directory \"") + params->osExportTarget + q_translate("\" could not be found."));
@@ -277,210 +187,83 @@ inline bool isExportParamValid(exportParam* exParam, QWidget* widget, std::vecto
         errorDetail.append(
             q_translate("The directory \"") + params->osExportTarget +
             q_translate("\" could not be written into as it's protected or otherwise inaccessible, "
-               "if you wish to save onto it please launch AnimeEffects as admin.")
+                        "if you wish to save onto it please launch AnimeEffects as admin.")
         );
     }
-    if (params->fps > 10 && params->nativeFPS < 10 && params->fps != 0) {
-        warnings.append(q_translate("Target framerate is low"));
-        warningDetail.append(q_translate(
-            "The target framerate for exporting is generally considered very low for "
-            "exporting animations and does not to seem intended as the project's fps is higher, consider raising it."
-        ));
-    }
-    if (params->bitrate > 5 * 1000) { // Recommended for standard 720p encoding at 24 fps (5 Mbps)
+
+    // Bitrate is still a user-set number when no destination is chosen.
+    if (params->bitrate > 5 * 1000) {
         warnings.append(q_translate("Target bitrate is low"));
         warningDetail.append(
             q_translate("The target bitrate for encoding will generate a low quality export, we "
-               "recommend letting FFmpeg decide for you unless you know what you're doing.")
+                        "recommend letting the encoder decide for you unless you know what you're doing.")
         );
     }
     if (params->bitrate == -1) {
         warnings.append(q_translate("Target bitrate invalid"));
         warningDetail.append(
-            q_translate("The target bitrate for encoding was invalid in some way, we have changed it to automatic so the"
-               " export process may continue without issues should you decide to continue with the export.")
+            q_translate("The target bitrate for encoding was invalid in some way, we have changed it to automatic so the "
+                        "export process may continue without issues should you decide to continue with the export.")
         );
         params->bitrate = 0;
     }
 
-    QString format = exParam->exportType == exportTarget::video
-        ? getFormatAsString(exportTarget::video, static_cast<int>(exParam->videoParams.format))
-        : getFormatAsString(exportTarget::image, static_cast<int>(exParam->imageParams.format));
-    int intermediateFormatToImage;
-    switch (static_cast<int>(exParam->videoParams.intermediateFormat)) {
-    case 0:
-        intermediateFormatToImage = 3;
-        break;
-    case 1:
-        intermediateFormatToImage = 0;
-        break;
-    case 2:
-        intermediateFormatToImage = 2;
-    case 3:
-        intermediateFormatToImage = 1;
-    case 4:
-    default:
-        intermediateFormatToImage = -1;
-    }
-    // Special case for PPM
-    QString intermediateFormat =
-        intermediateFormatToImage == -1 ? "ppm" : getFormatAsString(exportTarget::image, intermediateFormatToImage);
-
-    QString pixelFormat = getFormatAsString(exportTarget::pxFmt, static_cast<int>(exParam->videoParams.pixelFormat));
-
-    if (params->allowTransparency && !formatAllowsTransparency(format)) {
-        warnings.append(q_translate("Export target does not support transparency"));
-        warningDetail.append(
-            q_translate("Export with transparency was marked but the selected format does not "
-               "support an alpha layer, this means that if the export proceeds it will not have transparency.")
-        );
-    }
-    if (params->allowTransparency && !pixelFormatAllowsTransparency(pixelFormat)) {
-        warnings.append(q_translate("Pixel format does not support transparency"));
-        warningDetail.append(
-            q_translate("Export with transparency was marked but the selected pixel format does not "
-               "support alpha channels, this means that if the export proceeds it will not have transparency.")
-        );
-    }
-    if (pixelFormat != "auto" && pixelFormat != "Auto" && !params->allowTransparency &&
-        pixelFormatAllowsTransparency(pixelFormat) && formatAllowsTransparency(format) &&
-        (exParam->exportType != exportTarget::video || formatAllowsTransparency(intermediateFormat))) {
-        warnings.append(q_translate("Forced pixel format with transparency"));
-        warningDetail.append(
-            q_translate("A pixel and target format that allow for alpha layers were selected but the option for allowing "
-               "transparent export was not, please select it or change your format to one without the 'a' in it to "
-               "avoid unintentional transparency.")
-        );
-    }
-    if (params->useCustomPalette && params->palettePath.exists()) {
-        if (!params->palettePath.isReadable()) {
-            errors.append(q_translate("Selected palette is unreadable"));
-            errorDetail.append(
-                q_translate("The palette located at \"") + params->palettePath.absolutePath() +
-                   q_translate("\" could not be read, please ensure it's a valid file."));
-        }
-        QFileInfo customPalette(params->palettePath.absolutePath());
-        if (!customPalette.suffix().contains(QRegularExpression("(png|\\.png)"))) {
-            errors.append(q_translate("Selected palette format unsupported"));
-            errorDetail.append(
-                q_translate("The palette located at \"") + params->palettePath.absolutePath() +
-                   q_translate("\" seems to not be a PNG file, please convert it into one."));
-        }
-    } else if (!params->palettePath.exists()) {
-        errors.append(q_translate("Selected palette does not exist"));
-        errorDetail.append(
-            q_translate("The palette referenced at \"") + params->palettePath.absolutePath() +
-               q_translate("\" does not exist or is otherwise inaccessible."));
-    }
-    if (params->useCustomParam) {
-        if (params->customPostCommand.isEmpty() && params->customInterCommand.isEmpty()) {
-            warnings.append(q_translate("Param field is empty"));
-            warningDetail.append(
-                q_translate("Export with custom params was selected but both command fields are empty, "
-                   "the export process can continue without them should you choose to do so.")
-            );
-        } else if ((params->customPostCommand.isEmpty() && params->usePost) || (params->customInterCommand.isEmpty() && params->usePost)) {
-            if (params->customPostCommand.isEmpty()) {
-                warnings.append(
-                    q_translate("Export with custom post parameter was selected but no command was "
-                       "given.")
-                );
-                warningDetail.append(q_translate("Custom post parameter not found, proceeding without it."));
-            } else {
-                warnings.append(
-                    q_translate("Export with custom intermediate parameter was selected but no command was "
-                       "given.")
-                );
-                warningDetail.append(q_translate("Custom intermediate parameter not found, proceeding without it."));
-            }
-        }
-        if (!params->useIntermediate && !params->usePost) {
-            warnings.append(q_translate("Custom parameters disabled"));
-            warningDetail.append(
-                q_translate("Export with custom params was selected but both command types are disabled, "
-                   "the export process can continue as is should you choose to do so.")
-            );
-        }
-    }
-
-    if (params->exportRange.isEmpty() ||
-        (params->exportRange.size() == 1 && params->exportRange.first().firstFrame == 0 &&
-         params->exportRange.first().lastFrame == 0) ||
-        params->exportRange.first().firstFrame - params->exportRange.first().lastFrame >= 0) {
+    // Export range: at least one frame. Inverted ranges are swapped in place; a
+    // range of exactly one frame is VALID. The old check used
+    // `first - last >= 0`, which rejected a single-frame range (first == last) as
+    // "empty", so the dialog could not export one frame at all. Nothing is
+    // flattened here any more either: the exporter takes the list as a
+    // FrameSelection, and the old `framesToBeExported` was computed and never read.
+    if (params->exportRange.isEmpty()) {
         errors.append(q_translate("Export range is empty"));
-        errorDetail.append(
-            q_translate("The export range is either empty, set to zero or lasts less than one frame,"
-               " please select a range of one frame or more.")
-        );
+        errorDetail.append(q_translate("No frame range was selected, please add a range of one frame or more."));
+    } else {
+        int frames = 0;
+        int x = 0;
+        for (auto& range : params->exportRange) {
+            if (range.firstFrame > range.lastFrame) {
+                warnings.append(q_translate("Export range at index ") + QString::number(x) +
+                                q_translate(" is invalid, swapping."));
+                std::swap(range.firstFrame, range.lastFrame);
+                warningDetail.append(q_translate("Swapped frames from range at index ") + QString::number(x) + ".");
+            }
+            frames += range.lastFrame - range.firstFrame + 1;
+            ++x;
+        }
+        if (frames < 1) {
+            errors.append(q_translate("Export range is empty"));
+            errorDetail.append(q_translate("The export range lasts less than one frame, please select at least one frame."));
+        }
     }
 
-    if (params->exportRange.size() > 1) {
-        int x = 0;
-        for (auto exportRange : params->exportRange) {
-            if (exportRange.firstFrame > exportRange.lastFrame) {
-                warnings.append(q_translate("Export range at index ") + QString::number(x) + q_translate(" is invalid, swapping."));
-                int firstFrame = exportRange.lastFrame;
-                int lastFrame = exportRange.firstFrame;
-                params->exportRange[x].firstFrame = firstFrame;
-                params->exportRange[x].lastFrame = lastFrame;
-                warningDetail.append(q_translate("Swapped frames from range at index ") + QString::number(x) + q_translate("."));
-            }
-            if (exportRange.firstFrame == exportRange.lastFrame) {
-                warnings.append(q_translate("Export range at index ") + QString::number(x) + q_translate(" is the same, removing."));
-                params->exportRange.removeAt(x);
-                x--; // To compensate for the deletion range
-                warningDetail.append(q_translate("Removing zero frame range at ") + QString::number(x) + q_translate("."));
-            }
-            x++;
+    // GIF palette: the only file the dialog still hands to an encoder.
+    if (params->useCustomPalette) {
+        if (!params->palettePath.exists()) {
+            errors.append(q_translate("Selected palette does not exist"));
+            errorDetail.append(q_translate("The palette referenced at \"") + params->palettePath.absolutePath() +
+                               q_translate("\" does not exist or is otherwise inaccessible."));
+        } else if (!params->palettePath.isReadable()) {
+            errors.append(q_translate("Selected palette is unreadable"));
+            errorDetail.append(q_translate("The palette located at \"") + params->palettePath.absolutePath() +
+                               q_translate("\" could not be read, please ensure it's a valid file."));
+        } else if (!QFileInfo(params->palettePath.absolutePath())
+                        .suffix()
+                        .contains(QRegularExpression("(png|\\.png)"))) {
+            errors.append(q_translate("Selected palette format unsupported"));
+            errorDetail.append(q_translate("The palette located at \"") + params->palettePath.absolutePath() +
+                               q_translate("\" seems to not be a PNG file, please convert it into one."));
         }
     }
-    // Get all frames that were selected for export
-    for (auto range : params->exportRange) {
-        int rangeLow = range.firstFrame;
-        while (rangeLow < range.lastFrame + 1) {
-            params->framesToBeExported.push_back(rangeLow);
-            rangeLow++;
-        }
+
+    // Everything that refuses an export says WHY, in the log as well as in the
+    // dialog. Without this the only account of a refusal was a modal listing
+    // "critical errors: 1" behind a Details button, which is not something a user
+    // can quote when asking for help and not something a bug report can contain.
+    for (const QString& error : errors) {
+        qWarning("export refused: %s", error.toUtf8().constData());
     }
-    // Hopefully remove duplicates
-    std::sort(params->framesToBeExported.begin(), params->framesToBeExported.end());
-    params->framesToBeExported.erase(
-        std::unique(params->framesToBeExported.begin(), params->framesToBeExported.end()),
-        params->framesToBeExported.end()
-    );
-    // Check if the user is exporting all frames
-    int summedNative = params->nativeFrameRange.firstFrame + params->nativeFrameRange.lastFrame;
-    int summedExport = params->framesToBeExported.first() + params->framesToBeExported.last();
-    if (summedNative == summedExport) {
-        params->exportAllFrames = true;
-    }
-    // If only one range check if it's a continuous export
-    if (params->exportRange.size() == 1 && params->exportRange.first().firstFrame == 0 &&
-        params->exportRange.first().lastFrame != params->nativeFrameRange.lastFrame) {
-        params->exportToLast = true;
-    }
+
     QSettings settings;
-    QVariant customEncoderWarning = settings.value("export_custom_encoder_warning_shown");
-    if (!customEncoderWarning.isValid()) {
-        settings.setValue("export_custom_encoder_warning_shown", false);
-        settings.sync();
-    }
-    bool customEncoderWarningShown = customEncoderWarning.toBool();
-    auto encoders = exParam->videoParams.encoders;
-    bool isUsingCustomEncoder = encoders.webm != webmEncoders::Auto || encoders.mp4 != mp4Encoders::Auto ||
-        encoders.mkv != mkvEncoders::Auto || encoders.avi != aviEncoders::Auto || encoders.mov != movEncoders::Auto;
-    if (!customEncoderWarningShown && isUsingCustomEncoder) {
-        warnings.append(q_translate("Using custom encoder"));
-        warningDetail.append(
-            q_translate("\nThis warning will only be shown once.\n"
-               "You're using a custom encoder for one of our supported formats, these might either just not work or may "
-               "not support some of the features you may be expecting out of your export such as transparency, please "
-               "learn about the features, advantages and disadvantages of your selected encoder before using it.")
-        );
-        settings.setValue("export_custom_encoder_warning_shown", true);
-    }
-    // Should be synced, but just in case I'll leave this here to easily revert it.
-    // exParam->generalParams = *params;
     bool proceedToExport = true;
     QVariant ignoreWarnings = settings.value("export_ignore_warning");
     if (!ignoreWarnings.isValid()) { ignoreWarnings.setValue(false); }
@@ -534,7 +317,6 @@ inline bool isExportParamValid(exportParam* exParam, QWidget* widget, std::vecto
     }
     return proceedToExport;
 }
-
 inline exportParam::exportParam() { exportType = exportTarget::video; }
 
 // Sorry for this

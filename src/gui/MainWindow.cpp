@@ -7,8 +7,10 @@
 #include "gl/Global.h"
 #include "ctrl/Exporter.h"
 #include "gui/MainWindow.h"
+
+#include "gui/ExportFacts.h"
+#include "gui/DestinationPicker.h"
 #include "gui/DockSash.h"
-#include "gui/ExportDialog.h"
 #include "gui/NewProjectDialog.h"
 #include "gui/ProjectHook.h"
 #include "gui/menu/menu_ProgressReporter.h"
@@ -16,6 +18,7 @@
 #include <set>
 #include <utility>
 #include <QComboBox>
+#include <QStatusBar>
 // This thing is held by duct tape and OOP hell I swear...
 #include "ctrl/ExportParams.h"
 
@@ -726,7 +729,11 @@ bool MainWindow::closeProjects(const QVector<core::Project*>& aProjects) {
 void MainWindow::closeProjectTab(core::Project& aProject) {
     // Sneaky potential crash
     if (QFileSystemWatcher* watcher = getWatcher()) {
-        for (int x = 0; x < aProject.resourceHolder().imageTrees().size(); x += 1) {
+        // imageTrees() is a std::list, so its count is unsigned (size_type);
+        // the index has to be that same unsigned type. It starts at 0 and
+        // only counts up, so an unsigned index cannot wrap here, while the
+        // old `int x` would have overflowed on a list longer than INT_MAX.
+        for (size_t x = 0; x < aProject.resourceHolder().imageTrees().size(); x += 1) {
             if (watcher->files().contains(aProject.resourceHolder().findAbsoluteFilePath(
                     *aProject.resourceHolder().imageTree(x).topNode
                 ))) {
@@ -1213,76 +1220,212 @@ static QVector<media::AudioMixer::Track> toAudioTracks(const std::vector<audioCo
     QVector<media::AudioMixer::Track> tracks;
     tracks.reserve(int(aStreams.size()));
     for (const auto& ac : aStreams) {
-        media::AudioMixer::Track t;
-        t.path = ac.audioPath.absoluteFilePath();
-        t.startFrame = ac.startFrame;
-        t.endFrame = ac.endFrame;
-        t.volume = AudioPlaybackWidget::getVol(ac.volume);
-        t.enabled = true;
-        tracks.push_back(t);
+        // The mapping lives on the mixer's own type so it can be tested without the
+        // GUI; the volume curve stays here because it belongs to the widget.
+        tracks.push_back(media::AudioMixer::Track::fromSettings(
+            ac.audioPath.absoluteFilePath(), AudioPlaybackWidget::getVol(ac.volume),
+            ac.startFrame, ac.endFrame, ac.exportEnable));
     }
     return tracks;
 }
 
 // Map the dialog's per-container encoder combo to the raw friendly encoder name
 // (e.g. "x264"), or "" for Auto so the exporter picks a muxer-aware default.
-static QString videoCodecForContainer(const exportParam& exParam, const QString& aContainer) {
-    const defaultEncoders& e = exParam.videoParams.encoders;
-    QString friendly;
-    if (aContainer == QLatin1String("avi"))       friendly = aviEnc[(int)e.avi];
-    else if (aContainer == QLatin1String("mkv"))       friendly = mkvEnc[(int)e.mkv];
-    else if (aContainer == QLatin1String("mov"))       friendly = movEnc[(int)e.mov];
-    else if (aContainer == QLatin1String("mp4"))       friendly = mp4Enc[(int)e.mp4];
-    else if (aContainer == QLatin1String("webm"))      friendly = webmEnc[(int)e.webm];
-    if (friendly.isEmpty() || friendly == QLatin1String("Auto") || friendly == QLatin1String("auto"))
-        return QString();
-    return friendly;
-}
 
 // Fill the video-specific bits of a ctrl::Exporter::VideoParam from an exportParam.
-// Container can be any export target (embedded preset or a container-default codec).
+//
+// The container and the codec are names here, not indices into a table: that
+// table (and the getFormatAsInt() that could not read it back) is gone. An empty
+// codec means "the container's probed default", which is what the exporter
+// resolves, so "Auto" is no longer a value pretending to be a choice.
 static void translateVideoExport(exportParam& exParam, const std::vector<audioConfig>& aValidStreams,
                                  ctrl::Exporter::VideoParam& aVideo,
                                  QVector<media::AudioMixer::Track>& aAudio) {
     auto& g = exParam.generalParams;
-    const QString container = getFormatAsString(exportTarget::video, (int)exParam.videoParams.format);
-    ctrl::VideoFormat fmt = ctrl::VideoFormat::find(container);
-    if (fmt.name.isEmpty()) {
-        // No embedded preset (e.g. "mkv"): build a minimal format whose default
-        // codec the exporter resolves via a muxer-aware container default.
-        fmt.name = container;
-        fmt.label = container;
-    }
-    aVideo.format = fmt;
-    aVideo.codecIndex = -1;              // container default unless overridden below
-    aVideo.codec = videoCodecForContainer(exParam, container); // friendly name or "" (Auto)
+    aVideo.container = exParam.videoParams.container;
+    aVideo.codec = exParam.videoParams.codec;
+    // No pixel format: it follows from the codec and from whether alpha is
+    // wanted, and the encoder picks between the two by asking.
+    aVideo.pixfmt.clear();
     aVideo.transparent = g.allowTransparency;
     aVideo.bps = g.bitrate;              // kbps (the exporter converts to bits/sec)
-    const QString px = getFormatAsString(exportTarget::pxFmt, (int)exParam.videoParams.pixelFormat);
-    aVideo.pixfmt = (px == QLatin1String("Auto") || px.isEmpty()) ? QString() : px;
     aAudio = g.exportWithAudio ? toAudioTracks(aValidStreams) : QVector<media::AudioMixer::Track>();
+
+    // The quality intent, through the codec's OWN knob - the same table
+    // ctrl::planExport() uses for a destination, so "Balanced" cannot mean one
+    // thing here and another thing there. Before this the intent reached only the
+    // destination path: in manual mode the Quality control set nothing, and the
+    // file went out at whatever the Bitrate field said (or at the encoder's own
+    // default, which is what "Auto" means). A destination overwrites encOptions
+    // afterwards, so this cannot fight the plan.
+    //
+    // An empty codec means "the container's probed default", which is what the
+    // exporter resolves, so it is resolved here too: the knob differs per codec
+    // ('crf' for H.264, 'quality' for WebP) and picking the wrong one would hand
+    // avcodec_open2 an option it rejects.
+    const QString codec = aVideo.codec.isEmpty()
+                              ? media::ffmpeg::defaultCodecForContainer(aVideo.container)
+                              : aVideo.codec;
+    const QString knob = ctrl::qualityKnobFor(codec);
+    if (!knob.isEmpty()) {
+        // The dialog states "no override" as the codec's own sentinel (one below the
+        // span it accepts), because that is the only value a box ranged to that span
+        // can still hold. Reading it as "any negative number" was fine while the
+        // sentinel was -1; what was NOT fine is that the range clamped -1 away, so this
+        // branch always took the override and the Quality setting never decided.
+        const ctrl::QualityControl control =
+            ctrl::ExportTargets::loadQualityControl().value(codec);
+        if (g.qualityOverride > control.autoValue()) {
+            aVideo.encOptions.insert(knob, QString::number(g.qualityOverride));
+        } else {
+            ctrl::applyQualityIntent(codec, exParam.qualityBucket, aVideo.encOptions);
+        }
+    }
 }
 
-void exportProject(exportParam& exParam, core::Project* mCurrent, QDialog* widget, const std::vector<audioConfig>& validAudioStreams){
+// A non-selectable group heading inside a QComboBox. Qt's own idiom for this is
+// to clear the item's flags through the model.
+
+// The label a user picks from, which has to say when a row cannot be produced
+// here. The table declares `platform` for exactly this and nothing read it: on
+// Linux the list offered "Transparent video (Safari / iOS)", and selecting it
+// produced "encoder not available in this build: hevc_videotoolbox" — a message
+// that reads like a broken installation rather than a platform requirement.
+static QString targetLabel(const ctrl::ExportTarget& aTarget) {
+    if (aTarget.platform.isEmpty() || aTarget.platform == QLatin1String("any"))
+        return aTarget.label;
+    // QStringLiteral, not QLatin1String: the em dash is UTF-8 in the source, and
+    // Latin-1 is the wrong decoder for it. Getting this wrong is how
+    // "— needs macOS" became "â€” needs macOS" in the destination list the first
+    // time this label was written.
+    return aTarget.label + QStringLiteral(" (") + QObject::tr("needs %1").arg(ctrl::platformName(aTarget.platform)) + QStringLiteral(")");
+}
+
+// The Quality row's index <-> the bucket the plan uses. ONE mapping, because the
+// dialog and the quick-export menu both need it and they disagreed: the menu
+// hardcoded Balanced while the dialog stored the user's choice.
+static ctrl::QualityBucket bucketFromSettingsIndex(int aIndex) {
+    switch (aIndex) {
+    case 0: return ctrl::QualityBucket::Smaller;
+    case 2: return ctrl::QualityBucket::Best;
+    case 3: return ctrl::QualityBucket::Lossless;
+    default: return ctrl::QualityBucket::Balanced;
+    }
+}
+
+// Returns true only when something was actually written. The callers need that:
+// "export again" and the status line both have to tell a completed export from a
+// refused one, and an export that reports success without a file is the failure
+// mode this whole area keeps producing.
+bool exportProject(exportParam& exParam, core::Project* mCurrent, QDialog* widget, const std::vector<audioConfig>& validAudioStreams){
     // All full-export dialog exports now run through the single in-process
     // ctrl::Exporter (linked libav*): video, image sequence, and GIF. The legacy
     // projectExporter::Exporter + ffmpeg:: CLI machinery is no longer used.
     auto& g = exParam.generalParams;
     const bool isImage = exParam.exportType == exportTarget::image;
-    const bool isGif = exParam.exportType == exportTarget::video &&
-                       exParam.videoParams.format == availableVideoFormats::gif;
 
     // Common parameters (path differs per target below).
     ctrl::Exporter::CommonParam cparam;
     cparam.size = QSize(g.exportWidth, g.exportHeight);
     cparam.fps = g.fps > 0 ? g.fps : (g.nativeFPS > 0 ? g.nativeFPS : 24);
-    int first = g.nativeFrameRange.firstFrame, last = g.nativeFrameRange.lastFrame;
+    // Every range the user selected, in the order they are listed. This used to
+    // collapse them to [first of the first .. last of the last], so a gap was
+    // exported as if it had been selected: ranges 0-10 + 50-60 wrote 61 frames
+    // instead of 22. The exporter now takes the list.
     if (!g.exportRange.isEmpty()) {
-        first = g.exportRange.first().firstFrame;
-        last = g.exportRange.last().lastFrame;
-        if (first > last) std::swap(first, last);
+        ctrl::FrameSelection selection;
+        for (const frameExportRange& r : g.exportRange) {
+            const int a = std::min(r.firstFrame, r.lastFrame);
+            const int b = std::max(r.firstFrame, r.lastFrame);
+            selection.ranges.append(ctrl::FrameRange{a, b});
+        }
+        cparam.selection = selection;
+    } else {
+        cparam.selection = ctrl::FrameSelection::fromRange(g.nativeFrameRange.firstFrame,
+                                                          g.nativeFrameRange.lastFrame);
     }
-    cparam.frame = util::Range(first, last);
+
+    // A chosen destination is AUTHORITATIVE: it decides the container, the codec,
+    // that codec's private options and stream tag, transparency, the exact output
+    // size (art fitted and padded, never stretched), the frame caps, the audio
+    // parameters and the frame selection. Resolved before the branches because it
+    // also decides WHICH branch runs (a GIF destination is not a VideoEncoder
+    // target). This is what replaces the per-container codec combos, which could
+    // not work at all: getFormatAsInt() returns 0 for every input, so every codec
+    // and pixel format chosen in the dialog was silently discarded.
+    ctrl::ExportPlan plan;
+    bool havePlan = false;
+    // The frame stem the image branch must use, resolved with the plan (see below).
+    QString imageStem;
+    // Resolved for EVERY destination, including one that produces stills: the plan
+    // is what says whether the artifact is a video, one image or a frame sequence,
+    // so it cannot be skipped for the image case it is asked to decide. It used to
+    // run only when the artifact was not an image, which meant an image destination
+    // could not be planned at all.
+    if (!exParam.destinationId.isEmpty()) {
+        const ctrl::ExportTarget target =
+            ctrl::ExportTargets::find(ctrl::ExportTargets::load(), exParam.destinationId);
+        if (target.id.isEmpty()) {
+            QMessageBox::warning(widget, QObject::tr("Export Error"),
+                                 QObject::tr("Unknown export destination: %1").arg(exParam.destinationId));
+            return false;
+        }
+        ctrl::ExportRequest request;
+        request.outputPath = g.osExportTarget;
+        request.sourceSize = mCurrent->attribute().imageSize();
+        // The user's own size is an input only where the destination does not
+        // impose one; for every other rule the plan's size wins and this is
+        // ignored (see ExportRequest::requestedSize).
+        request.requestedSize = QSize(g.exportWidth, g.exportHeight);
+        request.fps = cparam.fps;
+        request.selection = cparam.selection;
+        // Audio is derived, not requested: how many tracks are actually meant for
+        // the file, and whether the user asked for silence.
+        int exportableTracks = 0;
+        for (const audioConfig& ac : validAudioStreams) {
+            if (ac.exportEnable) ++exportableTracks;
+        }
+        request.exportableAudioTracks = exportableTracks;
+        request.mute = !g.exportWithAudio;
+        // A still destination exports the frame on screen; the plan takes it from
+        // the request rather than the range (see ExportRequest::playhead).
+        request.playhead = exParam.playhead;
+        // The same stem the exporter would use for a frame sequence, so a fitted
+        // set has the same file names as an unfitted one.
+        request.imageStem = QFileInfo(g.fileName).baseName();
+        if (request.imageStem.isEmpty() && target.artifact == ctrl::ArtifactKind::Sequence) {
+            // The stem for numbered frames. The exporter's own rule prefers the
+            // project name, which the dialog does not always pass down; falling back
+            // to the name the user typed keeps a fitted set and an unfitted one
+            // identically named instead of "0001.png" in one case and
+            // "ugoira0001.png" in the other.
+            request.imageStem = QFileInfo(g.osExportTarget).completeBaseName();
+        }
+        imageStem = request.imageStem;
+        // GIF parameters, so a fitted GIF is the same file a plain export writes.
+        request.gifPalettePath = (g.useCustomPalette && g.palettePath.exists())
+                                     ? g.palettePath.absolutePath()
+                                     : QString();
+        request.gifLoop = g.loop ? 0 : -1;
+
+        plan = ctrl::planExport(target, request, exParam.qualityBucket);
+        if (!plan.ok()) {
+            QMessageBox::warning(widget, QObject::tr("Export Error"), plan.error);
+            return false;
+        }
+        havePlan = true;
+        cparam.size = plan.size;
+        cparam.renderSize = plan.renderSize;
+        cparam.fit = plan.config.fit;
+        cparam.fps = plan.fps;
+        cparam.selection = plan.selection;
+    }
+
+    // GIF is the one artifact media::GifEncoder owns rather than libav, so which
+    // branch runs follows from the container itself.
+    const bool isGif = havePlan ? plan.gifPath
+                                : (exParam.exportType == exportTarget::video &&
+                                   exParam.videoParams.container == QLatin1String("gif"));
 
     ctrl::Exporter exporter(*mCurrent);
     exporter.setOverwriteConfirmer([widget](const QString& aPath) -> bool {
@@ -1294,23 +1437,144 @@ void exportProject(exportParam& exParam, core::Project* mCurrent, QDialog* widge
     menu::LoggableProgressReporter progress(true, widget);
     exporter.setProgressReporter(progress);
 
-    if (isImage) {
+    // A destination with a hard byte cap is the one case where a single encode is
+    // not enough. Telegram rejects a sticker over 256 KB, WeChat over 500 KB,
+    // Twitch over 1 MB, and so on — those are upload rejections, not preferences
+    // — and the only way to meet them is to encode, MEASURE, and encode again
+    // lower if the file is over.
+    //
+    // This is set up BEFORE the artifact branches, because a cap is a property of
+    // the destination and not of the video path: GIF, APNG and WebP destinations
+    // are capped too, and this block used to sit inside the video branch alone, so
+    // every capped GIF (Twitch emote, WeChat sticker, QQ sticker) was written at
+    // whatever size it came out while the dialog stated the limit it had to meet.
+    //
+    // exportWithFit() has done exactly that since it was written, and nothing in
+    // the app ever called it: the caps were stated in the dialog and enforced
+    // nowhere, so the user got a file the platform refused with no warning. So for
+    // a capped destination the exporter renders the frames and hands them over
+    // instead of encoding.
+    bool fitFailed = false;
+    if (havePlan && plan.target.caps.maxBytes > 0) {
+        ctrl::ExportTarget fitTarget = plan.target;
+        ctrl::ExportRequest fitRequest;
+        fitRequest.outputPath = g.osExportTarget;
+        fitRequest.sourceSize = mCurrent->attribute().imageSize();
+        fitRequest.requestedSize = QSize(g.exportWidth, g.exportHeight);
+        fitRequest.fps = cparam.fps;
+        fitRequest.selection = cparam.selection;
+        fitRequest.gifPalettePath = (g.useCustomPalette && g.palettePath.exists())
+                                        ? g.palettePath.absolutePath()
+                                        : QString();
+        fitRequest.gifLoop = g.loop ? 0 : -1;
+
+        // Fitting needs every frame in memory at once. Bounded by the row's own
+        // caps (a 512px, 3-second sticker is ~70 MB), but checked rather than
+        // assumed, so a future row with a byte cap on a long video is refused
+        // with a reason instead of exhausting memory.
+        const qint64 bytesEach = qint64(plan.renderSize.width()) * plan.renderSize.height() * 4;
+        const qint64 needed = bytesEach * plan.frames();
+        const qint64 kBudget = 512LL * 1024 * 1024;
+        if (needed > kBudget) {
+            QMessageBox::warning(widget, QObject::tr("Export Error"),
+                                 QObject::tr("%1 caps the file size, which means encoding it "
+                                             "more than once, and that needs all %2 frames in "
+                                             "memory (~%3 MB). Export fewer frames, or choose a "
+                                             "destination without a size limit.")
+                                     .arg(plan.target.label)
+                                     .arg(plan.frames())
+                                     .arg(needed / (1024 * 1024)));
+            return false;
+        }
+
+        exporter.setFrameSink([&](const QList<QImage>& frames) {
+            // The fit phase is encoding, not rendering: saying "Rendering..." while
+            // it re-encodes a dozen times leaves the user watching a stuck 98%. So
+            // the section says what is happening and every attempt is logged as it
+            // happens (pushLog pumps events, so the dialog also stays alive).
+            progress.setSection(QObject::tr("Fitting under %1's %2 KB limit...")
+                                    .arg(plan.target.label)
+                                    .arg(plan.target.caps.maxBytes / 1024));
+            const ctrl::FitResult fit = ctrl::exportWithFit(
+                fitTarget, fitRequest, exParam.qualityBucket, frames,
+                [&progress](const QString& aStep) {
+                    progress.pushLog(aStep, ctrl::UILogType_Info);
+                },
+                [&progress] { return progress.wasCanceled(); });
+            if (fit.canceled) {
+                // Say what is on disk rather than deleting it: the last attempt is
+                // a complete, playable file, and for an already-fitted attempt it
+                // is a good one. Which attempt it was is exactly what the log says.
+                QMessageBox::information(widget, QObject::tr("Export Canceled"),
+                                         QObject::tr("The export was stopped while fitting under "
+                                                     "%1's size limit. The file already written is "
+                                                     "the last attempt, and may exceed the limit.")
+                                             .arg(plan.target.label));
+                return;
+            }
+            if (!fit.ok) {
+                fitFailed = true;
+                QMessageBox::warning(widget, QObject::tr("Export Error"),
+                                     QObject::tr("%1 caps the file at %2 KB and even the "
+                                                 "smallest setting did not fit it (%3 KB).\n%4")
+                                         .arg(plan.target.label)
+                                         .arg(plan.target.caps.maxBytes / 1024)
+                                         .arg(fit.bytes / 1024)
+                                         .arg(fit.error));
+                return;
+            }
+            progress.pushLog(QObject::tr("Fitted to %1 bytes in %2 attempts (%3x%4).")
+                                 .arg((qlonglong)fit.bytes)
+                                 .arg(fit.attempts)
+                                 .arg(fit.finalSize.width())
+                                 .arg(fit.finalSize.height()),
+                             ctrl::UILogType_Info);
+        });
+    }
+
+    // Image artifacts: one file (a still destination) or a directory of numbered
+    // stills (a frame-sequence destination, or the escape hatch's PNG/JPEG
+    // sequence). Both are written by Qt's image writers inside the exporter, which
+    // is why they share a branch.
+    const bool stillArtifact = havePlan && plan.artifact == ctrl::ArtifactKind::Still;
+    if (isImage || stillArtifact) {
         ctrl::Exporter::ImageParam iparam;
-        cparam.path = g.exportDirectory.absolutePath();
-        iparam.name = QFileInfo(g.fileName).baseName();
-        iparam.suffix = getFormatAsString(exportTarget::image, (int)exParam.imageParams.format);
+        iparam.suffix = exParam.imageParams.suffix.isEmpty() ? QStringLiteral("png")
+                                                            : exParam.imageParams.suffix;
+        if (havePlan && plan.artifact != ctrl::ArtifactKind::Video) {
+            iparam.suffix = plan.imageSuffix;
+        }
         iparam.quality = g.imageExportQuality;
+        iparam.singleFile = stillArtifact;
+        if (stillArtifact) {
+            // The save dialog asked for a FILE, so the file it was given is what
+            // gets written: directory plus the name the user typed, extension from
+            // the destination.
+            const QFileInfo chosen(g.osExportTarget);
+            cparam.path = chosen.absolutePath();
+            iparam.name = chosen.completeBaseName();
+        } else {
+            // A sequence is a directory of numbered frames; the name comes from the
+            // project, which is what the dialog's directory-only chooser implies.
+            cparam.path = g.exportDirectory.absolutePath();
+            iparam.name = imageStem.isEmpty() ? QFileInfo(g.fileName).baseName() : imageStem;
+        }
         auto res = exporter.execute(cparam, iparam);
         if (!res && !exporter.isCanceled())
             QMessageBox::warning(widget, QObject::tr("Export Error"), exporter.log());
-        return;
+        if (!res) return false;
+        // A still wrote the path the user named; a sequence wrote numbered files in
+        // the chosen directory. "Did it write?" has to be asked of the right one.
+        const QString produced =
+            stillArtifact ? cparam.path + QLatin1Char('/') + iparam.name + QLatin1Char('.')
+                                + iparam.suffix
+                          : cparam.path;
+        return QFileInfo::exists(produced);
     }
 
     if (isGif) {
         ctrl::Exporter::GifParam gparam;
         cparam.path = g.osExportTarget;
-        gparam.optimizePalette = true;  // legacy no-op; the in-process encoder always builds a palette
-        gparam.intermediateBps = 0;
         // Custom palette: the UI collects a PNG whose pixels ARE the palette
         // (the paletteuse convention). Feed it to the encoder; otherwise it
         // builds an adaptive palette from the rendered frames.
@@ -1321,7 +1585,10 @@ void exportProject(exportParam& exParam, core::Project* mCurrent, QDialog* widge
         auto res = exporter.execute(cparam, gparam);
         if (!res && !exporter.isCanceled())
             QMessageBox::warning(widget, QObject::tr("Export Error"), exporter.log());
-        return;
+        // Same rule as the video path: in sink mode the fit loop wrote the file,
+        // so a reported fit failure must not be turned into a success by the file
+        // the last attempt left behind.
+        return bool(res) && !fitFailed && QFileInfo(g.osExportTarget).exists();
     }
 
     // Video.
@@ -1329,14 +1596,325 @@ void exportProject(exportParam& exParam, core::Project* mCurrent, QDialog* widge
     ctrl::Exporter::VideoParam vparam;
     QVector<media::AudioMixer::Track> audioTracks;
     translateVideoExport(exParam, validAudioStreams, vparam, audioTracks);
+
+    if (havePlan) {
+        vparam.container = plan.config.container;
+        vparam.codec = plan.config.codec;   // named explicitly by the destination
+        vparam.pixfmt = plan.config.pixFmt;
+        vparam.transparent = plan.alphaEnabled;
+        vparam.encOptions = plan.config.encOptions;
+        vparam.codecTag = plan.config.codecTag;
+        vparam.bps = 0;                    // quality comes from the codec's own controls
+        vparam.audioCodec = plan.config.audioCodec;
+        vparam.audioBitrate = plan.config.audioBitrate;
+        vparam.audioChannels = plan.config.audioChannels;
+        vparam.audioSampleRate = plan.config.audioSampleRate;
+        if (!plan.audioEnabled) audioTracks.clear();
+    }
     exporter.setAudioTracks(audioTracks);
+
     auto res = exporter.execute(cparam, vparam);
     if (!res && !exporter.isCanceled())
         QMessageBox::warning(widget, QObject::tr("Export Error"), exporter.log());
+    // Sink mode returns success from the exporter but writes the file itself (the
+    // fit loop owns it), so success is "the exporter says so AND the file is there
+    // AND the fit did not report that it could not meet the cap". A failed fit
+    // leaves the last attempt on disk, so the existence check alone would call a
+    // rejected export a success.
+    return bool(res) && !fitFailed && QFileInfo(g.osExportTarget).exists();
 }
 
+// Where a project's remembered export inputs live. PER PROJECT: a frame range
+// belongs to the animation it was chosen in, and inheriting another project's
+// range would export frames that project does not have.
+QString MainWindow::exportInputsKey() const {
+    const QString name =
+        (mCurrent && !mCurrent->fileName().isEmpty()) ? mCurrent->fileName()
+                                                     : QStringLiteral("untitled");
+    return QStringLiteral("export_inputs/") + name;
+}
 
+// Put the last-used frame ranges, size and fps back into a freshly built dialog.
+//
+// They are per-run inputs, and they used to reset to the project's own values every
+// time the dialog opened: changing one checkbox meant re-selecting the range, the
+// size and the rate first. Applied BEFORE the plan is refreshed, so a destination
+// with a Free size rule reads the size the user last chose.
+void MainWindow::restoreExportInputs() {
+    QSettings settings;
+    const QString key = exportInputsKey();
+    const int projectFirst = mCurrent->currentTimeInfo().frameRange.min();
+    const int projectLast = mCurrent->currentTimeInfo().frameRange.max();
+
+    // JSON, not a QVariantList of QVariantList: QSettings flattens nested lists of
+    // simple types into one comma-separated string ("0, 3"), so reading the ranges
+    // back as pairs found single values, skipped every one of them, and restored
+    // nothing while the values sat right there in the file.
+    const QJsonArray ranges =
+        QJsonDocument::fromJson(settings.value(key + QStringLiteral("/ranges")).toString().toUtf8())
+            .array();
+    if (!ranges.isEmpty()) {
+        int row = 0;
+        for (const QJsonValue& v : ranges) {
+            const QJsonArray pair = v.toArray();
+            if (pair.size() != 2) continue;
+            // Extra rows are ADDED (the dialog starts with one); the values are
+            // clamped to this project's own range, because a remembered range can
+            // outlive the animation it was chosen for.
+            if (row >= exportUI->initialFrames->size()) {
+                exportUI->addRange(projectLast);
+            }
+            exportUI->initialFrames->at(row)->setValue(
+                std::clamp(pair.at(0).toInt(), projectFirst, projectLast));
+            exportUI->lastFrames->at(row)->setValue(
+                std::clamp(pair.at(1).toInt(), projectFirst, projectLast));
+            ++row;
+        }
+    }
+
+    const int w = settings.value(key + QStringLiteral("/width"), 0).toInt();
+    const int h = settings.value(key + QStringLiteral("/height"), 0).toInt();
+    if (w > 0 && h > 0) {
+        QSignalBlocker wBlock(exportUI->widthSpinBox);
+        QSignalBlocker hBlock(exportUI->heightSpinBox);
+        exportUI->widthSpinBox->setValue(w);
+        exportUI->heightSpinBox->setValue(h);
+        exportUI->latestWidth = w;
+        exportUI->latestHeight = h;
+    }
+    const int fps = settings.value(key + QStringLiteral("/fps"), 0).toInt();
+    if (fps > 0) exportUI->fpsSpinBox->setValue(fps);
+}
+
+// Remember where an export went, so the next one does not start from nowhere.
+//
+// Two levels: the directory+name the dialogs should open at, and the directory
+// used for a given DESTINATION, which is what makes a repeat quick export a
+// single click instead of a folder prompt every time.
+void MainWindow::rememberExportLocation(const exportParam& aParam) {
+    const QFileInfo info(aParam.generalParams.osExportTarget);
+    const QString dir = info.absolutePath();
+    if (dir.isEmpty())
+        return;
+    QSettings settings;
+    settings.setValue(QStringLiteral("export_last_dir"), dir);
+    if (!info.fileName().isEmpty())
+        settings.setValue(QStringLiteral("export_last_name"), info.fileName());
+    if (!aParam.destinationId.isEmpty()) {
+        settings.setValue(QStringLiteral("export_dir/%1").arg(aParam.destinationId), dir);
+    }
+}
+
+// Tell the user what was written, and make it repeatable.
+//
+// There was no completion feedback at all: the progress dialog closed and the user
+// was left to find the file. The size matters as much as the path — for a
+// destination with a byte cap it is the difference between an upload that lands
+// and one the platform refuses.
+void MainWindow::reportExportOutcome(const exportParam& aParam, bool aWrote) {
+    if (!aWrote)
+        return;
+
+    rememberExportLocation(aParam);
+
+    const QFileInfo info(aParam.generalParams.osExportTarget);
+    const qint64 bytes = info.exists() ? info.size() : 0;
+    QString msg = tr("Exported %1 (%2 KB)").arg(info.fileName()).arg((bytes + 512) / 1024);
+
+    const ctrl::ExportTarget target =
+        ctrl::ExportTargets::find(ctrl::ExportTargets::load(), aParam.destinationId);
+    if (target.caps.maxBytes > 0) {
+        const bool within = bytes <= target.caps.maxBytes;
+        msg += tr(" (%1 of %2 KB allowed for %3)")
+                   .arg((bytes + 512) / 1024)
+                   .arg(target.caps.maxBytes / 1024)
+                   .arg(target.label);
+        if (!within) {
+            msg += tr("; OVER THE LIMIT, it will be rejected");
+        }
+    }
+    msg += QLatin1String("  ") + info.absolutePath();
+    statusBar()->showMessage(msg, 20000);
+
+    // Kept as a copy so "Export again" repeats THIS export rather than
+    // re-deriving one from whatever the dialogs currently hold.
+    mLastExport.reset(new exportParam(aParam));
+    if (mMainMenuBar)
+        mMainMenuBar->setExportAgainEnabled(true);
+}
+
+void MainWindow::onExportAgainTriggered() {
+    if (!mCurrent || !mLastExport)
+        return;
+
+    // Everything is repeated — destination, quality, ranges, size, fps, artifact —
+    // EXCEPT the name, which is asked for, pre-filled with the last one.
+    //
+    // The first version of this repeated the path too, and defended itself with the
+    // exporter's overwrite confirmer: a yes/no on the SAME name, so "Export again"
+    // could never produce a second file, and answering "yes" destroyed the previous
+    // export with no way back. For a tool whose output IS the deliverable, and where
+    // one export can be minutes of encoding, that is the wrong default. Pre-filling
+    // keeps it to one keystroke for "same name, I mean it", and typing a new name
+    // gives the new file that "again" usually means.
+    auto& g = mLastExport->generalParams;
+    const QFileInfo last(g.osExportTarget);
+
+    QString path;
+    if (mLastExport->exportType == exportTarget::image) {
+        // A sequence's target is a directory; there is no file to name.
+        path = QFileDialog::getExistingDirectory(this, tr("Export Folder"), last.absoluteFilePath());
+        if (path.isEmpty())
+            return;
+    } else {
+        const QString suffix = last.suffix();
+        const QString filter = suffix.isEmpty()
+                                   ? tr("All files (*)")
+                                   : tr("%1 files (*.%2)").arg(suffix.toUpper(), suffix);
+        path = QFileDialog::getSaveFileName(this, tr("Export File"), last.absoluteFilePath(), filter);
+        if (path.isEmpty())
+            return;
+        if (QFileInfo(path).suffix().isEmpty() && !suffix.isEmpty())
+            path += QLatin1Char('.') + suffix;
+    }
+
+    const QFileInfo chosen(path);
+    g.osExportTarget = chosen.absoluteFilePath();
+    g.exportDirectory = chosen.isDir() ? QDir(chosen.absoluteFilePath()) : chosen.absoluteDir();
+    g.exportFileName = QDir(chosen.absoluteFilePath());
+    g.fileName = chosen.fileName().isEmpty() ? g.fileName : chosen.fileName();
+    g.exportName = chosen.isDir() ? g.exportName : chosen.baseName();
+
+    std::vector<audioConfig> validAudioStreams =
+        AudioPlaybackWidget::getValidAudioStreams(*mCurrent->pConf);
+    // "Export again" repeats the settings, not the frame: a still destination
+    // exports what is on screen now.
+    mLastExport->playhead = mTarget->currentFrame().get();
+    const bool wrote = exportProject(*mLastExport, mCurrent, exportWidget, validAudioStreams);
+    reportExportOutcome(*mLastExport, wrote);
+}
+
+// The File menu's "Quickly export as..." : the destination is chosen in the same
+// picker the export dialog uses, and then the export runs with no further dialogs.
+void MainWindow::onQuickExportTriggered() {
+    if (!mCurrent) return;
+    DestinationPicker picker(mGUIResources,
+                             QSettings().value(QStringLiteral("export_destination")).toString(),
+                             this);
+    if (picker.exec() != QDialog::Accepted) return;
+    const QString id = picker.chosenId();
+    if (id.isEmpty()) {
+        // "My platform isn't listed": that answer needs the form, because the
+        // format and codec are the user's to state. It opens the form directly -
+        // asking for a destination again would be asking the question the user
+        // just answered.
+        openExportDialog(QString());
+        return;
+    }
+    QSettings().setValue(QStringLiteral("export_destination"), id);
+    onQuickExportDestinationTriggered(id);
+}
+
+void MainWindow::onQuickExportDestinationTriggered(const QString& aDestinationId) {
+    if (!mCurrent) {
+        return;
+    }
+    const ctrl::ExportTarget target =
+        ctrl::ExportTargets::find(ctrl::ExportTargets::load(), aDestinationId);
+    if (target.id.isEmpty()) {
+        return;
+    }
+
+    // One click, and the destination decides the container, the codec, its options,
+    // transparency, the exact size, the caps and the audio.
+    //
+    // The folder is asked for ONCE PER DESTINATION and then remembered. Exporting a
+    // Telegram sticker, adjusting the art and exporting again is the normal
+    // workflow, and re-navigating a folder dialog every time is what made "quick
+    // export" not actually quick.
+    QSettings settings;
+    const QString rememberedDir =
+        settings.value(QStringLiteral("export_dir/%1").arg(aDestinationId)).toString();
+    QString dirPath = rememberedDir;
+    if (dirPath.isEmpty() || !QFileInfo(dirPath).isDir()) {
+        dirPath = QFileDialog::getExistingDirectory(
+            this, tr("Export Folder"),
+            settings.value(QStringLiteral("export_last_dir")).toString());
+        if (dirPath.isEmpty()) {
+            return;
+        }
+    }
+    QString base = QFileInfo(mCurrent->fileName()).baseName();
+    if (base.isEmpty()) {
+        base = QStringLiteral("New Export");
+    }
+    const QString fileName = base + "." + target.container;
+
+    GeneralParams genParam;
+    genParam.fileName = base;
+    genParam.exportName = base;
+    genParam.exportDirectory = QDir(dirPath);
+    genParam.exportFileName = QDir(dirPath + "/" + fileName);
+    genParam.osExportTarget = QDir(dirPath + "/" + fileName).absolutePath();
+    genParam.nativeWidth = mCurrent->attribute().imageSize().width();
+    genParam.nativeHeight = mCurrent->attribute().imageSize().height();
+    genParam.exportWidth = genParam.nativeWidth;
+    genParam.exportHeight = genParam.nativeHeight;
+    genParam.aspectRatio = custom;
+    genParam.nativeFPS = mCurrent->attribute().fps();
+    genParam.fps = mCurrent->attribute().fps();
+    genParam.allowTransparency = true; // the destination decides, in the plan
+    genParam.loop = true;
+    genParam.imageExportQuality = -1;
+    const frameExportRange fer{mCurrent->attribute().frameRange().min(),
+                               mCurrent->attribute().frameRange().max()};
+    genParam.nativeFrameRange = fer;
+    genParam.exportRange = {fer};
+
+    auto exParam = new exportParam();
+    exParam->generalParams = genParam;
+    exParam->exportType = exportTarget::video;
+    exParam->destinationId = aDestinationId;
+    // The quality the user last chose in the dialog, not a silent Balanced. The
+    // quick path used to pin Balanced, so a user who had set Telegram stickers to
+    // "Best" got Balanced again from the menu, with nothing anywhere saying why the
+    // file was smaller than the one the dialog produced for the same destination.
+    exParam->qualityBucket = bucketFromSettingsIndex(
+        settings.value(QStringLiteral("export_quality_bucket"), 1).toInt());
+
+    std::vector<audioConfig> validAudioStreams =
+        AudioPlaybackWidget::getValidAudioStreams(*mCurrent->pConf);
+    if (isExportParamValid(exParam, exportWidget, &validAudioStreams)) {
+        exParam->playhead = mTarget->currentFrame().get();
+        const bool wrote = exportProject(*exParam, mCurrent, exportWidget, validAudioStreams);
+        reportExportOutcome(*exParam, wrote);
+    }
+}
+
+// The destination is asked for FIRST, because everything the form asks afterwards
+// depends on it: the size, the codec, the byte cap, the duration limit, whether
+// transparency or audio can survive at all. The form used to open with the whole
+// legacy parameter sheet and hide the chooser behind a button on it, so the first
+// thing a user saw was a decision they could not make yet (a codec, a bitrate) and
+// the one decision they could make was two clicks in.
 void MainWindow::onExportTriggered() {
+    if (!mCurrent) { return; }
+    if (exporting) { exportWidget->showNormal(); return; }
+
+    DestinationPicker picker(mGUIResources,
+                             QSettings().value(QStringLiteral("export_destination")).toString(),
+                             this);
+    if (picker.exec() != QDialog::Accepted) return; // no destination, nothing to export yet
+    const QString id = picker.chosenId();
+    if (!id.isEmpty())
+        QSettings().setValue(QStringLiteral("export_destination"), id);
+    openExportDialog(id);
+}
+
+// aDestinationId empty means "my platform isn't listed": the form then states the
+// artifact itself, which is the only case where the encoder controls are the user's
+// to set.
+void MainWindow::openExportDialog(const QString& aDestinationId) {
     if (!mCurrent) { return; }
     if (exporting) { exportWidget->showNormal(); return; }
     // Stop animation and main display rendering
@@ -1350,7 +1928,172 @@ void MainWindow::onExportTriggered() {
     exportUI = new ExportWidgetUI;
     // Set up UI
     exportWidget->setParent(this, Qt::Window);
-    exportUI->setupUi(exportWidget, mGUIResources, mCurrent->attribute().frameRange().max());
+    exportUI->setupUi(exportWidget, mGUIResources, mCurrent->attribute().frameRange().max(),
+                      mTarget->currentFrame().get());
+
+    // Destinations come from the data table — the same rows the exporter plans
+    // from — so what the dialog STATES is what the export will actually do. The
+    // per-container codec combos could not do that (getFormatAsInt() returns 0 for
+    // every input, so every codec and pixel format chosen there was discarded).
+    {
+        // The chooser is a modal with a search field (see gui/DestinationPicker).
+        // It has already been answered once to get here; the row states which
+        // destination the form is working under and "Change..." reopens it, because
+        // a user who picked the wrong platform should not have to cancel the export.
+        QSettings settings;
+        exportUI->setDestinationId(aDestinationId);
+        auto showDestinationButtonText = [this]() {
+            const QString id = exportUI->destinationId();
+            if (id.isEmpty()) {
+                exportUI->destinationButton->setText(
+                    tr("My platform isn't listed (I'll choose the format)"));
+                exportUI->destinationButton->setIcon(QIcon());
+                return;
+            }
+            const ctrl::ExportTarget t =
+                ctrl::ExportTargets::find(ctrl::ExportTargets::load(), id);
+            exportUI->destinationButton->setText(t.id.isEmpty() ? id : targetLabel(t));
+            exportUI->destinationButton->setIcon(t.id.isEmpty() ? QIcon()
+                                                               : mGUIResources.icon(t.icon));
+        };
+        showDestinationButtonText();
+        const int savedQuality = settings.value("export_quality_bucket", 1).toInt();
+        exportUI->qualityCombo->setCurrentIndex(savedQuality >= 0 && savedQuality <= 3 ? savedQuality : 1);
+
+        auto currentBucket = [this]() {
+            switch (exportUI->qualityCombo->currentIndex()) {
+            case 0: return ctrl::QualityBucket::Smaller;
+            case 2: return ctrl::QualityBucket::Best;
+            case 3: return ctrl::QualityBucket::Lossless;
+            default: return ctrl::QualityBucket::Balanced;
+            }
+        };
+
+        // The plan is computed on every change and shown in words: which codec was
+        // chosen and why, what size the destination forces, and every capability it
+        // declares. This is the whole point of the redesign — the user states a
+        // fact they possess ("it is for Telegram") and the system applies the
+        // consequences.
+        auto refreshFacts = [this, currentBucket]() {
+            const QString id = exportUI->destinationId();
+            if (id.isEmpty()) {
+                exportUI->clearPlan();
+                // Manual mode states its own facts, for the same reason a
+                // destination does: the controls cannot say everything. A ticked
+                // "Export with transparency" beside H.264 is the clearest case —
+                // libx264 has no alpha pixel format at all, so the export will be
+                // opaque however the box is set, and only words can say so.
+                QStringList manual;
+                if (exportUI->selectedFormatIsSequence()) {
+                    // Labelled lines, not one dash-joined sentence: a dash has to be
+                    // re-invented by every translator, and a label can just be
+                    // translated.
+                    manual << tr("%1 of %2 frames at %3 x %4")
+                                  .arg(exportUI->selectedFormatLabel())
+                                  .arg(exportUI->lastFrameSpinBox->value()
+                                       - exportUI->firstFrameSpinBox->value() + 1)
+                                  .arg(exportUI->widthSpinBox->value())
+                                  .arg(exportUI->heightSpinBox->value());
+                    manual << tr("Frame rate: %1 fps").arg(exportUI->fpsSpinBox->value());
+                } else {
+                    // A container with exactly one codec (GIF, APNG, WebP) has no
+                    // codec label to print, and " —  in GIF animation" is not a
+                    // fact, it is a gap where one should be.
+                    const QString codecLabel = exportUI->selectedCodecLabel();
+                    manual << tr("%1 x %2, %3 fps")
+                                  .arg(exportUI->widthSpinBox->value())
+                                  .arg(exportUI->heightSpinBox->value())
+                                  .arg(exportUI->fpsSpinBox->value());
+                    if (!codecLabel.isEmpty()) {
+                        manual << tr("Codec: %1 in %2")
+                                      .arg(codecLabel, exportUI->selectedFormatLabel());
+                    }
+                }
+                // One string per note: QStringList's operator<< appends each
+                // argument as its own element, so streaming a literal bullet and
+                // then the sentence would put them on separate lines.
+                if (exportUI->transparencyCheckBox->isChecked()
+                    && !exportUI->selectedCodecCarriesAlpha()) {
+                    manual << QStringLiteral("• ") + tr("%1 cannot carry transparency, so this "
+                                                       "export will be opaque.")
+                                                     .arg(exportUI->selectedCodecLabel());
+                }
+                if (exportUI->selectedFormatIsGif()) {
+                    manual << QStringLiteral("• ")
+                                  + tr("A GIF loops forever, so the Loop animation box is fixed on.");
+                }
+                exportUI->setFacts(manual.join(QLatin1Char('\n')));
+                return;
+            }
+            const ctrl::ExportTarget target =
+                ctrl::ExportTargets::find(ctrl::ExportTargets::load(), id);
+
+            // Phase one: the destination's own declarations go into the controls
+            // BEFORE the plan is asked, because the plan is computed from them.
+            // A row that says "this loops" has to have ticked the box first, or
+            // the answer would contradict the declaration it came from.
+            exportUI->applyDestinationDefaults(target);
+
+            const int first = exportUI->firstFrameSpinBox->value();
+            const int last = exportUI->lastFrameSpinBox->value();
+            int exportableTracks = 0;
+            if (mCurrent->pConf) {
+                for (const audioConfig& ac : *mCurrent->pConf) {
+                    if (ac.exportEnable) ++exportableTracks;
+                }
+            }
+
+            ctrl::ExportRequest request;
+            request.sourceSize = mCurrent->attribute().imageSize();
+            request.requestedSize =
+                QSize(exportUI->widthSpinBox->value(), exportUI->heightSpinBox->value());
+            request.fps = exportUI->fpsSpinBox->value();
+            request.selection = ctrl::FrameSelection::fromRange(std::min(first, last), std::max(first, last));
+            request.exportableAudioTracks = exportableTracks;
+            request.mute = !exportUI->exportWithAudioCheckBox->isChecked();
+            request.playhead = exportUI->playhead();
+
+            const ctrl::ExportPlan plan = ctrl::planExport(target, request, currentBucket());
+            const QStringList lines = gui::exportFacts(plan, target, request);
+            exportUI->setFacts(lines.join(QLatin1Char('\n')));
+            // State the facts AND make them true in the controls the
+            // destination governs, so the form cannot contradict itself.
+            exportUI->applyPlan(plan, target);
+        };
+
+        QObject::connect(exportUI->destinationButton, &QPushButton::clicked,
+                         [this, refreshFacts, showDestinationButtonText]() {
+                             DestinationPicker picker(mGUIResources,
+                                                      exportUI->destinationId(), exportWidget);
+                             if (picker.exec() != QDialog::Accepted) return;
+                             exportUI->setDestinationId(picker.chosenId());
+                             showDestinationButtonText();
+                             refreshFacts();
+                         });
+        QObject::connect(exportUI->qualityCombo,
+                         util::SelectArgs<int>::from(&QComboBox::currentIndexChanged),
+                         [refreshFacts](int) { refreshFacts(); });
+
+        // The escape hatch: only meaningful with no destination, which is the
+        // only case where the user has to state the artifact themselves.
+        exportUI->populateFormats();
+        QObject::connect(exportUI->formatCombo,
+                         util::SelectArgs<int>::from(&QComboBox::currentIndexChanged),
+                         [this, refreshFacts](int) {
+                             exportUI->refreshCodecs();
+                             refreshFacts();
+                         });
+        QObject::connect(exportUI->codecCombo,
+                         util::SelectArgs<int>::from(&QComboBox::currentIndexChanged),
+                         [refreshFacts](int) { refreshFacts(); });
+        // NOTE: no initial refreshFacts() call here. The widgets are still at
+        // their constructed values at this point — the project's own size, fps
+        // and the saved checkboxes are applied further down. Applying the plan
+        // now would freeze the size boxes at the wrong numbers and then have
+        // those numbers overwritten, which is the self-contradiction this whole
+        // change exists to remove. It is called once, after initialisation.
+        mRefreshExportFacts = refreshFacts;
+    }
     // Initialize gpDiag
     gpDiag->setAttribute(Qt::WA_DeleteOnClose,true);
     gpDiag->setParent(exportWidget, Qt::Window);
@@ -1368,40 +2111,30 @@ void MainWindow::onExportTriggered() {
     // Get generics
     QVariant aspectRatioV = settings.value("export_aspect_ratio");
     if(!aspectRatioV.isValid()) { aspectRatioV.setValue(1); } // Aspect ratio = keep
-    QVariant intermediateTypeV = settings.value("export_intermediate_type");
     QVariant allowTransparencyV = settings.value("export_allow_transparency");
     if(!allowTransparencyV.isValid()) {allowTransparencyV.setValue(true); } // Allow transparency = true
-    QVariant allowCustomParamV = settings.value("export_allow_params");
-    QVariant allowInterParamV = settings.value("export_allow_param_inter");
-    QVariant allowPostParamV = settings.value("export_allow_param_post");
     QVariant useCustomPaletteV = settings.value("export_custom_palette");
-    QVariant forcePipeV = settings.value("export_force_piped");
     QVariant loopAnimV = settings.value("export_loop_anim");
     QVariant exportWithAudioV = settings.value("export_allow_audio");
     // Initialize pointers to generics
     auto* aspectRatio = new int;
-    auto intermediateType = new int;
     auto allowTransparency = new bool;
-    auto allowCustomParam = new bool;
-    auto allowInterParam = new bool;
-    auto allowPostParam = new bool;
     auto useCustomPalette = new bool;
-    auto forcePipe = new bool;
     auto loopAnim = new bool;
     auto exportWithAudio = new bool;
     // Gather initialized pointers into a vector
     QVector<QVariant *> intValues {
-        &aspectRatioV, &intermediateTypeV
+        &aspectRatioV
     };
     QVector<int *> intVariables {
-        aspectRatio, intermediateType
+        aspectRatio
     };
     QVector<QVariant *> boolValues {
-        &allowTransparencyV, &allowCustomParamV, &allowInterParamV, &allowPostParamV, &useCustomPaletteV, &forcePipeV,
+        &allowTransparencyV, &useCustomPaletteV,
         &loopAnimV, &exportWithAudioV
     };
     QVector<bool *> boolVariables {
-        allowTransparency, allowCustomParam, allowInterParam, allowPostParam, useCustomPalette, forcePipe, loopAnim,
+        allowTransparency, useCustomPalette, loopAnim,
         exportWithAudio
     };
     // Loop through the vectors and initialize their values
@@ -1423,68 +2156,43 @@ void MainWindow::onExportTriggered() {
         *boolVariables[x] = variant->toBool();
         x++;
     }
-    // Get formats
-    QVariant pixelFormatV = settings.value("export_pixel_format");
-    QVariant aviEncV = settings.value("export_avi_encoder");
-    QVariant mkvEncV = settings.value("export_mkv_encoder");
-    QVariant movEncV = settings.value("export_mov_encoder");
-    QVariant mp4EncV = settings.value("export_mp4_encoder");
-    QVariant webmEncV = settings.value("export_webm_encoder");
-    pixelFormats pixelFormat;
-    aviEncoders aviEncoder;
-    mkvEncoders mkvEncoder;
-    movEncoders movEncoder;
-    mp4Encoders mp4Encoder;
-    webmEncoders webmEncoder;
-    // Loop through the vectors and initialize their values
-    QVector<QVariant *> formats {
-        &pixelFormatV, &aviEncV, &mkvEncV, &movEncV, &mp4EncV, &webmEncV
-    };
-    for(auto variant: formats){
-        if(!variant->isValid()){
-            variant->setValue(QString("Auto"));
-            settings.sync();
-        }
-    }
-    // Cast the values gathered into an enum for the corresponding value
-    pixelFormat = static_cast<pixelFormats>(getFormatAsInt(exportTarget::pxFmt, pixelFormatV.toString()));
-    aviEncoder = static_cast<aviEncoders>(getFormatAsInt(exportTarget::aviEnc, aviEncV.toString()));
-    mkvEncoder = static_cast<mkvEncoders>(getFormatAsInt(exportTarget::mkvEnc, mkvEncV.toString()));
-    movEncoder = static_cast<movEncoders>(getFormatAsInt(exportTarget::movEnc, movEncV.toString()));
-    mp4Encoder = static_cast<mp4Encoders>(getFormatAsInt(exportTarget::mp4Enc, mp4EncV.toString()));
-    webmEncoder = static_cast<webmEncoders>(getFormatAsInt(exportTarget::webmEnc, webmEncV.toString()));
+    // The per-container codec and pixel-format settings are gone with the Format
+    // tab: a destination decides the codec now. The old values were never applied
+    // in the first place — getFormatAsInt() returns 0 for every input, so every
+    // choice they stored was read back as "Auto".
     // Get custom parameters
-    QVariant customParamsV = settings.value("export_custom_params");
-    QVariant customParamsStringsV = settings.value("export_custom_params_str");
-    QStringList *customParams =
-        customParamsV.isValid()? new QStringList(customParamsV.toStringList()) : new QStringList();
-    QStringList *customParamsStrings =
-        customParamsStringsV.isValid()? new QStringList(customParamsStringsV.toStringList()) : new QStringList();
     // Sync
     settings.sync();
     // Value initialization
-    switch(*aspectRatio){
-        case 0: exportUI->oneToOneRatio->setChecked(true); break;
-        case 1: exportUI->keepAspectRatio->setChecked(true); break;
-        case 2: exportUI->customRatio->setChecked(true); break;
-        default: break;
-    }
-    exportUI->intermediateTypeCombo->setCurrentIndex(*intermediateType);
+    // One question ("does editing Width move Height?") instead of three legacy
+    // radio buttons: One-to-one and Custom were size-LINK modes from the original
+    // dialog, and ctrl::ExportParams.h's `aspectRatio` — the only thing they ever
+    // set — is written here and read by nothing. A stored 0 (one-to-one) now means
+    // "keep", which is what it did in every export.
+    exportUI->keepAspectRatio->setChecked(*aspectRatio != 2);
     exportUI->transparencyCheckBox->setChecked(*allowTransparency);
-    exportUI->forcePipeCheckBox->setChecked(*forcePipe);
     exportUI->loopCheckBox->setChecked(*loopAnim);
     exportUI->exportWithAudioCheckBox->setChecked(*exportWithAudio);
-    exportUI->allowParamsCheckBox->setChecked(*allowCustomParam);
-    exportUI->intermediateParamCheckBox->setChecked(*allowInterParam);
-    exportUI->postParamCheckBox->setChecked(*allowPostParam);
-    exportUI->customPaletteCheckBox->setChecked(*useCustomPalette);
-    exportUI->pixelFormatCombo->setCurrentIndex(static_cast<int>(pixelFormat));
-    exportUI->aviCombo->setCurrentIndex(static_cast<int>(aviEncoder));
-    exportUI->mkvCombo->setCurrentIndex(static_cast<int>(mkvEncoder));
-    exportUI->movCombo->setCurrentIndex(static_cast<int>(movEncoder));
-    exportUI->mp4Combo->setCurrentIndex(static_cast<int>(mp4Encoder));
-    exportUI->webmCombo->setCurrentIndex(static_cast<int>(webmEncoder));
-    exportUI->presetCombo->addItems(*customParamsStrings);
+    // The palette path is restored WITH the preference. Without it, a remembered
+    // "use a custom palette" could only ever produce a blocking validation error
+    // ("Selected palette does not exist") with no way to see which file it meant:
+    // the checkbox was persisted, the file it referred to was not. A preference
+    // the app cannot honour is not a preference, so the box is only ticked when
+    // the file is still there.
+    {
+        const QString savedPalette = settings.value("export_palette_path").toString();
+        const QFileInfo paletteInfo(savedPalette);
+        // A FILE, checked as a file: QDir() is the current directory and
+        // "exists", so testing a QDir for existence made an unset palette look
+        // like a valid one and kept the box ticked.
+        const bool paletteRestored =
+            !savedPalette.isEmpty() && paletteInfo.isFile() && paletteInfo.isReadable();
+        if (paletteRestored) {
+            exportUI->paletteDir = QDir(savedPalette);
+            exportUI->selectPalettePathButton->setText(paletteInfo.fileName());
+        }
+        exportUI->customPaletteCheckBox->setChecked(*useCustomPalette && paletteRestored);
+    }
     exportUI->nativeH = genParam.nativeHeight;
     exportUI->nativeW = genParam.nativeWidth;
     exportUI->latestHeight = exportUI->nativeH;
@@ -1502,6 +2210,15 @@ void MainWindow::onExportTriggered() {
     // (the last frame box was set above); frames before it are pre-roll the
     // animation doesn't own.
     exportUI->firstFrameSpinBox->setValue(mCurrent->currentTimeInfo().frameRange.min());
+    // The user's own inputs, over the project defaults, BEFORE the plan is stated:
+    // a destination with a Free size rule takes the size from these boxes.
+    restoreExportInputs();
+    // Now that the widgets hold the project's real values, state the
+    // destination's facts and freeze whatever it decides. This is the one place
+    // the plan is applied to the freshly built dialog.
+    if (mRefreshExportFacts) {
+        mRefreshExportFacts();
+    }
     // Connections, these below are to force a refresh and to avoid any weird bugs or memory leaks
     connect(exportWidget, &QDialog::destroyed, [=](){
         regenerateWidget();
@@ -1528,151 +2245,83 @@ void MainWindow::onExportTriggered() {
     connect(exportUI->setFPSNative, &QPushButton::clicked, [=](){
         exportUI->fpsSpinBox->setValue(genParam.nativeFPS);
     });
-    connect(exportUI->saveIntermediateParamAsPreset, &QToolButton::clicked, [=]() mutable{
-        regenerateGeneralPurposeDiag();
-        customParams->append(exportUI->intermediateParamTextEdit->toPlainText());
-        exportUI->askForTextUI(gpDiag, tr("Select your preset name"));
-        gpDiag->exec();
-        if(exportUI->askOperationCancelled){
-            return;
-        }
-        customParamsStrings->append(exportUI->textEdit->toPlainText());
-        exportUI->presetCombo->addItem(exportUI->textEdit->toPlainText());
-        exportUI->presetCombo->setCurrentIndex(customParamsStrings->indexOf(exportUI->textEdit->toPlainText()));
-    });
-    connect(exportUI->savePostParamAsPreset, &QToolButton::clicked, [=]() mutable{
-        regenerateGeneralPurposeDiag();
-        customParams->append(exportUI->postParamTextEdit->toPlainText());
-        exportUI->askForTextUI(gpDiag, tr("Select your preset name"));
-        gpDiag->exec();
-        if(exportUI->askOperationCancelled){
-            return;
-        }
-        customParamsStrings->append(exportUI->textEdit->toPlainText());
-        exportUI->presetCombo->addItem(exportUI->textEdit->toPlainText());
-        exportUI->presetCombo->setCurrentIndex(customParamsStrings->indexOf(exportUI->textEdit->toPlainText()));
-    });
-    connect(exportUI->removePreset, &QPushButton::clicked, [=]() mutable{
-        int index = exportUI->presetCombo->currentIndex();
-        customParams->removeAt(index);
-        customParamsStrings->removeAt(index);
-        exportUI->presetCombo->removeItem(index);
-    });
-    connect(exportUI->addPresetToIntermediate, &QPushButton::clicked, [=](){
-        int index = exportUI->presetCombo->currentIndex();
-        if(!customParams->isEmpty() && customParams->length() >= index){
-                exportUI->intermediateParamTextEdit->append(customParams->at(index));
-            }
-    });
-    connect(exportUI->addPresetToPost, &QPushButton::clicked, [=](){
-        int index = exportUI->presetCombo->currentIndex();
-        if(!customParams->isEmpty() && customParams->length() >= index){
-            exportUI->postParamTextEdit->append(customParams->at(index));
-        }
-    });
 
     // Execute
     QGuiApplication::restoreOverrideCursor();
     exportWidget->exec();
 
     // Save all settings
-    int aspectRatioIndex = 0;
-    if (exportUI->oneToOneRatio->isChecked()) { aspectRatioIndex = 0; }
-    else if (exportUI->keepAspectRatio->isChecked()) { aspectRatioIndex = 1; }
-    else { aspectRatioIndex = 2; }
+    const int aspectRatioIndex = exportUI->keepAspectRatio->isChecked() ? 1 : 2;
     {
         updateSettings(&aspectRatioV, &settings, aspectRatioIndex,
                        "export_aspect_ratio");
-        updateSettings(&intermediateTypeV, &settings, exportUI->intermediateTypeCombo->currentIndex(),
-                       "export_intermediate_type");
         updateSettings(&allowTransparencyV, &settings, exportUI->transparencyCheckBox->isChecked(),
                        "export_allow_transparency");
-        updateSettings(&allowCustomParamV, &settings, exportUI->allowParamsCheckBox->isChecked(),
-                       "export_allow_params");
-        updateSettings(&allowInterParamV, &settings, exportUI->intermediateParamCheckBox->isChecked(),
-                       "export_allow_param_inter");
-        updateSettings(&allowPostParamV, &settings, exportUI->postParamCheckBox->isChecked(),
-                       "export_allow_param_post");
         updateSettings(&useCustomPaletteV, &settings, exportUI->customPaletteCheckBox->isChecked(),
                        "export_custom_palette");
-        updateSettings(&forcePipeV, &settings, exportUI->forcePipeCheckBox->isChecked(),
-                       "export_force_piped");
+        settings.setValue("export_palette_path", exportUI->paletteDir.absolutePath());
         updateSettings(&loopAnimV, &settings, exportUI->loopCheckBox->isChecked(),
                        "export_loop_anim");
         updateSettings(&exportWithAudioV, &settings, exportUI->exportWithAudioCheckBox->isChecked(),
                        "export_allow_audio");
-        updateSettings(&pixelFormatV, &settings, exportUI->pixelFormatCombo->currentText(),
-                       "export_pixel_format");
-        updateSettings(&aviEncV, &settings, exportUI->aviCombo->currentText(),
-                       "export_avi_encoder");
-        updateSettings(&mkvEncV, &settings, exportUI->mkvCombo->currentText(),
-                       "export_mkv_encoder");
-        updateSettings(&movEncV, &settings, exportUI->movCombo->currentText(),
-                       "export_mov_encoder");
-        updateSettings(&mp4EncV, &settings, exportUI->mp4Combo->currentText(),
-                       "export_mp4_encoder");
-        updateSettings(&webmEncV, &settings, exportUI->webmCombo->currentText(),
-                       "export_webm_encoder");
-        updateSettings(&customParamsV, &settings, *customParams,
-                       "export_custom_params");
-        updateSettings(&customParamsStringsV, &settings, *customParamsStrings,
-                       "export_custom_params_str");
         settings.sync();
     }
     // Get file name and folder for export
     if (exportUI->operationCancelled) { return; }
-    // Initialize the file dialog with the appropriate descriptors
+    // One filter: the artifact the user already chose in the dialog's Format row.
+    //
+    // This used to be thirteen video filters and nine image filters, and the
+    // EXPORT FORMAT was then read back out of whichever filter was selected — so
+    // the format was chosen in the OS file dialog by a name like "Flash Video",
+    // "MPEG-2" or "X11 PixelMap" that nothing downstream could produce. The
+    // artifact is decided in one place now; the file dialog only asks where to
+    // put it and what to call it.
+    const QString artifactId = exportUI->formatCombo->currentData().toString();
+    const bool sequenceExport = artifactId.startsWith(QLatin1String("image/"));
+    const QString artifactSuffix = sequenceExport ? artifactId.mid(6)
+                                                 : exportUI->containerForFormat(artifactId);
     QFileDialog fileDiag;
     fileDiag.setAcceptMode(QFileDialog::AcceptMode::AcceptSave);
     fileDiag.setFileMode(QFileDialog::AnyFile);
-    QStringList vF = videoFormats;
-    QStringList videoFormatDescriptor{
-        tr("Animated PNG"), tr("AVI"), tr("Flash Video"), tr("Flash Video"),
-        tr("GIF"), tr("Matroska"), tr("QuickTime Movie"), tr("MPEG-2"),
-        tr("MPEG-4"), tr("Ogg Video"), tr("Shockwave Flash"), tr("WEBM"), tr("WEBP")
-    };
-    QStringList iF = imageFormats;
-    QStringList imageFormatDescriptor{
-        tr("BitMap"), tr("JPEG"), tr("JPEG"), tr("PNG"), tr("Portable PixelMap"),
-        tr("X11 BitMap"), tr("X11 PixelMap"), tr("Tagged Image"), tr("WEBP")
-    };
-    x = 0;
-    for(auto &format: vF){
-        format.push_front(videoFormatDescriptor[x] + " (*.");
-        format.push_back(')');
-        x++;
+    // Open where the last export went, with its name preselected. Repeating an
+    // export to the same place is the common case, and this dialog used to open
+    // with no location at all.
+    {
+        QSettings s2;
+        const QString lastDir = s2.value(QStringLiteral("export_last_dir")).toString();
+        const QString lastName = s2.value(QStringLiteral("export_last_name")).toString();
+        if (!lastDir.isEmpty() && QFileInfo(lastDir).isDir()) {
+            fileDiag.setDirectory(lastDir);
+        }
+        // ALWAYS pre-fill a name, and take its extension from the artifact.
+        //
+        // Two things went wrong without this. The remembered name could contradict
+        // the artifact (APNG after a WEBM export pre-filled "test.webm", and the
+        // suffix is only appended when a name has none, so APNG bytes were written
+        // into a .webm file) — that is why the base name is kept and the extension
+        // replaced. And with nothing to remember, the dialog opened with an empty
+        // name and focus in its SEARCH box: you had to click the name field before
+        // you could type a file name at all. Falling back to the project's own name
+        // fixes both, and it is the name most exports want anyway.
+        const QString rememberedBase = QFileInfo(lastName).completeBaseName();
+        // The project's own name is the default: this is a MainWindow member
+        // function, so the export parameter bag does not exist yet here.
+        const QString fallbackBase =
+            mCurrent ? QFileInfo(mCurrent->fileName()).completeBaseName() : QString();
+        const QString base =
+            !rememberedBase.isEmpty() ? rememberedBase : (fallbackBase.isEmpty() ? QStringLiteral("Export") : fallbackBase);
+        fileDiag.selectFile(base + QLatin1Char('.') + artifactSuffix);
     }
-    x = 0;
-    for(auto &format: iF){
-        format.push_front(imageFormatDescriptor[x] + " (*.");
-        format.push_back(')');
-        x++;
-    }
-    if(exportUI->exportTypeCombo->currentIndex() == 0) {
-        fileDiag.setNameFilters(vF);
-        fileDiag.selectNameFilter("MPEG-4");
-    }
-    else {
-        fileDiag.setNameFilters(iF);
-        fileDiag.selectNameFilter("PNG");
-    }
+    fileDiag.setNameFilters({exportUI->labelForFormat(artifactId) + " (*." + artifactSuffix + ")"});
+    fileDiag.selectNameFilter(exportUI->labelForFormat(artifactId) + " (*." + artifactSuffix + ")");
+
     // Generate parameters prior to exportUI destructor
     genParam.fileName = mCurrent->fileName().isEmpty()? "New Export" : QString(mCurrent->fileName());
     genParam.nativeWidth = mCurrent->attribute().imageSize().width();
     genParam.nativeHeight = mCurrent->attribute().imageSize().height();
     genParam.exportWidth = exportUI->widthSpinBox->value();
     genParam.exportHeight = exportUI->heightSpinBox->value();
-    switch(aspectRatioIndex) {
-    case 0:
-        genParam.aspectRatio = oneToOne;
-        break;
-    case 1:
-        genParam.aspectRatio = keep;
-        break;
-    case 2:
-        genParam.aspectRatio = custom;
-        break;
-    }
+    genParam.aspectRatio = aspectRatioIndex == 1 ? keep : custom;
     genParam.nativeFPS = mCurrent->attribute().fps();
     genParam.fps = exportUI->fpsSpinBox->value();
     genParam.bitrate =
@@ -1685,14 +2334,11 @@ void MainWindow::onExportTriggered() {
         // Does it contain only a positive number? If not then set to -1 for error handling.
         exportUI->bitrateLineEdit->text().trimmed().contains(QRegularExpression("^(?!0\\d+)\\d+$"))
             ? exportUI->bitrateLineEdit->text().toInt() : -1;
+    genParam.qualityOverride = exportUI->qualityOverrideSpin->value();
     genParam.imageExportQuality = exportUI->imageQualitySpinbox->value();
     genParam.allowTransparency = exportUI->transparencyCheckBox->isChecked();
-    genParam.forcePipe = exportUI->forcePipeCheckBox->isChecked();
     genParam.loop = exportUI->loopCheckBox->isChecked();
     genParam.exportWithAudio = exportUI->exportWithAudioCheckBox->isChecked();
-    genParam.useCustomParam = exportUI->allowParamsCheckBox->isChecked();
-    genParam.useIntermediate = exportUI->intermediateParamCheckBox->isChecked();
-    genParam.usePost = exportUI->postParamCheckBox->isChecked();
     genParam.useCustomPalette = exportUI->customPaletteCheckBox->isChecked();
     genParam.palettePath = exportUI->paletteDir;
     auto* exportRanges = new QVector<frameExportRange>;
@@ -1703,41 +2349,49 @@ void MainWindow::onExportTriggered() {
         exportRanges->append(frame_export_range);
     }
     genParam.exportRange = *exportRanges;
-    genParam.customInterCommand = exportUI->intermediateParamTextEdit->toPlainText();
-    genParam.customPostCommand = exportUI->postParamTextEdit->toPlainText();
-    if(exportUI->exportTypeCombo->currentIndex() == 0){ exParam->exportType = exportTarget::video; }
-    else{ exParam->exportType = exportTarget::image; }
-    if(exParam->exportType == exportTarget::video){
-        exParam->videoParams.intermediateFormat = static_cast<availableIntermediateFormats>(
-            exportUI->intermediateTypeCombo->currentIndex()
-            );
-        exParam->videoParams.pixelFormat = static_cast<pixelFormats>(
-                getFormatAsInt(exportTarget::pxFmt, exportUI->pixelFormatCombo->currentText())
-            );
-        defaultEncoders encoders;
-        encoders.avi = static_cast<aviEncoders>(getFormatAsInt(exportTarget::aviEnc, exportUI->aviCombo->currentText()));
-        encoders.mkv = static_cast<mkvEncoders>(getFormatAsInt(exportTarget::mkvEnc, exportUI->mkvCombo->currentText()));
-        encoders.mov = static_cast<movEncoders>(getFormatAsInt(exportTarget::movEnc, exportUI->movCombo->currentText()));
-        encoders.mp4 = static_cast<mp4Encoders>(getFormatAsInt(exportTarget::mp4Enc, exportUI->mp4Combo->currentText()));
-        encoders.webm = static_cast<webmEncoders>(getFormatAsInt(exportTarget::webmEnc, exportUI->webmCombo->currentText()));
-        exParam->videoParams.encoders = encoders;
+    exParam->destinationId = exportUI->destinationId();
+    exParam->qualityBucket = bucketFromSettingsIndex(exportUI->qualityCombo->currentIndex());
+    {
+        QSettings settings;
+        settings.setValue("export_destination", exParam->destinationId);
+        settings.setValue("export_quality_bucket", exportUI->qualityCombo->currentIndex());
+        // The per-run inputs, so the next open starts where this one left off.
+        const QString inputsKey = exportInputsKey();
+        QJsonArray savedRanges;
+        for (int i = 0; i < exportUI->initialFrames->size(); ++i) {
+            QJsonArray pair;
+            pair << exportUI->initialFrames->at(i)->value()
+                 << exportUI->lastFrames->at(i)->value();
+            savedRanges << pair;
+        }
+        settings.setValue(inputsKey + QStringLiteral("/ranges"),
+                          QString::fromUtf8(QJsonDocument(savedRanges).toJson(QJsonDocument::Compact)));
+        settings.setValue(inputsKey + QStringLiteral("/width"), exportUI->widthSpinBox->value());
+        settings.setValue(inputsKey + QStringLiteral("/height"), exportUI->heightSpinBox->value());
+        settings.setValue(inputsKey + QStringLiteral("/fps"), exportUI->fpsSpinBox->value());
+    }
+    // The artifact decides the type: a sequence writes numbered stills, anything
+    // else writes one video file. This used to be an independent combo, which let
+    // the two disagree ("Animation" plus a .png filter) and left the format to be
+    // reconstructed from the disagreement.
+    exParam->exportType = sequenceExport ? exportTarget::image : exportTarget::video;
+    if (exParam->exportType == exportTarget::video) {
+        exParam->videoParams.container = artifactSuffix;
+        // Empty means "the container's probed default", which is the only honest
+        // answer when the codec was not a choice (one candidate, or a GIF).
+        exParam->videoParams.codec = exportUI->codecCombo->currentData().toString();
+    } else {
+        exParam->imageParams.suffix = artifactSuffix;
     }
     // Get file via OS diag
     fileDiag.setViewMode(QFileDialog::Detail);
     QString selectedFile;
     if(fileDiag.exec()){ selectedFile = fileDiag.selectedFiles().at(0); }
     else{ return; }
-    bool isVideoExport = exParam->exportType == exportTarget::video;
-    int suffixIndex = isVideoExport? (int)vF.indexOf(fileDiag.selectedNameFilter()) : (int)iF.indexOf(fileDiag.selectedNameFilter());
-    QString sfx = getFormatAsString(exParam->exportType, suffixIndex);
-    qDebug() << "Exporting animation to format: " << sfx;
-    if(QFileInfo(selectedFile).suffix() == ""){
-        auto regex = QRegularExpression("(\\*.)\\w+", QRegularExpression::CaseInsensitiveOption);
-        QString suffix = regex.match(fileDiag.selectedNameFilter()).captured(0).remove(0, 1);
-        qDebug() << suffix;
-        selectedFile.append(suffix);
+    if (QFileInfo(selectedFile).suffix().isEmpty()) {
+        selectedFile.append(QLatin1Char('.') + artifactSuffix);
     }
-    qDebug() << selectedFile;
+    qDebug() << "Exporting animation to" << selectedFile << "as" << artifactSuffix;
     // Generate export parameters
     genParam.exportName = QFileInfo(selectedFile).fileName();
     genParam.exportDirectory = QFileInfo(selectedFile).absoluteDir();
@@ -1745,253 +2399,15 @@ void MainWindow::onExportTriggered() {
     genParam.osExportTarget = selectedFile;
     exParam->generalParams = genParam;
 
-    if(exParam->exportType == exportTarget::video) {
-        exParam->videoParams.format = static_cast<availableVideoFormats>(suffixIndex);
-    }
-    else{
-        exParam->imageParams.format = static_cast<availableImageFormats>(suffixIndex);
-    }
     // Main export function
     std::vector<audioConfig> validAudioStreams = AudioPlaybackWidget::getValidAudioStreams(*mCurrent->pConf);
-    if(isExportParamValid(exParam, exportWidget, &validAudioStreams)){
-        exportProject(*exParam, mCurrent, exportWidget, validAudioStreams);
+    if (isExportParamValid(exParam, exportWidget, &validAudioStreams)) {
+        exParam->playhead = mTarget->currentFrame().get();
+        const bool wrote = exportProject(*exParam, mCurrent, exportWidget, validAudioStreams);
+        reportExportOutcome(*exParam, wrote);
     }
 }
 
-void MainWindow::onExportImageSeqTriggered(const QString& aSuffix) {
-    if (!mCurrent)
-        return;
-
-    // stop animation and main display rendering
-    EventSuspender suspender(*mMainDisplay, *mTarget);
-
-    // export directory
-    QString dirName = QFileDialog::getExistingDirectory(this, tr("Export Folder"));
-
-    // make sure existing
-    if (dirName.isEmpty())
-        return;
-    if (!QFileInfo::exists(dirName))
-        return;
-
-    // export param
-    ctrl::Exporter::CommonParam cparam;
-    ctrl::Exporter::ImageParam iparam;
-    {
-        QScopedPointer<ImageExportDialog> dialog(new ImageExportDialog(*mCurrent, dirName, aSuffix, this));
-
-        dialog->exec();
-        if (dialog->result() != QDialog::Accepted)
-            return;
-
-        cparam = dialog->commonParam();
-        iparam = dialog->imageParam();
-    }
-
-    // gui for confirm overwrite
-    auto overwriteConfirmer = [=](const QString&) -> bool {
-        QMessageBox msgBox;
-        msgBox.setText(tr("File already exists."));
-        msgBox.setInformativeText(tr("Do you want to overwrite the existing file?"));
-        msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
-        msgBox.setDefaultButton(QMessageBox::Ok);
-        int ret = msgBox.exec();
-        return (ret == QMessageBox::Ok);
-    };
-
-    menu::ProgressReporter progress(true, this);
-    ctrl::Exporter exporter(*mCurrent);
-    exporter.setOverwriteConfirmer(overwriteConfirmer);
-    exporter.setProgressReporter(progress);
-
-    // execute
-    if (!exporter.execute(cparam, iparam)) {
-        progress.cancel();
-        if (!exporter.isCanceled()) {
-            QMessageBox::warning(nullptr, tr("Export Error"), exporter.log());
-        }
-    }
-}
-
-void MainWindow::onQuickExportTriggered(const QString& aFormat) {
-    // General parameters
-    GeneralParams genParam;
-    genParam.fileName = mCurrent->fileName();
-    if (genParam.fileName.isEmpty()) {
-        genParam.fileName = "New Export";
-    }
-    genParam.exportName = QFileInfo(genParam.fileName).baseName();
-    genParam.exportDirectory = QFileDialog::getExistingDirectory(this, tr("Export Folder"));
-    genParam.exportFileName = QDir(genParam.exportDirectory.absolutePath() + "/" + genParam.exportName + "." +
-        QString(aFormat).replace("_o", "").replace("_t", "").replace(".anie", ""));
-    genParam.osExportTarget = QFileInfo(genParam.exportName).absoluteFilePath();
-    genParam.nativeWidth = mCurrent->attribute().imageSize().width();
-    genParam.nativeHeight = mCurrent->attribute().imageSize().height();
-    genParam.exportWidth = mCurrent->attribute().imageSize().width();
-    genParam.exportHeight = mCurrent->attribute().imageSize().height();
-    genParam.aspectRatio = custom;
-    genParam.nativeFPS = mCurrent->attribute().fps();
-    genParam.fps = mCurrent->attribute().fps();
-    genParam.bitrate = 0;
-    genParam.imageExportQuality = 100;
-    genParam.allowTransparency = aFormat.contains("_t") || aFormat == "png";
-    genParam.forcePipe = false;
-    genParam.loop = true;
-    genParam.exportWithAudio = !mCurrent->pConf->empty();
-    genParam.useCustomParam = false;
-    frameExportRange fer;
-    fer.firstFrame = mCurrent->attribute().frameRange().min();
-    fer.lastFrame = mCurrent->attribute().frameRange().max();
-    genParam.nativeFrameRange = fer;
-    genParam.exportAllFrames = true;
-    genParam.exportRange = {fer};
-    genParam.exportToLast = true;
-    genParam.imageExportQuality = -1;
-    // Get format info
-    bool imageExport = false;
-    ImageParams img;
-    VideoParams vid;
-    if (aFormat == "png") {
-        imageExport = true;
-        img.format = availableImageFormats::png;
-    }
-    else {
-        if (aFormat.contains("gif")) {
-            vid.format = availableVideoFormats::gif;
-        }
-        else if (aFormat.contains("mp4")) {
-            vid.format = availableVideoFormats::mp4;
-        }
-        else if (aFormat.contains("avi")) {
-            vid.format = availableVideoFormats::avi;
-        }
-        else if (aFormat.contains("webm")) {
-            vid.format = availableVideoFormats::webm;
-        }
-        if (!genParam.allowTransparency)
-            vid.intermediateFormat = availableIntermediateFormats::ppm;
-        else {
-            vid.intermediateFormat = availableIntermediateFormats::png;
-        }
-    }
-    // Export parameters
-    auto exParam = new exportParam();
-    exParam->generalParams = genParam;
-    exParam->imageParams = img;
-    exParam->videoParams = vid;
-    exParam->exportType = imageExport? exportTarget::image : exportTarget::video;
-
-    // Main export function
-    std::vector<audioConfig> validAudioStreams = AudioPlaybackWidget::getValidAudioStreams(*mCurrent->pConf);
-    if(isExportParamValid(exParam, exportWidget, &validAudioStreams)){
-        exportProject(*exParam, mCurrent, exportWidget, validAudioStreams);
-    }
-}
-
-void MainWindow::onExportVideoTriggered(const ctrl::VideoFormat& aFormat) {
-    if (!mCurrent)
-        return;
-
-    const QString suffix = aFormat.name;
-    const bool isGif = suffix == "gif";
-
-    // stop animation and main display rendering
-    EventSuspender suspender(*mMainDisplay, *mTarget);
-
-    const QString targetVideos = "Videos (*." + suffix + ")";
-
-    // get export file name
-    QString fileName = QFileDialog::getSaveFileName(
-        this,
-        tr("Export File"),
-        QString(), // dir
-        targetVideos
-    );
-    const QFileInfo fileInfo(fileName);
-
-    // make sure existing
-    if (fileName.isEmpty())
-        return;
-    if (!fileInfo.dir().exists())
-        return;
-
-    if (fileInfo.suffix().isEmpty()) {
-        fileName += "." + suffix; // makesure suffix
-    } else if (fileInfo.suffix() != suffix) {
-        QMessageBox::warning(nullptr, tr("Operation Error"), tr("Invalid extension specified."));
-        return;
-    }
-
-    // export param
-    ctrl::Exporter::CommonParam cparam;
-    ctrl::Exporter::VideoParam vparam;
-    ctrl::Exporter::GifParam gparam;
-    if (isGif) {
-        QScopedPointer<GifExportDialog> dialog(new GifExportDialog(*mCurrent, fileName, this));
-        dialog->exec();
-        if (dialog->result() != QDialog::Accepted)
-            return;
-
-        cparam = dialog->commonParam();
-        gparam = dialog->gifParam();
-    } else {
-        QScopedPointer<VideoExportDialog> dialog(new VideoExportDialog(*mCurrent, fileName, aFormat, this));
-        dialog->exec();
-        if (dialog->result() != QDialog::Accepted)
-            return;
-
-        cparam = dialog->commonParam();
-        vparam = dialog->videoParam();
-    }
-    // vparam.codec = codec;
-
-    menu::LoggableProgressReporter progress(true, this);
-    ctrl::Exporter exporter(*mCurrent);
-    exporter.setOverwriteConfirmer([=](const QString&) -> bool { return true; });
-    exporter.setProgressReporter(progress);
-    exporter.setUILogger(progress);
-
-    // Include the project's multi-track audio on video exports: it is mixed and
-    // muxed in-process (linked libav*) with the video in one pass.
-    if (!isGif) {
-        const auto validAudio = AudioPlaybackWidget::getValidAudioStreams(*mCurrent->pConf);
-        QVector<media::AudioMixer::Track> audioTracks;
-        audioTracks.reserve(int(validAudio.size()));
-        for (const auto& ac : validAudio) {
-            media::AudioMixer::Track t;
-            t.path = ac.audioPath.absoluteFilePath();
-            t.startFrame = ac.startFrame;
-            t.endFrame = ac.endFrame;
-            t.volume = AudioPlaybackWidget::getVol(ac.volume);
-            t.enabled = true;
-            audioTracks.push_back(t);
-        }
-        exporter.setAudioTracks(audioTracks);
-    }
-
-    // execute
-    auto result = isGif ? exporter.execute(cparam, gparam) : exporter.execute(cparam, vparam);
-
-    if (!result) {
-        progress.cancel();
-
-        if (result.code == ctrl::Exporter::ResultCode_Canceled) {
-        } else if (result.code == ctrl::Exporter::ResultCode_EncoderOpenFailed) {
-            QMessageBox message;
-            message.setIcon(QMessageBox::Warning);
-            message.setText(tr("FFmpeg was not found."));
-            auto infoText = tr("Video export requires FFmpeg.") + "\n" +
-                tr("Install FFmpeg on the system, or place a FFmpeg executable "
-                   "under \"/tools\" in the folder where you installed AnimeEffects.");
-            message.setInformativeText(infoText);
-            message.setStandardButtons(QMessageBox::Ok);
-            message.setDefaultButton(QMessageBox::Ok);
-            message.exec();
-        } else {
-            QMessageBox::warning(nullptr, tr("Export Error"), exporter.log());
-        }
-    }
-}
 void MainWindow::onMoveFrameTriggered(bool moveRight) {
     int frameDest = moveRight? 1: -1;
     core::Frame dest = mTarget->currentFrame();

@@ -22,7 +22,6 @@
 #include "gui/theme/Colors.h"
 #include <QDialog>
 #include <QToolButton>
-#include "gui/prop/splineWidget.h"
 
 namespace gui {
 namespace prop {

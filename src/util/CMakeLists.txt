@@ -1,4 +1,5 @@
 project(util)
+ae_enable_warnings()
 
 add_library(${PROJECT_NAME}
         ../XC.h

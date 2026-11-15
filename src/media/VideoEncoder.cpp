@@ -11,6 +11,7 @@ extern "C" {
 #include <libavutil/frame.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
+#include <libavutil/dict.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/samplefmt.h>
 #include <libswresample/swresample.h>
@@ -18,6 +19,35 @@ extern "C" {
 }
 
 namespace media {
+
+QImage fitImage(const QImage& aImage, const QSize& aTarget, FitMode aFit) {
+    if (aFit == FitMode::None || aImage.size() == aTarget || aTarget.isEmpty()) {
+        return aImage;
+    }
+    const QImage src = (aImage.format() == QImage::Format_RGBA8888)
+                           ? aImage
+                           : aImage.convertToFormat(QImage::Format_RGBA8888);
+    const Qt::AspectRatioMode mode = (aFit == FitMode::Pad)
+                                         ? Qt::KeepAspectRatio
+                                         : Qt::KeepAspectRatioByExpanding;
+    const QImage fitted = src.scaled(aTarget, mode, Qt::SmoothTransformation);
+    QImage canvas(aTarget, QImage::Format_RGBA8888);
+    canvas.fill(0x00000000); // fully transparent; stickers want no background
+    // KeepAspectRatioByExpanding can exceed the frame, so the offset may be
+    // negative — that is the crop. Copy only the intersecting rectangle.
+    const int ox = (aTarget.width() - fitted.width()) / 2;
+    const int oy = (aTarget.height() - fitted.height()) / 2;
+    const int sx = std::max(0, -ox);
+    const int sy = std::max(0, -oy);
+    const int cw = std::min(fitted.width() - sx, aTarget.width() - std::max(0, ox));
+    const int ch = std::min(fitted.height() - sy, aTarget.height() - std::max(0, oy));
+    for (int y = 0; y < ch; ++y) {
+        std::memcpy(canvas.scanLine(std::max(0, oy) + y) + (size_t)std::max(0, ox) * 4,
+                    fitted.constScanLine(sy + y) + (size_t)sx * 4, (size_t)cw * 4);
+    }
+    return canvas;
+}
+
 
 namespace {
 
@@ -93,6 +123,7 @@ struct VideoEncoder::Impl {
     AVFrame* mFrame = nullptr;
     AVPixelFormat mPixFmt = AV_PIX_FMT_NONE;
     bool mClosed = true;
+    FitMode mFit = FitMode::None;
 
     // Optional audio stream (interleaved float, set via setAudio()).
     AVCodecContext* mAudioCtx = nullptr;
@@ -216,6 +247,15 @@ bool VideoEncoder::open(const Config& aConfig) {
     mImpl->mCtx = ::avcodec_alloc_context3(codec);
     if (!mImpl->mCtx) { return fail("could not allocate codec context"); }
 
+    // Muxers that declare AVFMT_GLOBALHEADER (matroska, mp4, mov, ...) need the
+    // codec's extradata up front in the container header. Without this flag the
+    // encoder is never asked for it and avformat_write_header fails with
+    // AVERROR_INVALIDDATA. Some codec/container pairs happen to cope, which is
+    // why this went unnoticed until a matroska+libx265 encode was exercised.
+    if (mImpl->mFmt->oformat->flags & AVFMT_GLOBALHEADER) {
+        mImpl->mCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    }
+
     mImpl->mCtx->width = width;
     mImpl->mCtx->height = height;
     mImpl->mCtx->pix_fmt = pixFmt;
@@ -232,10 +272,36 @@ bool VideoEncoder::open(const Config& aConfig) {
         ::av_opt_set_int(mImpl->mCtx->priv_data, "crf", crf, 0);
     }
 
-    if (::avcodec_open2(mImpl->mCtx, codec, nullptr) < 0) {
-        return fail("could not open encoder: " + aConfig.codec);
+    // Private encoder options (e.g. libvpx "auto-alt-ref"). avcodec_open2
+    // consumes the entries it recognises and LEAVES the rest, which is how we
+    // detect a typo instead of silently producing wrong output.
+    AVDictionary* opts = nullptr;
+    for (auto it = aConfig.encOptions.constBegin(); it != aConfig.encOptions.constEnd(); ++it) {
+        const QByteArray k = it.key().toUtf8();
+        const QByteArray v = it.value().toUtf8();
+        ::av_dict_set(&opts, k.constData(), v.constData(), 0);
+    }
+    const int openErr = ::avcodec_open2(mImpl->mCtx, codec, &opts);
+    if (opts) {
+        AVDictionaryEntry* leftover = ::av_dict_get(opts, "", nullptr, AV_DICT_IGNORE_SUFFIX);
+        const QString unknown = leftover ? QString::fromUtf8(leftover->key) : QString();
+        ::av_dict_free(&opts);
+        if (leftover) {
+            return fail(QStringLiteral("unknown encoder option '%1' for %2")
+                            .arg(unknown, aConfig.codec));
+        }
+    }
+    if (openErr < 0) {
+        // Report libav's own reason: "could not open encoder" alone is useless
+        // when the real cause is an unsupported pixel format or a missing
+        // device.
+        char errbuf[AV_ERROR_MAX_STRING_SIZE] = {0};
+        ::av_strerror(openErr, errbuf, sizeof(errbuf));
+        return fail(QStringLiteral("could not open encoder %1: %2")
+                        .arg(aConfig.codec, QString::fromUtf8(errbuf)));
     }
     mImpl->mPixFmt = pixFmt;
+    mImpl->mFit = aConfig.fit;
 
     // Stream.
     mImpl->mStream = ::avformat_new_stream(mImpl->mFmt, nullptr);
@@ -245,6 +311,18 @@ bool VideoEncoder::open(const Config& aConfig) {
         return fail("could not copy codec parameters");
     }
     mImpl->mStream->time_base = mImpl->mCtx->time_base;
+    // Stream codec tag (e.g. "hvc1" for HEVC). This belongs to the container's
+    // stream entry, not the encoder, so it is applied AFTER the parameters are
+    // copied and before the header is written. Without it, HEVC in an ISO
+    // container defaults to hev1, which Safari/iOS refuse to play.
+    if (aConfig.codecTag.size() == 4) {
+        // Bind the UTF-8 buffer to a local: taking constData() off a temporary
+        // QByteArray leaves a dangling pointer by the next statement (this
+        // exact bug already bit the container name above).
+        const QByteArray tagBytes = aConfig.codecTag.toUtf8();
+        const char* t = tagBytes.constData();
+        mImpl->mStream->codecpar->codec_tag = (uint32_t)MKTAG(t[0], t[1], t[2], t[3]);
+    }
     // Make the real framerate discoverable to decoders/players (avg_frame_rate
     // is not the same as time_base and would otherwise read as 0/0).
     mImpl->mStream->avg_frame_rate = AVRational{ aConfig.fps, 1 };
@@ -262,8 +340,29 @@ bool VideoEncoder::open(const Config& aConfig) {
     if (::avio_open(&mImpl->mFmt->pb, aConfig.outputPath.toUtf8().constData(), AVIO_FLAG_WRITE) < 0) {
         return fail("could not open output file: " + aConfig.outputPath);
     }
-    if (::avformat_write_header(mImpl->mFmt, nullptr) < 0) {
-        return fail("could not write container header");
+    // Muxer options (faststart and friends) belong to the container, so they are
+    // consumed HERE and not by the codec. Leftovers are reported: a requirement
+    // that quietly did nothing is how a platform rejects a file we claimed was
+    // built for it.
+    AVDictionary* muxOpts = nullptr;
+    for (auto it = aConfig.muxerOptions.constBegin(); it != aConfig.muxerOptions.constEnd(); ++it) {
+        ::av_dict_set(&muxOpts, it.key().toUtf8().constData(), it.value().toUtf8().constData(), 0);
+    }
+    const int hdrErr = ::avformat_write_header(mImpl->mFmt, &muxOpts);
+    if (muxOpts) {
+        AVDictionaryEntry* leftover = ::av_dict_get(muxOpts, "", nullptr, AV_DICT_IGNORE_SUFFIX);
+        const QString unknown = leftover ? QString::fromUtf8(leftover->key) : QString();
+        ::av_dict_free(&muxOpts);
+        if (leftover) {
+            return fail(QStringLiteral("unknown muxer option '%1' for %2")
+                            .arg(unknown, aConfig.container));
+        }
+    }
+    if (hdrErr < 0) {
+        char errbuf[AV_ERROR_MAX_STRING_SIZE] = {0};
+        ::av_strerror(hdrErr, errbuf, sizeof(errbuf));
+        return fail(QStringLiteral("could not write container header for %1/%2: %3")
+                        .arg(aConfig.container, aConfig.codec, QString::fromUtf8(errbuf)));
     }
 
     // Format converter: QImage is normalized to RGBA before sws.
@@ -296,6 +395,10 @@ bool VideoEncoder::writeFrame(const QImage& aFrame) {
     QImage rgba = aFrame.convertToFormat(QImage::Format_RGBA8888);
     const int width = mImpl->mCtx->width;
     const int height = mImpl->mCtx->height;
+
+    // Pad/Crop: reconcile the aspect ratio here (before the size-mismatch path
+    // below) so the frame handed to sws is already exactly the encoded size.
+    rgba = fitImage(rgba, QSize(width, height), mImpl->mFit);
 
     // The encoder may have rounded a YUV frame dimension up to an even size
     // (normalizedSize). If the caller fed an odd-sized QImage, the sws/direct
@@ -480,6 +583,33 @@ bool VideoEncoder::writeAudio() {
     }
 
     bool ok = true;
+
+    // Take everything the encoder is currently holding. EAGAIN just means "not
+    // right now" and EOF "no more ever" — neither is an error.
+    auto drain = [&]() -> bool {
+        AVPacket* pkt = ::av_packet_alloc();
+        if (!pkt) { mError = "could not allocate audio packet"; return false; }
+        int ret = 0;
+        bool good = true;
+        while ((ret = ::avcodec_receive_packet(mImpl->mAudioCtx, pkt)) >= 0) {
+            ::av_packet_rescale_ts(pkt, mImpl->mAudioCtx->time_base, mImpl->mAudioStream->time_base);
+            pkt->stream_index = mImpl->mAudioStream->index;
+            if (::av_interleaved_write_frame(mImpl->mFmt, pkt) < 0) {
+                mError = "could not write audio packet";
+                good = false;
+                ::av_packet_unref(pkt);
+                break;
+            }
+            ::av_packet_unref(pkt);
+        }
+        if (good && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) {
+            mError = "audio receive error";
+            good = false;
+        }
+        ::av_packet_free(&pkt);
+        return good;
+    };
+
     const qint64 totalFrames = aligned / frameSize;
     for (qint64 f = 0; f < totalFrames && ok; ++f) {
         if (::av_frame_make_writable(aframe) < 0) { mError = "audio frame not writable"; ok = false; break; }
@@ -488,21 +618,34 @@ bool VideoEncoder::writeAudio() {
                                     inArr, frameSize);
         if (n < 0) { mError = "audio resample failed"; ok = false; break; }
         aframe->nb_samples = n;
-        aframe->pts = f;
+        // PTS in the ENCODER's time base, which for audio is 1/sample_rate — so a
+        // frame's timestamp is its first SAMPLE, not its index. `pts = f` put the
+        // whole stream inside three samples of t=0: the samples were all encoded
+        // and all written, and the muxed stream still reported one frame's duration
+        // (0.021s) however long the video was, because every packet claimed to be
+        // at the same instant. Content was right; time was collapsed.
+        aframe->pts = f * frameSize;
 
-        AVPacket* pkt = ::av_packet_alloc();
-        if (::avcodec_send_frame(mImpl->mAudioCtx, aframe) >= 0) {
-            int ret;
-            while ((ret = ::avcodec_receive_packet(mImpl->mAudioCtx, pkt)) >= 0) {
-                ::av_packet_rescale_ts(pkt, mImpl->mAudioCtx->time_base, mImpl->mAudioStream->time_base);
-                pkt->stream_index = mImpl->mAudioStream->index;
-                if (::av_interleaved_write_frame(mImpl->mFmt, pkt) < 0) { mError = "could not write audio packet"; ok = false; }
-                ::av_packet_unref(pkt);
-                if (!ok) break;
-            }
-            if (ok && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) { mError = "audio receive error"; ok = false; }
+        // EAGAIN from send_frame means the encoder is full. The previous version
+        // only checked `>= 0`, so an EAGAIN frame's audio was dropped on the floor
+        // with no symptom other than a file that was too short. Drain and retry.
+        int ret = ::avcodec_send_frame(mImpl->mAudioCtx, aframe);
+        while (ret == AVERROR(EAGAIN)) {
+            if (!drain()) { ok = false; break; }
+            ret = ::avcodec_send_frame(mImpl->mAudioCtx, aframe);
         }
-        ::av_packet_free(&pkt);
+        if (!ok) break;
+        if (ret < 0) { mError = "audio send error"; ok = false; break; }
+        if (!drain()) { ok = false; break; }
+    }
+
+    // Flush the encoder. It holds the tail of the stream — for AAC that is the
+    // priming delay plus whatever is buffered, which is why exported audio was
+    // measured at ONE frame (0.021s) regardless of how long the video was. Without
+    // this send(nullptr) the rest never reaches the file.
+    if (ok) {
+        ::avcodec_send_frame(mImpl->mAudioCtx, nullptr);
+        if (!drain()) ok = false;
     }
 
     ::av_frame_free(&aframe);

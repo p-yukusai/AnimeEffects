@@ -64,9 +64,9 @@ static void openPopoverLike(QApplication& app, EasingPickWidget& w,
     w.move(left, anchor.y());
     w.show();
     w.raise();
-    QTimer::singleShot(0, &w, [&w, &chip, requested, wasCustom, avail, left, anchor]() {
+    QTimer::singleShot(0, &w, [&w, requested, wasCustom, avail, left, anchor]() {
         if (!w.isVisible()) return;
-        QTimer::singleShot(0, &w, [&w, &chip, requested, wasCustom, avail, left, anchor]() {
+        QTimer::singleShot(0, &w, [&w, requested, wasCustom, avail, left, anchor]() {
             if (!w.isVisible()) return;
             int customH = EasingPickWidget::kCustomHeight; // known tallest height, not measured
             int top = anchor.y();
@@ -75,7 +75,7 @@ static void openPopoverLike(QApplication& app, EasingPickWidget& w,
                     top = qMax(avail.top(), avail.bottom() + 1 - customH);
             }
             if (!wasCustom) w.setValue(requested);
-            QTimer::singleShot(0, &w, [&w, &chip, left, top]() {
+            QTimer::singleShot(0, &w, [&w, left, top]() {
                 if (!w.isVisible()) return;
                 w.move(left, top);
                 w.setAnchorPoint(QPoint(left, top));

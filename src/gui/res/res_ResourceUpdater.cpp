@@ -13,7 +13,7 @@
 #include "gui/res/res_ImageSetter.h"
 #include "gui/res/res_ResourceUpdater.h"
 #include "img/Util.h"
-#include "deps/zip_file.h"
+#include <zip_file.h>
 
 // #define RESOURCE_UPDATER_DUMP(...) XC_DEBUG_REPORT(__VA_ARGS__)
 #define RESOURCE_UPDATER_DUMP(...)
@@ -216,20 +216,20 @@ namespace gui::res {
     };
 
     //-------------------------------------------------------------------------------------------------
-    void addTreeItemRecursive(const QTreeWidget& aTree, QTreeWidgetItem& aItem, img::ResourceNode& aNode) {
+    void addTreeItemRecursive(QTreeWidgetItem& aItem, img::ResourceNode& aNode) {
         for (auto childNode : aNode.children()) {
-            auto childItem = new res::Item(aTree, *childNode, childNode->data().identifier());
+            auto childItem = new res::Item(*childNode, childNode->data().identifier());
             aItem.addChild(childItem);
 
             // recursive call
-            addTreeItemRecursive(aTree, *childItem, *childNode);
+            addTreeItemRecursive(*childItem, *childNode);
         }
     }
 
     res::Item*
-    ResourceUpdater::createGUITree(const QTreeWidget& aTree, img::ResourceNode& aNode, const QString& aIdentifier) {
-        auto item = new res::Item(aTree, aNode, aIdentifier);
-        addTreeItemRecursive(aTree, *item, aNode);
+    ResourceUpdater::createGUITree(img::ResourceNode& aNode, const QString& aIdentifier) {
+        auto item = new res::Item(aNode, aIdentifier);
+        addTreeItemRecursive(*item, aNode);
         return item;
     }
 
@@ -248,7 +248,7 @@ namespace gui::res {
 
         auto& holder = mProject.resourceHolder();
 
-        auto guiTree = createGUITree(aTree, *newTree, holder.relativeFilePath(aFilePath));
+        auto guiTree = createGUITree(*newTree, holder.relativeFilePath(aFilePath));
         XC_PTR_ASSERT(guiTree);
 
         {
@@ -257,7 +257,7 @@ namespace gui::res {
             cmnd::ScopedMacro macro(stack, CmndName::tr("Add new asset"));
 
             // notifier
-            auto notifier = new AddNewOneNotifier(mViaPoint, mProject);
+            auto notifier = new AddNewOneNotifier(mProject);
             notifier->event().setSingleTarget(*newTree);
             macro.grabListener(notifier);
 
@@ -531,7 +531,7 @@ namespace gui::res {
                 aStack.push(new cmnd::PushBackNewTreeObject<img::ResourceNode>(&aCurNode.children(), newChild));
 
                 // append new item
-                auto newItem = new res::Item(*aCurItem.treeWidget(), *newChild, newChild->data().identifier());
+                auto newItem = new res::Item(*newChild, newChild->data().identifier());
                 aStack.push(new GUITreeItemAppender(aCurItem, newItem));
             }
         }
@@ -703,7 +703,7 @@ namespace gui::res {
             cmnd::ScopedMacro macro(stack, CmndName::tr("Delete images"));
 
             // notifier
-            auto notifier = new DeleteNotifier(mViaPoint, mProject);
+            auto notifier = new DeleteNotifier(mProject);
             notifier->event().setSingleTarget(node);
             macro.grabListener(notifier);
 

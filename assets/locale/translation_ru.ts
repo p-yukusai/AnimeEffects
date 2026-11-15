@@ -4,266 +4,475 @@
 <context>
     <name>AnimeEffects.Dialogs</name>
     <message>
-        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="56"/>
+        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="57"/>
         <source>Animation settings</source>
         <translation>Настройки анимации</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="106"/>
+        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="107"/>
         <source>Loop animation</source>
         <translation>Зациклить анимацию</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="137"/>
+        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="138"/>
         <source>Frame range</source>
         <translation>Диапазон кадров</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="173"/>
+        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="174"/>
         <source>Frames per second</source>
         <translation>Кадров в секунду</translation>
     </message>
 </context>
 <context>
+    <name>BlendModeName</name>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="142"/>
+        <location filename="../../src/img/BlendMode.cpp" line="198"/>
+        <source>Normal</source>
+        <translation>Обычный</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="144"/>
+        <source>Darken</source>
+        <translation>Затемнение</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="146"/>
+        <source>Multiply</source>
+        <translation>Умножение</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="148"/>
+        <source>Color Burn</source>
+        <translation>Затемнение основы</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="150"/>
+        <source>Linear Burn</source>
+        <translation>Линейный затемнитель</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="152"/>
+        <source>Lighten</source>
+        <translation>Замена светлым</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="154"/>
+        <source>Screen</source>
+        <translation>Экран</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="156"/>
+        <source>Color Dodge</source>
+        <translation>Осветление основы</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="158"/>
+        <source>Linear Dodge</source>
+        <translation>Линейный осветлитель</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="160"/>
+        <source>Overlay</source>
+        <translation>Перекрытие</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="162"/>
+        <source>Soft Light</source>
+        <translation>Мягкий свет</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="164"/>
+        <source>Hard Light</source>
+        <translation>Жёсткий свет</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="166"/>
+        <source>Vivid Light</source>
+        <translation>Яркий свет</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="168"/>
+        <source>Linear Light</source>
+        <translation>Линейный свет</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="170"/>
+        <source>Pin Light</source>
+        <translation>Точечный свет</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="172"/>
+        <source>Hard Mix</source>
+        <translation>Жесткое смешение</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="174"/>
+        <source>Difference</source>
+        <translation>Разница</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="176"/>
+        <source>Exclusion</source>
+        <translation>Исключение</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="178"/>
+        <source>Subtract</source>
+        <translation>Вычитание</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="180"/>
+        <source>Divide</source>
+        <translation>Разделение</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="182"/>
+        <source>Add (Glow)</source>
+        <translation>Сложение (свечение)</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="184"/>
+        <source>Glow Dodge</source>
+        <translation>Осветление основы (свечение)</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="186"/>
+        <source>Hue</source>
+        <translation>Цветовой тон</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="188"/>
+        <source>Saturation</source>
+        <translation>Насыщенность</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="190"/>
+        <source>Color</source>
+        <translation>Цветность</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="192"/>
+        <source>Luminosity</source>
+        <translation>Яркость</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="194"/>
+        <source>Darker Color</source>
+        <translation>Темнее</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="196"/>
+        <source>Lighter Color</source>
+        <translation>Светлее</translation>
+    </message>
+</context>
+<context>
     <name>CmndName</name>
     <message>
+        <location filename="../../src/ctrl/bone/bone_BindNodesMode.cpp" line="78"/>
         <source>Bind node to bone</source>
-        <translation type="vanished">Привязать узел к кости</translation>
+        <translation>Привязать узел к кости</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_BindNodesMode.cpp" line="101"/>
         <source>Unbind node from bones</source>
-        <translation type="vanished">Отвязать узел от костей</translation>
+        <translation>Отвязать узел от костей</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_CreateMode.cpp" line="109"/>
         <source>Add new bone</source>
-        <translation type="vanished">Добавить новую кость</translation>
+        <translation>Добавить новую кость</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_CreateMode.cpp" line="125"/>
         <source>Add new parent bone</source>
-        <translation type="vanished">Добавить новую родительскую кость</translation>
+        <translation>Добавить новую родительскую кость</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_DeleteMode.cpp" line="64"/>
         <source>Delete bone</source>
-        <translation type="vanished">Удалить кость</translation>
+        <translation>Удалить кость</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_EraseInflMode.cpp" line="159"/>
+        <location filename="../../src/ctrl/bone/bone_InfluenceMode.cpp" line="118"/>
+        <location filename="../../src/ctrl/bone/bone_PaintInflMode.cpp" line="135"/>
         <source>Update bone influence</source>
-        <translation type="vanished">Обновить влияние кости</translation>
+        <translation>Обновить влияние кости</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_MoveJointMode.cpp" line="81"/>
         <source>Move bone</source>
-        <translation type="vanished">Переместить кость</translation>
+        <translation>Переместить кость</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/ffd/ffd_BrushMode.cpp" line="124"/>
         <source>Update FFD</source>
-        <translation type="vanished">Обновить FFD</translation>
+        <translation>Обновить FFD</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/ffd/ffd_DragMode.cpp" line="185"/>
         <source>Move FFD key vertex</source>
-        <translation type="vanished">Переместить вершину ключа FFD</translation>
+        <translation>Переместить вершину ключа FFD</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_CreateMode.cpp" line="88"/>
         <source>Add mesh key triangle</source>
-        <translation type="vanished">Добавить треугольник ключа сетки</translation>
+        <translation>Добавить треугольник ключа сетки</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_CreateMode.cpp" line="120"/>
         <source>Move mesh key vertex</source>
-        <translation type="vanished">Переместить вершину ключа сетки</translation>
+        <translation>Переместить вершину ключа сетки</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_DeleteMode.cpp" line="64"/>
         <source>Remove mesh key vertex</source>
-        <translation type="vanished">Убрать вершину ключа сетки</translation>
+        <translation>Убрать вершину ключа сетки</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_DeleteMode.cpp" line="77"/>
         <source>Remove mesh key face</source>
-        <translation type="vanished">Убрать грань ключа сетки</translation>
+        <translation>Убрать грань ключа сетки</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_SplitMode.cpp" line="144"/>
         <source>Split mesh key triangle</source>
-        <translation type="vanished">Разделить треугольник ключа сетки</translation>
+        <translation>Разделить треугольник ключа сетки</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/pose/pose_DrawBoneMode.cpp" line="136"/>
         <source>Pull bones of a pose key</source>
-        <translation type="vanished">Потянуть кости ключа позы</translation>
+        <translation>Потянуть кости ключа позы</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/pose/pose_ErasePoseMode.cpp" line="84"/>
         <source>erase a pose</source>
-        <translation type="vanished">Стереть позу</translation>
+        <translation>Стереть позу</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/pose/pose_TransBoneMode.cpp" line="101"/>
         <source>rotate a bone of a posing key</source>
-        <translation type="vanished">Повернуть кость ключа позы</translation>
+        <translation>Повернуть кость ключа позы</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/srt/srt_CentroidMode.cpp" line="112"/>
         <source>update centroid of a moving key</source>
-        <translation type="vanished">Обновить центроид ключа перемещения</translation>
+        <translation>Обновить центроид ключа перемещения</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="175"/>
         <source>update a moving key</source>
-        <translation type="vanished">Обновить ключ перемещения</translation>
+        <translation>Обновить ключ перемещения</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="206"/>
         <source>update a rotation key</source>
-        <translation type="vanished">Обновить ключ поворота</translation>
+        <translation>Обновить ключ поворота</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="237"/>
         <source>update a scaling key</source>
-        <translation type="vanished">Обновить ключ масштаба</translation>
+        <translation>Обновить ключ масштаба</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="354"/>
         <source>Move keys</source>
-        <translation type="vanished">Переместить ключи</translation>
+        <translation>Переместить ключи</translation>
     </message>
     <message>
         <source>Paste clipboard key</source>
         <translation type="vanished">Вставить ключ из буфера обмена</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="669"/>
+        <source>Paste clipboard keys</source>
+        <translation>Вставить ключи из буфера обмена</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="843"/>
         <source>Paste keys</source>
-        <translation type="vanished">Вставить ключи</translation>
+        <translation>Вставить ключи</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="908"/>
         <source>Delete keys</source>
-        <translation type="vanished">Удалить ключи</translation>
+        <translation>Удалить ключи</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="258"/>
         <source>Update default movement key</source>
-        <translation type="vanished">Обновить ключ перемещения по умолчанию</translation>
+        <translation>Обновить ключ перемещения по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="259"/>
         <source>Update movement key</source>
-        <translation type="vanished">Обновить ключ перемещения</translation>
+        <translation>Обновить ключ перемещения</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="269"/>
         <source>Update default rotation key</source>
-        <translation type="vanished">Обновить ключ поворота по умолчанию</translation>
+        <translation>Обновить ключ поворота по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="270"/>
         <source>Update rotation key</source>
-        <translation type="vanished">Обновить ключ поворота</translation>
+        <translation>Обновить ключ поворота</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="280"/>
         <source>Update default scaling key</source>
-        <translation type="vanished">Обновить ключ масштаба по умолчанию</translation>
+        <translation>Обновить ключ масштаба по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="281"/>
         <source>Update scaling key</source>
-        <translation type="vanished">Обновить ключ масштаба</translation>
+        <translation>Обновить ключ масштаба</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="291"/>
         <source>Update default depth key</source>
-        <translation type="vanished">Обновить ключ глубины по умолчанию</translation>
+        <translation>Обновить ключ глубины по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="292"/>
         <source>Update depth key</source>
-        <translation type="vanished">Обновить ключ глубины</translation>
+        <translation>Обновить ключ глубины</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="302"/>
         <source>Update default opacity key</source>
-        <translation type="vanished">Обновить ключ непрозрачности по умолчанию</translation>
+        <translation>Обновить ключ непрозрачности по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="303"/>
         <source>Update opacity key</source>
-        <translation type="vanished">Обновить ключ непрозрачности</translation>
+        <translation>Обновить ключ непрозрачности</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="313"/>
         <source>Update default HSV key</source>
-        <translation type="vanished">Обновить ключ HSV по умолчанию</translation>
+        <translation>Обновить ключ HSV по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="314"/>
         <source>Update HSV key</source>
-        <translation type="vanished">Обновить ключ HSV</translation>
+        <translation>Обновить ключ HSV</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="324"/>
         <source>Update default blur key</source>
-        <translation type="vanished">Обновить ключ размытия по умолчанию</translation>
+        <translation>Обновить ключ размытия по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="325"/>
         <source>Update blur key</source>
-        <translation type="vanished">Обновить ключ размытия</translation>
+        <translation>Обновить ключ размытия</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="335"/>
         <source>Update default pose key</source>
-        <translation type="vanished">Обновить ключ позы по умолчанию</translation>
+        <translation>Обновить ключ позы по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="336"/>
         <source>Update pose key</source>
-        <translation type="vanished">Обновить ключ позы</translation>
+        <translation>Обновить ключ позы</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="346"/>
         <source>Update default FFD key</source>
-        <translation type="vanished">Обновить ключ FFD по умолчанию</translation>
+        <translation>Обновить ключ FFD по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="347"/>
         <source>Update FFD key</source>
-        <translation type="vanished">Обновить ключ FFD</translation>
+        <translation>Обновить ключ FFD</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="359"/>
         <source>Update default image resource key</source>
-        <translation type="vanished">Обновить ключ ресурса изображения по умолчанию</translation>
+        <translation>Обновить ключ ресурса изображения по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="360"/>
         <source>update image resource key</source>
-        <translation type="vanished">Обновить ключ ресурса изображения</translation>
+        <translation>Обновить ключ ресурса изображения</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="380"/>
         <source>Update the image&apos;s default offset key</source>
-        <translation type="vanished">Обновить ключ смещения изображения по умолчанию</translation>
+        <translation>Обновить ключ смещения изображения по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="381"/>
         <source>Update the image&apos;s offset key</source>
-        <translation type="vanished">Обновить ключ смещения изображения</translation>
+        <translation>Обновить ключ смещения изображения</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="400"/>
         <source>Update the default mesh size key</source>
-        <translation type="vanished">Обновить ключ размера сетки по умолчанию</translation>
+        <translation>Обновить ключ размера сетки по умолчанию</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="401"/>
         <source>Update mesh size key</source>
-        <translation type="vanished">Обновить ключ размера сетки</translation>
+        <translation>Обновить ключ размера сетки</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="450"/>
         <source>Add new movement key</source>
-        <translation type="vanished">Добавить новый ключ перемещения</translation>
+        <translation>Добавить новый ключ перемещения</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="454"/>
         <source>Add new rotation key</source>
-        <translation type="vanished">Добавить новый ключ поворота</translation>
+        <translation>Добавить новый ключ поворота</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="459"/>
         <source>Add new scaling key</source>
-        <translation type="vanished">Добавить новый ключ масштаба</translation>
+        <translation>Добавить новый ключ масштаба</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="463"/>
         <source>Add new depth key</source>
-        <translation type="vanished">Добавить новый ключ глубины</translation>
+        <translation>Добавить новый ключ глубины</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="467"/>
         <source>Add new opacity key</source>
-        <translation type="vanished">Добавить новый ключ непрозрачности</translation>
+        <translation>Добавить новый ключ непрозрачности</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="471"/>
         <source>Add new HSV key</source>
-        <translation type="vanished">Добавить новый ключ HSV</translation>
+        <translation>Добавить новый ключ HSV</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="475"/>
         <source>Add new blur key</source>
-        <translation type="vanished">Добавить новый ключ размытия</translation>
+        <translation>Добавить новый ключ размытия</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="481"/>
         <source>Add new pose key</source>
-        <translation type="vanished">Добавить новый ключ позы</translation>
+        <translation>Добавить новый ключ позы</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="488"/>
         <source>Add new FFD key</source>
-        <translation type="vanished">Добавить новый ключ FFD</translation>
+        <translation>Добавить новый ключ FFD</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="493"/>
         <source>Add new image key</source>
-        <translation type="vanished">Добавить новый ключ изображения</translation>
+        <translation>Добавить новый ключ изображения</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="786"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="670"/>
         <source>Change the canvas size</source>
         <translation>Изменить размер холста</translation>
     </message>
@@ -272,52 +481,52 @@
         <translation type="vanished">Изменить максимальный кадр</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="807"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="691"/>
         <source>Change the frame range</source>
         <translation>Изменить диапазон кадров</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="828"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="712"/>
         <source>Change loop settings</source>
         <translation>Изменить настройки зацикливания</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="850"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="734"/>
         <source>Change the FPS</source>
         <translation>Изменить FPS</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="400"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="399"/>
         <source>Rename object</source>
         <translation>Переименовать объект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1057"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1056"/>
         <source>Create a layer</source>
         <translation>Создать слой</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1181"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1180"/>
         <source>Duplicate base folder</source>
         <translation>Дублировать базовую папку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1316"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1315"/>
         <source>Duplicate layer</source>
         <translation>Дублировать слой</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1495"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1494"/>
         <source>create a folder object</source>
         <translation>Создать объект-папку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1545"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1544"/>
         <source>Delete object</source>
         <translation>Удалить объект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1679"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1678"/>
         <source>Move object</source>
         <translation>Переместить объект</translation>
     </message>
@@ -361,33 +570,1382 @@
         <translation>Переименовать актив</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TargetWidget.cpp" line="177"/>
+        <location filename="../../src/gui/TargetWidget.cpp" line="168"/>
         <source>Change animation settings</source>
         <translation>Изменить настройки анимации</translation>
     </message>
 </context>
 <context>
+    <name>EasingName</name>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="59"/>
+        <source>Floor</source>
+        <translation>Округление вниз</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="61"/>
+        <source>Linear</source>
+        <translation>Линейная</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="63"/>
+        <source>Sine</source>
+        <translation>Синусоидальная</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="65"/>
+        <source>Quad</source>
+        <translation>Квадратичная</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="67"/>
+        <source>Cubic</source>
+        <translation>Кубическая</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="69"/>
+        <source>Quart</source>
+        <translation>Четвёртой степени</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="71"/>
+        <source>Quint</source>
+        <translation>Пятой степени</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="73"/>
+        <source>Expo</source>
+        <translation>Экспоненциальная</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="75"/>
+        <source>Circ</source>
+        <translation>Круговая</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="77"/>
+        <source>Back</source>
+        <translation>Обратная</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="79"/>
+        <source>Elastic</source>
+        <translation>Эластичная</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="81"/>
+        <source>Bounce</source>
+        <translation>С отскоком</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="83"/>
+        <source>Custom</source>
+        <translation>Пользовательская</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="85"/>
+        <source>Round</source>
+        <translation>Округление</translation>
+    </message>
+</context>
+<context>
+    <name>ExportTargets</name>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="20"/>
+        <source>General</source>
+        <translation>Общее</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="21"/>
+        <source>Bilibili</source>
+        <translation>Bilibili</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="22"/>
+        <source>Bluesky</source>
+        <translation>Bluesky</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="23"/>
+        <source>Dailymotion</source>
+        <translation>Dailymotion</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="24"/>
+        <source>DeviantArt</source>
+        <translation>DeviantArt</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="25"/>
+        <source>Discord</source>
+        <translation>Discord</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="26"/>
+        <source>Douyin</source>
+        <translation>Douyin</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="27"/>
+        <source>Facebook</source>
+        <translation>Facebook</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="28"/>
+        <source>Instagram</source>
+        <translation>Instagram</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="29"/>
+        <source>KakaoTalk</source>
+        <translation>KakaoTalk</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="30"/>
+        <source>LINE</source>
+        <translation>LINE</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="31"/>
+        <source>Mastodon</source>
+        <translation>Mastodon</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="32"/>
+        <source>Messenger</source>
+        <translation>Messenger</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="33"/>
+        <source>Newgrounds</source>
+        <translation>Newgrounds</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="34"/>
+        <source>Nico Nico</source>
+        <translation>Nico Nico</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="35"/>
+        <source>OBS</source>
+        <translation>OBS</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="36"/>
+        <source>Pinterest</source>
+        <translation>Pinterest</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="37"/>
+        <source>pixiv</source>
+        <translation>pixiv</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="38"/>
+        <source>QQ</source>
+        <translation>QQ</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="39"/>
+        <source>Reddit</source>
+        <translation>Reddit</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="40"/>
+        <source>Safari</source>
+        <translation>Safari</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="41"/>
+        <source>Signal</source>
+        <translation>Signal</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="42"/>
+        <source>Snapchat</source>
+        <translation>Snapchat</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="43"/>
+        <source>Telegram</source>
+        <translation>Telegram</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="44"/>
+        <source>TikTok</source>
+        <translation>TikTok</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="45"/>
+        <source>Tumblr</source>
+        <translation>Tumblr</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="46"/>
+        <source>Twitch</source>
+        <translation>Twitch</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="47"/>
+        <source>Vimeo</source>
+        <translation>Vimeo</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="48"/>
+        <source>VK</source>
+        <translation>VK</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="49"/>
+        <source>WeChat</source>
+        <translation>WeChat</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="50"/>
+        <source>Weibo</source>
+        <translation>Weibo</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="51"/>
+        <source>WhatsApp</source>
+        <translation>WhatsApp</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="52"/>
+        <source>X</source>
+        <translation>X</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="53"/>
+        <source>YouTube</source>
+        <translation>YouTube</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="54"/>
+        <source>Telegram sticker</source>
+        <translation>Стикер Telegram</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="55"/>
+        <source>Video must have no audio stream. Should loop.</source>
+        <translation>У видео не должно быть аудиодорожки. Должно зацикливаться.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="56"/>
+        <source>Telegram custom emoji</source>
+        <translation>Пользовательские эмодзи Telegram</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="57"/>
+        <source>Discord sticker</source>
+        <translation>Стикер Discord</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="58"/>
+        <source>Discord animated stickers are APNG (GIF and Lottie also accepted). 320x320 EXACT.</source>
+        <translation>Анимированные стикеры Discord имеют формат APNG (GIF и Lottie тоже принимаются). СТРОГО 320x320.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="59"/>
+        <source>Discord emoji</source>
+        <translation>Эмодзи Discord</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="60"/>
+        <source>Animated emoji are served as animated WebP; upload accepts JPEG/PNG/GIF/WebP/AVIF.</source>
+        <translation>Анимированные эмодзи отдаются как анимированный WebP; при загрузке принимаются JPEG/PNG/GIF/WebP/AVIF.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="61"/>
+        <source>WhatsApp sticker</source>
+        <translation>Стикер WhatsApp</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="62"/>
+        <source>Animated stickers are WebP ONLY. Minimum frame duration 8ms.</source>
+        <translation>Анимированные стикеры ТОЛЬКО WebP. Минимальная длительность кадра 8 ms.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="63"/>
+        <source>Signal sticker</source>
+        <translation>Стикер Signal</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="64"/>
+        <source>Animated stickers must be APNG (&quot;Please do not upload GIFs&quot;).</source>
+        <translation>Анимированные стикеры должны быть APNG («пожалуйста, не загружайте GIF»).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="65"/>
+        <source>LINE sticker</source>
+        <translation>Стикер LINE</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="66"/>
+        <source>RGB colour space; transparent background required; 1-4 loops.</source>
+        <translation>Цветовое пространство RGB; требуется прозрачный фон; 1-4 цикла.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="67"/>
+        <source>Twitch emote</source>
+        <translation>Эмоут Twitch</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="68"/>
+        <source>GIF only (&quot;The image must be in .gif format&quot;), and SQUARE: &quot;GIF images must be square shape&quot;. 112x112 is the upload for auto-resize, which is the mode a single file belongs to, and 1 MB is that mode&apos;s cap; uploading the three manual sizes instead caps each at 512 KB. 28/56/112 are the sizes Twitch SERVES, not what you upload. At most 60 frames, and &quot;must not flash or flicker more than 3 times within a 1 second period&quot;. Twitch resizes and re-serves its own variants. NOT PUBLISHED: any duration limit, any frame rate limit, and any transparency rule for ANIMATED emotes (transparency is stated for static ones), so transparency is offered but not promised.</source>
+        <translation>Только GIF («изображение должно быть в формате .gif») и притом КВАДРАТ: «GIF-изображения должны быть квадратными». 112x112 это размер загрузки для автоподгонки, а именно к этому режиму относится одиночный файл, и 1 MB это ограничение такого режима; если вместо этого загружать три размера вручную, каждый ограничен 512 KB. 28/56/112 это размеры, которые Twitch ОТДАЁТ, а не те, что вы загружаете. Не более 60 кадров, и «не должен вспыхивать или мерцать более 3 раз за 1 секунду». Twitch сам меняет размер и отдаёт свои варианты. НЕ ОПУБЛИКОВАНО: ограничение длительности, ограничение частоты кадров и правила прозрачности для АНИМИРОВАННЫХ эмоутов (прозрачность указана только для статичных), поэтому прозрачность предлагается, но не гарантируется.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="69"/>
+        <source>A video for a chat app</source>
+        <translation>Видео для чат-приложения</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="70"/>
+        <source>The one to pick when the app is not in this list. MP4/H.264 with AAC at 720p and under 20 MB is accepted by every chat app here, and is what the restrictive ones accept.</source>
+        <translation>Выбирайте это, когда приложения нет в списке. MP4/H.264 с AAC при 720p и размером до 20 MB принимают все чат-приложения из списка, и именно это принимают самые строгие из них.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="71"/>
+        <source>A video sent in a chat: 64 MB over a slow connection, 100 MB over a fast one, and WhatsApp DOWNSCALES rather than rejecting. Sending it as a Document instead allows 2 GB untouched, which is a different intent and not this row. Status is limited to 90 seconds and is also not this row.</source>
+        <translation>Видео, отправленное в чате: 64 MB при медленном соединении, 100 MB при быстром, и WhatsApp УМЕНЬШАЕТ размер, а не отклоняет файл. Отправка как документа вместо этого позволяет 2 GB без изменений, но это другое намерение и не этот пункт. Статус ограничен 90 секундами и тоже не этот пункт.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="72"/>
+        <source>WhatsApp (animated GIF)</source>
+        <translation>WhatsApp (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="73"/>
+        <source>UNVERIFIED (WhatsApp publishes no organic cap for an animated image): GIFs are a documented chat surface, but WhatsApp publishes no byte cap, format list, dimension rule, frame count or duration for an image sent in a chat, and no statement about whether it transcodes one. The numbers that could be borrowed are all for other surfaces and are NOT applied here: 2 GB for a DOCUMENT, 100 MB or 64 MB for a VIDEO (fast and slow connections), 90 seconds for a status video, and the Cloud API&apos;s 5 MB image with a 500 KB animated sticker. No cap is applied, and the fit loop therefore has nothing to enforce.</source>
+        <translation>НЕ ПРОВЕРЕНО (WhatsApp не публикует ограничений для анимированного изображения в обычной отправке): GIF для чата документирован, но WhatsApp не публикует ни лимит размера, ни список форматов, ни правила по размерам, ни число кадров, ни длительность для изображения, отправленного в чате, и ничего не говорит о том, перекодирует ли он его. Цифры, которые можно было бы позаимствовать, относятся к другим сценариям и здесь НЕ применяются: 2 GB для ДОКУМЕНТА, 100 MB или 64 MB для ВИДЕО (быстрое и медленное соединение), 90 секунд для видео в статусе и 5 MB для изображения в Cloud API при 500 KB для анимированного стикера. Ограничение не применяется, поэтому циклу подгонки просто нечего соблюдать.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="74"/>
+        <source>2 GB per file, 4 GB with Premium; Telegram re-encodes into renditions. Note this is the USER limit: the Bot API&apos;s 50 MB is for bots uploading, not for you sending a file. Telegram also converts a real GIF to MP4 on its servers, so transparency never survives here.</source>
+        <translation>2 GB на файл, 4 GB с Premium; Telegram перекодирует файл в несколько вариантов. Учтите, это ограничение для ПОЛЬЗОВАТЕЛЯ: 50 MB в Bot API относится к загрузке ботами, а не к отправке файла вами. Кроме того, Telegram преобразует настоящий GIF в MP4 на своих серверах, поэтому прозрачность здесь никогда не сохраняется.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="75"/>
+        <source>Telegram (animated GIF)</source>
+        <translation>Telegram (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="76"/>
+        <source>Telegram CONVERTS an uploaded GIF itself: &quot;GIFs are actually MPEG4 (h264) videos without sound; if the user tries to upload an actual GIF file, it will be automatically converted to an MPEG4 file by the server&quot;. So this destination writes the file Telegram would have made anyway, without the round trip through a GIF palette: silent H.264 in MP4, and transparency CANNOT survive (the conversion is lossy and H.264 4:2:0 carries no alpha). Animated WebP is not accepted as a sticker (&quot;Animated .WEBP is NOT currently supported&quot;); a chat file may be up to 2 GB (4 GB with Premium), which is the cloud-file limit rather than a GIF limit. No frame count, duration or frame rate is published for a chat animation.</source>
+        <translation>Telegram САМ преобразует загруженный GIF: «GIF это на самом деле видео MPEG4 (h264) без звука; если пользователь попытается загрузить настоящий GIF-файл, сервер автоматически преобразует его в файл MPEG4». Так что это назначение записывает файл, который Telegram всё равно сделал бы сам, без промежуточного прохода через палитру GIF: беззвучный H.264 в MP4, и прозрачность сохраниться НЕ МОЖЕТ (преобразование идёт с потерями, а H.264 4:2:0 не несёт альфа-канал). Анимированный WebP не принимается как стикер («анимированный .WEBP сейчас НЕ поддерживается»); файл в чате может быть до 2 GB (4 GB с Premium), и это ограничение облачных файлов, а не GIF. Число кадров, длительность и частота кадров для анимации в чате не опубликованы.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="77"/>
+        <source>20 MB to send, 50 MB with Nitro Basic, 500 MB with Nitro; a boosted server lifts everyone to 50 MB (level 2) or 100 MB (level 3). Discord&apos;s older help pages still say 10 MB. On mobile the size is now measured BEFORE compression, so a video that used to fit may not.</source>
+        <translation>20 MB на отправку, 50 MB с Nitro Basic, 500 MB с Nitro; на бустнутом сервере всем доступно 50 MB (уровень 2) или 100 MB (уровень 3). Старые страницы справки Discord до сих пор говорят о 10 MB. В мобильном приложении размер теперь измеряется ДО сжатия, поэтому видео, которое раньше проходило, может не пройти.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="78"/>
+        <source>Discord (animated image)</source>
+        <translation>Discord (анимированное изображение)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="79"/>
+        <source>An animated image, not a video: WebP is the format Discord&apos;s own pipeline produces for animation (they have served and accepted animated WebP since the 2024 mobile release 252), and a GIF upload is transcoded to WebP for display, so this goes out animated either way. Alpha survives here, which GIF&apos;s palette cannot carry. The English FAQ caps a non-Nitro upload at 10 MB (its Hindi page says 25 MB): 10 MB is used, and it is also the size above which Discord stops animating inline and offers the file as a download instead. One frame in the export gives a still WebP, so this row carries a still illustration as well as an animation. Transparency is on by default (WebP keeps it, GIF&apos;s palette cannot) and can be turned off.</source>
+        <translation>Анимированное изображение, а не видео: WebP это формат, который собственный конвейер Discord выдаёт для анимации (анимированный WebP принимается и отдаётся с мобильного релиза 252 в 2024 году), а загруженный GIF перекодируется в WebP для показа, так что анимация уйдёт в любом случае. Альфа-канал здесь сохраняется, а палитра GIF его нести не может. Английский FAQ ограничивает загрузку без Nitro размером 10 MB (на странице на хинди сказано 25 MB): используется 10 MB, и это же тот размер, выше которого Discord перестаёт анимировать изображение прямо в ленте и предлагает файл как загрузку. Один кадр в экспорте даёт статичный WebP, поэтому этот пункт подходит и для неподвижной иллюстрации, и для анимации. Прозрачность включена по умолчанию (WebP её сохраняет, палитра GIF не может) и её можно отключить.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="80"/>
+        <source>Signal re-encodes client-side to 720p at roughly 2 Mbps and targets about 50 MB of output. The server flag is 100 MiB and remote-configurable, so 50 MB is the number to stay under. Sending as a File skips the transcode.</source>
+        <translation>Signal перекодирует на стороне клиента до 720p при примерно 2 Mbps и целится в результат около 50 MB. Серверный флаг равен 100 MiB и настраивается удалённо, поэтому 50 MB это число, ниже которого нужно оставаться. Отправка как файла обходит перекодирование.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="81"/>
+        <source>Signal (animated GIF)</source>
+        <translation>Signal (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="82"/>
+        <source>UNVERIFIED (Signal publishes nothing usable here): a GIF is a first-class attachment (&quot;image, gif, video, voice message, or audio file&quot;), but Signal has no help page stating an attachment byte cap, a format list, a dimension rule, a frame count or a transcode rule for one. The only numbers that exist are in source code and issue threads rather than documentation: a GIF threshold of min(25 MB, the attachment limit) and a maintainer note that sending is still capped at 100 MB. 25 MB is used here as the code-level threshold, and every other fact is left unstated rather than invented. Note that Signal&apos;s STICKER page says &quot;Please do not upload GIFs&quot; - that is the sticker surface (APNG, 300 KB), a different thing from an attachment, and reading it as &quot;Signal rejects GIFs&quot; is a documented trap.</source>
+        <translation>НЕ ПРОВЕРЕНО (Signal не публикует здесь ничего пригодного): GIF это полноценное вложение («изображение, gif, видео, голосовое сообщение или аудиофайл»), но у Signal нет страницы справки, где были бы указаны лимит размера вложения, список форматов, правила по размерам, число кадров или правила перекодирования для него. Единственные существующие числа есть в исходном коде и обсуждениях, а не в документации: порог для GIF min(25 MB, лимит вложения) и замечание разработчика, что отправка всё ещё ограничена 100 MB. Здесь используется 25 MB как порог из кода, а все остальные факты оставлены неупомянутыми, а не выдуманы. Учтите, что страница Signal про СТИКЕРЫ говорит «пожалуйста, не загружайте GIF»: речь там про стикеры (APNG, 300 KB), а не про вложения, и трактовать это как «Signal отклоняет GIF» неверно, на этом легко попасться.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="83"/>
+        <source>UNVERIFIED: 25 MB is the published DEVELOPER API limit. Meta does not publish the consumer chat limit anywhere, so this is the closest sourced number, not the app&apos;s own. 75 seconds appears in the docs as a fetch timeout, NOT a duration limit.</source>
+        <translation>НЕ ПРОВЕРЕНО: 25 MB это опубликованный лимит API ДЛЯ РАЗРАБОТЧИКОВ. Meta нигде не публикует лимит для обычного чата, поэтому это ближайшее число с источником, а не собственное ограничение приложения. 75 секунд встречаются в документации как тайм-аут загрузки, а НЕ как ограничение длительности.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="84"/>
+        <source>Messenger (animated GIF)</source>
+        <translation>Messenger (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="85"/>
+        <source>UNVERIFIED (the consumer chat publishes no cap): Messenger offers a &quot;Send GIF&quot; action with no published formats, and Meta&apos;s API documentation says animated GIFs &quot;are playable in the conversation&quot;, but the consumer chat states no byte cap, dimension rule, frame count or transcode behaviour. The API numbers that exist (25 MB per asset, 8 MB for an image uploaded by URL) are labelled as API values and are not applied here, because Meta does not say they bind the in-app picker. The API template also lists only image and video as media types with no GIF value, which is a contradiction Meta leaves unresolved.</source>
+        <translation>НЕ ПРОВЕРЕНО (для обычного чата ограничения не публикуются): в Messenger есть действие «отправить GIF» без опубликованных форматов, и документация API Meta говорит, что анимированные GIF «воспроизводятся в переписке», но для обычного чата не указаны ни лимит размера, ни правила по размерам, ни число кадров, ни поведение при перекодировании. Существующие числа API (25 MB на объект, 8 MB для изображения, загруженного по URL) помечены как значения API и здесь не применяются, потому что Meta не говорит, что они относятся к выбору файла внутри приложения. Шаблон API также перечисляет только image и video как типы медиа, без значения для GIF, и это противоречие Meta не разрешает.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="86"/>
+        <source>KakaoTalk (카카오톡)</source>
+        <translation>KakaoTalk (카카오톡)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="87"/>
+        <source>UNVERIFIED for mobile: 300 MB is the PC desktop file-send limit. Kakao does not publish the mobile chat limit. MP4/MOV/MKV/AVI/TS and others are accepted.</source>
+        <translation>НЕ ПРОВЕРЕНО для мобильных устройств: 300 MB это ограничение отправки файлов в версии для ПК. Kakao не публикует ограничение для мобильного чата. Принимаются MP4/MOV/MKV/AVI/TS и другие.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="88"/>
+        <source>WeChat (微信)</source>
+        <translation>WeChat (微信)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="89"/>
+        <source>UNVERIFIED: Tencent publishes no size or duration limit for video sent in a personal chat, and no codec list. MP4/H.264 at 720p is the safe choice. The official-account route IS documented (10 MB per upload, 2 GB chunked) and is a different thing entirely.</source>
+        <translation>НЕ ПРОВЕРЕНО: Tencent не публикует ни ограничение размера или длительности для видео, отправленного в личном чате, ни список кодеков. MP4/H.264 при 720p это безопасный выбор. Путь через официальный аккаунт ДОКУМЕНТИРОВАН (10 MB на загрузку, 2 GB частями), но это совсем другое.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="90"/>
+        <source>UNVERIFIED for the consumer app: 30 MB soft (silently becomes a FILE instead of an inline video) and 200 MB hard are BOT API numbers. Consumer chat limits are not published.</source>
+        <translation>НЕ ПРОВЕРЕНО для обычного приложения: 30 MB это мягкое ограничение (файл молча становится ФАЙЛОМ вместо видео в переписке), а 200 MB это жёсткое ограничение, и оба числа взяты из API ДЛЯ БОТОВ. Ограничения для обычного чата не публикуются.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="91"/>
+        <source>VK (ВКонтакте)</source>
+        <translation>VK (ВКонтакте)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="92"/>
+        <source>No cap worth encoding: 256 GB, up to 4K, and VK re-encodes. MP4/H.264 at 1280x720 or above, and they recommend 16:9.</source>
+        <translation>Ограничения, которое стоило бы закладывать, нет: 256 GB, до 4K, и VK перекодирует сам. MP4/H.264 при 1280x720 или выше, и они рекомендуют 16:9.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="93"/>
+        <source>X (Twitter)</source>
+        <translation>X (Twitter)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="94"/>
+        <source>A post accepts up to 8 GB and 20 minutes (16 GB / 125 minutes with Premium). The &quot;140 seconds / 512 MB&quot; figure repeated all over the web is X&apos;s DIRECT MESSAGE limit, not a post, and is 50x too small here. H.264 High, AAC-LC, yuv420p, closed GOP.</source>
+        <translation>Публикация принимает до 8 GB и 20 минут (16 GB / 125 минут с Premium). Цифра «140 секунд / 512 MB», которую повторяют по всему интернету, это ограничение ЛИЧНЫХ СООБЩЕНИЙ в X, а не публикации, и здесь она в 50 раз меньше. H.264 High, AAC-LC, yuv420p, закрытый GOP.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="95"/>
+        <source>X (animated GIF)</source>
+        <translation>X (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="96"/>
+        <source>X accepts JPG, PNG, GIF and WEBP, and an animated GIF is its own media category (tweet_gif). The caps here come from X&apos;s API documentation, NOT from its help pages: 15 MB per animated GIF, resolution at most 1280x1080, at most 350 frames and at most 300 million pixels in total (width x height x frames). X&apos;s own API page adds that a GIF &quot;may fail during Post creation even if it is within the file size limit&quot;, so treat 15 MB as soft. The figure repeated across the web (5 MB mobile, 15 MB web) appears on no X-owned page, and X publishes nothing about transparency, looping, frame rate or duration for GIFs.</source>
+        <translation>X принимает JPG, PNG, GIF и WEBP, а анимированный GIF относится к отдельной категории медиа (tweet_gif). Ограничения здесь взяты из документации API X, а НЕ со страниц справки: 15 MB на анимированный GIF, разрешение не более 1280x1080, не более 350 кадров и не более 300 миллионов пикселей в сумме (ширина x высота x кадры). На собственной странице API X добавлено, что GIF «может не пройти при создании публикации, даже если он укладывается в лимит размера», поэтому считайте 15 MB мягким ограничением. Цифра, которую повторяют по всему интернету (5 MB на мобильных, 15 MB в вебе), не встречается ни на одной странице X, и X ничего не публикует о прозрачности, зацикливании, частоте кадров или длительности для GIF.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="97"/>
+        <source>Instagram Reels</source>
+        <translation>Instagram Reels</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="98"/>
+        <source>300 MB, 3 seconds to 15 minutes, 9:16 up to 1920 px wide, H.264 or HEVC in a closed GOP. The moov atom must be at the FRONT of the file with no edit lists, which is what the faststart muxer option below does: without it the upload is rejected.</source>
+        <translation>300 MB, от 3 секунд до 15 минут, 9:16 шириной до 1920 px, H.264 или HEVC в закрытом GOP. Атом moov должен находиться в НАЧАЛЕ файла и списков правок быть не должно, именно это делает опция мультиплексора faststart ниже: без неё загрузку отклонят.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="99"/>
+        <source>4 GB, up to 10 minutes on some routes and 3 on others. 1080x1920 (9:16). GIF files are NOT accepted. WebM/MOV are accepted alongside MP4.</source>
+        <translation>4 GB, до 10 минут на одних путях загрузки и до 3 на других. 1080x1920 (9:16). GIF-файлы НЕ принимаются. Наряду с MP4 принимаются WebM/MOV.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="100"/>
+        <source>Bilibili (哔哩哔哩)</source>
+        <translation>Bilibili (哔哩哔哩)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="101"/>
+        <source>UNVERIFIED (conflicting sources): Bilibili&apos;s help centre says 16 GB (64 GB at higher web levels), their own open-platform API documentation says 4 GB, and the page could not be re-fetched to settle it. 4 GB is used here as the floor that both agree on. Up to 4096x4096 at 120 fps, H.264/AAC, yuv420p.</source>
+        <translation>НЕ ПРОВЕРЕНО (источники противоречат друг другу): справочный центр Bilibili говорит о 16 GB (64 GB на высоких уровнях в вебе), их же документация открытой платформы говорит о 4 GB, и страницу не удалось перезагрузить, чтобы разрешить противоречие. Здесь используется 4 GB как минимум, с которым согласны оба источника. До 4096x4096 при 120 fps, H.264/AAC, yuv420p.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="102"/>
+        <source>Weibo (微博)</source>
+        <translation>Weibo (微博)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="103"/>
+        <source>15 GB from the desktop web, 4 GB from mobile. There is a MINIMUM of 3 seconds and no published maximum duration. 720p or better for the video section; 2K/4K are gated behind play counts. Codec list is not published: MP4/H.264.</source>
+        <translation>15 GB из веб-версии на компьютере, 4 GB с мобильных устройств. Есть МИНИМУМ 3 секунды, а максимальная длительность не опубликована. 720p или лучше для раздела видео; 2K/4K доступны только после набора просмотров. Список кодеков не опубликован: MP4/H.264.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="104"/>
+        <source>Weibo (animated GIF)</source>
+        <translation>Weibo (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="105"/>
+        <source>Weibo LOSES the animation rather than converting it: &quot;原始图片需不超过1080宽，超宽会导致动图不动&quot; (the original must be at most 1080 wide, wider makes the animation stop) and the original-quality box (原图) must be ticked or the GIF posts as a static image. So the width ceiling is a real constraint here, and this row caps the long side at 1080 px, which is stricter than the published rule but can never lose the animation. 20 MB is the published per-image cap from Weibo&apos;s own help centre (the API&apos;s 10 MB belongs to the API surface). No frame count, duration, frame rate or transparency statement is published for a GIF, and Weibo&apos;s two help pages contradict each other about ticking 原图: one requires it for animation, the other recommends leaving it off to avoid a colour cast.</source>
+        <translation>Weibo ТЕРЯЕТ анимацию, а не преобразует её: «оригинальное изображение должно быть не шире 1080, при большей ширине анимация перестаёт двигаться» (原始图片需不超过1080宽，超宽会导致动图不动), и нужно отметить флажок исходного качества (原图), иначе GIF опубликуется как статичное изображение. Так что ограничение по ширине здесь реальное, и этот пункт ограничивает длинную сторону 1080 px, что строже опубликованного правила, зато анимация не может пропасть. 20 MB это опубликованное ограничение на изображение из справочного центра Weibo (10 MB из API относится к самому API). Число кадров, длительность, частота кадров и прозрачность для GIF не опубликованы, а две страницы справки Weibo противоречат друг другу насчёт флажка 原图: одна требует его для анимации, другая советует не ставить, чтобы избежать цветового сдвига.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="106"/>
+        <source>MP4 ONLY: the lexicon accepts video/mp4 and nothing else. 300 MB and 10 minutes (both raised recently, so most guides are out of date). No pixel cap; the aspect ratio travels as metadata.</source>
+        <translation>ТОЛЬКО MP4: лексикон принимает video/mp4 и ничего больше. 300 MB и 10 минут (оба значения подняли недавно, поэтому большинство руководств устарело). Ограничения по пикселям нет; соотношение сторон передаётся как метаданные.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="107"/>
+        <source>Bluesky (animation)</source>
+        <translation>Bluesky (анимация)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="108"/>
+        <source>Bluesky keeps the animation by routing it down the VIDEO path: an animated GIF is &quot;processed as video&quot;, and the video embed lexicon accepts only video/mp4, so a GIF that arrives at Bluesky becomes an MP4. This row writes the MP4 directly, silent and H.264, which is what the platform serves anyway, and transparency cannot survive it. THE 2 MB IMAGE CAP DOES NOT APPLY HERE: 2,000,000 bytes is the app.bsky.embed.images lexicon limit for a STILL; the video embed allows 300 MB and 10 minutes, which is what is used. Note that Bluesky&apos;s own documentation contradicts itself about the still-image number (the code on that page enforces 2,000,000 while the prose beside it still says 1,000,000). No dimension, frame or frame-rate rule is published, and the 720p/30 fps/5000 kbps figures in circulation come from a user comment, not from documentation.</source>
+        <translation>Bluesky сохраняет анимацию, направляя её по пути ВИДЕО: анимированный GIF «обрабатывается как видео», а лексикон видео-встраивания принимает только video/mp4, поэтому GIF, попавший в Bluesky, становится MP4. Этот пункт записывает MP4 напрямую, беззвучный и H.264, то есть именно то, что платформа всё равно отдаёт, и прозрачность при этом не сохраняется. ОГРАНИЧЕНИЕ 2 MB ДЛЯ ИЗОБРАЖЕНИЙ ЗДЕСЬ НЕ ПРИМЕНЯЕТСЯ: 2,000,000 байт это лимит лексикона app.bsky.embed.images для СТАТИЧНОГО изображения; видео-встраивание допускает 300 MB и 10 минут, и используется именно это. Учтите, что собственная документация Bluesky противоречит себе насчёт числа для статичного изображения (код на той странице требует 2,000,000, а текст рядом всё ещё говорит 1,000,000). Правила по размерам, кадрам и частоте кадров не опубликованы, а ходящие по сети цифры 720p/30 fps/5000 kbps взяты из комментария пользователя, а не из документации.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="109"/>
+        <source>99 MB for video and 16 MB for images are UPSTREAM DEFAULTS; every instance sets its own, and instances drift from upstream (mastodon.social reports double the upstream pixel limit). The authoritative answer is the server&apos;s own /api/v2/instance configuration. GIFs are converted to silent MP4, so transparency does not survive.</source>
+        <translation>99 MB для видео и 16 MB для изображений это ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ В АПСТРИМЕ; каждый сервер задаёт свои, и серверы расходятся с апстримом (mastodon.social сообщает о вдвое большем лимите по пикселям, чем в апстриме). Достоверный ответ даёт конфигурация самого сервера /api/v2/instance. GIF преобразуются в беззвучный MP4, поэтому прозрачность не сохраняется.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="110"/>
+        <source>UNVERIFIED: Reddit does not publish a size limit for native video posts. No byte cap is applied rather than inventing one. The 15-minute figure comes from their 2017 launch post, and comment videos are capped much shorter.</source>
+        <translation>НЕ ПРОВЕРЕНО: Reddit не публикует ограничение размера для собственных видеопубликаций. Лимит размера не применяется, чтобы не выдумывать его. Цифра в 15 минут взята из их публикации о запуске 2017 года, а видео в комментариях ограничены намного короче.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="111"/>
+        <source>Reddit (animated GIF)</source>
+        <translation>Reddit (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="112"/>
+        <source>UNVERIFIED (no organic numbers published): Reddit documents no byte cap for an image or GIF post. What IS visible is that a GIF post is stored and served as a Reddit VIDEO (Reddit&apos;s own Devvit model carries a media kind &quot;videogif&quot; and a RedditVideo.isGif flag), so animation survives but transparency does not, which is why alpha is forbidden here. The widely quoted &quot;20 MB image / 100 MB GIF&quot; figures come from third parties, and the Reddit numbers that are published belong to other surfaces (comment images at most 240 px, comment video under 1 GB and 3 minutes, and advertising specs that reject animated GIF outright). No frame, duration or frame-rate rule is published for an animated image.</source>
+        <translation>НЕ ПРОВЕРЕНО (обычные числа не опубликованы): Reddit не документирует лимит размера для публикации изображения или GIF. А вот что ВИДНО: публикация с GIF хранится и отдаётся как ВИДЕО Reddit (в собственной модели Devvit от Reddit есть вид медиа «videogif» и флаг RedditVideo.isGif), поэтому анимация сохраняется, а прозрачность нет, и именно поэтому альфа-канал здесь запрещён. Широко цитируемые цифры «20 MB изображение / 100 MB GIF» взяты у третьих сторон, а опубликованные числа Reddit относятся к другим сценариям (изображения в комментариях не более 240 px, видео в комментариях до 1 GB и 3 минут, а рекламные спецификации вообще отклоняют анимированный GIF). Правила по кадрам, длительности и частоте кадров для анимированного изображения не опубликованы.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="113"/>
+        <source>WeChat sticker (微信表情)</source>
+        <translation>Стикер WeChat (微信表情)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="114"/>
+        <source>Animated stickers are GIF only, exactly 240x240, 500 KB, and must loop. Art that exceeds the spec is compressed AND CROPPED by WeChat rather than rejected, so an oversized export comes back with its edges cut off. Sticker sets are 8 to 24 images.</source>
+        <translation>Анимированные стикеры только GIF, ровно 240x240, 500 KB, и должны зацикливаться. Изображение, выходящее за рамки требований, WeChat сжимает И ОБРЕЗАЕТ, а не отклоняет, поэтому слишком большой экспорт вернётся с обрезанными краями. Набор стикеров состоит из 8-24 изображений.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="115"/>
+        <source>KakaoTalk sticker (카카오톡 스티커)</source>
+        <translation>Стикер KakaoTalk (카카오톡 스티커)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="116"/>
+        <source>Animated WebP, 360x360 (180x180 for mini, 540x540 for big), 650 KB, 24 frames maximum and four loops. Kakao publishes its own WebP animator, which is a useful sign of exactly which encoder behaviour they expect.</source>
+        <translation>Анимированный WebP, 360x360 (180x180 для mini, 540x540 для big), 650 KB, максимум 24 кадра и четыре цикла. Kakao публикует собственный аниматор WebP, и это полезный признак того, какого поведения кодировщика они ждут.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="117"/>
+        <source>QQ sticker</source>
+        <translation>Стикер QQ</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="118"/>
+        <source>UNVERIFIED and DATE-STAMPED 2018-10-07: this is the last Tencent-owned specification that exists anywhere. yuanchuang.qq.com no longer resolves and archive.org holds no capture after October 2018, so the values below are what Tencent said eight years ago and nothing current confirms them. 16 GIFs at exactly 300x300, each 300 KB or less (&quot;表情大小：≤300kb/个&quot;, raised from 90 KB in 2016), on a transparent background (&quot;文件均为无色透明底&quot;). A white stroke is required but 3 px is only PREFERRED (&quot;以3像素的白色描边为佳&quot;), not an exact value. The same page contradicts itself about the 300x300 PNG thumbnail: its table says 200 KB and its body text says 20 KB, so no thumbnail cap is applied. Nothing is published about frame count, duration, frame rate, or re-encoding.</source>
+        <translation>НЕ ПРОВЕРЕНО и ДАТИРОВАНО 2018-10-07: это последняя спецификация от Tencent, которая вообще существует. yuanchuang.qq.com больше не открывается, а archive.org не хранит снимков после октября 2018 года, поэтому значения ниже это то, что Tencent говорил восемь лет назад, и ничто актуальное их не подтверждает. 16 GIF ровно 300x300, каждый не больше 300 KB («表情大小：≤300kb/个», поднято с 90 KB в 2016 году), на прозрачном фоне («文件均为无色透明底»). Белая обводка обязательна, но 3 px это только РЕКОМЕНДАЦИЯ («以3像素的白色描边为佳»), а не точное значение. Та же страница противоречит себе насчёт эскиза PNG 300x300: в таблице сказано 200 KB, а в тексте 20 KB, поэтому ограничение на эскиз не применяется. О числе кадров, длительности, частоте кадров и перекодировании ничего не опубликовано.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="119"/>
+        <source>Nico Nico Douga (ニコニコ動画)</source>
+        <translation>Nico Nico Douga (ニコニコ動画)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="120"/>
+        <source>6 GB or 6 hours, whichever comes first; raised from 3 GB on 2024-10-29, so older guides are a revision behind. Up to 4096x2160 (or 2160x4096 vertical) and 60 fps. Their own page caps the vertical Short surface at 180 seconds, which is a different destination with the same name.</source>
+        <translation>6 GB или 6 часов, что наступит раньше; поднято с 3 GB 2024-10-29, поэтому старые руководства отстают на одну версию. До 4096x2160 (или 2160x4096 для вертикали) и 60 fps. Их собственная страница ограничивает вертикальный формат Short 180 секундами, но это другое назначение с тем же именем.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="121"/>
+        <source>Douyin (抖音)</source>
+        <translation>Douyin (抖音)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="122"/>
+        <source>UNVERIFIED (conflicting): ByteDance contradicts itself. The current upload endpoint says 4 GB total with chunked upload mandatory above 300 MB, while a 2024-04-09 chunked-upload page says 128 MB and 15 minutes, and the Android share SDK says 60 minutes. The widely quoted 500 MB could not be found on any ByteDance page. Short side under 2160, long side under 4096, 720p or above.</source>
+        <translation>НЕ ПРОВЕРЕНО (противоречия): ByteDance противоречит сам себе. Текущая конечная точка загрузки говорит о 4 GB в сумме с обязательной загрузкой частями выше 300 MB, тогда как страница о загрузке частями от 2024-04-09 говорит о 128 MB и 15 минутах, а Android share SDK говорит о 60 минутах. Широко цитируемые 500 MB не нашлись ни на одной странице ByteDance. Короткая сторона меньше 2160, длинная меньше 4096, 720p или выше.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="123"/>
+        <source>Facebook (video)</source>
+        <translation>Facebook (видео)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="124"/>
+        <source>UNVERIFIED (partial): Meta publishes NO byte or duration cap for organic video. The 4 GB and 240-minute figures that circulate are the ADVERTISING spec. Since September 2025 every video posted to Facebook is shared as a reel, so this and the reels destination differ only in the length the API enforces. Recommended: maximum width 4000 px with dimensions divisible by 16, 30 fps or lower, H.264 with AAC.</source>
+        <translation>НЕ ПРОВЕРЕНО (частично): Meta НЕ публикует ограничений по размеру или длительности для обычного видео. Ходящие по сети цифры 4 GB и 240 минут относятся к РЕКЛАМНОЙ спецификации. С сентября 2025 года любое видео, опубликованное в Facebook, публикуется как reels, поэтому этот пункт и пункт про reels отличаются только длительностью, которую требует API. Рекомендуется: максимальная ширина 4000 px при размерах, кратных 16, 30 fps или меньше, H.264 с AAC.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="125"/>
+        <source>Facebook (animated GIF)</source>
+        <translation>Facebook (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="126"/>
+        <source>UNVERIFIED (advisory, not a published hard cap): Facebook lists GIF among the photo formats it recommends uploading (&quot;JPEG, BMP, PNG, GIF or TIFF&quot;) and recommends keeping photos under 15 MB, which is the number used here. No organic byte cap, dimension rule, frame count, duration or frame rate is published for an animated image; the only transcode statement Facebook makes is in the ADS documentation (a GIF there &quot;plays in the same way as all video files&quot;), and the numbers that circulate for GIF (4 GB, &quot;as video&quot;) belong to that advertising surface rather than to a photo post.</source>
+        <translation>НЕ ПРОВЕРЕНО (рекомендация, а не опубликованный жёсткий лимит): Facebook перечисляет GIF среди форматов фото, которые рекомендует загружать («JPEG, BMP, PNG, GIF или TIFF»), и советует держать фотографии меньше 15 MB, и это число здесь и используется. Ни лимит размера, ни правила по размерам, ни число кадров, ни длительность, ни частота кадров для анимированного изображения не опубликованы; единственное утверждение Facebook о перекодировании есть в документации по РЕКЛАМЕ (там GIF «воспроизводится так же, как все видеофайлы»), а цифры, которые ходят по сети для GIF (4 GB, «как видео»), принадлежат рекламному сценарию, а не публикации фотографии.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="127"/>
+        <source>Facebook Reels</source>
+        <translation>Facebook Reels</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="128"/>
+        <source>UNVERIFIED (conflicting): Meta Business Help says reels can be any length; the Reels Publishing API enforces 3 to 90 seconds and rejects anything else. 90 s is used here because it is the number that is enforced. 1080x1920 recommended, 540x960 minimum, 24 to 60 fps, no published byte cap.</source>
+        <translation>НЕ ПРОВЕРЕНО (противоречия): справка Meta Business говорит, что reels могут быть любой длины; API публикации Reels требует от 3 до 90 секунд и отклоняет всё остальное. Здесь используются 90 s, потому что именно это значение применяется на практике. Рекомендуется 1080x1920, минимум 540x960, от 24 до 60 fps, лимит размера не опубликован.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="129"/>
+        <source>500 MB and 10 minutes, and 20 posts a day. MOV or MP4; Tumblr transcodes toward 720p H.264. Photos are a separate destination: a static image gets 20 MB, but an animated GIF is served only up to about 5 MB and above that is reduced to its first frame.</source>
+        <translation>500 MB и 10 минут, а также 20 публикаций в день. MOV или MP4; Tumblr перекодирует в сторону 720p H.264. Фотографии это отдельное назначение: статичное изображение получает 20 MB, но анимированный GIF отдаётся только до примерно 5 MB, а выше этого сводится к первому кадру.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="130"/>
+        <source>Tumblr (animated GIF)</source>
+        <translation>Tumblr (анимированный GIF)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="131"/>
+        <source>Tumblr transcodes EVERY uploaded GIF (&quot;we do convert all uploaded GIFs to the GIFV format&quot;, typically animated WebP, and on the web sometimes MP4), so the file it serves is not the file you send. It publishes three size numbers in one section (keep GIFs to 10 MB, a compressed GIF no larger than 5 MB, and &quot;we will do our best to compress&quot; between them) plus the consequence that matters: above 5 MB Tumblr may serve ONLY THE FIRST FRAME, so 5 MB is the cap used here and the file is fitted to it. 540 px wide is Tumblr&apos;s own recommendation. Frames are not counted (&quot;we only count bytes and seconds&quot;), no duration cap exists for a GIF, and transparency is documented only as a conversion criterion, not as a promise.</source>
+        <translation>Tumblr перекодирует КАЖДЫЙ загруженный GIF («мы действительно преобразуем все загруженные GIF в формат GIFV», обычно это анимированный WebP, а в вебе иногда MP4), поэтому отдаваемый файл не тот, который вы отправили. В одном разделе он публикует три числа размера (держите GIF до 10 MB, сжатый GIF не больше 5 MB, и «мы постараемся сжать» между ними) плюс важное следствие: выше 5 MB Tumblr может отдать ТОЛЬКО ПЕРВЫЙ КАДР, поэтому здесь используется ограничение 5 MB и файл подгоняется под него. 540 px по ширине это собственная рекомендация Tumblr. Кадры не считаются («мы считаем только байты и секунды»), ограничения длительности для GIF не существует, а прозрачность описана только как критерий преобразования, а не как обещание.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="132"/>
+        <source>Pinterest (video Pin)</source>
+        <translation>Pinterest (видео-пин)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="133"/>
+        <source>4 seconds to 5 minutes. No byte cap is published for organic video Pins; the &quot;2 GB / 15 minutes&quot; figure belongs to the ADVERTISING spec, which is a different surface and is quoted constantly as if it were this one. MP4/M4V, H.264 or H.265, 9:16 recommended.</source>
+        <translation>От 4 секунд до 5 минут. Для обычных видео-пинов лимит размера не опубликован; цифра «2 GB / 15 минут» относится к РЕКЛАМНОЙ спецификации, это другой сценарий, и её постоянно цитируют так, будто она про этот. MP4/M4V, H.264 или H.265, рекомендуется 9:16.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="134"/>
+        <source>Snapchat Spotlight</source>
+        <translation>Snapchat Spotlight</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="135"/>
+        <source>UNVERIFIED (partial): Snapchat publishes a minimum of 5 seconds and a vertical requirement, and nothing else: no byte cap, no maximum duration, no accepted format list and no pixel specification. Still images are excluded. The &quot;1 GB / 3 to 30 minutes&quot; figure is the ADS spec. Vertical with sound; a landscape export will not be shown in Spotlight, and no size rule here can force that, so the file is exported as composed.</source>
+        <translation>НЕ ПРОВЕРЕНО (частично): Snapchat публикует минимум 5 секунд и требование вертикальной ориентации, и больше ничего: ни лимита размера, ни максимальной длительности, ни списка принимаемых форматов, ни требований по пикселям. Статичные изображения исключены. Цифра «1 GB / от 3 до 30 минут» относится к РЕКЛАМНОЙ спецификации. Вертикально и со звуком; горизонтальный экспорт не будет показан в Spotlight, и никакое правило размера здесь этого не изменит, поэтому файл экспортируется в том виде, в котором скомпонован.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="136"/>
+        <source>4 GB (64 GB on the top tier) and 2 hours. Up to 3840x2160 or 2160x3840, 24 to 60 fps. MOV, MP4, AVI, WMV, MKV and FLV are all accepted; MP4/H.264 is the practical target.</source>
+        <translation>4 GB (64 GB на высшем тарифе) и 2 часа. До 3840x2160 или 2160x3840, от 24 до 60 fps. Принимаются MOV, MP4, AVI, WMV, MKV и FLV; практичная цель это MP4/H.264.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="137"/>
+        <source>UNVERIFIED (conflicting): Vimeo&apos;s advice to keep files under 200 GB, a plan note about 250 GB per video for legacy subscribers and an uploader page claiming no size limit cannot all be true; 200 GB is used as a soft ceiling. 24 hours is a hard refusal at upload. Vimeo states plainly that it has no alpha channel support, so transparency can never survive here. MP4/MOV, H.264 or ProRes.</source>
+        <translation>НЕ ПРОВЕРЕНО (противоречия): совет Vimeo держать файлы меньше 200 GB, примечание к тарифу о 250 GB на видео для старых подписчиков и страница загрузки, утверждающая, что ограничения нет, не могут быть верны одновременно; 200 GB используется как мягкий потолок. 24 часа это жёсткий отказ при загрузке. Vimeo прямо заявляет, что не поддерживает альфа-канал, поэтому прозрачность здесь невозможна в принципе. MP4/MOV, H.264 или ProRes.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="138"/>
+        <source>DeviantArt (video, Core members)</source>
+        <translation>DeviantArt (видео, участники Core)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="139"/>
+        <source>1 GB and 10 to 12 minutes, and video submission is a Core membership feature. 1920x1080 recommended; the first frame becomes the preview, so it should not be a blank or transitional frame. An animated GIF is NOT a video here: DeviantArt counts it as an image and gives it the much larger image cap.</source>
+        <translation>1 GB и от 10 до 12 минут, а публикация видео доступна только участникам Core. Рекомендуется 1920x1080; первый кадр становится превью, поэтому он не должен быть пустым или переходным. Анимированный GIF здесь НЕ видео: DeviantArt считает его изображением и даёт ему гораздо больший лимит для изображений.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="140"/>
+        <source>Newgrounds (animation)</source>
+        <translation>Newgrounds (анимация)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="141"/>
+        <source>UNVERIFIED (partial): Newgrounds publishes NO byte or duration cap. Their own wiki says the limit is shown on the signed-in upload form and can be raised on request, so it is per-account; the 100 MB and 6.3 GB figures in circulation come from a member forum post, not from Newgrounds. MP4/MOV/WMV and SWF are accepted, at 3840x2160, 1920x1080, 1280x720 or 640x380, around 10 to 20 Mbps at 1080p. Loop is an upload option for MP4 here, unlike everywhere else.</source>
+        <translation>НЕ ПРОВЕРЕНО (частично): Newgrounds НЕ публикует ограничений по размеру или длительности. В их собственной вики сказано, что лимит показан в форме загрузки после входа и может быть увеличен по запросу, то есть он зависит от аккаунта; ходящие по сети цифры 100 MB и 6.3 GB взяты из сообщения на форуме участников, а не у Newgrounds. Принимаются MP4/MOV/WMV и SWF, при 3840x2160, 1920x1080, 1280x720 или 640x380, примерно 10-20 Mbps при 1080p. Зацикливание здесь опция загрузки для MP4, в отличие от всех остальных мест.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="142"/>
+        <source>pixiv (illustration)</source>
+        <translation>pixiv (иллюстрация)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="143"/>
+        <source>32 MB per image, 200 MB per post, JPG or PNG. No pixel cap is published. The 8 MB and 10 MB figures still quoted in guides are obsolete: pixiv raised the per-image limit to 32 MB. A post mixing formats is converted to JPG, so pick one format per post; PNG is the one that keeps transparency.</source>
+        <translation>32 MB на изображение, 200 MB на публикацию, JPG или PNG. Ограничение по пикселям не опубликовано. Цифры 8 MB и 10 MB, которые до сих пор цитируют в руководствах, устарели: pixiv поднял лимит на изображение до 32 MB. Публикация со смешанными форматами преобразуется в JPG, поэтому выбирайте один формат на публикацию; прозрачность сохраняет именно PNG.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="144"/>
+        <source>pixiv (ugoira animation)</source>
+        <translation>pixiv (анимация ugoira)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="145"/>
+        <source>ugoira is a folder of numbered stills, not a video: up to 150 frames, 30 MB in total, 8 MB per frame, and every frame must share one format AND one canvas size. PNG or JPEG only, and pixiv rejects APNG and WebP outright. Frame TIMING is authored on the upload page, so no fps applies here. The alternative route is one animated GIF (16 MB, 500 frames), which costs you the palette. Desktop site only.</source>
+        <translation>ugoira это папка пронумерованных статичных кадров, а не видео: до 150 кадров, 30 MB всего, 8 MB на кадр, и все кадры должны иметь один формат И один размер холста. Только PNG или JPEG, а APNG и WebP pixiv отклоняет сразу. ТАЙМИНГ кадров задаётся на странице загрузки, поэтому fps здесь не применяется. Альтернативный путь: один анимированный GIF (16 MB, 500 кадров), но он стоит вам палитры. Только сайт для компьютеров.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="146"/>
+        <source>Nico Nico Seiga (ニコニコ静画)</source>
+        <translation>Nico Nico Seiga (ニコニコ静画)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="147"/>
+        <source>UNVERIFIED (partial): 10 MB per image, PNG or JPEG or GIF, no pixel cap published. Whether a posted illustration is re-encoded, whether PNG alpha survives, and whether an animated GIF animates on Seiga are all undocumented, so transparency is exported but not promised. Seiga is the still-image half of Nico Nico; videos go to Nico Nico Douga.</source>
+        <translation>НЕ ПРОВЕРЕНО (частично): 10 MB на изображение, PNG или JPEG или GIF, ограничение по пикселям не опубликовано. Перекодируется ли опубликованная иллюстрация, сохраняется ли альфа-канал PNG и анимируется ли GIF на Seiga, нигде не задокументировано, поэтому прозрачность экспортируется, но не гарантируется. Seiga это статичная половина Nico Nico; видео идут на Nico Nico Douga.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="148"/>
+        <source>Instagram (photo)</source>
+        <translation>Instagram (фото)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="149"/>
+        <source>8 MB, JPEG ONLY, width between 320 and 1440 px, and an aspect ratio from 4:5 to 1.91:1. Transparency cannot survive a JPEG: a transparent background is written as solid black, so flatten the art first. Reels are a separate destination and do take video.</source>
+        <translation>8 MB, ТОЛЬКО JPEG, ширина от 320 до 1440 px и соотношение сторон от 4:5 до 1.91:1. Прозрачность не переживёт JPEG: прозрачный фон записывается сплошным чёрным, поэтому сначала сведите изображение. Reels это отдельное назначение, и оно принимает видео.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="150"/>
+        <source>Facebook (photo)</source>
+        <translation>Facebook (фото)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="151"/>
+        <source>UNVERIFIED (conflicting): Meta&apos;s Graph API says a photo must be under 10 MB and that animated photos are not supported, while their help centre recommends below 15 MB and lists GIF as a photo format. The stricter API figure is used. PNG is accepted but Meta warns that a PNG above 1 MB may be shown pixelated, because it is re-compressed.</source>
+        <translation>НЕ ПРОВЕРЕНО (противоречия): Graph API от Meta говорит, что фотография должна быть меньше 10 MB и что анимированные фотографии не поддерживаются, тогда как их справочный центр советует меньше 15 MB и перечисляет GIF среди форматов фото. Используется более строгое значение из API. PNG принимается, но Meta предупреждает, что PNG больше 1 MB может показываться пиксельным, потому что его пересжимают.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="152"/>
+        <source>Tumblr (photo)</source>
+        <translation>Tumblr (фото)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="153"/>
+        <source>20 MB for a static image. 540x810 is the recommended size and 2048x3072 is the largest view served. ANIMATION IS A DIFFERENT LIMIT: a GIF is only served up to about 5 MB, and above that Tumblr shows its first frame instead of animating, so a long animation should go out as a video.</source>
+        <translation>20 MB для статичного изображения. 540x810 это рекомендуемый размер, а 2048x3072 самый крупный отдаваемый вариант. ДЛЯ АНИМАЦИИ ОГРАНИЧЕНИЕ ДРУГОЕ: GIF отдаётся только до примерно 5 MB, а выше Tumblr показывает его первый кадр вместо анимации, поэтому длинную анимацию лучше выпускать как видео.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="154"/>
+        <source>Pinterest (image Pin)</source>
+        <translation>Pinterest (пин с изображением)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="155"/>
+        <source>20 MB on the web. PNG, JPEG, BMP, TIFF or WEBP; GIF is not accepted as an organic Pin, so animation belongs on a video Pin. 2:3 is the recommended shape (1000x1500) and 9:16 also works; keep the art out of the bottom safe zone, where the interface covers it.</source>
+        <translation>20 MB в вебе. PNG, JPEG, BMP, TIFF или WEBP; GIF не принимается как обычный пин, поэтому анимации место в видео-пине. Рекомендуемая форма 2:3 (1000x1500), 9:16 тоже работает; держите изображение вне нижней безопасной зоны, где его закрывает интерфейс.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="156"/>
+        <source>DeviantArt (image)</source>
+        <translation>DeviantArt (изображение)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="157"/>
+        <source>UNVERIFIED (conflicting): one DeviantArt help page says images are capped at 80 MB and another says 95 MB; 80 MB is used so a file that passes here passes both. JPEG, PNG or GIF, no pixel cap. An animated GIF counts as an IMAGE and gets this same cap, which is 16x what Tumblr allows a GIF.</source>
+        <translation>НЕ ПРОВЕРЕНО (противоречия): на одной странице справки DeviantArt сказано, что изображения ограничены 80 MB, на другой 95 MB; используется 80 MB, чтобы файл, проходящий здесь, проходил и там, и там. JPEG, PNG или GIF, ограничения по пикселям нет. Анимированный GIF считается ИЗОБРАЖЕНИЕМ и получает тот же лимит, а это в 16 раз больше того, что Tumblr разрешает для GIF.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="158"/>
+        <source>DeviantArt (animation)</source>
+        <translation>DeviantArt (анимация)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="159"/>
+        <source>UNVERIFIED (conflicting): see the image row: 80 MB versus 95 MB on two official pages, and an animated GIF is submitted as an image rather than a video, so it gets that cap instead of the 1 GB video one. GIF means a 256-colour palette, which is a real cost for gradients but nothing else here animates on a free account.</source>
+        <translation>НЕ ПРОВЕРЕНО (противоречия): см. пункт про изображения: 80 MB против 95 MB на двух официальных страницах, а анимированный GIF отправляется как изображение, а не как видео, поэтому он получает тот лимит, а не лимит 1 GB для видео. GIF означает палитру в 256 цветов, и для градиентов это реальная потеря, но на бесплатном аккаунте здесь больше ничего не анимируется.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="160"/>
+        <source>Stream overlay (OBS)</source>
+        <translation>Оверлей для стрима (OBS)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="161"/>
+        <source>VP9 WebM is native in OBS; no chroma-key. WebKit CANNOT decode alpha in WebM.</source>
+        <translation>VP9 WebM поддерживается в OBS изначально; хромакей не нужен. WebKit НЕ УМЕЕТ декодировать альфа-канал в WebM.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="162"/>
+        <source>Transparent video (Safari / iOS)</source>
+        <translation>Видео с прозрачностью (Safari / iOS)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="163"/>
+        <source>HEVC+alpha needs Apple&apos;s VideoToolbox encoder; libx265 ADVERTISES yuva420p and then refuses it at open. hvc1 is mandatory: Safari rejects untagged hev1. Where VideoToolbox is unavailable, use the WebM/VP9 overlay destination instead.</source>
+        <translation>HEVC+alpha требует кодировщика VideoToolbox от Apple; libx265 ЗАЯВЛЯЕТ yuva420p, а затем отказывается от него при открытии. hvc1 обязателен: Safari отклоняет hev1 без метки. Там, где VideoToolbox недоступен, используйте назначение оверлея WebM/VP9.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="164"/>
+        <source>YouTube re-encodes every upload. Official docs still recommend H.264/AAC; AV1/H.265 give more quality per bit. Codec is resolved by the ladder.</source>
+        <translation>YouTube перекодирует каждую загрузку. Официальная документация по-прежнему рекомендует H.264/AAC; AV1/H.265 дают больше качества на бит. Кодек определяется по лестнице.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="165"/>
+        <source>Website</source>
+        <translation>Веб-сайт</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="166"/>
+        <source>Direct playback: decode compatibility dominates, so H.264 at every bucket. For transparency on the web, ship BOTH .webm (VP9) and .mov (HEVC hvc1).</source>
+        <translation>Прямое воспроизведение: совместимость декодирования важнее всего, поэтому H.264 во всех категориях. Для прозрачности в вебе выпускайте ОБА файла: .webm (VP9) и .mov (HEVC hvc1).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="167"/>
+        <source>Just a file (not sure yet)</source>
+        <translation>Просто файл (пока не ясно)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="168"/>
+        <source>The fallback when the destination is unknown: maximum compatibility.</source>
+        <translation>Запасной вариант, когда назначение неизвестно: максимальная совместимость.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="169"/>
+        <source>Keep a master copy</source>
+        <translation>Сохранить мастер-копию</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="170"/>
+        <source>At Lossless quality this is FFV1, which carries alpha (yuva420p); the other buckets pick H.265, which cannot encode alpha here at all.</source>
+        <translation>При качестве «Без потерь» это FFV1, который несёт альфа-канал (yuva420p); остальные категории выбирают H.265, который здесь вообще не умеет кодировать альфа-канал.</translation>
+    </message>
+    <message>
+        <source>FFV1 (lossless master)</source>
+        <translation type="vanished">FFV1 (мастер без потерь)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="183"/>
+        <source>%1 (%2)</source>
+        <translation>%1 (%2)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="185"/>
+        <source>hardware</source>
+        <translation>аппаратный</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="186"/>
+        <source>software</source>
+        <translation>программный</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="196"/>
+        <source>%1. This site re-encodes uploads, so source quality matters more than compatibility</source>
+        <translation>%1. Платформа перекодирует загрузки, поэтому качество исходника важнее совместимости</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="202"/>
+        <source>%1. This plays your file directly, so decode compatibility matters most</source>
+        <translation>%1. Файл воспроизводится напрямую, поэтому важнее всего совместимость декодирования</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="207"/>
+        <source>%1. A master copy, so fidelity matters most</source>
+        <translation>%1. Мастер-копия, поэтому важнее всего точность</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="218"/>
+        <source>%1, about %2s here</source>
+        <translation>%1, здесь около %2 с</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="235"/>
+        <source>Quality intent not applied: the destination table declares no &lt;bucket_positions&gt;, so &apos;%1&apos; was left at its own default.</source>
+        <translation>Выбранное качество не применено: в таблице назначений нет &lt;bucket_positions&gt;, поэтому для «%1» использовано его собственное значение по умолчанию.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="250"/>
+        <source>&apos;%1&apos; is a lossy codec, so Lossless here means its highest quality, not a lossless file.</source>
+        <translation>«%1» это кодек с потерями, поэтому «Без потерь» здесь означает его наивысшее качество, а не файл без потерь.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="320"/>
+        <source>cannot open %1</source>
+        <translation>не удалось открыть %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="341"/>
+        <source>%1: missing &lt;export_targets&gt; root</source>
+        <translation>%1: отсутствует корневой элемент &lt;export_targets&gt;</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="572"/>
+        <source>no frames selected</source>
+        <translation>кадры не выбраны</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="583"/>
+        <source>%1 frames from %2 separate ranges</source>
+        <translation>Выбрано кадров: %1 из %2 отдельных диапазонов</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="613"/>
+        <source>Size forced to %1x%2 (required by this destination); the art is %3.</source>
+        <translation>Размер принудительно задан как %1x%2 (требуется этим назначением); %3.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="619"/>
+        <source>cropped to fill it</source>
+        <translation>изображение обрезано по размеру</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="620"/>
+        <source>padded to fit it</source>
+        <translation>изображение дополнено по размеру</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="660"/>
+        <source>Frame rate reduced %1 -&gt; %2 fps (destination limit).</source>
+        <translation>Частота кадров снижена с %1 до %2 fps (ограничение назначения).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="672"/>
+        <source>Trimmed %1 -&gt; %2 frames (%3s limit).</source>
+        <translation>Сокращено с %1 до %2 кадров (ограничение %3 с).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="684"/>
+        <source>Trimmed %1 -&gt; %2 frames (destination limit).</source>
+        <translation>Сокращено с %1 до %2 кадров (ограничение назначения).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="693"/>
+        <source>WARNING: destination needs at least %1 frames but only %2 are available, so the upload will likely be rejected.</source>
+        <translation>ВНИМАНИЕ: назначению нужно не менее %1 кадров, а доступно только %2, поэтому загрузку, скорее всего, отклонят.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="711"/>
+        <source>WARNING: destination needs at least %1 s but this export is %2 s, so the upload will likely be rejected. Select a longer frame range.</source>
+        <translation>ВНИМАНИЕ: назначению нужно не менее %1 с, а в этом экспорте %2 с, поэтому загрузку, скорее всего, отклонят. Выберите более длинный диапазон кадров.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="783"/>
+        <source>%1 via %2, the fastest of %3 that runs here</source>
+        <translation>%1 через %2, самый быстрый из %3 доступных здесь</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="788"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="821"/>
+        <source>%1 via %2</source>
+        <translation>%1 через %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="803"/>
+        <source>%1/%2 (~%3s)</source>
+        <translation>%1/%2 (~%3 с)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="817"/>
+        <source>%1: nothing here is fast enough for this budget (%2), so this is the fastest available</source>
+        <translation>%1: ничего из доступного здесь не укладывается в отведённое время (%2), поэтому выбран самый быстрый вариант</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="829"/>
+        <source>no suitable encoder found in this build</source>
+        <translation>в этой сборке нет подходящего кодировщика</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="842"/>
+        <source>no destination selected</source>
+        <translation>назначение не выбрано</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="846"/>
+        <source>invalid source size</source>
+        <translation>недопустимый размер источника</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="858"/>
+        <source>%1 is required by this destination.</source>
+        <translation>%1 требуется этим назначением.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="871"/>
+        <source>Transparency</source>
+        <translation>Прозрачность</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="873"/>
+        <source>Audio</source>
+        <translation>Аудио</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="883"/>
+        <source>no frames selected for export</source>
+        <translation>кадры для экспорта не выбраны</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="923"/>
+        <source>%1; the ranges play back to back and the frames between them are not exported.</source>
+        <translation>%1; диапазоны идут подряд, а кадры между ними не экспортируются.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="945"/>
+        <source>no encoder available for this destination in this build</source>
+        <translation>в этой сборке нет кодировщика для этого назначения</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="979"/>
+        <source>WARNING: this destination&apos;s limits are UNVERIFIED; re-check before relying on them.</source>
+        <translation>ВНИМАНИЕ: ограничения этого назначения НЕ ПРОВЕРЕНЫ, проверьте их, прежде чем на них полагаться.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1006"/>
+        <source>One still image (frame %1), written as %2. The frame range above does not apply.</source>
+        <translation>Одно статичное изображение (кадр %1), записано как %2. Диапазон кадров выше не применяется.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1013"/>
+        <source>%1 frames written as numbered .%2 files.</source>
+        <translation>Записано кадров: %1 (нумерованные файлы .%2).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1069"/>
+        <source>%1 requires transparency, but &apos;%2&apos; cannot encode an alpha channel in this build (it advertises %3 and then refuses it). Use a destination whose codec carries alpha: WebM/VP9, APNG, or FFV1.</source>
+        <translation>%1 требует прозрачности, но «%2» не может кодировать альфа-канал в этой сборке (он заявляет поддержку %3, а затем отказывается от неё). Выберите назначение, кодек которого несёт альфа-канал: WebM/VP9, APNG или FFV1.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1078"/>
+        <source>%1: %2 could not encode %3 and no fallback worked (%4)</source>
+        <translation>%1: %2 не смог закодировать %3, и запасной вариант не сработал (%4)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1085"/>
+        <source>Transparency dropped: &apos;%1&apos; advertises %2 but cannot encode it here, so %3 is used instead.</source>
+        <translation>Прозрачность отброшена: «%1» заявляет поддержку %2, но не может кодировать её здесь, поэтому вместо этого используется %3.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1091"/>
+        <source>the encoder default</source>
+        <translation>значение кодека по умолчанию</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1152"/>
+        <source>No sound: %1 does not accept an audio track.</source>
+        <translation>Без звука: %1 не принимает аудиодорожку.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1157"/>
+        <source>WARNING: %1 expects sound but this project has no audio track.</source>
+        <translation>ВНИМАНИЕ: %1 ожидает звук, но в этом проекте нет аудиодорожки.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1184"/>
+        <source>no frames left</source>
+        <translation>кадров не осталось</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1222"/>
+        <source>could not write %1</source>
+        <translation>не удалось записать %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1230"/>
+        <source>no files produced</source>
+        <translation>файлы не созданы</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1272"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1296"/>
+        <source>no file produced</source>
+        <translation>файл не создан</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1330"/>
+        <source>frames: the plan selected %1, but %2 were supplied</source>
+        <translation>Кадров: план выбрал %1, а передано %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="580"/>
+        <source>%1 frame</source>
+        <translation>%1 кадр</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="581"/>
+        <source>%1 frames</source>
+        <translation>%1 кадров</translation>
+    </message>
+    <message>
+        <source>frame mismatch: the plan selects %1 but %2 were supplied (render plan.selection.indices())</source>
+        <translation type="vanished">несовпадение кадров: план выбирает %1, а передано %2 (см. plan.selection.indices())</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1399"/>
+        <source>canceled</source>
+        <translation>отменено</translation>
+    </message>
+</context>
+<context>
     <name>ExportWidgetUI</name>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="529"/>
+        <location filename="../../src/gui/exportdiag.h" line="302"/>
+        <source>Choose where this is going</source>
+        <translation>Укажите, куда это пойдёт</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="622"/>
         <source>Open Palette</source>
         <translation>Открыть палитру</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="530"/>
+        <location filename="../../src/gui/exportdiag.h" line="623"/>
         <source>FFmpeg palette file (*.png)</source>
         <translation>Файл палитры FFmpeg (*.png)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="637"/>
+        <source>Auto</source>
+        <translation>Авто</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="790"/>
+        <source>PNG sequence</source>
+        <translation>Последовательность PNG</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="791"/>
+        <source>JPEG sequence</source>
+        <translation>Последовательность JPEG</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="917"/>
+        <source>CRF:</source>
+        <translation>CRF:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="918"/>
+        <source>Quality:</source>
+        <translation>Качество:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1389"/>
+        <source>First frame %1</source>
+        <translation>Первый кадр %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1390"/>
+        <source>Last frame %1</source>
+        <translation>Последний кадр %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1494"/>
+        <source>Width</source>
+        <translation>Ширина</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1495"/>
+        <source>Height</source>
+        <translation>Высота</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1496"/>
+        <source>Frame rate</source>
+        <translation>Частота кадров</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1497"/>
+        <source>First frame</source>
+        <translation>Первый кадр</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1498"/>
+        <source>Last frame</source>
+        <translation>Последний кадр</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1499"/>
+        <source>Format</source>
+        <translation>Формат</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1500"/>
+        <source>Codec</source>
+        <translation>Кодек</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1501"/>
+        <source>Quality</source>
+        <translation>Качество</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1502"/>
+        <source>Quality override</source>
+        <translation>Переопределение качества</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1503"/>
+        <source>Image quality</source>
+        <translation>Качество изображения</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1504"/>
+        <source>Bitrate</source>
+        <translation>Битрейт</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1505"/>
+        <source>Destination</source>
+        <translation>Назначение</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1506"/>
+        <source>Advanced</source>
+        <translation>Дополнительно</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1507"/>
+        <source>Export</source>
+        <translation>Экспортировать</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1508"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1509"/>
+        <source>Export with transparency</source>
+        <translation>Экспортировать с прозрачностью</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1510"/>
+        <source>Loop animation</source>
+        <translation>Зациклить анимацию</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1511"/>
+        <source>Export with audio</source>
+        <translation>Экспортировать со звуком</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1512"/>
+        <source>Custom palette</source>
+        <translation>Пользовательская палитра</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1513"/>
+        <source>Keep aspect ratio</source>
+        <translation>Сохранять пропорции</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1514"/>
+        <source>Insert range</source>
+        <translation>Добавить диапазон</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1515"/>
+        <source>Remove range</source>
+        <translation>Убрать диапазон</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1516"/>
+        <source>Set width to native</source>
+        <translation>Задать исходную ширину</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1517"/>
+        <source>Set height to native</source>
+        <translation>Задать исходную высоту</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1518"/>
+        <source>Set frame rate to native</source>
+        <translation>Задать исходную частоту кадров</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1519"/>
+        <source>Image quality to auto</source>
+        <translation>Качество изображения: авто</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1520"/>
+        <source>Quality override to auto</source>
+        <translation>Переопределение качества: авто</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1521"/>
+        <source>Bitrate to auto</source>
+        <translation>Битрейт: авто</translation>
     </message>
 </context>
 <context>
     <name>Exporter</name>
     <message>
-        <source>Finishing up</source>
-        <translation type="vanished">Завершение</translation>
+        <location filename="../../src/ctrl/Exporter.cpp" line="99"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="124"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="157"/>
+        <source>Invalid common parameters.</source>
+        <translation>Недопустимые общие параметры.</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="106"/>
+        <source>Invalid directory path.</source>
+        <translation>Недопустимый путь к каталогу.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="132"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="165"/>
+        <source>Exporting was canceled.</source>
+        <translation>Экспортирование было отменено.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="193"/>
+        <source>No available video encoder can carry the &apos;%1&apos; container.</source>
+        <translation>Ни один доступный видеокодировщик не подходит для контейнера «%1».</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="206"/>
+        <source>Encoder not available in this build: %1</source>
+        <translation>Кодировщик недоступен в этой сборке: %1</translation>
+    </message>
+    <message>
+        <source>The &apos;%1&apos; container cannot carry the %2 video codec.</source>
+        <translation type="vanished">Контейнер «%1» не поддерживает видеокодек %2.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="212"/>
+        <source>The &apos;%1&apos; container cannot carry the %2 video encoder.</source>
+        <translation>Контейнер «%1» не поддерживает видеокодировщик %2.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="225"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="265"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="537"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="641"/>
+        <source>Video encoder error.
+%1</source>
+        <translation>Ошибка видеокодировщика.
+%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="295"/>
+        <source>Finishing up</source>
+        <translation>Завершение</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="297"/>
         <source>Rendering</source>
-        <translation type="vanished">Рендеринг</translation>
+        <translation>Рендеринг</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="312"/>
+        <source>Export was canceled.</source>
+        <translation>Экспорт был отменён.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="347"/>
+        <source>Failed to initialize TextureDrawer</source>
+        <translation>Не удалось инициализировать TextureDrawer</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="579"/>
+        <source>GIF encoder error.
+%1</source>
+        <translation>Ошибка кодировщика GIF.
+%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="619"/>
+        <source>Audio mixing error.
+%1</source>
+        <translation>Ошибка микширования звука.
+%1</translation>
     </message>
 </context>
 <context>
@@ -563,23 +2121,54 @@
         <translation type="vanished">Построение дерева объектов...</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="269"/>
         <source>Building an Object Tree...</source>
-        <translation type="vanished">Построение дерева объектов...</translation>
+        <translation>Построение дерева объектов...</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="597"/>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="725"/>
         <source>Building object trees...</source>
-        <translation type="vanished">Построение деревьев объектов...</translation>
+        <translation>Построение деревьев объектов...</translation>
+    </message>
+</context>
+<context>
+    <name>ImageFileLoader</name>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="522"/>
+        <source>Select ORA file type</source>
+        <translation>Выберите тип файла ORA</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="523"/>
+        <source>How do you wish to load this ORA file?</source>
+        <translation>Как вы хотите загрузить этот файл ORA?</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="524"/>
+        <source>Load layered</source>
+        <translation>Загрузить слоями</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="525"/>
+        <source>Load merged</source>
+        <translation>Загрузить объединённым</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="528"/>
+        <source>Cancel file load</source>
+        <translation>Отменить загрузку файла</translation>
     </message>
 </context>
 <context>
     <name>LoadMus</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="168"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="177"/>
         <source>Load audio configuration</source>
         <translation>Загрузить конфигурацию аудио</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="170"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="179"/>
         <source>Anie audio configuration file (*.aemus)</source>
         <translation>Файл конфигурации аудио Anie (*.aemus)</translation>
     </message>
@@ -587,63 +2176,198 @@
 <context>
     <name>LoadMusOverwrite</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="192"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="201"/>
         <source>Loading this file will overwrite your current audio configuration, continue?</source>
         <translation>Загрузка этого файла перезапишет текущую конфигурацию аудио. Продолжить?</translation>
     </message>
 </context>
 <context>
+    <name>MainWindow</name>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="26"/>
+        <source>%1 GB</source>
+        <translation>%1 ГБ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="29"/>
+        <source>%1 MB</source>
+        <translation>%1 МБ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="31"/>
+        <source>%1 KB</source>
+        <translation>%1 КБ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="38"/>
+        <source>yes</source>
+        <translation>да</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="39"/>
+        <source>no</source>
+        <translation>нет</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="47"/>
+        <source>This destination cannot be exported: %1</source>
+        <translation>Это назначение нельзя экспортировать: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="59"/>
+        <source>%1 x %2, frame %3 (the one on the timeline)</source>
+        <translation>%1 x %2, кадр %3 (тот, что на шкале времени)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="68"/>
+        <source>%1 x %2, %3 frames (timing is set on the upload page)</source>
+        <translation>%1 x %2, кадров: %3 (тайминг задаётся на странице загрузки)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="74"/>
+        <source>%1 x %2, %3 fps</source>
+        <translation>%1 x %2, %3 fps</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="81"/>
+        <source>Artifact: one %1 image</source>
+        <translation>Артефакт: одно изображение %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="84"/>
+        <source>Artifact: %1 numbered %2 files</source>
+        <translation>Артефакт: %2, нумерованных файлов: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="89"/>
+        <source>Codec: animated GIF</source>
+        <translation>Кодек: анимированный GIF</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="90"/>
+        <source>Codec: %1 in %2</source>
+        <translation>Кодек: %1 в %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="102"/>
+        <source>not accepted by this destination</source>
+        <translation>не принимается этим назначением</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="104"/>
+        <source>none in this project</source>
+        <translation>в проекте его нет</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="106"/>
+        <source>off in this dialog</source>
+        <translation>выключено в этом диалоге</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="110"/>
+        <source>Transparency: %1   Audio: %2</source>
+        <translation>Прозрачность: %1; аудио: %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="119"/>
+        <source>max %1</source>
+        <translation>не более %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="121"/>
+        <source>max %1 s</source>
+        <translation>не более %1 с</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="123"/>
+        <source>min %1 s</source>
+        <translation>не менее %1 с</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="125"/>
+        <source>max %1 frames</source>
+        <translation>не более %1 кадров</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="127"/>
+        <source>max %1 fps</source>
+        <translation>не более %1 fps</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="132"/>
+        <source>Limits: %1</source>
+        <translation>Ограничения: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="133"/>
+        <source>, </source>
+        <translation>, </translation>
+    </message>
+</context>
+<context>
     <name>NetworkCheckForUpdate</name>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="241"/>
         <source>Failed</source>
-        <translation type="vanished">Не удалось</translation>
+        <translation>Не удалось</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="242"/>
         <source>&lt;center&gt;Unable to get latest version. &lt;br&gt;Please check your internet connection and if you have curl or wget installed.&lt;/center&gt;</source>
-        <translation type="vanished">&lt;center&gt;Не удалось получить последнюю версию. &lt;br&gt;Проверьте подключение к интернету и наличие curl или wget.&lt;/center&gt;</translation>
+        <translation>&lt;center&gt;Не удалось получить последнюю версию. &lt;br&gt;Проверьте подключение к интернету и наличие curl или wget.&lt;/center&gt;</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="252"/>
         <source>On latest</source>
-        <translation type="vanished">Установлена последняя версия</translation>
+        <translation>Установлена последняя версия</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="254"/>
         <source>&lt;center&gt;You already have the latest stable release available. &lt;br&gt;Version: </source>
-        <translation type="vanished">&lt;center&gt;У вас уже установлена последняя доступная стабильная версия. &lt;br&gt;Версия: </translation>
+        <translation>&lt;center&gt;У вас уже установлена последняя доступная стабильная версия. &lt;br&gt;Версия: </translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="266"/>
         <source>On preview</source>
-        <translation type="vanished">Установлена предварительная версия</translation>
+        <translation>Установлена предварительная версия</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="268"/>
         <source>&lt;center&gt;Your current version is higher than the latest stable release. &lt;br&gt;Version: </source>
-        <translation type="vanished">&lt;center&gt;Ваша текущая версия выше последней стабильной версии. &lt;br&gt;Версия: </translation>
+        <translation>&lt;center&gt;Ваша текущая версия выше последней стабильной версии. &lt;br&gt;Версия: </translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="280"/>
         <source>New release available</source>
-        <translation type="vanished">Доступна новая версия</translation>
+        <translation>Доступна новая версия</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="282"/>
         <source>&lt;center&gt;A new stable release is available, version: </source>
-        <translation type="vanished">&lt;center&gt;Доступна новая стабильная версия: </translation>
+        <translation>&lt;center&gt;Доступна новая стабильная версия: </translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="286"/>
         <source>.&lt;br&gt;Do you wish to download it or to go to the GitHub page?&lt;/center&gt;</source>
-        <translation type="vanished">.&lt;br&gt;Хотите загрузить её или перейти на страницу GitHub?&lt;/center&gt;</translation>
+        <translation>.&lt;br&gt;Хотите загрузить её или перейти на страницу GitHub?&lt;/center&gt;</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="297"/>
         <source>Download</source>
-        <translation type="vanished">Загрузить</translation>
+        <translation>Загрузить</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="299"/>
         <source>Go to page</source>
-        <translation type="vanished">Перейти на страницу</translation>
+        <translation>Перейти на страницу</translation>
     </message>
 </context>
 <context>
     <name>NetworkUtil</name>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="193"/>
         <source>Currently downloading:</source>
-        <translation type="vanished">Сейчас загружается:</translation>
+        <translation>Сейчас загружается:</translation>
     </message>
 </context>
 <context>
@@ -657,20 +2381,86 @@
         <translation type="vanished">Редактор Безье</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/prop_Items.cpp" line="247"/>
+        <location filename="../../src/gui/prop/prop_Items.cpp" line="246"/>
         <source>Easing</source>
         <translation>Интерполяция</translation>
     </message>
 </context>
 <context>
+    <name>QObject</name>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1294"/>
+        <source>needs %1</source>
+        <translation>требуется %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1362"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1406"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1472"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1510"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1557"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1580"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1611"/>
+        <source>Export Error</source>
+        <translation>Ошибка экспорта</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1363"/>
+        <source>Unknown export destination: %1</source>
+        <translation>Неизвестное назначение экспорта: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1425"/>
+        <source>File exists</source>
+        <translation>Файл существует</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1426"/>
+        <source>The file &quot;%1&quot; already exists. Overwrite?</source>
+        <translation>Файл «%1» уже существует. Заменить его?</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1473"/>
+        <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
+        <translation>%1 ограничивает размер файла, а значит файл придётся кодировать несколько раз, и для этого все %2 кадров должны находиться в памяти (~%3 MB). Экспортируйте меньше кадров или выберите назначение без ограничения размера.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1488"/>
+        <source>Fitting under %1&apos;s %2 KB limit...</source>
+        <translation>%1: подгонка под лимит %2 KB...</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1501"/>
+        <source>Export Canceled</source>
+        <translation>Экспорт отменён</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1502"/>
+        <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
+        <translation>Экспорт остановлен во время подгонки под ограничение размера (%1). Уже записанный файл является последней попыткой и может превышать лимит.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1511"/>
+        <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
+%4</source>
+        <translation>%1 ограничивает размер файла значением %2 KB, и даже минимальные настройки не уложились в него (%3 KB).
+%4</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1519"/>
+        <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
+        <translation>Подогнано до %1 байт; попыток: %2 (%3x%4).</translation>
+    </message>
+</context>
+<context>
     <name>SaveMus</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="156"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="165"/>
         <source>Save audio configuration</source>
         <translation>Сохранить конфигурацию аудио</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="158"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="167"/>
         <source>Anie audio configuration file (*.aemus)</source>
         <translation>Файл конфигурации аудио Anie (*.aemus)</translation>
     </message>
@@ -678,83 +2468,153 @@
 <context>
     <name>SelectMus</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="390"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="428"/>
         <source>Open audio file</source>
         <translation>Открыть аудиофайл</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="392"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="430"/>
         <source>Audio Files (*.mp3 *.mp4 *.wav *.ogg *.flac)</source>
         <translation>Аудиофайлы (*.mp3 *.mp4 *.wav *.ogg *.flac)</translation>
     </message>
 </context>
 <context>
+    <name>UILog</name>
+    <message>
+        <location filename="../../src/ctrl/BoneEditor.cpp" line="32"/>
+        <source>Bone Editor : </source>
+        <translation>Редактор костей: </translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/BoneEditor.cpp" line="118"/>
+        <location filename="../../src/ctrl/MeshEditor.cpp" line="96"/>
+        <source>An object with invalid pose was given.</source>
+        <translation>Передан объект с недопустимой позой.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/FFDEditor.cpp" line="187"/>
+        <source>FFD Editor : </source>
+        <translation>Редактор FFD: </translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/FFDEditor.cpp" line="265"/>
+        <source>There are no objects with meshes.</source>
+        <translation>Нет объектов с сетками.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/MeshEditor.cpp" line="25"/>
+        <source>Mesh Editor : </source>
+        <translation>Редактор сетки: </translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/MeshEditor.cpp" line="29"/>
+        <source>The object can&apos;t own a mesh key.</source>
+        <translation>Объект не может иметь ключ сетки.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/PoseEditor.cpp" line="29"/>
+        <source>Pose Editor : </source>
+        <translation>Редактор позы: </translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/PoseEditor.cpp" line="90"/>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="80"/>
+        <source>An object with invalid posture was given.</source>
+        <translation>Передан объект с недопустимой позой.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/PoseEditor.cpp" line="118"/>
+        <source>There are no bones in the selected layer that can be posed.</source>
+        <translation>В выбранном слое нет костей, которые можно привести в позу.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="30"/>
+        <source>The transformed object has one or more bones bound to it, SRT keys may not work as expected.</source>
+        <translation>К трансформируемому объекту привязаны одна или несколько костей, ключи SRT могут работать некорректно.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="31"/>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="128"/>
+        <source>SRT Editor : </source>
+        <translation>Редактор SRT: </translation>
+    </message>
+</context>
+<context>
     <name>audioWidget</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="335"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="350"/>
         <source>Enable playback</source>
         <translation>Включить воспроизведение</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="336"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="354"/>
+        <source>Export</source>
+        <translation>Экспортировать</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="355"/>
+        <source>Mix this track into exported files. Untick it for a track you only need as timing reference (a voice pass, a temp music bed): it still plays while you animate, and it stays out of the file.</source>
+        <translation>Микшировать эту дорожку в экспортируемые файлы. Снимите флажок для дорожки, которая нужна только как ориентир по времени (черновой голос, временная музыка): она всё равно звучит во время анимации, но в файл не попадает.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="361"/>
         <source>Add new audio track</source>
         <translation>Добавить новую аудиодорожку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="337"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="362"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Playback start frame&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Начальный кадр воспроизведения&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="338"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="363"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Playback end frame&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Конечный кадр воспроизведения&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="339"/>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="437"/>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="442"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="364"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="475"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="480"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Duration (in frames): &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Длительность (в кадрах): &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="357"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="383"/>
         <source>Select audio file...</source>
         <translation>Выбрать аудиофайл...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="375"/>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="415"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="418"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="453"/>
         <source>Remove next audio track</source>
         <translation>Удалить следующую аудиодорожку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="379"/>
         <source>Remove current audio track</source>
-        <translation>Удалить текущую аудиодорожку</translation>
+        <translation type="vanished">Удалить текущую аудиодорожку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="157"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="166"/>
         <source>Audio Player</source>
         <translation>Аудиоплеер</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="158"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="167"/>
         <source>Audio player</source>
         <translation>Аудиоплеер</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="159"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="168"/>
         <source>Save current audio configuration</source>
         <translation>Сохранить текущую конфигурацию аудио</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="160"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="169"/>
         <source>Load audio configuration from file</source>
         <translation>Загрузить конфигурацию аудио из файла</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="161"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="170"/>
         <source>Save/Load audio config</source>
         <translation>Сохранить/загрузить конфигурацию аудио</translation>
     </message>
@@ -844,311 +2704,375 @@
 <context>
     <name>data_load</name>
     <message>
-        <location filename="../../src/gui/Main.cpp" line="165"/>
         <source>Unable to locate data folder, please select it</source>
-        <translation>Не удалось найти папку данных, выберите её</translation>
+        <translation type="vanished">Не удалось найти папку данных, выберите её</translation>
     </message>
 </context>
 <context>
     <name>exportWidget</name>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="873"/>
+        <location filename="../../src/gui/exportdiag.h" line="1423"/>
         <source>Export parameters</source>
         <translation>Параметры экспорта</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="874"/>
         <source>Intermediate </source>
-        <translation>Промежуточный </translation>
+        <translation type="vanished">Промежуточный </translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="875"/>
+        <location filename="../../src/gui/exportdiag.h" line="1424"/>
         <source>Keep aspect ratio</source>
         <translation>Сохранять пропорции</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="876"/>
+        <location filename="../../src/gui/exportdiag.h" line="1425"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- Last frame -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- Последний кадр -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="877"/>
         <source>Export type:</source>
-        <translation>Тип экспорта:</translation>
+        <translation type="vanished">Тип экспорта:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="878"/>
         <source>Intermediate type:</source>
-        <translation>Промежуточный тип:</translation>
+        <translation type="vanished">Промежуточный тип:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="879"/>
         <source>Custom</source>
-        <translation>Пользовательский</translation>
+        <translation type="vanished">Пользовательский</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="880"/>
+        <location filename="../../src/gui/exportdiag.h" line="1435"/>
         <source>Insert range</source>
         <translation>Добавить диапазон</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="881"/>
+        <location filename="../../src/gui/exportdiag.h" line="1436"/>
         <source>Remove range</source>
         <translation>Убрать диапазон</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="882"/>
+        <location filename="../../src/gui/exportdiag.h" line="1437"/>
         <source>Custom palette</source>
         <translation>Пользовательская палитра</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="883"/>
         <source>Force piped export </source>
-        <translation>Принудительный конвейерный экспорт </translation>
+        <translation type="vanished">Принудительный конвейерный экспорт </translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="884"/>
         <source>PNG</source>
-        <translation>PNG</translation>
+        <translation type="vanished">PNG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="885"/>
         <source>BMP</source>
-        <translation>BMP</translation>
+        <translation type="vanished">BMP</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="886"/>
         <source>JPG</source>
-        <translation>JPG</translation>
+        <translation type="vanished">JPG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="887"/>
         <source>JPEG</source>
-        <translation>JPEG</translation>
+        <translation type="vanished">JPEG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="888"/>
         <source>PPM</source>
-        <translation>PPM</translation>
+        <translation type="vanished">PPM</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="889"/>
+        <location filename="../../src/gui/exportdiag.h" line="1438"/>
         <source>Width: </source>
         <translation>Ширина: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="890"/>
         <source>One-to-one</source>
-        <translation>Один к одному</translation>
+        <translation type="vanished">Один к одному</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="891"/>
-        <location filename="../../src/gui/exportdiag.h" line="896"/>
-        <location filename="../../src/gui/exportdiag.h" line="901"/>
+        <location filename="../../src/gui/exportdiag.h" line="1440"/>
+        <location filename="../../src/gui/exportdiag.h" line="1443"/>
+        <location filename="../../src/gui/exportdiag.h" line="1446"/>
         <source>Set to native</source>
         <translation>Задать исходное</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="892"/>
         <source>Post</source>
-        <translation>Постобработка</translation>
+        <translation type="vanished">Постобработка</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="893"/>
         <source>Active parameters:</source>
-        <translation>Активные параметры:</translation>
+        <translation type="vanished">Активные параметры:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="894"/>
+        <location filename="../../src/gui/exportdiag.h" line="1441"/>
         <source>Height:</source>
         <translation>Высота:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="895"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Exporting&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Экспорт&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Экспорт&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="897"/>
+        <location filename="../../src/gui/exportdiag.h" line="1444"/>
         <source>FPS:</source>
         <translation>FPS:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="898"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Rendering&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Рендеринг&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Рендеринг&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="899"/>
         <source>Animation</source>
-        <translation>Анимация</translation>
+        <translation type="vanished">Анимация</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="900"/>
         <source>Image sequence</source>
-        <translation>Последовательность изображений</translation>
+        <translation type="vanished">Последовательность изображений</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="902"/>
+        <location filename="../../src/gui/exportdiag.h" line="1426"/>
+        <source>Format:</source>
+        <translation>Формат:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1427"/>
+        <source>Codec:</source>
+        <translation>Кодек:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1428"/>
+        <source>Destination:</source>
+        <translation>Назначение:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1429"/>
+        <source>Quality:</source>
+        <translation>Качество:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1430"/>
+        <source>Smaller file</source>
+        <translation>Меньший размер</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1431"/>
+        <source>Balanced</source>
+        <translation>Сбалансированное</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1432"/>
+        <source>Best quality</source>
+        <translation>Лучшее качество</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1433"/>
+        <source>Lossless</source>
+        <translation>Без потерь</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1442"/>
+        <source>How to encode</source>
+        <translation>Как кодировать</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1445"/>
+        <source>What to export</source>
+        <translation>Что экспортировать</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1447"/>
         <source>Export with transparency</source>
         <translation>Экспортировать с прозрачностью</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="903"/>
+        <location filename="../../src/gui/exportdiag.h" line="1448"/>
         <source>Loop animation</source>
         <translation>Зациклить анимацию</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="904"/>
+        <location filename="../../src/gui/exportdiag.h" line="1449"/>
         <source>Export with audio</source>
         <translation>Экспортировать со звуком</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="905"/>
+        <location filename="../../src/gui/exportdiag.h" line="1450"/>
+        <location filename="../../src/gui/exportdiag.h" line="1464"/>
         <source>Auto</source>
         <translation>Авто</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="906"/>
-        <location filename="../../src/gui/exportdiag.h" line="911"/>
+        <location filename="../../src/gui/exportdiag.h" line="1451"/>
+        <location filename="../../src/gui/exportdiag.h" line="1465"/>
+        <location filename="../../src/gui/exportdiag.h" line="1466"/>
         <source>Set to auto</source>
         <translation>Задать автоматически</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="907"/>
-        <source>Frames rendered: </source>
-        <translation>Отрисовано кадров: </translation>
+        <location filename="../../src/gui/exportdiag.h" line="1454"/>
+        <source>Frame range:</source>
+        <translation>Диапазон кадров:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="908"/>
+        <location filename="../../src/gui/exportdiag.h" line="1458"/>
+        <source>Advanced</source>
+        <translation>Дополнительно</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1463"/>
+        <source>Quality override:</source>
+        <translation>Переопределение качества:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1539"/>
+        <source>&amp;Export</source>
+        <translation>&amp;Экспортировать</translation>
+    </message>
+    <message>
+        <source>Frames rendered: </source>
+        <translation type="vanished">Отрисовано кадров: </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1455"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- First frame -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- Первый кадр -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="909"/>
+        <location filename="../../src/gui/exportdiag.h" line="1456"/>
         <source>Bitrate (kB/s):</source>
         <translation>Битрейт (Кбайт/с):</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="910"/>
+        <location filename="../../src/gui/exportdiag.h" line="1457"/>
         <source>Image quality:</source>
         <translation>Качество изображения:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="912"/>
         <source>Export with custom parameters</source>
-        <translation>Экспортировать с пользовательскими параметрами</translation>
+        <translation type="vanished">Экспортировать с пользовательскими параметрами</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="913"/>
+        <location filename="../../src/gui/exportdiag.h" line="1467"/>
         <source>Select palette path</source>
         <translation>Выбрать путь к палитре</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="914"/>
         <source>General Parameters</source>
-        <translation>Общие параметры</translation>
+        <translation type="vanished">Общие параметры</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="915"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Pixel format:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Пиксельный формат:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Пиксельный формат:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="916"/>
         <source>MOV</source>
-        <translation>MOV</translation>
+        <translation type="vanished">MOV</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="921"/>
         <source>MKV</source>
-        <translation>MKV</translation>
+        <translation type="vanished">MKV</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="933"/>
         <source>Pixel Format availability depends on the selected format, we recommend you stick to yuv420p</source>
-        <translation>Доступность пиксельного формата зависит от выбранного формата; рекомендуем использовать yuv420p</translation>
+        <translation type="vanished">Доступность пиксельного формата зависит от выбранного формата; рекомендуем использовать yuv420p</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="941"/>
         <source>MP4</source>
-        <translation>MP4</translation>
+        <translation type="vanished">MP4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="942"/>
         <source>AVI</source>
-        <translation>AVI</translation>
+        <translation type="vanished">AVI</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="951"/>
         <source>WEBM</source>
-        <translation>WEBM</translation>
+        <translation type="vanished">WEBM</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="963"/>
         <source>Format Parameters</source>
-        <translation>Параметры формата</translation>
+        <translation type="vanished">Параметры формата</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="964"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Intermediate:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Промежуточный:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Промежуточный:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="965"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Post:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Постобработка:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Постобработка:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="966"/>
         <source>Add to Intermediate pass</source>
-        <translation>Добавить в промежуточный проход</translation>
+        <translation type="vanished">Добавить в промежуточный проход</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="967"/>
         <source>Add to Post</source>
-        <translation>Добавить в постобработку</translation>
+        <translation type="vanished">Добавить в постобработку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="968"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Presets:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Предустановки:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Предустановки:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="970"/>
         <source>Remove preset</source>
-        <translation>Убрать предустановку</translation>
+        <translation type="vanished">Убрать предустановку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="971"/>
-        <location filename="../../src/gui/exportdiag.h" line="972"/>
         <source>Save as preset...</source>
-        <translation>Сохранить как предустановку...</translation>
+        <translation type="vanished">Сохранить как предустановку...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="974"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;You may use these special attributes in your custom command:&lt;/p&gt;&lt;ul&gt;&lt;p&gt;&lt;li&gt; %exportfilename%&lt;/li&gt;&lt;/p&gt;&lt;p&gt;&lt;li&gt; %intermediatefilename%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %fps%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %palettepath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %exportpath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %intermediatepath%&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Вы можете использовать эти специальные атрибуты в своей пользовательской команде:&lt;/p&gt;&lt;ul&gt;&lt;p&gt;&lt;li&gt; %exportfilename%&lt;/li&gt;&lt;/p&gt;&lt;p&gt;&lt;li&gt; %intermediatefilename%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %fps%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %palettepath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %exportpath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %intermediatepath%&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Вы можете использовать эти специальные атрибуты в своей пользовательской команде:&lt;/p&gt;&lt;ul&gt;&lt;p&gt;&lt;li&gt; %exportfilename%&lt;/li&gt;&lt;/p&gt;&lt;p&gt;&lt;li&gt; %intermediatefilename%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %fps%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %palettepath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %exportpath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %intermediatepath%&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="976"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Commands&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Команды&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Команды&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="977"/>
         <source>Custom Parameters</source>
-        <translation>Пользовательские параметры</translation>
+        <translation type="vanished">Пользовательские параметры</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="978"/>
         <source>Export</source>
-        <translation>Экспортировать</translation>
+        <translation type="vanished">Экспортировать</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="979"/>
+        <location filename="../../src/gui/exportdiag.h" line="1541"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
+    </message>
+</context>
+<context>
+    <name>gui</name>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="71"/>
+        <source>Send in a chat</source>
+        <translation>Отправить в чате</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="72"/>
+        <source>Post to a platform</source>
+        <translation>Публикация на платформе</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="73"/>
+        <source>Stickers and emoji</source>
+        <translation>Стикеры и эмодзи</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="74"/>
+        <source>Overlays and transparency</source>
+        <translation>Оверлеи и прозрачность</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="75"/>
+        <source>A file</source>
+        <translation>Файл</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="76"/>
+        <source>Archive</source>
+        <translation>Архив</translation>
     </message>
 </context>
 <context>
@@ -1183,63 +3107,88 @@
     </message>
 </context>
 <context>
+    <name>gui::DestinationPicker</name>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="131"/>
+        <source>Where are you posting this?</source>
+        <translation>Куда вы это публикуете?</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="143"/>
+        <source>Search: telegram, sticker, reels, illustration, 微信...</source>
+        <translation>Поиск: telegram, стикер, reels, иллюстрация, 微信...</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="148"/>
+        <source>Search destinations</source>
+        <translation>Поиск назначений</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="245"/>
+        <source>%1 destinations</source>
+        <translation>Назначений: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="250"/>
+        <source>My platform isn&apos;t listed (I&apos;ll choose the format)</source>
+        <translation>Моей платформы нет в списке (я сам выберу формат)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="252"/>
+        <source>Everything above is a destination we know the rules for. This one lets you state the format and codec yourself.</source>
+        <translation>Всё перечисленное выше это назначения, правила которых мы знаем. А здесь вы сами задаёте формат и кодек.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="257"/>
+        <source>Use this destination</source>
+        <translation>Использовать это назначение</translation>
+    </message>
+</context>
+<context>
     <name>gui::ExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="36"/>
         <source>Export Animation</source>
-        <translation>Экспортировать анимацию</translation>
+        <translation type="vanished">Экспортировать анимацию</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="71"/>
-        <location filename="../../src/gui/ExportDialog.cpp" line="90"/>
-        <location filename="../../src/gui/ExportDialog.cpp" line="114"/>
         <source>Value is Odd</source>
-        <translation>Нечётное значение</translation>
+        <translation type="vanished">Нечётное значение</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="72"/>
         <source>The width or height of the image ends with an odd number. Please change these parameters to an even number as they may cause the export to fail.</source>
-        <translation>Ширина или высота изображения оканчивается нечётным числом. Измените эти параметры на чётное число, так как они могут привести к сбою экспорта.</translation>
+        <translation type="vanished">Ширина или высота изображения оканчивается нечётным числом. Измените эти параметры на чётное число, так как они могут привести к сбою экспорта.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="91"/>
         <source>A width or height ending in an odd number may make the exporting process fail, please try another value.</source>
-        <translation>Ширина или высота, оканчивающиеся нечётным числом, могут привести к сбою экспорта; попробуйте другое значение.</translation>
+        <translation type="vanished">Ширина или высота, оканчивающиеся нечётным числом, могут привести к сбою экспорта; попробуйте другое значение.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="115"/>
         <source>A height or width ending in an odd number may make the exporting process fail, please try another value.</source>
-        <translation>Высота или ширина, оканчивающиеся нечётным числом, могут привести к сбою экспорта; попробуйте другое значение.</translation>
+        <translation type="vanished">Высота или ширина, оканчивающиеся нечётным числом, могут привести к сбою экспорта; попробуйте другое значение.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="135"/>
         <source>Image width</source>
-        <translation>Ширина изображения</translation>
+        <translation type="vanished">Ширина изображения</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="136"/>
         <source>Image height</source>
-        <translation>Высота изображения</translation>
+        <translation type="vanished">Высота изображения</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="137"/>
         <source>Fix aspect ratio</source>
-        <translation>Зафиксировать пропорции</translation>
+        <translation type="vanished">Зафиксировать пропорции</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="172"/>
         <source>Initial frame</source>
-        <translation>Начальный кадр</translation>
+        <translation type="vanished">Начальный кадр</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="173"/>
         <source>Last frame</source>
-        <translation>Последний кадр</translation>
+        <translation type="vanished">Последний кадр</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="184"/>
         <source>FPS</source>
-        <translation>FPS</translation>
+        <translation type="vanished">FPS</translation>
     </message>
 </context>
 <context>
@@ -1249,120 +3198,116 @@
         <translation type="vanished">Общие настройки</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="290"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="288"/>
         <source>Default keyframe easing</source>
         <translation>Интерполяция ключевого кадра по умолчанию</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="297"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="295"/>
         <source>Default keyframe range</source>
         <translation>Диапазон ключевого кадра по умолчанию</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="283"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="281"/>
         <source>Language (needs restart)</source>
         <translation>Язык (требуется перезапуск)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="304"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="302"/>
         <source>Timeline format</source>
         <translation>Формат временной шкалы</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="320"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
         <source>System</source>
         <translation>Системная</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="320"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
         <source>Light</source>
         <translation>Светлая</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="320"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
         <source>Dark</source>
         <translation>Тёмная</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="335"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="333"/>
         <source>Theme</source>
         <translation>Тема</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="369"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="367"/>
         <source>Accent color</source>
         <translation>Акцентный цвет</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="377"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="375"/>
         <source>Automatically save your project</source>
         <translation>Автоматически сохранять проект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="382"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="380"/>
         <source>Time (in minutes) between autosaves</source>
         <translation>Интервал между автосохранениями (в минутах)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="390"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
         <source>Show mesh when selecting FFD</source>
         <translation>Показывать сетку при выборе FFD</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="394"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="392"/>
         <source>On copy send keys to the clipboard</source>
         <translation>При копировании отправлять ключи в буфер обмена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="398"/>
         <source>Always check for FFmpeg on export</source>
-        <translation>Всегда проверять FFmpeg при экспорте</translation>
+        <translation type="vanished">Всегда проверять FFmpeg при экспорте</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="402"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="397"/>
         <source>Enforce ID check on asset download</source>
         <translation>Принудительно проверять ID при загрузке ресурсов</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="406"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="401"/>
         <source>Ignore export warnings</source>
         <translation>Игнорировать предупреждения при экспорте</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="410"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="405"/>
         <source>Allow donation menu</source>
         <translation>Разрешить меню пожертвований</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="414"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="409"/>
         <source>Force project to load</source>
         <translation>Принудительно загружать проект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="411"/>
         <source>Reset recent files list</source>
         <translation>Сбросить список недавних файлов</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="417"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
         <source>Deletes all project entries from your recents</source>
         <translation>Удаляет все записи проектов из списка недавних</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="421"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="483"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="585"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="610"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
         <source>Success</source>
         <translation>Успешно</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="421"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
         <source>All entries have been successfully removed</source>
         <translation>Все записи успешно удалены</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="431"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="426"/>
         <source>Global keybind delay (ms)</source>
         <translation>Задержка глобальных сочетаний клавиш (мс)</translation>
     </message>
@@ -1387,178 +3332,153 @@
         <translation type="vanished">Сочетания клавиш не будут сброшены при перезапуске.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="436"/>
         <source>Troubleshoot FFmpeg</source>
-        <translation>Устранение неполадок FFmpeg</translation>
+        <translation type="vanished">Устранение неполадок FFmpeg</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="450"/>
         <source>Check FFmpeg response ✓
 Check FFmpeg exporting ✓
 Check FFmpeg palette generation ✓</source>
-        <translation>Проверка ответа FFmpeg ✓
+        <translation type="vanished">Проверка ответа FFmpeg ✓
 Проверка экспорта FFmpeg ✓
 Проверка генерации палитры FFmpeg ✓</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="458"/>
         <source>Select executable and automatically set up</source>
-        <translation>Выбрать исполняемый файл и настроить автоматически</translation>
+        <translation type="vanished">Выбрать исполняемый файл и настроить автоматически</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="489"/>
         <source>Download and automatically set up</source>
-        <translation>Скачать и настроить автоматически</translation>
+        <translation type="vanished">Скачать и настроить автоматически</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="586"/>
         <source>FFmpeg was successfully set up. Please restart AnimeEffects</source>
-        <translation>FFmpeg успешно настроен. Перезапустите AnimeEffects</translation>
+        <translation type="vanished">FFmpeg успешно настроен. Перезапустите AnimeEffects</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="611"/>
         <source>FFmpeg was successfully set up.</source>
-        <translation>FFmpeg успешно настроен.</translation>
+        <translation type="vanished">FFmpeg успешно настроен.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="772"/>
         <source>FFmpeg was not found.</source>
-        <translation>FFmpeg не найден.</translation>
+        <translation type="vanished">FFmpeg не найден.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="774"/>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
 In the following screen you can instruct AnimeEffects to download and install it automatically for you, or you can download it by yourself and tell AnimeEffects where it is.</source>
-        <translation>Для экспорта видео требуется установить FFmpeg на ваш компьютер. FFmpeg — бесплатный инструмент, который AnimeEffects использует для создания видеофайлов.
+        <translation type="vanished">Для экспорта видео требуется установить FFmpeg на ваш компьютер. FFmpeg — бесплатный инструмент, который AnimeEffects использует для создания видеофайлов.
 На следующем экране вы можете поручить AnimeEffects скачать и установить его автоматически или скачать его самостоятельно и указать AnimeEffects, где он находится.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="824"/>
         <source>FFmpeg was unable to export, please troubleshoot.</source>
-        <translation>FFmpeg не удалось выполнить экспорт. Устраните неполадку.</translation>
+        <translation type="vanished">FFmpeg не удалось выполнить экспорт. Устраните неполадку.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="854"/>
         <source>FFmpeg was unable to generate palettes, please troubleshoot.</source>
-        <translation>FFmpeg не удалось сгенерировать палитры. Устраните неполадку.</translation>
+        <translation type="vanished">FFmpeg не удалось сгенерировать палитры. Устраните неполадку.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="823"/>
         <source>FFmpeg doesn&apos;t export</source>
-        <translation>FFmpeg не экспортирует</translation>
+        <translation type="vanished">FFmpeg не экспортирует</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="853"/>
         <source>FFmpeg doesn&apos;t generate palettes</source>
-        <translation>FFmpeg не генерирует палитры</translation>
+        <translation type="vanished">FFmpeg не генерирует палитры</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="446"/>
         <source>FFmpeg test success</source>
-        <translation>Тест FFmpeg успешно пройден</translation>
+        <translation type="vanished">Тест FFmpeg успешно пройден</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="447"/>
         <source>All tests have passed, FFmpeg is working correctly.</source>
-        <translation>Все тесты пройдены, FFmpeg работает корректно.</translation>
+        <translation type="vanished">Все тесты пройдены, FFmpeg работает корректно.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="449"/>
         <source>FFmpeg at: </source>
-        <translation>FFmpeg находится: </translation>
+        <translation type="vanished">FFmpeg находится: </translation>
     </message>
     <message>
         <source>Select from executable and automatically setup</source>
         <translation type="vanished">Выбрать исполняемый файл и настроить автоматически</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="460"/>
         <source>This will remove previous instances of FFmpeg from your tools directory and replace them with your custom executable, please make sure this is a valid FFmpeg executable.</source>
-        <translation>Будут удалены предыдущие экземпляры FFmpeg из папки инструментов, и они будут заменены вашим исполняемым файлом. Убедитесь, что это корректный исполняемый файл FFmpeg.</translation>
+        <translation type="vanished">Будут удалены предыдущие экземпляры FFmpeg из папки инструментов, и они будут заменены вашим исполняемым файлом. Убедитесь, что это корректный исполняемый файл FFmpeg.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="482"/>
         <source>Operation successful</source>
-        <translation>Операция выполнена успешно</translation>
+        <translation type="vanished">Операция выполнена успешно</translation>
     </message>
     <message>
         <source>Download and automatically setup</source>
         <translation type="vanished">Скачать и настроить автоматически</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="503"/>
         <source>Unable to create directory</source>
-        <translation>Не удалось создать папку</translation>
+        <translation type="vanished">Не удалось создать папку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="505"/>
         <source>An error has occurred while creating the tools directory in </source>
-        <translation>Произошла ошибка при создании папки инструментов в </translation>
+        <translation type="vanished">Произошла ошибка при создании папки инструментов в </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="506"/>
         <source> the application will use a fallback but if this doesn&apos;t work please run the app as administrator or use a folder that isn&apos;t write protected.</source>
-        <translation> приложение будет использовать запасной вариант, но если это не поможет, запустите приложение от имени администратора или используйте папку, не защищённую от записи.</translation>
+        <translation type="vanished"> приложение будет использовать запасной вариант, но если это не поможет, запустите приложение от имени администратора или используйте папку, не защищённую от записи.</translation>
     </message>
     <message>
         <source>FFmpeg was successfully setup. Please restart AnimeEffects</source>
         <translation type="vanished">FFmpeg успешно настроен. Перезапустите AnimeEffects</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="602"/>
         <source>FFmpeg installed</source>
-        <translation>FFmpeg установлен</translation>
+        <translation type="vanished">FFmpeg установлен</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="603"/>
         <source>FFmpeg was installed but it requires to be set as executable, please right click &quot;ffmpeg&quot; go to properties and allow it to be executable as a program.</source>
-        <translation>FFmpeg установлен, но его необходимо пометить как исполняемый. Щёлкните правой кнопкой мыши по &quot;ffmpeg&quot;, откройте свойства и разрешите запуск как программы.</translation>
+        <translation type="vanished">FFmpeg установлен, но его необходимо пометить как исполняемый. Щёлкните правой кнопкой мыши по &quot;ffmpeg&quot;, откройте свойства и разрешите запуск как программы.</translation>
     </message>
     <message>
         <source>FFmpeg was successfully setup.</source>
         <translation type="vanished">FFmpeg успешно настроен.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="617"/>
         <source>Error</source>
-        <translation>Ошибка</translation>
+        <translation type="vanished">Ошибка</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="618"/>
         <source>While setting up FFmpeg an unexpected error has occurred, please send the below information to our devs.</source>
-        <translation>При настройке FFmpeg произошла непредвиденная ошибка. Отправьте приведённую ниже информацию нашим разработчикам.</translation>
+        <translation type="vanished">При настройке FFmpeg произошла непредвиденная ошибка. Отправьте приведённую ниже информацию нашим разработчикам.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="655"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="444"/>
         <source>General</source>
         <translation>Общие</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="656"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="445"/>
         <source>QoL</source>
         <translation>Удобства</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="657"/>
         <source>FFmpeg</source>
-        <translation>FFmpeg</translation>
+        <translation type="vanished">FFmpeg</translation>
     </message>
     <message>
         <source>Keybindings</source>
         <translation type="vanished">Сочетания клавиш</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="644"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="433"/>
         <source>Inverse canvas scrolling</source>
         <translation>Инвертировать прокрутку холста</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="648"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="437"/>
         <source>Inverse timeline scrolling</source>
         <translation>Инвертировать прокрутку шкалы времени</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="652"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="441"/>
         <source>Middle mouse moves canvas</source>
         <translation>Перемещение холста средней кнопкой мыши</translation>
     </message>
@@ -1568,12 +3488,12 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="658"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="446"/>
         <source>Keyboard</source>
         <translation>Клавиатура</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="659"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="447"/>
         <source>Mouse</source>
         <translation>Мышь</translation>
     </message>
@@ -1581,27 +3501,23 @@ In the following screen you can instruct AnimeEffects to download and install it
 <context>
     <name>gui::GifExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="293"/>
         <source>Optimize palette</source>
-        <translation>Оптимизировать палитру</translation>
+        <translation type="vanished">Оптимизировать палитру</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="294"/>
         <source>Relay bit rate (Kbps)</source>
-        <translation>Промежуточный битрейт (Кбит/с)</translation>
+        <translation type="vanished">Промежуточный битрейт (Кбит/с)</translation>
     </message>
 </context>
 <context>
     <name>gui::ImageExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="222"/>
         <source>Prefix name</source>
-        <translation>Префикс имени</translation>
+        <translation type="vanished">Префикс имени</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="235"/>
         <source>Quality</source>
-        <translation>Качество</translation>
+        <translation type="vanished">Качество</translation>
     </message>
 </context>
 <context>
@@ -1784,133 +3700,120 @@ In the following screen you can instruct AnimeEffects to download and install it
 <context>
     <name>gui::MainMenuBar</name>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="121"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="91"/>
         <source>File</source>
         <translation>Файл</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="123"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="93"/>
         <source>New project</source>
         <translation>Новый проект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="124"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="94"/>
         <source>Open project</source>
         <translation>Открыть проект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="125"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="95"/>
         <source>Open recent</source>
         <translation>Недавние проекты</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="151"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="121"/>
         <source>No other projects</source>
         <translation>Нет других проектов</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="208"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="178"/>
         <source>Save project</source>
         <translation>Сохранить проект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="209"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="179"/>
         <source>Save project as</source>
         <translation>Сохранить проект как</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="210"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="180"/>
         <source>Close project</source>
         <translation>Закрыть проект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="211"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="181"/>
         <source>Export project as</source>
         <translation>Экспортировать проект как</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="212"/>
         <source>Legacy exporter (deprecated)</source>
-        <translation>Устаревший экспортёр (не рекомендуется)</translation>
+        <translation type="vanished">Устаревший экспортёр (не рекомендуется)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="219"/>
         <source>JPEG Sequence</source>
-        <translation>Последовательность JPEG</translation>
+        <translation type="vanished">Последовательность JPEG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="220"/>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="237"/>
         <source>PNG Sequence</source>
-        <translation>Последовательность PNG</translation>
+        <translation type="vanished">Последовательность PNG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="221"/>
         <source>GIF Animation</source>
-        <translation>GIF-анимация</translation>
+        <translation type="vanished">GIF-анимация</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="230"/>
         <source>Video</source>
-        <translation>Видео</translation>
+        <translation type="vanished">Видео</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="235"/>
         <source>Quickly export as</source>
-        <translation>Быстрый экспорт как</translation>
+        <translation type="vanished">Быстрый экспорт как</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="238"/>
         <source>GIF Animation (Transparent)</source>
-        <translation>GIF-анимация (прозрачная)</translation>
+        <translation type="vanished">GIF-анимация (прозрачная)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="239"/>
         <source>GIF Animation (Opaque)</source>
-        <translation>GIF-анимация (непрозрачная)</translation>
+        <translation type="vanished">GIF-анимация (непрозрачная)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="240"/>
         <source>WebM Animation (Transparent)</source>
-        <translation>WebM-анимация (прозрачная)</translation>
+        <translation type="vanished">WebM-анимация (прозрачная)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="241"/>
         <source>WebM Animation (Opaque)</source>
-        <translation>WebM-анимация (непрозрачная)</translation>
+        <translation type="vanished">WebM-анимация (непрозрачная)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="242"/>
         <source>MP4 Video</source>
-        <translation>Видео MP4</translation>
+        <translation type="vanished">Видео MP4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="243"/>
         <source>AVI Video</source>
-        <translation>Видео AVI</translation>
+        <translation type="vanished">Видео AVI</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="284"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="236"/>
         <source>Edit</source>
         <translation>Правка</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="286"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="238"/>
         <source>Undo</source>
         <translation>Отменить</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="287"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="239"/>
         <source>Redo</source>
         <translation>Повторить</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="289"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="241"/>
         <source>Assets</source>
         <translation>Активы</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="312"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="264"/>
         <source>Preferences</source>
         <translation>Настройки</translation>
     </message>
@@ -1923,165 +3826,189 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">Настройки мыши</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="314"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="195"/>
+        <source>Quickly export as...</source>
+        <translation>Быстрый экспорт как...</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="211"/>
+        <source>Export again</source>
+        <translation>Экспортировать снова</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="266"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="315"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="267"/>
         <source>Keybindings</source>
         <translation>Горячие клавиши</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="343"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="295"/>
         <source>Help</source>
         <translation>Справка</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="345"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="297"/>
         <source>About AnimeEffects</source>
         <translation>О AnimeEffects</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="354"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="306"/>
         <source>### AnimeEffects for </source>
         <translation>### AnimeEffects для </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="354"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="306"/>
         <source> version </source>
         <translation> версии </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="355"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="307"/>
         <source>An easy to use 2D animation software maintained by the [AnimeEffectsDevs](https://github.com/AnimeEffectsDevs).&lt;br /&gt;Licensed under the GPL v3.0 and powered by various open source libraries.</source>
         <translation>Простое в использовании программное обеспечение для 2D-анимации, поддерживаемое [AnimeEffectsDevs](https://github.com/AnimeEffectsDevs).&lt;br /&gt;Лицензировано по GPL v3.0 и работает на базе различных библиотек с открытым исходным кодом.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="358"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="310"/>
+        <source>&lt;br /&gt;&lt;br /&gt;Video/audio encoding uses the FFmpeg libraries (https://ffmpeg.org), which are licensed under the GNU Lesser GPL v2.1+ (or GPL, depending on the build). Their corresponding source is available as required by that license.</source>
+        <translation>&lt;br /&gt;&lt;br /&gt;Кодирование видео и звука использует библиотеки FFmpeg (https://ffmpeg.org), лицензированные по GNU Lesser GPL v2.1+ (или GPL, в зависимости от сборки). Их исходный код доступен, как того требует эта лицензия.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="315"/>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
 If we forgot to include you please let us know or open a PR!</source>
         <translation>&lt;br /&gt;&lt;br /&gt;Участники:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
 Если мы забыли включить вас, сообщите нам или откройте PR!</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="387"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="344"/>
         <source>About us</source>
         <translation>О нас</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="393"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="350"/>
         <source>Check for updates</source>
         <translation>Проверить обновления</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="399"/>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="552"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="355"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="500"/>
         <source>System telemetry</source>
         <translation>Системная телеметрия</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="439"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="395"/>
         <source>Version: </source>
         <translation>Версия: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="440"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="396"/>
         <source>Format version: </source>
         <translation>Версия формата: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="441"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="397"/>
         <source>Platform: </source>
         <translation>Платформа: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="442"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="398"/>
         <source>Build ABI: </source>
         <translation>ABI сборки: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="467"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="423"/>
         <source>CPU vendor: </source>
         <translation>Производитель CPU: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="468"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="424"/>
         <source>CPU architecture: </source>
         <translation>Архитектура CPU: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="469"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="425"/>
         <source>CPU threads: </source>
         <translation>Потоки CPU: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="473"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="429"/>
         <source>System RAM:</source>
         <translation>Системная ОЗУ:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="475"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="431"/>
         <source>System </source>
         <translation>Система </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="477"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="433"/>
         <source>Current GPU: </source>
         <translation>Текущий GPU: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="510"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="466"/>
         <source>GPU Vendor: </source>
         <translation>Производитель GPU: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="511"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="467"/>
         <source>Max VRAM: </source>
         <translation>Максимум VRAM: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="512"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="468"/>
         <source>OpenGL version: </source>
         <translation>Версия OpenGL: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="513"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="469"/>
         <source>Qt Version: </source>
         <translation>Версия Qt: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="514"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="470"/>
         <source>System locale: </source>
         <translation>Системная локаль: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="519"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="475"/>
         <source>Location Has Unicode: </source>
         <translation>Путь содержит Unicode: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="529"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="488"/>
         <source>Location Is Writable: </source>
         <translation>Путь доступен для записи: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="546"/>
-        <source>FFmpeg Reach Type: </source>
-        <translation>Тип доступа к FFmpeg: </translation>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="494"/>
+        <source>libav licence: </source>
+        <translation>Лицензия libav: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="548"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="495"/>
+        <source>libav configuration: </source>
+        <translation>Конфигурация libav: </translation>
+    </message>
+    <message>
+        <source>FFmpeg Reach Type: </source>
+        <translation type="vanished">Тип доступа к FFmpeg: </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="496"/>
         <source>System specs successfully copied to the clipboard</source>
         <translation>Системные характеристики успешно скопированы в буфер обмена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="563"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="511"/>
         <source>Donate</source>
         <translation>Пожертвовать</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="288"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="240"/>
         <source>Project settings</source>
         <translation>Настройки проекта</translation>
     </message>
@@ -2093,95 +4020,154 @@ If we forgot to include you please let us know or open a PR!</source>
 <context>
     <name>gui::MainWindow</name>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="565"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="568"/>
         <source>Theme changed</source>
         <translation>Тема изменена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="567"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="570"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>После смены темы могут появиться визуальные артефакты, рекомендуем перезапустить приложение.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="784"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="791"/>
         <source> has been modified. Save changes?</source>
         <translation> был изменён. Сохранить изменения?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="786"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="793"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>Некоторые проекты были изменены. Сохранить изменения?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="794"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="801"/>
         <source>Save Changes</source>
         <translation>Сохранить изменения</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="795"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="802"/>
         <source>Discard Changes</source>
         <translation>Отбросить изменения</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="796"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="803"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="817"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="824"/>
         <source>Undone : </source>
         <translation>Отменено: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="880"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="887"/>
         <source>Redone : </source>
         <translation>Повторено: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="923"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="983"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1012"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1081"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="930"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="990"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1019"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1088"/>
         <source>Loading Error</source>
         <translation>Ошибка загрузки</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="960"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="967"/>
         <source>Open File</source>
         <translation>Открыть файл</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1095"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1102"/>
         <source>Save File</source>
         <translation>Сохранить файл</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
-        <source>FFmpeg was not found.</source>
-        <translation>FFmpeg не найден.</translation>
+        <location filename="../../src/gui/MainWindow.cpp" line="1715"/>
+        <source>Exported %1 (%2 KB)</source>
+        <translation>Экспортировано %1 (%2 KB)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="153"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1721"/>
+        <source> (%1 of %2 KB allowed for %3)</source>
+        <translation> (%1 из %2 KB, лимит: %3)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1726"/>
+        <source>; OVER THE LIMIT, it will be rejected</source>
+        <translation>; ВЫШЕ ЛИМИТА, файл будет отклонён</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1765"/>
+        <source>All files (*)</source>
+        <translation>Все файлы (*)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1766"/>
+        <source>%1 files (*.%2)</source>
+        <translation>Файлы %1 (*.%2)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1942"/>
+        <source>My platform isn&apos;t listed (I&apos;ll choose the format)</source>
+        <translation>Моей платформы нет в списке (я сам выберу формат)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1984"/>
+        <source>%1 of %2 frames at %3 x %4</source>
+        <translation>%1 из %2 кадров при %3 x %4</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1990"/>
+        <source>Frame rate: %1 fps</source>
+        <translation>Частота кадров: %1 fps</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1996"/>
+        <source>%1 x %2, %3 fps</source>
+        <translation>%1 x %2, %3 fps</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="2001"/>
+        <source>Codec: %1 in %2</source>
+        <translation>Кодек: %1 в %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="2010"/>
+        <source>%1 cannot carry transparency, so this export will be opaque.</source>
+        <translation>%1 не поддерживает прозрачность, поэтому этот экспорт будет непрозрачным.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="2016"/>
+        <source>A GIF loops forever, so the Loop animation box is fixed on.</source>
+        <translation>GIF зацикливается навсегда, поэтому флажок «Зациклить анимацию» всегда включён.</translation>
+    </message>
+    <message>
+        <source>FFmpeg was not found.</source>
+        <translation type="vanished">FFmpeg не найден.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="156"/>
         <source>Animation</source>
         <translation>Анимация</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="166"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="169"/>
         <source>Properties</source>
         <translation>Свойства</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="212"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="215"/>
         <source>Tools</source>
         <translation>Инструменты</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1032"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1039"/>
         <source>Recover unsaved project?</source>
         <translation>Восстановить несохранённый проект?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1033"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1040"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -2192,155 +4178,123 @@ Open it?</source>
 Открыть его?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1427"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1439"/>
         <source>Select your preset name</source>
-        <translation>Выберите имя пресета</translation>
+        <translation type="vanished">Выберите имя пресета</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1523"/>
         <source>Animated PNG</source>
-        <translation>Анимированный PNG</translation>
+        <translation type="vanished">Анимированный PNG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1523"/>
         <source>AVI</source>
-        <translation>AVI</translation>
+        <translation type="vanished">AVI</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1523"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1523"/>
         <source>Flash Video</source>
-        <translation>Flash Video</translation>
+        <translation type="vanished">Flash Video</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1524"/>
         <source>GIF</source>
-        <translation>GIF</translation>
+        <translation type="vanished">GIF</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1524"/>
         <source>Matroska</source>
-        <translation>Matroska</translation>
+        <translation type="vanished">Matroska</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1524"/>
         <source>QuickTime Movie</source>
-        <translation>Фильм QuickTime</translation>
+        <translation type="vanished">Фильм QuickTime</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1524"/>
         <source>MPEG-2</source>
-        <translation>MPEG-2</translation>
+        <translation type="vanished">MPEG-2</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
         <source>MPEG-4</source>
-        <translation>MPEG-4</translation>
+        <translation type="vanished">MPEG-4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
         <source>Ogg Video</source>
-        <translation>Видео Ogg</translation>
+        <translation type="vanished">Видео Ogg</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
         <source>Shockwave Flash</source>
-        <translation>Shockwave Flash</translation>
+        <translation type="vanished">Shockwave Flash</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
         <source>WEBM</source>
-        <translation>WEBM</translation>
+        <translation type="vanished">WEBM</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1530"/>
         <source>WEBP</source>
-        <translation>WEBP</translation>
+        <translation type="vanished">WEBP</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
         <source>BitMap</source>
-        <translation>BitMap</translation>
+        <translation type="vanished">BitMap</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
         <source>JPEG</source>
-        <translation>JPEG</translation>
+        <translation type="vanished">JPEG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
         <source>PNG</source>
-        <translation>PNG</translation>
+        <translation type="vanished">PNG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
         <source>Portable PixelMap</source>
-        <translation>Portable PixelMap</translation>
+        <translation type="vanished">Portable PixelMap</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1530"/>
         <source>X11 BitMap</source>
-        <translation>X11 BitMap</translation>
+        <translation type="vanished">X11 BitMap</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1530"/>
         <source>X11 PixelMap</source>
-        <translation>X11 PixelMap</translation>
+        <translation type="vanished">X11 PixelMap</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1530"/>
         <source>Tagged Image</source>
-        <translation>Tagged Image</translation>
+        <translation type="vanished">Tagged Image</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1662"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1717"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1759"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1834"/>
         <source>Export Folder</source>
         <translation>Папка экспорта</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1687"/>
         <source>File already exists.</source>
-        <translation>Файл уже существует.</translation>
+        <translation type="vanished">Файл уже существует.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1688"/>
         <source>Do you want to overwrite the existing file?</source>
-        <translation>Заменить существующий файл?</translation>
+        <translation type="vanished">Заменить существующий файл?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1704"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1872"/>
         <source>Export Error</source>
-        <translation>Ошибка экспорта</translation>
+        <translation type="vanished">Ошибка экспорта</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1805"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1767"/>
         <source>Export File</source>
         <translation>Экспорт файла</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1820"/>
         <source>Operation Error</source>
-        <translation>Ошибка операции</translation>
+        <translation type="vanished">Ошибка операции</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1820"/>
         <source>Invalid extension specified.</source>
-        <translation>Указано недопустимое расширение.</translation>
+        <translation type="vanished">Указано недопустимое расширение.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1864"/>
         <source>Video export requires FFmpeg.</source>
-        <translation>Для экспорта видео требуется FFmpeg.</translation>
+        <translation type="vanished">Для экспорта видео требуется FFmpeg.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1865"/>
         <source>Install FFmpeg on the system, or place a FFmpeg executable under &quot;/tools&quot; in the folder where you installed AnimeEffects.</source>
-        <translation>Установите FFmpeg в системе или поместите исполняемый файл FFmpeg в папку &quot;/tools&quot; в каталоге, куда установлен AnimeEffects.</translation>
+        <translation type="vanished">Установите FFmpeg в системе или поместите исполняемый файл FFmpeg в папку &quot;/tools&quot; в каталоге, куда установлен AnimeEffects.</translation>
     </message>
 </context>
 <context>
@@ -2393,58 +4347,58 @@ Open it?</source>
 <context>
     <name>gui::ObjectTreeWidget</name>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="146"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="609"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="145"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="608"/>
         <source>Contract</source>
         <translation>Свернуть</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="149"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="148"/>
         <source>Add missing assets</source>
         <translation>Добавить недостающие активы</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="152"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="151"/>
         <source>Add new assets</source>
         <translation>Добавить новые активы</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="155"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="154"/>
         <source>Rename</source>
         <translation>Переименовать</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="158"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="157"/>
         <source>Paste from clipboard</source>
         <translation>Вставить из буфера обмена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="161"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="160"/>
         <source>Create layer</source>
         <translation>Создать слой</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="164"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="163"/>
         <source>Duplicate node</source>
         <translation>Дублировать узел</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="167"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="166"/>
         <source>Add default keys</source>
         <translation>Добавить ключи по умолчанию</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="170"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="169"/>
         <source>Create folder</source>
         <translation>Создать папку</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="173"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="172"/>
         <source>Delete</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="609"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="608"/>
         <source>Enlarge</source>
         <translation>Развернуть</translation>
     </message>
@@ -2453,93 +4407,93 @@ Open it?</source>
         <translation type="vanished">Дерево файлов не найдено</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="731"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="730"/>
         <source>File tree not found</source>
         <translation>Дерево файлов не найдено</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="773"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="772"/>
         <source>Add</source>
         <translation>Добавить</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="779"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="778"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="816"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="815"/>
         <source>No trees selected</source>
         <translation>Не выбрано ни одного дерева</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="817"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="816"/>
         <source>Please select at least one tree.</source>
         <translation>Выберите хотя бы одно дерево.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="822"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="821"/>
         <source>Done</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="822"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="821"/>
         <source>Tree addition was attempted, layers with duplicate names have been suppressed.</source>
         <translation>Добавление дерева было выполнено, слои с повторяющимися именами были пропущены.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="917"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="916"/>
         <source>The requested FFD key mesh (at frame %1) has %2 vertices, but the parent mesh of the targeted node has %3 vertices, artifacts may be present.</source>
         <translation>Запрошенная FFD-сетка ключа (на кадре %1) содержит %2 вершин, а родительская сетка целевого узла содержит %3 вершин; возможно появление артефактов.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="943"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="950"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="942"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="949"/>
         <source>Successfully pasted </source>
         <translation>Успешно вставлено </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="943"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="942"/>
         <source> keys.</source>
         <translation> ключей.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="945"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="944"/>
         <source> keys. The log is available below.</source>
         <translation> ключей. Журнал доступен ниже.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="945"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="944"/>
         <source>Warnings present for </source>
         <translation>Предупреждения для </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="950"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="949"/>
         <source> keys.
 </source>
         <translation> ключей.
 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="951"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="950"/>
         <source> error(s) have been detected.
 The log is available below.</source>
         <translation> ошибок(и) обнаружено.
 Журнал доступен ниже.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="956"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="976"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="955"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="975"/>
         <source>Failed to paste key(s)</source>
         <translation>Не удалось вставить ключ(и)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="959"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="958"/>
         <source>Clipboard does not contain valid JSON information or the timeline already has a key in the same frame.</source>
         <translation>Буфер обмена не содержит корректной информации JSON, либо на шкале времени уже есть ключ на том же кадре.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="979"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="978"/>
         <source>Timeline has a key in the same frame.</source>
         <translation>На шкале времени уже есть ключ на том же кадре.</translation>
     </message>
@@ -2638,17 +4592,17 @@ The log is available below.</source>
 <context>
     <name>gui::ProjectSettingDialog</name>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="669"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="553"/>
         <source>Project settings</source>
         <translation>Настройки проекта</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="706"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="590"/>
         <source>Canvas size</source>
         <translation>Размер холста</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="730"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="614"/>
         <source>Frame range</source>
         <translation>Диапазон кадров</translation>
     </message>
@@ -2657,12 +4611,12 @@ The log is available below.</source>
         <translation type="vanished">Максимальное количество кадров</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="736"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="620"/>
         <source>Loop animation</source>
         <translation>Зациклить анимацию</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="742"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="626"/>
         <source>Frames per second</source>
         <translation>Кадров в секунду</translation>
     </message>
@@ -3024,39 +4978,32 @@ The log is available below.</source>
 <context>
     <name>gui::VideoExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="354"/>
         <source>This codec requires a dedicated GPU.</source>
-        <translation>Этот кодек требует выделенный графический процессор (GPU).</translation>
+        <translation type="vanished">Этот кодек требует выделенный графический процессор (GPU).</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="415"/>
         <source>Lossless</source>
-        <translation>Без потерь</translation>
+        <translation type="vanished">Без потерь</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="420"/>
         <source>Transparent</source>
-        <translation>Прозрачный</translation>
+        <translation type="vanished">Прозрачный</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="435"/>
         <source>Codec</source>
-        <translation>Кодек</translation>
+        <translation type="vanished">Кодек</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="439"/>
         <source>Color standard</source>
-        <translation>Цветовой стандарт</translation>
+        <translation type="vanished">Цветовой стандарт</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="441"/>
         <source>Pixel format</source>
-        <translation>Пиксельный формат</translation>
+        <translation type="vanished">Пиксельный формат</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="456"/>
         <source>Bit rate (Kbps)</source>
-        <translation>Битрейт (Кбит/с)</translation>
+        <translation type="vanished">Битрейт (Кбит/с)</translation>
     </message>
 </context>
 <context>
@@ -3223,22 +5170,22 @@ The log is available below.</source>
 <context>
     <name>gui::prop::EasingPickWidget</name>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="537"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="536"/>
         <source>Easing</source>
         <translation>Интерполяция</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="546"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="545"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="800"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="799"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="803"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="802"/>
         <source>Paste</source>
         <translation>Вставить</translation>
     </message>
@@ -3922,42 +5869,39 @@ The log is available below.</source>
 <context>
     <name>projectSave</name>
     <message>
+        <location filename="../../src/ctrl/System.cpp" line="225"/>
         <source>Non ascii characters detected, this may cause issues.
 Save anyway?</source>
-        <translation type="vanished">Обнаружены не-ASCII символы, это может вызвать проблемы.
+        <translation>Обнаружены не-ASCII символы, это может вызвать проблемы.
 Сохранить в любом случае?</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/System.cpp" line="231"/>
         <source>Unicode on filename detected</source>
-        <translation type="vanished">Обнаружен Юникод в имени файла</translation>
+        <translation>Обнаружен Юникод в имени файла</translation>
     </message>
 </context>
 <context>
     <name>splineWidget</name>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="293"/>
         <source>Bezier editor</source>
-        <translation>Редактор Безье</translation>
+        <translation type="vanished">Редактор Безье</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="294"/>
         <source>Paste</source>
-        <translation>Вставить</translation>
+        <translation type="vanished">Вставить</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="295"/>
         <source>Copy</source>
-        <translation>Копировать</translation>
+        <translation type="vanished">Копировать</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="296"/>
         <source>Cancel</source>
-        <translation>Отмена</translation>
+        <translation type="vanished">Отмена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="297"/>
         <source>Apply</source>
-        <translation>Применить</translation>
+        <translation type="vanished">Применить</translation>
     </message>
 </context>
 <context>

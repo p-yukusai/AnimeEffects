@@ -43,7 +43,6 @@
 namespace {
 static const int kTopItemSize = 22;
 static const int kItemSize = ctrl::TimeLineRow::kHeight;
-static const int kItemSizeInc = ctrl::TimeLineRow::kIncrease;
 // Horizontal padding the item delegate reserves around the label, plus a small
 // tail so the last glyph of the widest name is never clipped.
 static const int kColumnPadding = 30;

@@ -12,6 +12,9 @@
 namespace gui {
 
 class ProjectTabBar: public QTabBar {
+    // tr() in this class resolves through QTabBar without a metaobject of its own, so
+    // the catalog's gui::ProjectTabBar entries are read by nobody.
+    Q_OBJECT
 public:
     ProjectTabBar(QWidget* aParent, GUIResources& aResources);
     void updateTabPosition(const QSize& aDisplaySize);

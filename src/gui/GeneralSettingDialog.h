@@ -30,7 +30,6 @@ public:
     bool timeFormatHasChanged();
     bool autoSaveHasChanged();
     bool autoSaveDelayHasChanged();
-    bool autoFFmpegHasChanged();
     bool resIDCheckHasChanged();
     bool themeHasChanged();
     bool donationHasChanged();
@@ -74,8 +73,6 @@ private:
     int mAutoSaveDelay;
     QSpinBox* mAutoSaveDelayBox;
 
-    bool mAutoFFmpegCheck;
-    QCheckBox* mAutoFFmpegBox;
 
     bool bResIDCheck;
     QCheckBox* bResIDBox;

@@ -108,6 +108,10 @@ namespace prop {
 
     //-------------------------------------------------------------------------------------------------
     class BlurKeyGroup: public KeyGroup {
+        // The one key group of the twelve here without a metaobject of its own, and so
+        // the one whose tr() strings (the blur directions) resolve through KeyGroup and
+        // never read their own catalog context.
+        Q_OBJECT
     public:
         BlurKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources);
 

@@ -15,10 +15,8 @@ TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidge
     QWidget(aParent),
     mProject(),
     mViaPoint(aViaPoint),
-    mResources(aResources),
     mSizeHint(aSizeHint),
     mHorizontalSplitter(nullptr),
-    mIsFirstTime(true),
     mSuspendCount(0) {
     mHorizontalSplitter = new ThinSplitter(Qt::Horizontal, this);
     // The hitbox grab area sits 2px into the object tree / 10px into the
@@ -45,13 +43,6 @@ TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidge
     lay->addWidget(mPlayBack);
 
     mPlayBack->setPushDelegate([=](PlayBackWidget::PushType aType) { this->onPlayBackButtonPushed(aType); });
-}
-
-void TargetWidget::resizeEvent(QResizeEvent* aEvent) {
-    QWidget::resizeEvent(aEvent);
-    if (mIsFirstTime) {
-        mIsFirstTime = false;
-    }
 }
 
 void TargetWidget::setProject(core::Project* aProject) {

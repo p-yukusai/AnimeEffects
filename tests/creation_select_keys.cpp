@@ -88,7 +88,12 @@ bool singleTargetIs(core::TimeLineEvent& aEvent, const core::TimeKey* aKey) {
 // True when the event carries exactly the given set of targets (by key pointer),
 // in any order, and nothing else.
 bool targetSetIs(core::TimeLineEvent& aEvent, std::initializer_list<const core::TimeKey*> aKeys) {
-    if (aEvent.targets().size() != aKeys.size())
+    // aKeys.size() is std::initializer_list's size_type (unsigned long) while
+    // QVector::size() is qsizetype (signed). Compare in the container's own
+    // count type: an initializer list's count always fits in qsizetype, so
+    // the conversion is exact and neither side can be negative here.
+    const qsizetype keyCount = static_cast<qsizetype>(aKeys.size());
+    if (aEvent.targets().size() != keyCount)
         return false;
     for (const core::TimeKey* key : aKeys) {
         bool found = false;

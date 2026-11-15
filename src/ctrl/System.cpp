@@ -22,7 +22,6 @@
 using namespace core;
 
 namespace {
-static const int kStandardFps = 24;
 
 // Recovery copies of never-saved projects land in a dedicated subdir of the
 // app cache (same per-user transient area as lastproject.cache). The filename

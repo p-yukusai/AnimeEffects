@@ -188,9 +188,8 @@ int entryPoint(int argc, char* argv[]) {
         mainWindow->showWithSettings();
 
         // checkForUpdates
-        util::NetworkUtil networking;
         const QString url("https://api.github.com/repos/AnimeEffectsDevs/AnimeEffects/tags");
-        util::NetworkUtil::checkForUpdate(url, networking, mainWindow->window(), false);
+        util::NetworkUtil::checkForUpdate(url, mainWindow->window(), false);
 
 
 #ifdef QT_DEBUG

@@ -7,11 +7,11 @@
 #include "gui/theme/Colors.h"
 
 namespace {
-constexpr double kButtonSize = 24.0 * 1.2;
-constexpr double kIconSize = 18.0 * 1.2;
-constexpr int kGap = 4;
-constexpr int kButtonCount = 8;
-constexpr int kLeftMargin = 4;
+const int kButtonSize = 24;
+const int kIconSize = 18;
+const int kGap = 4;
+const int kButtonCount = 8;
+const int kLeftMargin = 4;
 
 // A playback button whose glyph brightens to the active (max-contrast) color
 // on hover — the icon participates in the hover feedback, not just the
@@ -161,7 +161,7 @@ QSize PlayBackWidget::minimumSizeHint() const {
     return sizeHint();
 }
 
-void PlayBackWidget::paintEvent(QPaintEvent* aEvent) {
+void PlayBackWidget::paintEvent(QPaintEvent*) {
     // The playback bar is a fixed toolbar beside the timeline; the 1px
     // hairline (the design system's section-separator token) marks its left
     // edge. Painted here, like the ThinSplitter/DockSash hairlines, because

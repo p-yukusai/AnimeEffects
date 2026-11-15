@@ -13,7 +13,7 @@ namespace gui::res {
     class ResourceUpdater: public QObject {
         Q_OBJECT
     public:
-        static res::Item* createGUITree(const QTreeWidget& aTree, img::ResourceNode& aNode, const QString& aIdentifier);
+        static res::Item* createGUITree(img::ResourceNode& aNode, const QString& aIdentifier);
 
         ResourceUpdater(ViaPoint& aViaPoint, core::Project& aProject);
         void load(QTreeWidget& aTree, const QString& aFilePath);

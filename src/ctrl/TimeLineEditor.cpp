@@ -28,17 +28,23 @@ namespace ctrl {
 
 //-------------------------------------------------------------------------------------------------
 TimeLineEditor::TimeLineEditor():
+    // Members are initialised in DECLARATION order, not in the order written
+    // here — so this list is written in declaration order. A list that disagrees
+    // is a lie waiting to matter, and here it does matter: mMarquee takes mRows
+    // and mTimeScale, both declared before it, so the references it is given are
+    // only guaranteed live because declaration order happens to be right.
     mProject(),
     mRows(),
     mSelectingRow(),
     mFrameRange(),
-    mState(State_Standby),
     mFps(60),
+    mState(State_Standby),
     mTimeCurrent(kTimeLineMargin),
     mTimeScale(),
     mMarquee(mRows, mTimeScale, kTimeLineMargin),
     mSelection(),
     mMoveRef(),
+    mSelectionTemporary(false),
     mMoveFrame(),
     mPressFrame(),
     mOnUpdatingKey(false),
@@ -46,7 +52,6 @@ TimeLineEditor::TimeLineEditor():
     mPreGestureSelection(),
     mPressedTarget(),
     mPressedTargetValid(false),
-    mSelectionTemporary(false),
     mPlayWindow(),
     mWindowAnchorFrame(0),
     mWindowDragged(false) {

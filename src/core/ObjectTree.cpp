@@ -204,7 +204,7 @@ ObjectTree::createNodesMover(const QVector<util::TreePos>& aRemoved, const QVect
     cmnd::Vector commands;
     BoneUnbindWorkspacePtr workspace = std::make_shared<BoneUnbindWorkspace>();
     commands.push(new MoveNodesCommand(*this, aRemoved, aInserted, workspace));
-    commands.push(BoneKeyUpdater::createNodesUnbinderForMove(*this, workspace));
+    commands.push(BoneKeyUpdater::createNodesUnbinderForMove(workspace));
     return commands;
 }
 

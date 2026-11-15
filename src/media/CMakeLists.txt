@@ -1,4 +1,5 @@
 project(anime_media)
+ae_enable_warnings()
 
 # The media library owns all FFmpeg linkage. It is deliberately GL-free (and
 # mostly QCoreApplication-free) so it can be unit-tested headless; it only

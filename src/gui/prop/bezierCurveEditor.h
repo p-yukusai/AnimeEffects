@@ -16,12 +16,12 @@ public:
     QVector<QDoubleSpinBox*> spinBoxes;
     float* progress;
 
-    void paintEvent(QPaintEvent *);
-    void resizeEvent(QResizeEvent *);
-    void mousePressEvent(QMouseEvent *event);
-    void mouseMoveEvent(QMouseEvent *);
-    void mouseReleaseEvent(QMouseEvent *);
-    void leaveEvent(QEvent *);
+    void paintEvent(QPaintEvent *) override;
+    void resizeEvent(QResizeEvent *) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *) override;
+    void mouseReleaseEvent(QMouseEvent *) override;
+    void leaveEvent(QEvent *) override;
     void hideEvent(QHideEvent*) override;
 
     signals:

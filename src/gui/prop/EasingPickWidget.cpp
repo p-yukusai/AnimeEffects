@@ -37,7 +37,6 @@ constexpr int kSegGap = 2;
 constexpr int kSegBtnH = 24; // clean grid value (was 22); the mock's was ~25 flex
 constexpr int kBodyMarginTop = 9, kBodyMarginBottom = 8, kBodyMarginLr = 12;
 constexpr int kBodyGapSegPipe = 8;
-constexpr int kBodyGapTrowBlend = 6;
 constexpr int kPipelineH = 3;
 constexpr int kTile = 32;      // on the 4px grid (was 30); fills the row, leaves ~9px
 constexpr int kTileGlyph = 28; // on the 4px grid (was 26), fits in the 32px tile

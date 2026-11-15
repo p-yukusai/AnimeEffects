@@ -65,7 +65,6 @@ public:
 };
 #else
     class CentroidMover: public cmnd::Stable {
-        core::Project& mProject;
         core::ObjectNode& mTarget;
         core::MoveKey* mKey;
         QVector2D mCentroidMove;
@@ -78,7 +77,6 @@ public:
 
     public:
         CentroidMover(
-            core::Project& aProject,
             core::ObjectNode& aTarget,
             const QVector2D& aCentroidMove,
             const QVector2D& aPositionMove,

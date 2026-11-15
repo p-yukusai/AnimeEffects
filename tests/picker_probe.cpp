@@ -9,9 +9,11 @@
 #include <QMouseEvent>
 #include <QRandomGenerator>
 #include <QDebug>
+#include <QTemporaryDir>
 #include <cstdio>
 #include "gui/prop/EasingPickWidget.h"
 #include "gui/theme/Colors.h"
+#include "gui/theme/Icons.h"
 #include "util/Easing.h"
 
 using namespace gui::prop;
@@ -21,9 +23,29 @@ static int hfw_h(EasingPickWidget& w) {
     return f > 0 ? f : w.sizeHint().height();
 }
 
+// This probe PRINTS measurements, but #7/#8/#9 encode REQUIREMENTS (the mock's
+// gauge geometry, the phosphor stroke width, the field's state rules and its fixed
+// height). It used to print MISMATCH and exit 0 regardless, so a stale expectation
+// sat there reporting a problem nobody could see: it said h=20 for a field the
+// widget sets to 24, and nothing failed. Mismatches are counted now and the exit
+// code carries them.
+static int gMismatches = 0;
+
+static const char* verdict(bool aOk) {
+    if (!aOk) ++gMismatches;
+    return aOk ? "OK" : "MISMATCH";
+}
+
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
     theme::Colors::activate(true, theme::kDefaultAccent);
+    // Glyphs are SVGs tinted at runtime into a scratch dir (in the app,
+    // GUIResources::applyAppearance). Without this the icon dir is empty and
+    // every QIcon(...) here loads nothing, so any icon measurement silently
+    // measures a blank widget.
+    QTemporaryDir iconScratch;
+    theme::tintIcons(QStringLiteral(AE_ICONS_DIR), iconScratch.path(), theme::Colors::current());
+    theme::setIconDir(iconScratch.path());
 
     util::Easing::Param initial;
     initial.type = util::Easing::Type_Cubic;
@@ -81,7 +103,6 @@ int main(int argc, char** argv) {
     // flush at the widget top (no margin) and its top edge gets cut.
     const QImage sliderImg = slider->grab().toImage();
     int knobTop = -1, knobBottom = -1;
-    const qreal cx = sliderImg.width() / 2.0;
     for (int y = 0; y < sliderImg.height(); ++y) {
         bool knobPix = false;
         for (int x = 0; x < sliderImg.width(); ++x) {
@@ -211,20 +232,44 @@ int main(int argc, char** argv) {
                         && dotT >= 0 && dotB <= strip->height() - 1;
         fprintf(stderr, "#7 gauge-dot: strip=%dx%d img=%dx%d dot %dx%d rightGap=%d top=%d -> %s\n",
                 strip->width(), strip->height(), gi.width(), gi.height(), dia, dotB - dotT + 1,
-                strip->width() - 1 - dotR, dotT, ok ? "OK" : "MISMATCH");
+                strip->width() - 1 - dotR, dotT, verdict(ok));
     }
 
     // ---- #8 close X: phosphor stroke is thin (16/256 of the 14px box) ----
-    QWidget* closeBtn = w.findChild<QWidget*>("popover-close");
-    const QImage xi = closeBtn->grab().toImage();
-    int xw = 0;
-    const int midY = xi.height() / 2;
-    for (int x = 0; x < xi.width(); ++x) {
-        const QRgb p = xi.pixel(x, midY);
-        if (qRed(p) > 90 && qGreen(p) > 90 && qBlue(p) > 90) { ++xw; }
+    // The glyph's diagonal crosses its middle row in about stroke/sin(45deg) px,
+    // so the row's painted-pixel count reads the stroke directly: the phosphor
+    // 0.875px stroke lands at ~1-2 px, the old 2.5px stroke at ~4. This used to
+    // compute that count and throw it away — no print, no verdict — so the
+    // scenario was silently absent while looking present. It now reports in the
+    // same measure-then-verdict shape as #7 and #9, and reports NOT FOUND rather
+    // than skipping, because a silent skip is the bug it is here to avoid.
+    {
+        // Measure the GLYPH, not the button: a QToolButton with autoRaise and a
+        // transparent QSS background does not paint into grab() in this harness
+        // (its icon is a valid pixmap with content while its grab is fully
+        // transparent), so measuring the button reported 0 forever. The stroke
+        // the design specifies lives in the glyph anyway.
+        auto* closeBtn = w.findChild<QToolButton*>("popover-close");
+        if (closeBtn && !closeBtn->icon().isNull()) {
+            const QImage gi = closeBtn->icon().pixmap(closeBtn->iconSize()).toImage();
+            const int midY = gi.height() / 2;
+            // Count pixels the stroke actually COVERS, not every non-zero
+            // alpha: an antialiased 0.875px diagonal always spreads over ~2
+            // fringe pixels, so counting any-alpha cannot distinguish a thin
+            // stroke from a thick one. (Measured profile at 14px:
+            // 0,0,0,0,0,50,220,220,50,0,... — two covered, two fringe.)
+            int covered = 0, fringe = 0;
+            for (int x = 0; x < gi.width(); ++x) {
+                const int a = qAlpha(gi.pixel(x, midY));
+                if (a > 128) ++covered; else if (a > 0) ++fringe;
+            }
+            const bool ok = covered >= 1 && covered <= 2;
+            fprintf(stderr, "#8 close-x: glyph=%dx%d midRow=%d covered=%d fringe=%d -> %s\n",
+                    gi.width(), gi.height(), midY, covered, fringe, verdict(ok));
+        } else {
+            fprintf(stderr, "#8 close-x: popover-close glyph NOT FOUND -> %s\n", verdict(false));
+        }
     }
-    // the diagonal crosses the mid row in ~strokeWidth/sin(45deg) px:
-    // phosphor 0.875px stroke -> ~1-2 painted px; the old 2.5px stroke -> ~4.
     // ---- #9 fi fields: geometry stable + hover/focus/pressed states present ----
     // The custom bezier inputs are QDoubleSpinBox[role="fi"]. The bug was
     // `border: 0` in the popover's own stylesheet, which also killed the
@@ -238,10 +283,14 @@ int main(int argc, char** argv) {
     const bool hasFocus = css.contains("[role=\"fi\"]:focus");
     const bool hasPressed = css.contains("[role=\"fi\"]:hover:pressed");
     const bool hasBorder = css.contains("[role=\"fi\"]") && css.contains("border: 1px solid");
-    const bool ok = fi && fiH == 20 && hasHover && hasFocus && hasPressed && hasBorder;
+    // 24, not 20: the field is setFixedHeight(24) in EasingPickWidget.cpp. This
+    // expectation said 20 (an earlier design height) and the probe reported
+    // MISMATCH forever without failing, which is worse than a missing check.
+    const bool ok = fi && fiH == 24 && hasHover && hasFocus && hasPressed && hasBorder;
     fprintf(stderr, "#9 fi: h=%d hover=%d focus=%d pressed=%d borderRule=%d -> %s\n",
             fiH, (int)hasHover, (int)hasFocus, (int)hasPressed, (int)hasBorder,
-            ok ? "OK" : "MISMATCH");
+            verdict(ok));
 
-    return 0;
+    fprintf(stderr, "picker_probe: %d mismatch%s\n", gMismatches, gMismatches == 1 ? "" : "es");
+    return gMismatches == 0 ? 0 : 1;
 }

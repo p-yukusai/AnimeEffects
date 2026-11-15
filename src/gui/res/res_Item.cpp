@@ -51,8 +51,8 @@ namespace res {
         return (aItem->whatsThis(kItemColumn) == "ResourceItem") ? static_cast<const Item*>(aItem) : nullptr;
     }
 
-    Item::Item(const QTreeWidget& aTree, img::ResourceNode& aNode, const QString& aIdentifier):
-        QTreeWidgetItem(), mTree(aTree), mNode(aNode) {
+    Item::Item(img::ResourceNode& aNode, const QString& aIdentifier):
+        QTreeWidgetItem(), mNode(aNode) {
         this->setWhatsThis(kItemColumn, "ResourceItem");
         this->setText(kItemColumn, aIdentifier);
         this->setSizeHint(kItemColumn, QSize(kItemSize, kItemSize));

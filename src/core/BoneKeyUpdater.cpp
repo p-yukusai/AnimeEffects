@@ -294,15 +294,14 @@ cmnd::Base* BoneKeyUpdater::createNodeUnbinderForMove(
 }
 #endif
 
-cmnd::Base* BoneKeyUpdater::createNodesUnbinderForMove(ObjectTree& aTree, const BoneUnbindWorkspacePtr& aWorkspace) {
+cmnd::Base* BoneKeyUpdater::createNodesUnbinderForMove(const BoneUnbindWorkspacePtr& aWorkspace) {
     class NodesUnbinderForMove: public cmnd::Stable {
-        ObjectTree& mTree;
         BoneUnbindWorkspacePtr mWorkspace;
         QList<Unbinder*> mUnbinders;
 
     public:
-        NodesUnbinderForMove(ObjectTree& aTree, const BoneUnbindWorkspacePtr& aWorkspace):
-            mTree(aTree), mWorkspace(aWorkspace), mUnbinders() {}
+        NodesUnbinderForMove(const BoneUnbindWorkspacePtr& aWorkspace):
+            mWorkspace(aWorkspace), mUnbinders() {}
 
         ~NodesUnbinderForMove() { qDeleteAll(mUnbinders); }
 
@@ -358,7 +357,7 @@ cmnd::Base* BoneKeyUpdater::createNodesUnbinderForMove(ObjectTree& aTree, const 
         }
     };
 
-    return new NodesUnbinderForMove(aTree, aWorkspace);
+    return new NodesUnbinderForMove(aWorkspace);
 }
 
 } // namespace core

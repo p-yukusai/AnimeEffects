@@ -7,7 +7,12 @@ namespace gui {
 namespace prop {
 
     Panel::Panel(const QString& aTitle, QWidget* aParent, GUIResources* aGUIResources):
-        QFrame(nullptr),
+        // The caller's parent is the panel's real parent from the first line:
+        // every caller (Backboard::setProject) passes the board it will be
+        // added to, exactly as this constructor did before the redesign
+        // (QGroupBox(aParent)). Constructing as a top-level widget and relying
+        // on the later QLayout::addWidget to reparent worked by accident.
+        QFrame(aParent),
         mHeader(nullptr),
         mContent(nullptr),
         mLayout(nullptr) {

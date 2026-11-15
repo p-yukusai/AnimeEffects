@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QScopedPointer>
 #include <QTimer>
+#include <functional>
 #include "ctrl/System.h"
 #include "gui/MainMenuBar.h"
 #include "gui/MainDisplayWidget.h"
@@ -25,6 +26,7 @@
 #include "gui/MouseSetting.h"
 #include "qfilesystemwatcher.h"
 #include "res/res_ResourceUpdater.h"
+#include "ctrl/ExportParams.h"
 #include "exportdiag.h"
 
 
@@ -67,9 +69,23 @@ public:
     void onTabCloseAllRequested();
     void onTabCopyPathRequested(core::Project&);
     void onExportTriggered();
-    void onExportImageSeqTriggered(const QString& aSuffix);
-    void onQuickExportTriggered(const QString& aFormat);
-    void onExportVideoTriggered(const ctrl::VideoFormat& aFormat);
+    // The export form itself, after the destination question has been answered.
+    // An empty aDestinationId is "my platform isn't listed", which is the only mode
+    // where the container and codec are the user's to choose.
+    void openExportDialog(const QString& aDestinationId);
+    // "Quickly export as...": choose a destination, then export with no further
+    // dialogs (the output folder is remembered per destination).
+    void onQuickExportTriggered();
+    // Quick export BY DESTINATION: the user names where the file is going and the
+    // destination table decides the rest. This is what the quick menu offers now —
+    // a format name is not a destination, and the table's rows bundle intent
+    // (small, loops, transparent, silent) that a container name cannot express.
+    void onQuickExportDestinationTriggered(const QString& aDestinationId);
+    // Repeat the last export exactly, with no dialogs: the iteration loop. Export
+    // is not a one-shot in this tool — an animator exports the same sticker a dozen
+    // times while adjusting the art — and re-walking the menu, the destination and
+    // the file dialog every time is the cost that made this worth having.
+    void onExportAgainTriggered();
     void onPlayPauseTriggered();
     void onDockToggle();
     void onDisplacementTriggered(int frameDisplacement);
@@ -104,6 +120,29 @@ private:
     QDialog* gpDiag = new QDialog;
     void regenerateWidget(){ exportWidget = new QDialog; exporting = false; }
     void regenerateGeneralPurposeDiag(){ gpDiag = new QDialog; }
+
+    // Recompute the destination's facts and re-apply them to the dialog's
+    // controls. Held as a member only so it can be invoked once AFTER the
+    // project's own size/fps/saved options have been written into the widgets:
+    // running it earlier would state the plan's numbers and then have the
+    // initialisation overwrite them.
+    std::function<void()> mRefreshExportFacts;
+
+    // The last export that actually wrote something, kept so it can be repeated.
+    // A copy of the parameters, not a re-derivation: repeating an export must
+    // reproduce it, including the manual-mode artifact and the frame ranges.
+    std::unique_ptr<exportParam> mLastExport;
+
+    // Where the last export went, so the next dialog opens there instead of
+    // nowhere, and so a quick export to a known destination needs no prompt at all.
+    void rememberExportLocation(const exportParam& aParam);
+    // The dialog's per-run inputs (frame ranges, size, fps) live in QSettings, per
+    // project, so reopening the dialog to change one thing does not mean selecting
+    // the range again.
+    QString exportInputsKey() const;
+    void restoreExportInputs();
+    void reportExportOutcome(const exportParam& aParam, bool aWrote);
+
 
     ctrl::System& mSystem;
     GUIResources& mGUIResources;

@@ -4,6 +4,7 @@
 #include <QString>
 #include <QSize>
 #include <QImage>
+#include <QMap>
 
 // In-process video encoder on top of the linked libav* (avformat + avcodec +
 // swscale). This is the library-side replacement for the removed `ffmpeg` CLI
@@ -13,6 +14,24 @@
 //
 // GL-free and QCoreApplication-free, so it is unit-testable headless.
 namespace media {
+
+// What to do when a source frame's aspect ratio differs from the output size.
+// Pad never loses content but leaves empty (transparent) margins; Crop fills
+// the frame but can cut off the subject. Which is right depends on the art and
+// the destination, so it is a choice rather than a hardcoded behaviour.
+enum class FitMode {
+    None, // scale to exactly the output size (distorts if the aspect differs)
+    Pad,  // fit inside, centre, fill the remainder with transparency
+    Crop  // fill the frame, centre, discard the overflow
+};
+
+
+// Reconcile a frame's aspect ratio with a required output size: Pad fits the art
+// inside and fills the remainder with transparency, Crop fills the frame and
+// discards the overflow. Shared by the encoder (which pads a rendered frame) and
+// by callers that must produce an exactly-sized image themselves (e.g. the GIF
+// collector) — one implementation, so the two cannot drift.
+QImage fitImage(const QImage& aImage, const QSize& aTarget, FitMode aFit);
 
 class VideoEncoder {
 public:
@@ -25,8 +44,36 @@ public:
         int fps = 0;           // must be > 0
         int bitrate = 0;       // bits/sec; 0 = let the encoder choose
         QString pixFmt;        // requested target ("yuv420p","yuva420p","rgba","yuv444p"); "" = auto per codec
+        // How to reconcile a differing aspect ratio. Destinations that demand
+        // an exact size (Discord 320x320, WhatsApp 512x512) set Pad or Crop;
+        // None distorts and exists only for callers that have already matched
+        // the aspect themselves.
+        FitMode fit = FitMode::None;
+
         bool transparent = false; // hint to prefer an alpha-capable pixel format
         int quality = -1;      // optional encoder quality hint (e.g. libx264 -crf); -1 = default
+
+        // Private encoder options, passed to avcodec_open2 (e.g. libvpx's
+        // "auto-alt-ref"=0, which VP9+alpha REQUIRES — alt-ref frames corrupt
+        // the alpha plane). These are codec-specific by nature, so they are a
+        // map rather than typed fields. An unrecognised key is an ERROR, not a
+        // silently-ignored typo: a misspelt option here means broken output
+        // with no other symptom.
+        QMap<QString, QString> encOptions;
+
+        // Muxer options, passed to avformat_write_header (e.g. movflags=+faststart,
+        // which puts the moov atom at the front of an MP4). Deliberately separate
+        // from encOptions: these configure the CONTAINER, not the encoder, and a
+        // platform that demands faststart rejects the file without it. An
+        // unrecognised key is an ERROR for the same reason an unknown encoder
+        // option is: a silently-ignored requirement is a rejected upload.
+        QMap<QString, QString> muxerOptions;
+
+        // FourCC stream codec tag (e.g. "hvc1"). This is NOT an encoder option
+        // — it is written into the container's stream entry, and for HEVC it is
+        // the difference between Safari playing the file and refusing it
+        // (untagged hev1 is rejected). Deliberately separate from encOptions.
+        QString codecTag;
 
         // Optional audio stream (muxed alongside video in one pass).
         // Set audioChannels > 0 + audioSampleRate > 0 + audioCodec to enable.

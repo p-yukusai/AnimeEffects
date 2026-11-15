@@ -1,4 +1,5 @@
 project(ctrl)
+ae_enable_warnings()
 
 add_library(${PROJECT_NAME}
     ../XC.h
@@ -12,6 +13,10 @@ add_library(${PROJECT_NAME}
     Driver.cpp Driver.h
     DriverResources.cpp DriverResources.h
     Exporter.cpp Exporter.h
+    ExportTarget.cpp ExportTarget.h
+    # GENERATED (scripts/i18n/gen_export_targets_i18n.py): the table's user-visible
+    # strings as QT_TRANSLATE_NOOP, because lupdate cannot read a data file.
+    ExportTargetStrings.h
     FFDEditor.cpp FFDEditor.h
     FFDParam.h
     GraphicStyle.h
@@ -37,7 +42,6 @@ add_library(${PROJECT_NAME}
     UILog.h
     UILogType.h
     UILogger.h
-    VideoFormat.cpp VideoFormat.h
     bone/bone_AssignInfluence.h
     bone/bone_BindNodesMode.cpp bone/bone_BindNodesMode.h
     bone/bone_CreateMode.cpp bone/bone_CreateMode.h

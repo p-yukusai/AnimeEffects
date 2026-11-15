@@ -5,7 +5,7 @@
 #ifndef ORAPARSER_H
 #define ORAPARSER_H
 
-#include "deps/zip_file.h"
+#include <zip_file.h>
 #include "img/BlendMode.h"
 #include <QImage>
 #include <QDebug>

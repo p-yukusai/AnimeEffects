@@ -8,10 +8,13 @@ namespace prop {
 
     Backboard::Backboard(ViaPoint& aViaPoint, QWidget* aParent, GUIResources* aGUIResources):
         QWidget(aParent),
+        // Declaration order is mViaPoint, mGUIResources, mProject, mLayout, ...;
+        // the list is written to match, since that is the order the compiler
+        // actually uses.
         mViaPoint(aViaPoint),
+        mGUIResources(aGUIResources),
         mProject(),
         mLayout(),
-        mGUIResources(aGUIResources),
         mConstantPanel(),
         mDefaultKeyPanel(),
         mCurrentKeyPanel() {

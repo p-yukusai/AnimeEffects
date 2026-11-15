@@ -33,8 +33,8 @@ void fillRemainingGray(QVector<quint32>& aPalette, int aStart) {
 // Build a 256-entry uint32_t palette (0xAARRGGBB) from the frames, adaptive:
 // keep the kPaletteCount most frequent opaque colors; if transparency is on,
 // entry 0 is reserved as the transparent index.
-void buildPalette(const QList<QImage>& aFrames, bool aTransparent,
-                  QVector<quint32>& aPalette, bool& aHasTransparent) {
+void buildPalette(const QList<QImage>& aFrames, bool aTransparent, int aLimit,
+                  QVector<quint32>& aPalette, bool& aHasTransparent, int* aUsed) {
     aHasTransparent = false;
     QHash<quint32, quint32> hist;
     for (const QImage& f : aFrames) {
@@ -61,8 +61,21 @@ void buildPalette(const QList<QImage>& aFrames, bool aTransparent,
                               ((b << 3) | (b >> 2));
         counted.push_back({ (color << 8) | 0xFF, it.value() }); // high byte = alpha (opaque)
     }
-    std::sort(counted.begin(), counted.end(),
-              [](const auto& x, const auto& y) { return x.second > y.second; });
+    // Frequency is NOT a total order - thousands of colors in a noisy frame tie at
+    // count 1, and every flat region's shades tie with each other - and std::sort is
+    // not stable, so the ties have to be broken by something in the data. They used to
+    // fall back to `counted`'s insertion order, which is QHash iteration order, which
+    // Qt randomizes per PROCESS. So the same export produced a different palette (and a
+    // different file size: 348001, 348093, 348367, 347679 bytes for one 6-frame fixture
+    // across runs) every time the application started. That is not only unrepeatable
+    // output: a capped destination's fit loop re-encodes its winner to verify it fits
+    // the cap, and a size that moves by a few tenths of a percent between process runs
+    // can make that verification fail on a file that was actually fine. Colour is the
+    // tie-break, so the palette is a function of the frames alone.
+    std::sort(counted.begin(), counted.end(), [](const auto& x, const auto& y) {
+        if (x.second != y.second) return x.second > y.second;
+        return x.first < y.first;
+    });
 
     aPalette.fill(0, kPaletteCount);
     int paletteIndex = 0;
@@ -72,9 +85,10 @@ void buildPalette(const QList<QImage>& aFrames, bool aTransparent,
         aHasTransparent = true;
     }
     for (const auto& c : counted) {
-        if (paletteIndex >= kPaletteCount) break;
+        if (paletteIndex >= aLimit) break;
         aPalette[paletteIndex++] = c.first;
     }
+    if (aUsed) *aUsed = paletteIndex;
     fillRemainingGray(aPalette, paletteIndex);
 }
 
@@ -82,8 +96,8 @@ void buildPalette(const QList<QImage>& aFrames, bool aTransparent,
 // paletteuse convention): each distinct opaque pixel color becomes one entry.
 // If transparency is requested (or the PNG contains a fully-transparent pixel),
 // entry 0 is reserved as the transparent index.
-bool loadPaletteFromPng(const QString& aPath, bool aTransparent,
-                        QVector<quint32>& aPalette, bool& aHasTransparent) {
+bool loadPaletteFromPng(const QString& aPath, bool aTransparent, int aLimit,
+                        QVector<quint32>& aPalette, bool& aHasTransparent, int* aUsed) {
     QImageReader reader(aPath);
     reader.setAutoTransform(true);
     QImage pal = reader.read();
@@ -116,15 +130,21 @@ bool loadPaletteFromPng(const QString& aPath, bool aTransparent,
     QList<quint32> colors = seen.values();
     std::sort(colors.begin(), colors.end());
     for (const quint32 rgb : colors) {
-        if (paletteIndex >= kPaletteCount) break;
+        if (paletteIndex >= aLimit) break;
         aPalette[paletteIndex++] = 0xFF000000u | rgb;
     }
+    if (aUsed) *aUsed = paletteIndex;
     fillRemainingGray(aPalette, paletteIndex);
     return true;
 }
 
 // Build a 32x32x32 LUT mapping quantized RGB -> nearest palette index.
-void buildLut(const QVector<quint32>& aPalette, QVector<uchar>& aLut) {
+// aUsed is how many entries the palette actually built. The rest are grey filler
+// (GIF always carries 256 slots), and searching them would let the encoder emit
+// colours that are not in the palette the fit loop asked for: reducing the palette
+// to 8 entries produced a BIGGER file, because a grey filler was often the nearest
+// match and every grey used costs bits.
+void buildLut(const QVector<quint32>& aPalette, int aUsed, QVector<uchar>& aLut) {
     const int kCube = 32;
     aLut.fill(0, kCube * kCube * kCube);
     for (int ci = 0; ci < kCube; ++ci)
@@ -136,7 +156,7 @@ void buildLut(const QVector<quint32>& aPalette, QVector<uchar>& aLut) {
                 const int R = (ci << 3) | (ci >> 2);
                 const int G = (cj << 3) | (cj >> 2);
                 const int B = (ck << 3) | (ck >> 2);
-                for (int p = 0; p < aPalette.size(); ++p) {
+                for (int p = 0; p < aUsed; ++p) {
                     const quint32 c = aPalette[p];
                     if ((c >> 24) == 0) continue; // skip transparent
                     const int pr = (c >> 16) & 0xFF, pg = (c >> 8) & 0xFF, pb = c & 0xFF;
@@ -160,19 +180,24 @@ bool GifEncoder::encode(const QList<QImage>& aFrames, const Config& aConfig, QSt
     const int width = aFrames.first().width();
     const int height = aFrames.first().height();
 
+    // How many entries the palette may use. 256 is a GIF's ceiling, not a target:
+    // a capped destination can be fitted by quantising harder instead of shrinking.
+    const int limit = std::clamp(aConfig.maxColours, 2, kPaletteCount);
+
+    int used = 0;
     QVector<quint32> palette;
     bool alpha = false;
     if (!aConfig.palettePath.isEmpty()) {
-        if (!loadPaletteFromPng(aConfig.palettePath, aConfig.transparent, palette, alpha)) {
+        if (!loadPaletteFromPng(aConfig.palettePath, aConfig.transparent, limit, palette, alpha, &used)) {
             mError = "could not load palette: " + aConfig.palettePath;
             if (aError) *aError = mError;
             return false;
         }
     } else {
-        buildPalette(aFrames, aConfig.transparent, palette, alpha);
+        buildPalette(aFrames, aConfig.transparent, limit, palette, alpha, &used);
     }
     QVector<uchar> lut;
-    buildLut(palette, lut);
+    buildLut(palette, used, lut);
 
     AVFormatContext* fmt = nullptr;
     if (::avformat_alloc_output_context2(&fmt, nullptr, "gif", aConfig.outputPath.toUtf8().constData()) < 0) {
@@ -196,8 +221,34 @@ bool GifEncoder::encode(const QList<QImage>& aFrames, const Config& aConfig, QSt
     }
     stream->time_base = ctx->time_base;
     stream->avg_frame_rate = AVRational{ aConfig.fps, 1 };
-    if (::avio_open(&fmt->pb, aConfig.outputPath.toUtf8().constData(), AVIO_FLAG_WRITE) < 0 ||
-        ::avformat_write_header(fmt, nullptr) < 0) {
+    if (::avio_open(&fmt->pb, aConfig.outputPath.toUtf8().constData(), AVIO_FLAG_WRITE) < 0) {
+        mError = "could not write gif header"; if (aError) *aError = mError;
+        ::avformat_free_context(fmt); ::avcodec_free_context(&ctx); return false;
+    }
+    // The loop count is a MUXER option ("-loop": -1 no loop, 0 infinite), and it
+    // only reaches the file if it is passed at header time. Config::loop was
+    // declared and never used, so every GIF looped forever no matter what the
+    // export dialog's Loop box said.
+    AVDictionary* headerOpts = nullptr;
+    if (aConfig.loop != 0) {
+        ::av_dict_set(&headerOpts, "loop", QByteArray::number(aConfig.loop).constData(), 0);
+    }
+    const int headerRet = ::avformat_write_header(fmt, &headerOpts);
+    // A silently ignored option is how a control stops meaning anything.
+    const AVDictionaryEntry* ignored = ::av_dict_get(headerOpts, "", nullptr, AV_DICT_IGNORE_SUFFIX);
+    const bool hadUnknown = (ignored != nullptr);
+    const QString unknownKey = hadUnknown ? QString::fromUtf8(ignored->key) : QString();
+    ::av_dict_free(&headerOpts);
+    if (hadUnknown) {
+        // Out of range and unknown are indistinguishable here: ffmpeg leaves the
+        // entry in the dictionary in both cases.
+        mError = QStringLiteral("the gif muxer did not accept the '%1' option (unknown or out of "
+                                "range)").arg(unknownKey);
+        ::avformat_free_context(fmt); ::avcodec_free_context(&ctx);
+        if (aError) *aError = mError;
+        return false;
+    }
+    if (headerRet < 0) {
         mError = "could not write gif header"; if (aError) *aError = mError;
         ::avformat_free_context(fmt); ::avcodec_free_context(&ctx); return false;
     }

@@ -368,8 +368,8 @@ struct Colors {
             paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnLight]), // imageKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnLight]), // HSVKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnLight]), // blurKey
+            false, // isDark
         };
-        c.isDark = false;
         return c;
     }
 
@@ -425,8 +425,8 @@ struct Colors {
             paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnDark]), // imageKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnDark]), // HSVKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnDark]), // blurKey
+            true, // isDark
         };
-        c.isDark = true;
         return c;
     }
 

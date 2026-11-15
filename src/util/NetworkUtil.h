@@ -19,7 +19,10 @@ public:
     static bool libExists(const char* libName);
     static QList<QString> libArgs(QList<QString> anArgument, QString aType);
     static QFileInfo downloadGithubFile(const QString& aURL, const QString& aFile, int aID, QWidget* aParent);
-    static void checkForUpdate(const QString& url, NetworkUtil networking, QWidget* aParent, bool showWithoutUpdate = true);
+    // No NetworkUtil instance argument: the class has no state and this is a
+    // static entry point (the update check runs off QtConcurrent, not off an
+    // object's members).
+    static void checkForUpdate(const QString& url, QWidget* aParent, bool showWithoutUpdate = true);
 
     // This isn't necessarily a network utility, but since I'm using them here anyway I might as well
     // make them accessible.

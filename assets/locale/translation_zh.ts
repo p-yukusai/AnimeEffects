@@ -4,270 +4,479 @@
 <context>
     <name>AnimeEffects.Dialogs</name>
     <message>
-        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="56"/>
+        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="57"/>
         <source>Animation settings</source>
         <translation>动画设置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="106"/>
+        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="107"/>
         <source>Loop animation</source>
         <translation>循环动画</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="137"/>
+        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="138"/>
         <source>Frame range</source>
         <translation>帧范围</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="173"/>
+        <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="174"/>
         <source>Frames per second</source>
         <translation>每秒帧数</translation>
     </message>
 </context>
 <context>
+    <name>BlendModeName</name>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="142"/>
+        <location filename="../../src/img/BlendMode.cpp" line="198"/>
+        <source>Normal</source>
+        <translation>正常</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="144"/>
+        <source>Darken</source>
+        <translation>暗化</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="146"/>
+        <source>Multiply</source>
+        <translation>正片叠底</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="148"/>
+        <source>Color Burn</source>
+        <translation>颜色加深</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="150"/>
+        <source>Linear Burn</source>
+        <translation>线性加深</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="152"/>
+        <source>Lighten</source>
+        <translation>淡化</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="154"/>
+        <source>Screen</source>
+        <translation>滤色</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="156"/>
+        <source>Color Dodge</source>
+        <translation>颜色淡化</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="158"/>
+        <source>Linear Dodge</source>
+        <translation>线性减淡</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="160"/>
+        <source>Overlay</source>
+        <translation>覆盖</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="162"/>
+        <source>Soft Light</source>
+        <translation>柔光</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="164"/>
+        <source>Hard Light</source>
+        <translation>硬光</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="166"/>
+        <source>Vivid Light</source>
+        <translation>艳光</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="168"/>
+        <source>Linear Light</source>
+        <translation>线性光</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="170"/>
+        <source>Pin Light</source>
+        <translation>点光</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="172"/>
+        <source>Hard Mix</source>
+        <translation>实色混合</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="174"/>
+        <source>Difference</source>
+        <translation>差异</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="176"/>
+        <source>Exclusion</source>
+        <translation>排除</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="178"/>
+        <source>Subtract</source>
+        <translation>扣减</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="180"/>
+        <source>Divide</source>
+        <translation>分割</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="182"/>
+        <source>Add (Glow)</source>
+        <translation>添加（发光）</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="184"/>
+        <source>Glow Dodge</source>
+        <translation>颜色减淡（发光）</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="186"/>
+        <source>Hue</source>
+        <translation>色相</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="188"/>
+        <source>Saturation</source>
+        <translation>饱和度</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="190"/>
+        <source>Color</source>
+        <translation>颜色</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="192"/>
+        <source>Luminosity</source>
+        <translation>明度</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="194"/>
+        <source>Darker Color</source>
+        <translation>深色</translation>
+    </message>
+    <message>
+        <location filename="../../src/img/BlendMode.cpp" line="196"/>
+        <source>Lighter Color</source>
+        <translation>浅色</translation>
+    </message>
+</context>
+<context>
     <name>CmndName</name>
     <message>
+        <location filename="../../src/ctrl/bone/bone_BindNodesMode.cpp" line="78"/>
         <source>Bind node to bone</source>
-        <translation type="vanished">将节点绑定到骨骼</translation>
+        <translation>将节点绑定到骨骼</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_BindNodesMode.cpp" line="101"/>
         <source>Unbind node from bones</source>
-        <translation type="vanished">从骨骼解绑节点</translation>
+        <translation>从骨骼解绑节点</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_CreateMode.cpp" line="109"/>
         <source>Add new bone</source>
-        <translation type="vanished">添加新骨骼</translation>
+        <translation>添加新骨骼</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_CreateMode.cpp" line="125"/>
         <source>Add new parent bone</source>
-        <translation type="vanished">添加父骨骼</translation>
+        <translation>添加父骨骼</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_DeleteMode.cpp" line="64"/>
         <source>Delete bone</source>
-        <translation type="vanished">删除骨骼</translation>
+        <translation>删除骨骼</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_EraseInflMode.cpp" line="159"/>
+        <location filename="../../src/ctrl/bone/bone_InfluenceMode.cpp" line="118"/>
+        <location filename="../../src/ctrl/bone/bone_PaintInflMode.cpp" line="135"/>
         <source>Update bone influence</source>
-        <translation type="vanished">更新骨骼权重</translation>
+        <translation>更新骨骼权重</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/bone/bone_MoveJointMode.cpp" line="81"/>
         <source>Move bone</source>
-        <translation type="vanished">移动骨骼</translation>
+        <translation>移动骨骼</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/ffd/ffd_BrushMode.cpp" line="124"/>
         <source>Update FFD</source>
-        <translation type="vanished">更新自由变形（FFD）</translation>
+        <translation>更新自由变形（FFD）</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/ffd/ffd_DragMode.cpp" line="185"/>
         <source>Move FFD key vertex</source>
-        <translation type="vanished">移动自由变形（FFD）关键帧</translation>
+        <translation>移动自由变形（FFD）关键帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_CreateMode.cpp" line="88"/>
         <source>Add mesh key triangle</source>
-        <translation type="vanished">添加网格三角形关键帧</translation>
+        <translation>添加网格三角形关键帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_CreateMode.cpp" line="120"/>
         <source>Move mesh key vertex</source>
-        <translation type="vanished">移动网格顶点关键帧</translation>
+        <translation>移动网格顶点关键帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_DeleteMode.cpp" line="64"/>
         <source>Remove mesh key vertex</source>
-        <translation type="vanished">删除网格顶点关键帧</translation>
+        <translation>删除网格顶点关键帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_DeleteMode.cpp" line="77"/>
         <source>Remove mesh key face</source>
-        <translation type="vanished">删除网格面关键帧</translation>
+        <translation>删除网格面关键帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/mesh/mesh_SplitMode.cpp" line="144"/>
         <source>Split mesh key triangle</source>
-        <translation type="vanished">分割网格三角形关键帧</translation>
+        <translation>分割网格三角形关键帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/pose/pose_DrawBoneMode.cpp" line="136"/>
         <source>Pull bones of a pose key</source>
-        <translation type="vanished">拉动姿势关键帧的骨骼</translation>
+        <translation>拉动姿势关键帧的骨骼</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/pose/pose_ErasePoseMode.cpp" line="84"/>
         <source>erase a pose</source>
-        <translation type="vanished">擦除姿势关键帧</translation>
+        <translation>擦除姿势关键帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/pose/pose_TransBoneMode.cpp" line="101"/>
         <source>rotate a bone of a posing key</source>
-        <translation type="vanished">旋转姿势关键帧的骨骼</translation>
+        <translation>旋转姿势关键帧的骨骼</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/srt/srt_CentroidMode.cpp" line="112"/>
         <source>update centroid of a moving key</source>
-        <translation type="vanished">更新移动中心帧</translation>
+        <translation>更新移动中心帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="175"/>
         <source>update a moving key</source>
-        <translation type="vanished">更新移动帧</translation>
+        <translation>更新移动帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="206"/>
         <source>update a rotation key</source>
-        <translation type="vanished">更新旋转帧</translation>
+        <translation>更新旋转帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="237"/>
         <source>update a scaling key</source>
-        <translation type="vanished">更新缩放帧</translation>
+        <translation>更新缩放帧</translation>
     </message>
     <message>
         <source>Move key</source>
         <translation type="vanished">移动帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="354"/>
         <source>Move keys</source>
-        <translation type="vanished">移动帧</translation>
+        <translation>移动帧</translation>
     </message>
     <message>
         <source>Paste clipboard key</source>
         <translation type="vanished">粘贴剪贴板键</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="669"/>
+        <source>Paste clipboard keys</source>
+        <translation>粘贴剪贴板帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="843"/>
         <source>Paste keys</source>
-        <translation type="vanished">粘贴帧</translation>
+        <translation>粘贴帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="908"/>
         <source>Delete keys</source>
-        <translation type="vanished">删除帧</translation>
+        <translation>删除帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="258"/>
         <source>Update default movement key</source>
-        <translation type="vanished">更新默认移动帧</translation>
+        <translation>更新默认移动帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="259"/>
         <source>Update movement key</source>
-        <translation type="vanished">更新移动帧</translation>
+        <translation>更新移动帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="269"/>
         <source>Update default rotation key</source>
-        <translation type="vanished">更新默认旋转帧</translation>
+        <translation>更新默认旋转帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="270"/>
         <source>Update rotation key</source>
-        <translation type="vanished">更新旋转帧</translation>
+        <translation>更新旋转帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="280"/>
         <source>Update default scaling key</source>
-        <translation type="vanished">更新默认缩放帧</translation>
+        <translation>更新默认缩放帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="281"/>
         <source>Update scaling key</source>
-        <translation type="vanished">更新缩放帧</translation>
+        <translation>更新缩放帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="291"/>
         <source>Update default depth key</source>
-        <translation type="vanished">更新默认深度帧</translation>
+        <translation>更新默认深度帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="292"/>
         <source>Update depth key</source>
-        <translation type="vanished">更新深度帧</translation>
+        <translation>更新深度帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="302"/>
         <source>Update default opacity key</source>
-        <translation type="vanished">更新默认不透明度帧</translation>
+        <translation>更新默认不透明度帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="303"/>
         <source>Update opacity key</source>
-        <translation type="vanished">更新不透明度帧</translation>
+        <translation>更新不透明度帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="313"/>
         <source>Update default HSV key</source>
-        <translation type="vanished">更新默认HSV帧</translation>
+        <translation>更新默认HSV帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="314"/>
         <source>Update HSV key</source>
-        <translation type="vanished">更新HSV帧</translation>
+        <translation>更新HSV帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="324"/>
         <source>Update default blur key</source>
-        <translation type="vanished">更新默认模糊帧</translation>
+        <translation>更新默认模糊帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="325"/>
         <source>Update blur key</source>
-        <translation type="vanished">更新模糊帧</translation>
+        <translation>更新模糊帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="335"/>
         <source>Update default pose key</source>
-        <translation type="vanished">更新默认姿势帧</translation>
+        <translation>更新默认姿势帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="336"/>
         <source>Update pose key</source>
-        <translation type="vanished">更新姿势帧</translation>
+        <translation>更新姿势帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="346"/>
         <source>Update default FFD key</source>
-        <translation type="vanished">更新默认自由变形帧</translation>
+        <translation>更新默认自由变形帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="347"/>
         <source>Update FFD key</source>
-        <translation type="vanished">更更新自由变形帧</translation>
+        <translation>更更新自由变形帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="359"/>
         <source>Update default image resource key</source>
-        <translation type="vanished">更新默认图形资料帧</translation>
+        <translation>更新默认图形资料帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="360"/>
         <source>update image resource key</source>
-        <translation type="vanished">更新图形资料帧</translation>
+        <translation>更新图形资料帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="380"/>
         <source>Update the image&apos;s default offset key</source>
-        <translation type="vanished">更新图像默认移动帧</translation>
+        <translation>更新图像默认移动帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="381"/>
         <source>Update the image&apos;s offset key</source>
-        <translation type="vanished">更新图片偏移帧</translation>
+        <translation>更新图片偏移帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="400"/>
         <source>Update the default mesh size key</source>
-        <translation type="vanished">更新默认网格尺寸帧</translation>
+        <translation>更新默认网格尺寸帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="401"/>
         <source>Update mesh size key</source>
-        <translation type="vanished">更新网格尺寸帧</translation>
+        <translation>更新网格尺寸帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="450"/>
         <source>Add new movement key</source>
-        <translation type="vanished">新增移动帧</translation>
+        <translation>新增移动帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="454"/>
         <source>Add new rotation key</source>
-        <translation type="vanished">新增旋转帧</translation>
+        <translation>新增旋转帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="459"/>
         <source>Add new scaling key</source>
-        <translation type="vanished">新增缩放帧</translation>
+        <translation>新增缩放帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="463"/>
         <source>Add new depth key</source>
-        <translation type="vanished">新增深度帧</translation>
+        <translation>新增深度帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="467"/>
         <source>Add new opacity key</source>
-        <translation type="vanished">新增不透明度帧</translation>
+        <translation>新增不透明度帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="471"/>
         <source>Add new HSV key</source>
-        <translation type="vanished">新增HSV帧</translation>
+        <translation>新增HSV帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="475"/>
         <source>Add new blur key</source>
-        <translation type="vanished">新增模糊帧</translation>
+        <translation>新增模糊帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="481"/>
         <source>Add new pose key</source>
-        <translation type="vanished">新增姿势帧</translation>
+        <translation>新增姿势帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="488"/>
         <source>Add new FFD key</source>
-        <translation type="vanished">新增自由变形帧</translation>
+        <translation>新增自由变形帧</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="493"/>
         <source>Add new image key</source>
-        <translation type="vanished">新增图形帧</translation>
+        <translation>新增图形帧</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="786"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="670"/>
         <source>Change the canvas size</source>
         <translation>修改画布尺寸</translation>
     </message>
@@ -276,52 +485,52 @@
         <translation type="vanished">修改最大帧数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="807"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="691"/>
         <source>Change the frame range</source>
         <translation>更改帧范围</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="828"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="712"/>
         <source>Change loop settings</source>
         <translation>修改循环设置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="850"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="734"/>
         <source>Change the FPS</source>
         <translation>修改帧率FPS</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="400"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="399"/>
         <source>Rename object</source>
         <translation>重命名项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1057"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1056"/>
         <source>Create a layer</source>
         <translation>新建图层</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1181"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1180"/>
         <source>Duplicate base folder</source>
         <translation>重复文件夹</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1316"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1315"/>
         <source>Duplicate layer</source>
         <translation>重复文件夹</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1495"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1494"/>
         <source>create a folder object</source>
         <translation>新建文件夹项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1545"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1544"/>
         <source>Delete object</source>
         <translation>删除项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1679"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1678"/>
         <source>Move object</source>
         <translation>移动项目</translation>
     </message>
@@ -365,33 +574,1382 @@
         <translation>重命名素材</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TargetWidget.cpp" line="177"/>
+        <location filename="../../src/gui/TargetWidget.cpp" line="168"/>
         <source>Change animation settings</source>
         <translation>更改动画设置</translation>
     </message>
 </context>
 <context>
+    <name>EasingName</name>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="59"/>
+        <source>Floor</source>
+        <translation>向下取整</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="61"/>
+        <source>Linear</source>
+        <translation>线性</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="63"/>
+        <source>Sine</source>
+        <translation>正弦曲线</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="65"/>
+        <source>Quad</source>
+        <translation>二次方</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="67"/>
+        <source>Cubic</source>
+        <translation>三次方</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="69"/>
+        <source>Quart</source>
+        <translation>四次方</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="71"/>
+        <source>Quint</source>
+        <translation>五次方</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="73"/>
+        <source>Expo</source>
+        <translation>指数</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="75"/>
+        <source>Circ</source>
+        <translation>圆形</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="77"/>
+        <source>Back</source>
+        <translation>回弹</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="79"/>
+        <source>Elastic</source>
+        <translation>伸缩</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="81"/>
+        <source>Bounce</source>
+        <translation>弹跳</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="83"/>
+        <source>Custom</source>
+        <translation>自定义</translation>
+    </message>
+    <message>
+        <location filename="../../src/util/Easing.cpp" line="85"/>
+        <source>Round</source>
+        <translation>四舍五入</translation>
+    </message>
+</context>
+<context>
+    <name>ExportTargets</name>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="20"/>
+        <source>General</source>
+        <translation>通用</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="21"/>
+        <source>Bilibili</source>
+        <translation>Bilibili</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="22"/>
+        <source>Bluesky</source>
+        <translation>Bluesky</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="23"/>
+        <source>Dailymotion</source>
+        <translation>Dailymotion</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="24"/>
+        <source>DeviantArt</source>
+        <translation>DeviantArt</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="25"/>
+        <source>Discord</source>
+        <translation>Discord</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="26"/>
+        <source>Douyin</source>
+        <translation>Douyin</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="27"/>
+        <source>Facebook</source>
+        <translation>Facebook</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="28"/>
+        <source>Instagram</source>
+        <translation>Instagram</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="29"/>
+        <source>KakaoTalk</source>
+        <translation>KakaoTalk</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="30"/>
+        <source>LINE</source>
+        <translation>LINE</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="31"/>
+        <source>Mastodon</source>
+        <translation>Mastodon</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="32"/>
+        <source>Messenger</source>
+        <translation>Messenger</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="33"/>
+        <source>Newgrounds</source>
+        <translation>Newgrounds</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="34"/>
+        <source>Nico Nico</source>
+        <translation>Nico Nico</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="35"/>
+        <source>OBS</source>
+        <translation>OBS</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="36"/>
+        <source>Pinterest</source>
+        <translation>Pinterest</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="37"/>
+        <source>pixiv</source>
+        <translation>pixiv</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="38"/>
+        <source>QQ</source>
+        <translation>QQ</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="39"/>
+        <source>Reddit</source>
+        <translation>Reddit</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="40"/>
+        <source>Safari</source>
+        <translation>Safari</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="41"/>
+        <source>Signal</source>
+        <translation>Signal</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="42"/>
+        <source>Snapchat</source>
+        <translation>Snapchat</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="43"/>
+        <source>Telegram</source>
+        <translation>Telegram</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="44"/>
+        <source>TikTok</source>
+        <translation>TikTok</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="45"/>
+        <source>Tumblr</source>
+        <translation>Tumblr</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="46"/>
+        <source>Twitch</source>
+        <translation>Twitch</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="47"/>
+        <source>Vimeo</source>
+        <translation>Vimeo</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="48"/>
+        <source>VK</source>
+        <translation>VK</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="49"/>
+        <source>WeChat</source>
+        <translation>WeChat</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="50"/>
+        <source>Weibo</source>
+        <translation>Weibo</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="51"/>
+        <source>WhatsApp</source>
+        <translation>WhatsApp</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="52"/>
+        <source>X</source>
+        <translation>X</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="53"/>
+        <source>YouTube</source>
+        <translation>YouTube</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="54"/>
+        <source>Telegram sticker</source>
+        <translation>Telegram 贴纸</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="55"/>
+        <source>Video must have no audio stream. Should loop.</source>
+        <translation>视频不得包含音频流。应当循环播放。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="56"/>
+        <source>Telegram custom emoji</source>
+        <translation>Telegram 自定义表情</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="57"/>
+        <source>Discord sticker</source>
+        <translation>Discord 贴纸</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="58"/>
+        <source>Discord animated stickers are APNG (GIF and Lottie also accepted). 320x320 EXACT.</source>
+        <translation>Discord 动态贴纸为 APNG（也接受 GIF 和 Lottie）。尺寸必须恰好为 320x320。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="59"/>
+        <source>Discord emoji</source>
+        <translation>Discord 表情</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="60"/>
+        <source>Animated emoji are served as animated WebP; upload accepts JPEG/PNG/GIF/WebP/AVIF.</source>
+        <translation>动态表情以动态 WebP 形式提供；上传时可接受 JPEG/PNG/GIF/WebP/AVIF。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="61"/>
+        <source>WhatsApp sticker</source>
+        <translation>WhatsApp 贴纸</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="62"/>
+        <source>Animated stickers are WebP ONLY. Minimum frame duration 8ms.</source>
+        <translation>动态贴纸仅支持 WebP。每帧最短持续时间为 8ms。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="63"/>
+        <source>Signal sticker</source>
+        <translation>Signal 贴纸</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="64"/>
+        <source>Animated stickers must be APNG (&quot;Please do not upload GIFs&quot;).</source>
+        <translation>动态贴纸必须为 APNG（“请不要上传 GIF”）。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="65"/>
+        <source>LINE sticker</source>
+        <translation>LINE 贴纸</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="66"/>
+        <source>RGB colour space; transparent background required; 1-4 loops.</source>
+        <translation>使用 RGB 色彩空间；要求透明背景；循环 1 至 4 次。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="67"/>
+        <source>Twitch emote</source>
+        <translation>Twitch 表情</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="68"/>
+        <source>GIF only (&quot;The image must be in .gif format&quot;), and SQUARE: &quot;GIF images must be square shape&quot;. 112x112 is the upload for auto-resize, which is the mode a single file belongs to, and 1 MB is that mode&apos;s cap; uploading the three manual sizes instead caps each at 512 KB. 28/56/112 are the sizes Twitch SERVES, not what you upload. At most 60 frames, and &quot;must not flash or flicker more than 3 times within a 1 second period&quot;. Twitch resizes and re-serves its own variants. NOT PUBLISHED: any duration limit, any frame rate limit, and any transparency rule for ANIMATED emotes (transparency is stated for static ones), so transparency is offered but not promised.</source>
+        <translation>仅支持 GIF（“图片必须为 .gif 格式”），并且必须是正方形：“GIF 图片必须为正方形”。112x112 是自动缩放模式的上传尺寸，单个文件正属于这一模式，该模式的上限为 1 MB；若改用三个手动尺寸上传，则每个尺寸的上限为 512 KB。28/56/112 是 Twitch 对外提供的尺寸，而不是上传尺寸。最多 60 帧，并且“在 1 秒内闪烁或抖动不得超过 3 次”。Twitch 会缩放并重新提供它自己的各种变体。未公布的内容：任何时长限制、任何帧率限制，以及针对动态表情的任何透明度规则（透明度只对静态表情作了说明），因此这里提供透明度选项，但不作保证。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="69"/>
+        <source>A video for a chat app</source>
+        <translation>聊天应用用的视频</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="70"/>
+        <source>The one to pick when the app is not in this list. MP4/H.264 with AAC at 720p and under 20 MB is accepted by every chat app here, and is what the restrictive ones accept.</source>
+        <translation>当应用不在此列表中时选这一项。720p 的 MP4/H.264 加 AAC、体积在 20 MB 以内，这里的每个聊天应用都接受，限制最严的应用也接受这样的文件。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="71"/>
+        <source>A video sent in a chat: 64 MB over a slow connection, 100 MB over a fast one, and WhatsApp DOWNSCALES rather than rejecting. Sending it as a Document instead allows 2 GB untouched, which is a different intent and not this row. Status is limited to 90 seconds and is also not this row.</source>
+        <translation>在聊天中发送的视频：慢速连接下 64 MB，快速连接下 100 MB，并且 WhatsApp 会降低分辨率而不是拒收。改以“文档”方式发送则允许 2 GB 且不做改动，但那是另一种用途，不属于本行。状态功能限时 90 秒，同样不属于本行。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="72"/>
+        <source>WhatsApp (animated GIF)</source>
+        <translation>WhatsApp（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="73"/>
+        <source>UNVERIFIED (WhatsApp publishes no organic cap for an animated image): GIFs are a documented chat surface, but WhatsApp publishes no byte cap, format list, dimension rule, frame count or duration for an image sent in a chat, and no statement about whether it transcodes one. The numbers that could be borrowed are all for other surfaces and are NOT applied here: 2 GB for a DOCUMENT, 100 MB or 64 MB for a VIDEO (fast and slow connections), 90 seconds for a status video, and the Cloud API&apos;s 5 MB image with a 500 KB animated sticker. No cap is applied, and the fit loop therefore has nothing to enforce.</source>
+        <translation>未核实（WhatsApp 没有公布动态图片的自然上限）：GIF 是官方文档中提到的聊天内容形式，但对于在聊天中发送的图片，WhatsApp 没有公布字节上限、格式列表、尺寸规则、帧数或时长，也没有说明是否会对其进行转码。可以借用的数字都属于其他场景，因此这里不予采用：文档为 2 GB，视频为 100 MB 或 64 MB（快速与慢速连接），状态视频为 90 秒，Cloud API 的图片为 5 MB、动态贴纸为 500 KB。此处不施加任何上限，因此适配循环也没有需要强制执行的目标。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="74"/>
+        <source>2 GB per file, 4 GB with Premium; Telegram re-encodes into renditions. Note this is the USER limit: the Bot API&apos;s 50 MB is for bots uploading, not for you sending a file. Telegram also converts a real GIF to MP4 on its servers, so transparency never survives here.</source>
+        <translation>每个文件 2 GB，开通 Premium 后为 4 GB；Telegram 会重新编码生成多种清晰度。注意这是用户上限：Bot API 的 50 MB 是给机器人上传用的，不是给你发送文件用的。Telegram 还会在服务器上把真正的 GIF 转成 MP4，因此透明通道在这里永远无法保留。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="75"/>
+        <source>Telegram (animated GIF)</source>
+        <translation>Telegram（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="76"/>
+        <source>Telegram CONVERTS an uploaded GIF itself: &quot;GIFs are actually MPEG4 (h264) videos without sound; if the user tries to upload an actual GIF file, it will be automatically converted to an MPEG4 file by the server&quot;. So this destination writes the file Telegram would have made anyway, without the round trip through a GIF palette: silent H.264 in MP4, and transparency CANNOT survive (the conversion is lossy and H.264 4:2:0 carries no alpha). Animated WebP is not accepted as a sticker (&quot;Animated .WEBP is NOT currently supported&quot;); a chat file may be up to 2 GB (4 GB with Premium), which is the cloud-file limit rather than a GIF limit. No frame count, duration or frame rate is published for a chat animation.</source>
+        <translation>Telegram 会自行转换上传的 GIF：“GIF 实际上是没有声音的 MPEG4（h264）视频；如果用户尝试上传真正的 GIF 文件，服务器会自动将其转换为 MPEG4 文件”。因此这个目的地直接写出 Telegram 本来就会生成的文件，省去了经由 GIF 调色板的来回转换：MP4 中的无声 H.264，并且透明通道无法保留（转换是有损的，而且 H.264 4:2:0 不携带 alpha）。动态 WebP 不能作为贴纸上传（“当前不支持动态 .WEBP”）；聊天文件最大可达 2 GB（开通 Premium 后 4 GB），这是云文件上限而不是 GIF 上限。对于聊天中的动画，未公布帧数、时长或帧率。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="77"/>
+        <source>20 MB to send, 50 MB with Nitro Basic, 500 MB with Nitro; a boosted server lifts everyone to 50 MB (level 2) or 100 MB (level 3). Discord&apos;s older help pages still say 10 MB. On mobile the size is now measured BEFORE compression, so a video that used to fit may not.</source>
+        <translation>发送上限 20 MB，开通 Nitro Basic 后 50 MB，开通 Nitro 后 500 MB；服务器获得加成后，所有人的上限提升到 50 MB（2 级）或 100 MB（3 级）。Discord 较早的帮助页面仍写着 10 MB。在移动端，现在是在压缩之前测量体积，所以以前能通过的文件现在可能不再通过。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="78"/>
+        <source>Discord (animated image)</source>
+        <translation>Discord（动态图片）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="79"/>
+        <source>An animated image, not a video: WebP is the format Discord&apos;s own pipeline produces for animation (they have served and accepted animated WebP since the 2024 mobile release 252), and a GIF upload is transcoded to WebP for display, so this goes out animated either way. Alpha survives here, which GIF&apos;s palette cannot carry. The English FAQ caps a non-Nitro upload at 10 MB (its Hindi page says 25 MB): 10 MB is used, and it is also the size above which Discord stops animating inline and offers the file as a download instead. One frame in the export gives a still WebP, so this row carries a still illustration as well as an animation. Transparency is on by default (WebP keeps it, GIF&apos;s palette cannot) and can be turned off.</source>
+        <translation>这是动态图片而不是视频：WebP 是 Discord 自己的处理流程为动画生成的格式（自 2024 年移动端 252 版本起，他们一直提供并接受动态 WebP），上传的 GIF 会转码为 WebP 用于显示，所以无论哪种方式发出的都是动态内容。透明通道在这里能保留，而 GIF 的调色板无法承载它。英文版常见问题把非 Nitro 上传上限定为 10 MB（其印地语页面写的是 25 MB）：这里采用 10 MB，这也是 Discord 不再以内嵌动画方式播放、转而把文件作为下载提供的分界体积。导出时只保留一帧会得到静态 WebP，所以本行既可用于静态插画，也可用于动画。透明度默认开启（WebP 能保留，GIF 的调色板不能），也可以关闭。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="80"/>
+        <source>Signal re-encodes client-side to 720p at roughly 2 Mbps and targets about 50 MB of output. The server flag is 100 MiB and remote-configurable, so 50 MB is the number to stay under. Sending as a File skips the transcode.</source>
+        <translation>Signal 会在客户端重新编码到 720p、约 2 Mbps，目标输出约为 50 MB。服务器端的开关值是 100 MiB 且可远程配置，因此 50 MB 是需要守住的上限。以“文件”方式发送可以跳过转码。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="81"/>
+        <source>Signal (animated GIF)</source>
+        <translation>Signal（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="82"/>
+        <source>UNVERIFIED (Signal publishes nothing usable here): a GIF is a first-class attachment (&quot;image, gif, video, voice message, or audio file&quot;), but Signal has no help page stating an attachment byte cap, a format list, a dimension rule, a frame count or a transcode rule for one. The only numbers that exist are in source code and issue threads rather than documentation: a GIF threshold of min(25 MB, the attachment limit) and a maintainer note that sending is still capped at 100 MB. 25 MB is used here as the code-level threshold, and every other fact is left unstated rather than invented. Note that Signal&apos;s STICKER page says &quot;Please do not upload GIFs&quot; - that is the sticker surface (APNG, 300 KB), a different thing from an attachment, and reading it as &quot;Signal rejects GIFs&quot; is a documented trap.</source>
+        <translation>未核实（Signal 没有公布任何可用于此处的数据）：GIF 是一等附件（“图像、gif、视频、语音消息或音频文件”），但 Signal 没有任何帮助页面说明附件的字节上限、格式列表、尺寸规则、帧数或转码规则。唯一存在的数字出现在源代码和问题讨论串中，而不是文档里：GIF 的阈值是 min(25 MB, 附件上限)，以及维护者提到发送仍以 100 MB 为上限。此处采用 25 MB 作为代码层面的阈值，其余事实一律留空而不去杜撰。请注意 Signal 的贴纸页面写着“请不要上传 GIF”：那说的是贴纸场景（APNG，300 KB），与附件是两回事，把它读成“Signal 拒收 GIF”是文档中记载的一个陷阱。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="83"/>
+        <source>UNVERIFIED: 25 MB is the published DEVELOPER API limit. Meta does not publish the consumer chat limit anywhere, so this is the closest sourced number, not the app&apos;s own. 75 seconds appears in the docs as a fetch timeout, NOT a duration limit.</source>
+        <translation>未核实：25 MB 是已公布的开发者 API 上限。Meta 没有在任何地方公布普通用户聊天的上限，所以这是最接近且有出处的数字，而不是该应用自身的上限。文档中出现的 75 秒是获取超时，而不是时长限制。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="84"/>
+        <source>Messenger (animated GIF)</source>
+        <translation>Messenger（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="85"/>
+        <source>UNVERIFIED (the consumer chat publishes no cap): Messenger offers a &quot;Send GIF&quot; action with no published formats, and Meta&apos;s API documentation says animated GIFs &quot;are playable in the conversation&quot;, but the consumer chat states no byte cap, dimension rule, frame count or transcode behaviour. The API numbers that exist (25 MB per asset, 8 MB for an image uploaded by URL) are labelled as API values and are not applied here, because Meta does not say they bind the in-app picker. The API template also lists only image and video as media types with no GIF value, which is a contradiction Meta leaves unresolved.</source>
+        <translation>未核实（普通用户聊天未公布任何上限）：Messenger 提供“发送 GIF”操作，却没有公布支持的格式，Meta 的 API 文档称动态 GIF“可在对话中播放”，但普通用户聊天既没有字节上限、尺寸规则、帧数，也没有转码行为的说明。已存在的 API 数字（每个素材 25 MB，通过 URL 上传的图片 8 MB）被标注为 API 取值，此处不予采用，因为 Meta 没有说明它们约束应用内的选择器。API 模板还只把 image 和 video 列为媒体类型，没有 GIF 取值，这一矛盾 Meta 并未解决。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="86"/>
+        <source>KakaoTalk (카카오톡)</source>
+        <translation>KakaoTalk (카카오톡)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="87"/>
+        <source>UNVERIFIED for mobile: 300 MB is the PC desktop file-send limit. Kakao does not publish the mobile chat limit. MP4/MOV/MKV/AVI/TS and others are accepted.</source>
+        <translation>移动端未核实：300 MB 是 PC 桌面端发送文件的上限。Kakao 没有公布移动端聊天的上限。接受 MP4/MOV/MKV/AVI/TS 等格式。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="88"/>
+        <source>WeChat (微信)</source>
+        <translation>WeChat (微信)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="89"/>
+        <source>UNVERIFIED: Tencent publishes no size or duration limit for video sent in a personal chat, and no codec list. MP4/H.264 at 720p is the safe choice. The official-account route IS documented (10 MB per upload, 2 GB chunked) and is a different thing entirely.</source>
+        <translation>未核实：腾讯没有公布在个人聊天中发送视频的体积或时长限制，也没有公布编码格式列表。720p 的 MP4/H.264 是稳妥之选。公众号途径确实有文档（每次上传 10 MB，分片上传 2 GB），但那完全是另一回事。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="90"/>
+        <source>UNVERIFIED for the consumer app: 30 MB soft (silently becomes a FILE instead of an inline video) and 200 MB hard are BOT API numbers. Consumer chat limits are not published.</source>
+        <translation>普通用户应用未核实：30 MB 的软上限（会静默地变成文件而不是内嵌视频）和 200 MB 的硬上限都是机器人 API 的数字。普通用户聊天的上限没有公布。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="91"/>
+        <source>VK (ВКонтакте)</source>
+        <translation>VK (ВКонтакте)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="92"/>
+        <source>No cap worth encoding: 256 GB, up to 4K, and VK re-encodes. MP4/H.264 at 1280x720 or above, and they recommend 16:9.</source>
+        <translation>上限高到无需为编码操心：256 GB，最高 4K，并且 VK 会重新编码。建议 1280x720 或更高的 MP4/H.264，他们推荐 16:9。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="93"/>
+        <source>X (Twitter)</source>
+        <translation>X (Twitter)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="94"/>
+        <source>A post accepts up to 8 GB and 20 minutes (16 GB / 125 minutes with Premium). The &quot;140 seconds / 512 MB&quot; figure repeated all over the web is X&apos;s DIRECT MESSAGE limit, not a post, and is 50x too small here. H.264 High, AAC-LC, yuv420p, closed GOP.</source>
+        <translation>帖子最多接受 8 GB 和 20 分钟（开通 Premium 后为 16 GB / 125 分钟）。网上到处流传的“140 秒 / 512 MB”是 X 的私信上限，不是帖子上限，用在这里小了 50 倍。H.264 High、AAC-LC、yuv420p、封闭 GOP。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="95"/>
+        <source>X (animated GIF)</source>
+        <translation>X（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="96"/>
+        <source>X accepts JPG, PNG, GIF and WEBP, and an animated GIF is its own media category (tweet_gif). The caps here come from X&apos;s API documentation, NOT from its help pages: 15 MB per animated GIF, resolution at most 1280x1080, at most 350 frames and at most 300 million pixels in total (width x height x frames). X&apos;s own API page adds that a GIF &quot;may fail during Post creation even if it is within the file size limit&quot;, so treat 15 MB as soft. The figure repeated across the web (5 MB mobile, 15 MB web) appears on no X-owned page, and X publishes nothing about transparency, looping, frame rate or duration for GIFs.</source>
+        <translation>X 接受 JPG、PNG、GIF 和 WEBP，动态 GIF 有独立的媒体类别（tweet_gif）。这里的上限来自 X 的 API 文档，而不是其帮助页面：每个动态 GIF 15 MB，分辨率最高 1280x1080，最多 350 帧，总像素数最多 3 亿（宽 x 高 x 帧数）。X 自己的 API 页面还补充说，GIF“即使在文件大小限制之内，也可能在创建帖子时失败”，所以应把 15 MB 视为软上限。网上流传的数字（移动端 5 MB、网页端 15 MB）在任何 X 自有的页面上都找不到，而 X 没有公布任何关于 GIF 透明度、循环、帧率或时长的说明。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="97"/>
+        <source>Instagram Reels</source>
+        <translation>Instagram Reels</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="98"/>
+        <source>300 MB, 3 seconds to 15 minutes, 9:16 up to 1920 px wide, H.264 or HEVC in a closed GOP. The moov atom must be at the FRONT of the file with no edit lists, which is what the faststart muxer option below does: without it the upload is rejected.</source>
+        <translation>300 MB，3 秒至 15 分钟，9:16、宽度最高 1920 px，封闭 GOP 的 H.264 或 HEVC。moov atom 必须位于文件的前部且不能有编辑列表，这正是下方 faststart 封装选项的作用：没有它上传会被拒收。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="99"/>
+        <source>4 GB, up to 10 minutes on some routes and 3 on others. 1080x1920 (9:16). GIF files are NOT accepted. WebM/MOV are accepted alongside MP4.</source>
+        <translation>4 GB，某些途径最长 10 分钟，另一些为 3 分钟。1080x1920（9:16）。不接受 GIF 文件。除 MP4 外还接受 WebM/MOV。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="100"/>
+        <source>Bilibili (哔哩哔哩)</source>
+        <translation>Bilibili (哔哩哔哩)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="101"/>
+        <source>UNVERIFIED (conflicting sources): Bilibili&apos;s help centre says 16 GB (64 GB at higher web levels), their own open-platform API documentation says 4 GB, and the page could not be re-fetched to settle it. 4 GB is used here as the floor that both agree on. Up to 4096x4096 at 120 fps, H.264/AAC, yuv420p.</source>
+        <translation>未核实（来源互相矛盾）：Bilibili 帮助中心说是 16 GB（网页端等级较高时为 64 GB），其自家的开放平台 API 文档说是 4 GB，而该页面无法重新抓取以确认。此处采用 4 GB，即两者一致认同的下限。最高 4096x4096、120 fps，H.264/AAC，yuv420p。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="102"/>
+        <source>Weibo (微博)</source>
+        <translation>Weibo (微博)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="103"/>
+        <source>15 GB from the desktop web, 4 GB from mobile. There is a MINIMUM of 3 seconds and no published maximum duration. 720p or better for the video section; 2K/4K are gated behind play counts. Codec list is not published: MP4/H.264.</source>
+        <translation>桌面网页端 15 GB，移动端 4 GB。最短时长为 3 秒，没有公布最长时长。视频分区要求 720p 或更高；2K/4K 需要达到一定播放量才能解锁。编码格式列表未公布：MP4/H.264。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="104"/>
+        <source>Weibo (animated GIF)</source>
+        <translation>Weibo（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="105"/>
+        <source>Weibo LOSES the animation rather than converting it: &quot;原始图片需不超过1080宽，超宽会导致动图不动&quot; (the original must be at most 1080 wide, wider makes the animation stop) and the original-quality box (原图) must be ticked or the GIF posts as a static image. So the width ceiling is a real constraint here, and this row caps the long side at 1080 px, which is stricter than the published rule but can never lose the animation. 20 MB is the published per-image cap from Weibo&apos;s own help centre (the API&apos;s 10 MB belongs to the API surface). No frame count, duration, frame rate or transparency statement is published for a GIF, and Weibo&apos;s two help pages contradict each other about ticking 原图: one requires it for animation, the other recommends leaving it off to avoid a colour cast.</source>
+        <translation>微博不会转换动画，而是会直接丢掉动画：“原始图片需不超过1080宽，超宽会导致动图不动”（原图宽度不得超过 1080，过宽会导致动图不动），并且必须勾选原图，否则 GIF 会以静态图片发布。因此宽度上限在这里是实实在在的约束，本行将长边限制在 1080 px，比公布的规则更严格，但绝不会丢失动画。20 MB 是微博自家帮助中心公布的每张图片上限（API 的 10 MB 属于 API 场景）。对于 GIF，微博没有公布帧数、时长、帧率或透明度方面的说明，而且微博的两个帮助页面在是否勾选原图这一点上互相矛盾：一个要求动图必须勾选，另一个则建议不勾选以避免偏色。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="106"/>
+        <source>MP4 ONLY: the lexicon accepts video/mp4 and nothing else. 300 MB and 10 minutes (both raised recently, so most guides are out of date). No pixel cap; the aspect ratio travels as metadata.</source>
+        <translation>仅支持 MP4：该词表只接受 video/mp4，不接受其他格式。300 MB 和 10 分钟（两者最近都提高了，所以大多数指南已经过时）。没有像素上限；宽高比作为元数据附带。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="107"/>
+        <source>Bluesky (animation)</source>
+        <translation>Bluesky（动画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="108"/>
+        <source>Bluesky keeps the animation by routing it down the VIDEO path: an animated GIF is &quot;processed as video&quot;, and the video embed lexicon accepts only video/mp4, so a GIF that arrives at Bluesky becomes an MP4. This row writes the MP4 directly, silent and H.264, which is what the platform serves anyway, and transparency cannot survive it. THE 2 MB IMAGE CAP DOES NOT APPLY HERE: 2,000,000 bytes is the app.bsky.embed.images lexicon limit for a STILL; the video embed allows 300 MB and 10 minutes, which is what is used. Note that Bluesky&apos;s own documentation contradicts itself about the still-image number (the code on that page enforces 2,000,000 while the prose beside it still says 1,000,000). No dimension, frame or frame-rate rule is published, and the 720p/30 fps/5000 kbps figures in circulation come from a user comment, not from documentation.</source>
+        <translation>Bluesky 通过视频通道来保留动画：动态 GIF 会被“当作视频处理”，而视频嵌入词表只接受 video/mp4，所以到达 Bluesky 的 GIF 会变成 MP4。本行直接写出 MP4，无声且为 H.264，这正是平台最终提供的内容，透明通道无法保留。2 MB 的图片上限在这里并不适用：2,000,000 字节是 app.bsky.embed.images 词表对静态图片的限制；视频嵌入允许 300 MB 和 10 分钟，这里采用的正是后者。请注意 Bluesky 自己的文档在静态图片这个数字上自相矛盾（该页面上的代码强制 2,000,000，而旁边的说明文字仍写着 1,000,000）。没有公布尺寸、帧数或帧率的规则，流传的 720p/30 fps/5000 kbps 数字来自用户评论，而不是文档。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="109"/>
+        <source>99 MB for video and 16 MB for images are UPSTREAM DEFAULTS; every instance sets its own, and instances drift from upstream (mastodon.social reports double the upstream pixel limit). The authoritative answer is the server&apos;s own /api/v2/instance configuration. GIFs are converted to silent MP4, so transparency does not survive.</source>
+        <translation>视频 99 MB、图片 16 MB 都是上游默认值；每个实例都会自行设定，并且实例会偏离上游（mastodon.social 报告的像素上限是上游的两倍）。权威答案是该服务器自己的 /api/v2/instance 配置。GIF 会被转换为无声 MP4，因此透明通道无法保留。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="110"/>
+        <source>UNVERIFIED: Reddit does not publish a size limit for native video posts. No byte cap is applied rather than inventing one. The 15-minute figure comes from their 2017 launch post, and comment videos are capped much shorter.</source>
+        <translation>未核实：Reddit 没有公布原生视频帖子的体积上限。这里不施加任何字节上限，而不是凭空编造一个。15 分钟这个数字来自他们 2017 年的发布公告，而评论中的视频上限要短得多。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="111"/>
+        <source>Reddit (animated GIF)</source>
+        <translation>Reddit（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="112"/>
+        <source>UNVERIFIED (no organic numbers published): Reddit documents no byte cap for an image or GIF post. What IS visible is that a GIF post is stored and served as a Reddit VIDEO (Reddit&apos;s own Devvit model carries a media kind &quot;videogif&quot; and a RedditVideo.isGif flag), so animation survives but transparency does not, which is why alpha is forbidden here. The widely quoted &quot;20 MB image / 100 MB GIF&quot; figures come from third parties, and the Reddit numbers that are published belong to other surfaces (comment images at most 240 px, comment video under 1 GB and 3 minutes, and advertising specs that reject animated GIF outright). No frame, duration or frame-rate rule is published for an animated image.</source>
+        <translation>未核实（未公布自然流量场景的数字）：Reddit 的文档没有给出图片或 GIF 帖子的字节上限。可以看到的是，GIF 帖子会作为 Reddit 视频存储和提供（Reddit 自家的 Devvit 模型带有媒体类型 videogif 和 RedditVideo.isGif 标志），所以动画能保留，但透明通道不能，这就是此处禁止 alpha 的原因。被广泛引用的“图片 20 MB / GIF 100 MB”来自第三方，而 Reddit 已公布的数字都属于其他场景（评论图片最多 240 px，评论视频小于 1 GB 且不超过 3 分钟，以及直接拒收动态 GIF 的广告规范）。对于动态图片，没有公布帧数、时长或帧率的规则。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="113"/>
+        <source>WeChat sticker (微信表情)</source>
+        <translation>WeChat 贴纸（微信表情）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="114"/>
+        <source>Animated stickers are GIF only, exactly 240x240, 500 KB, and must loop. Art that exceeds the spec is compressed AND CROPPED by WeChat rather than rejected, so an oversized export comes back with its edges cut off. Sticker sets are 8 to 24 images.</source>
+        <translation>动态贴纸仅支持 GIF，必须恰好为 240x240、500 KB，并且必须循环。超出规格的图片微信会压缩并裁剪，而不是拒收，所以过大的导出文件回来时边缘会被切掉。贴纸套装为 8 至 24 张。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="115"/>
+        <source>KakaoTalk sticker (카카오톡 스티커)</source>
+        <translation>KakaoTalk 贴纸（카카오톡 스티커）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="116"/>
+        <source>Animated WebP, 360x360 (180x180 for mini, 540x540 for big), 650 KB, 24 frames maximum and four loops. Kakao publishes its own WebP animator, which is a useful sign of exactly which encoder behaviour they expect.</source>
+        <translation>动态 WebP，360x360（迷你版为 180x180，大版为 540x540），650 KB，最多 24 帧、循环四次。Kakao 发布了自己的 WebP 动画工具，这正好说明他们期望的编码器行为。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="117"/>
+        <source>QQ sticker</source>
+        <translation>QQ 贴纸</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="118"/>
+        <source>UNVERIFIED and DATE-STAMPED 2018-10-07: this is the last Tencent-owned specification that exists anywhere. yuanchuang.qq.com no longer resolves and archive.org holds no capture after October 2018, so the values below are what Tencent said eight years ago and nothing current confirms them. 16 GIFs at exactly 300x300, each 300 KB or less (&quot;表情大小：≤300kb/个&quot;, raised from 90 KB in 2016), on a transparent background (&quot;文件均为无色透明底&quot;). A white stroke is required but 3 px is only PREFERRED (&quot;以3像素的白色描边为佳&quot;), not an exact value. The same page contradicts itself about the 300x300 PNG thumbnail: its table says 200 KB and its body text says 20 KB, so no thumbnail cap is applied. Nothing is published about frame count, duration, frame rate, or re-encoding.</source>
+        <translation>未核实，且时间戳为 2018-10-07：这是现存最后一份腾讯自有的规格说明。yuanchuang.qq.com 已无法解析，archive.org 在 2018 年 10 月之后也没有留存快照，所以下面的数值是腾讯八年前的说法，没有任何近期的资料可以证实。16 个 GIF，必须恰好 300x300，每个不超过 300 KB（“表情大小：≤300kb/个”，2016 年从 90 KB 提高），背景透明（“文件均为无色透明底”）。要求有白色描边，但 3 px 只是推荐值（“以3像素的白色描边为佳”），并非确切数值。同一页面在 300x300 的 PNG 缩略图上自相矛盾：表格写 200 KB，正文写 20 KB，所以这里不施加缩略图上限。关于帧数、时长、帧率或重新编码都没有公布任何内容。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="119"/>
+        <source>Nico Nico Douga (ニコニコ動画)</source>
+        <translation>Nico Nico Douga (ニコニコ動画)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="120"/>
+        <source>6 GB or 6 hours, whichever comes first; raised from 3 GB on 2024-10-29, so older guides are a revision behind. Up to 4096x2160 (or 2160x4096 vertical) and 60 fps. Their own page caps the vertical Short surface at 180 seconds, which is a different destination with the same name.</source>
+        <translation>6 GB 或 6 小时，以先到者为准；2024-10-29 从 3 GB 提高，所以较早的指南落后了一个版本。最高 4096x2160（竖屏为 2160x4096）和 60 fps。他们自家的页面把竖屏短视频场景限制在 180 秒，那是同名但不同的目的地。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="121"/>
+        <source>Douyin (抖音)</source>
+        <translation>Douyin (抖音)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="122"/>
+        <source>UNVERIFIED (conflicting): ByteDance contradicts itself. The current upload endpoint says 4 GB total with chunked upload mandatory above 300 MB, while a 2024-04-09 chunked-upload page says 128 MB and 15 minutes, and the Android share SDK says 60 minutes. The widely quoted 500 MB could not be found on any ByteDance page. Short side under 2160, long side under 4096, 720p or above.</source>
+        <translation>未核实（互相矛盾）：字节跳动自己的说法也不一致。当前的上传端点说总计 4 GB，超过 300 MB 必须分片上传，而 2024-04-09 的分片上传页面说 128 MB 和 15 分钟，Android 分享 SDK 又说 60 分钟。被广泛引用的 500 MB 在任何字节跳动的页面上都找不到。短边小于 2160，长边小于 4096，720p 或更高。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="123"/>
+        <source>Facebook (video)</source>
+        <translation>Facebook（视频）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="124"/>
+        <source>UNVERIFIED (partial): Meta publishes NO byte or duration cap for organic video. The 4 GB and 240-minute figures that circulate are the ADVERTISING spec. Since September 2025 every video posted to Facebook is shared as a reel, so this and the reels destination differ only in the length the API enforces. Recommended: maximum width 4000 px with dimensions divisible by 16, 30 fps or lower, H.264 with AAC.</source>
+        <translation>未核实（部分）：Meta 没有公布自然流量视频的字节或时长上限。流传的 4 GB 和 240 分钟是广告规格。自 2025 年 9 月起，发布到 Facebook 的每个视频都会以 reel 形式分享，所以本目的地与 reels 目的地的区别只在于 API 强制执行的时长。建议：最大宽度 4000 px，且尺寸可被 16 整除，30 fps 或更低，H.264 配 AAC。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="125"/>
+        <source>Facebook (animated GIF)</source>
+        <translation>Facebook（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="126"/>
+        <source>UNVERIFIED (advisory, not a published hard cap): Facebook lists GIF among the photo formats it recommends uploading (&quot;JPEG, BMP, PNG, GIF or TIFF&quot;) and recommends keeping photos under 15 MB, which is the number used here. No organic byte cap, dimension rule, frame count, duration or frame rate is published for an animated image; the only transcode statement Facebook makes is in the ADS documentation (a GIF there &quot;plays in the same way as all video files&quot;), and the numbers that circulate for GIF (4 GB, &quot;as video&quot;) belong to that advertising surface rather than to a photo post.</source>
+        <translation>未核实（属于建议而非公布的硬性上限）：Facebook 在推荐上传的照片格式中列出了 GIF（“JPEG、BMP、PNG、GIF 或 TIFF”），并建议照片保持在 15 MB 以内，这里采用的正是这个数字。对于动态图片，没有公布自然流量场景的字节上限、尺寸规则、帧数、时长或帧率；Facebook 唯一关于转码的说明在广告文档中（那里的 GIF“与所有视频文件以相同方式播放”），而流传的 GIF 数字（4 GB、“按视频处理”）属于那个广告场景，而不是照片帖子。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="127"/>
+        <source>Facebook Reels</source>
+        <translation>Facebook Reels</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="128"/>
+        <source>UNVERIFIED (conflicting): Meta Business Help says reels can be any length; the Reels Publishing API enforces 3 to 90 seconds and rejects anything else. 90 s is used here because it is the number that is enforced. 1080x1920 recommended, 540x960 minimum, 24 to 60 fps, no published byte cap.</source>
+        <translation>未核实（互相矛盾）：Meta Business 帮助说 reels 长度不限；Reels Publishing API 则强制 3 至 90 秒，其他长度一律拒收。这里采用 90 秒，因为它是被强制执行的那个数字。推荐 1080x1920，最低 540x960，24 至 60 fps，没有公布字节上限。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="129"/>
+        <source>500 MB and 10 minutes, and 20 posts a day. MOV or MP4; Tumblr transcodes toward 720p H.264. Photos are a separate destination: a static image gets 20 MB, but an animated GIF is served only up to about 5 MB and above that is reduced to its first frame.</source>
+        <translation>500 MB 和 10 分钟，每天 20 条帖子。MOV 或 MP4；Tumblr 会转码到 720p H.264。照片是另一个目的地：静态图片为 20 MB，而动态 GIF 只在约 5 MB 以内才会以动画提供，超过这个体积就会被缩减为第一帧。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="130"/>
+        <source>Tumblr (animated GIF)</source>
+        <translation>Tumblr（动态 GIF）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="131"/>
+        <source>Tumblr transcodes EVERY uploaded GIF (&quot;we do convert all uploaded GIFs to the GIFV format&quot;, typically animated WebP, and on the web sometimes MP4), so the file it serves is not the file you send. It publishes three size numbers in one section (keep GIFs to 10 MB, a compressed GIF no larger than 5 MB, and &quot;we will do our best to compress&quot; between them) plus the consequence that matters: above 5 MB Tumblr may serve ONLY THE FIRST FRAME, so 5 MB is the cap used here and the file is fitted to it. 540 px wide is Tumblr&apos;s own recommendation. Frames are not counted (&quot;we only count bytes and seconds&quot;), no duration cap exists for a GIF, and transparency is documented only as a conversion criterion, not as a promise.</source>
+        <translation>Tumblr 会转码每一个上传的 GIF（“我们会把所有上传的 GIF 转换为 GIFV 格式”，通常是动态 WebP，在网页端有时是 MP4），所以它提供的文件并不是你发送的文件。它在同一节里公布了三个体积数字（GIF 保持在 10 MB 以内，压缩后的 GIF 不超过 5 MB，介于两者之间“我们会尽力压缩”），以及一个真正重要的后果：超过 5 MB 时 Tumblr 可能只提供第一帧，因此这里采用 5 MB 作为上限，并把文件适配到该上限。540 px 宽是 Tumblr 自己的建议。帧数不计入（“我们只统计字节和秒数”），GIF 没有时长上限，文档中提到的透明度只是一个转换判据，而不是承诺。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="132"/>
+        <source>Pinterest (video Pin)</source>
+        <translation>Pinterest（视频 Pin）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="133"/>
+        <source>4 seconds to 5 minutes. No byte cap is published for organic video Pins; the &quot;2 GB / 15 minutes&quot; figure belongs to the ADVERTISING spec, which is a different surface and is quoted constantly as if it were this one. MP4/M4V, H.264 or H.265, 9:16 recommended.</source>
+        <translation>4 秒至 5 分钟。对于自然流量的视频 Pin 没有公布字节上限；“2 GB / 15 分钟”属于广告规格，那是另一个场景，却经常被当作这一场景的标准引用。MP4/M4V，H.264 或 H.265，推荐 9:16。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="134"/>
+        <source>Snapchat Spotlight</source>
+        <translation>Snapchat Spotlight</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="135"/>
+        <source>UNVERIFIED (partial): Snapchat publishes a minimum of 5 seconds and a vertical requirement, and nothing else: no byte cap, no maximum duration, no accepted format list and no pixel specification. Still images are excluded. The &quot;1 GB / 3 to 30 minutes&quot; figure is the ADS spec. Vertical with sound; a landscape export will not be shown in Spotlight, and no size rule here can force that, so the file is exported as composed.</source>
+        <translation>未核实（部分）：Snapchat 公布了 5 秒的下限和竖屏要求，除此之外什么都没有：没有字节上限，没有最长时长，没有支持的格式列表，也没有像素规格。静态图片不在此列。“1 GB / 3 至 30 分钟”是广告规格。竖屏且带声音；横向导出不会在 Spotlight 中展示，这里的任何体积规则都无法改变这一点，因此文件按合成时的样子导出。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="136"/>
+        <source>4 GB (64 GB on the top tier) and 2 hours. Up to 3840x2160 or 2160x3840, 24 to 60 fps. MOV, MP4, AVI, WMV, MKV and FLV are all accepted; MP4/H.264 is the practical target.</source>
+        <translation>4 GB（最高档为 64 GB）和 2 小时。最高 3840x2160 或 2160x3840，24 至 60 fps。MOV、MP4、AVI、WMV、MKV 和 FLV 都接受；实际推荐目标是 MP4/H.264。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="137"/>
+        <source>UNVERIFIED (conflicting): Vimeo&apos;s advice to keep files under 200 GB, a plan note about 250 GB per video for legacy subscribers and an uploader page claiming no size limit cannot all be true; 200 GB is used as a soft ceiling. 24 hours is a hard refusal at upload. Vimeo states plainly that it has no alpha channel support, so transparency can never survive here. MP4/MOV, H.264 or ProRes.</source>
+        <translation>未核实（互相矛盾）：Vimeo 建议文件保持在 200 GB 以内、给老订阅用户的方案说明提到每个视频 250 GB，以及某个上传页面声称没有体积限制，这三者不可能同时为真；此处采用 200 GB 作为软上限。24 小时是上传时的硬性拒收线。Vimeo 明确表示不支持 alpha 通道，所以透明通道在这里绝无可能保留。MP4/MOV，H.264 或 ProRes。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="138"/>
+        <source>DeviantArt (video, Core members)</source>
+        <translation>DeviantArt（视频，Core 会员）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="139"/>
+        <source>1 GB and 10 to 12 minutes, and video submission is a Core membership feature. 1920x1080 recommended; the first frame becomes the preview, so it should not be a blank or transitional frame. An animated GIF is NOT a video here: DeviantArt counts it as an image and gives it the much larger image cap.</source>
+        <translation>1 GB 和 10 至 12 分钟，提交视频是 Core 会员功能。推荐 1920x1080；第一帧会成为预览图，所以不应是空白帧或过渡帧。动态 GIF 在这里不算视频：DeviantArt 把它算作图片，并给予大得多的图片上限。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="140"/>
+        <source>Newgrounds (animation)</source>
+        <translation>Newgrounds（动画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="141"/>
+        <source>UNVERIFIED (partial): Newgrounds publishes NO byte or duration cap. Their own wiki says the limit is shown on the signed-in upload form and can be raised on request, so it is per-account; the 100 MB and 6.3 GB figures in circulation come from a member forum post, not from Newgrounds. MP4/MOV/WMV and SWF are accepted, at 3840x2160, 1920x1080, 1280x720 or 640x380, around 10 to 20 Mbps at 1080p. Loop is an upload option for MP4 here, unlike everywhere else.</source>
+        <translation>未核实（部分）：Newgrounds 没有公布任何字节或时长上限。他们自己的 wiki 说该上限显示在登录后的上传表单上，并且可以申请提高，所以它是按账号设定的；流传的 100 MB 和 6.3 GB 来自会员论坛的帖子，而不是 Newgrounds 官方。接受 MP4/MOV/WMV 和 SWF，尺寸为 3840x2160、1920x1080、1280x720 或 640x380，1080p 下约 10 至 20 Mbps。与其他所有地方不同，这里的 MP4 上传选项中带有循环。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="142"/>
+        <source>pixiv (illustration)</source>
+        <translation>pixiv（插画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="143"/>
+        <source>32 MB per image, 200 MB per post, JPG or PNG. No pixel cap is published. The 8 MB and 10 MB figures still quoted in guides are obsolete: pixiv raised the per-image limit to 32 MB. A post mixing formats is converted to JPG, so pick one format per post; PNG is the one that keeps transparency.</source>
+        <translation>每张图片 32 MB，每个投稿 200 MB，JPG 或 PNG。没有公布像素上限。指南中仍在引用的 8 MB 和 10 MB 已经过时：pixiv 已把每张图片的上限提高到 32 MB。混用格式的投稿会被转换为 JPG，所以每个投稿请只选一种格式；能保留透明度的是 PNG。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="144"/>
+        <source>pixiv (ugoira animation)</source>
+        <translation>pixiv（ugoira 动画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="145"/>
+        <source>ugoira is a folder of numbered stills, not a video: up to 150 frames, 30 MB in total, 8 MB per frame, and every frame must share one format AND one canvas size. PNG or JPEG only, and pixiv rejects APNG and WebP outright. Frame TIMING is authored on the upload page, so no fps applies here. The alternative route is one animated GIF (16 MB, 500 frames), which costs you the palette. Desktop site only.</source>
+        <translation>ugoira 是装有编号静帧的文件夹，而不是视频：最多 150 帧，总计 30 MB，每帧 8 MB，并且所有帧必须使用同一种格式和同一种画布尺寸。仅支持 PNG 或 JPEG，pixiv 直接拒收 APNG 和 WebP。帧的时序在上传页面设置，所以这里不涉及 fps。另一种途径是单个动态 GIF（16 MB，500 帧），代价是失去调色板。仅限桌面网站。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="146"/>
+        <source>Nico Nico Seiga (ニコニコ静画)</source>
+        <translation>Nico Nico Seiga (ニコニコ静画)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="147"/>
+        <source>UNVERIFIED (partial): 10 MB per image, PNG or JPEG or GIF, no pixel cap published. Whether a posted illustration is re-encoded, whether PNG alpha survives, and whether an animated GIF animates on Seiga are all undocumented, so transparency is exported but not promised. Seiga is the still-image half of Nico Nico; videos go to Nico Nico Douga.</source>
+        <translation>未核实（部分）：每张图片 10 MB，PNG、JPEG 或 GIF，没有公布像素上限。投稿的插画是否会被重新编码、PNG 的 alpha 能否保留，以及动态 GIF 在 Seiga 上是否会动，都没有文档说明，所以透明通道会导出但不作保证。Seiga 是 Nico Nico 的静图部分；视频请发往 Nico Nico Douga。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="148"/>
+        <source>Instagram (photo)</source>
+        <translation>Instagram（照片）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="149"/>
+        <source>8 MB, JPEG ONLY, width between 320 and 1440 px, and an aspect ratio from 4:5 to 1.91:1. Transparency cannot survive a JPEG: a transparent background is written as solid black, so flatten the art first. Reels are a separate destination and do take video.</source>
+        <translation>8 MB，仅支持 JPEG，宽度在 320 至 1440 px 之间，宽高比从 4:5 到 1.91:1。透明通道无法在 JPEG 中保留：透明背景会被写成纯黑，所以请先合并图像。Reels 是另一个目的地，并且确实支持视频。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="150"/>
+        <source>Facebook (photo)</source>
+        <translation>Facebook（照片）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="151"/>
+        <source>UNVERIFIED (conflicting): Meta&apos;s Graph API says a photo must be under 10 MB and that animated photos are not supported, while their help centre recommends below 15 MB and lists GIF as a photo format. The stricter API figure is used. PNG is accepted but Meta warns that a PNG above 1 MB may be shown pixelated, because it is re-compressed.</source>
+        <translation>未核实（互相矛盾）：Meta 的 Graph API 说照片必须小于 10 MB，并且不支持动态照片，而他们的帮助中心建议低于 15 MB 并把 GIF 列为照片格式。此处采用更严格的 API 数字。PNG 可以接受，但 Meta 提醒超过 1 MB 的 PNG 可能显示为有像素块，因为它会被重新压缩。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="152"/>
+        <source>Tumblr (photo)</source>
+        <translation>Tumblr（照片）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="153"/>
+        <source>20 MB for a static image. 540x810 is the recommended size and 2048x3072 is the largest view served. ANIMATION IS A DIFFERENT LIMIT: a GIF is only served up to about 5 MB, and above that Tumblr shows its first frame instead of animating, so a long animation should go out as a video.</source>
+        <translation>静态图片为 20 MB。推荐尺寸为 540x810，最大提供的视图为 2048x3072。动画适用不同的上限：GIF 只在约 5 MB 以内才会以动画提供，超过这个体积 Tumblr 会显示第一帧而不播放动画，所以较长的动画应以视频形式发布。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="154"/>
+        <source>Pinterest (image Pin)</source>
+        <translation>Pinterest（图片 Pin）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="155"/>
+        <source>20 MB on the web. PNG, JPEG, BMP, TIFF or WEBP; GIF is not accepted as an organic Pin, so animation belongs on a video Pin. 2:3 is the recommended shape (1000x1500) and 9:16 also works; keep the art out of the bottom safe zone, where the interface covers it.</source>
+        <translation>网页端为 20 MB。PNG、JPEG、BMP、TIFF 或 WEBP；自然流量的 Pin 不接受 GIF，所以动画应放在视频 Pin 上。推荐比例为 2:3（1000x1500），9:16 也可以；请让画面避开底部的安全区域，那里会被界面遮挡。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="156"/>
+        <source>DeviantArt (image)</source>
+        <translation>DeviantArt（图片）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="157"/>
+        <source>UNVERIFIED (conflicting): one DeviantArt help page says images are capped at 80 MB and another says 95 MB; 80 MB is used so a file that passes here passes both. JPEG, PNG or GIF, no pixel cap. An animated GIF counts as an IMAGE and gets this same cap, which is 16x what Tumblr allows a GIF.</source>
+        <translation>未核实（互相矛盾）：一个 DeviantArt 帮助页面说图片上限为 80 MB，另一个说 95 MB；此处采用 80 MB，这样只要能通过这里的限制，就能同时满足两个页面的标准。JPEG、PNG 或 GIF，没有像素上限。动态 GIF 算作图片并获得同样的上限，这是 Tumblr 允许 GIF 的 16 倍。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="158"/>
+        <source>DeviantArt (animation)</source>
+        <translation>DeviantArt（动画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="159"/>
+        <source>UNVERIFIED (conflicting): see the image row: 80 MB versus 95 MB on two official pages, and an animated GIF is submitted as an image rather than a video, so it gets that cap instead of the 1 GB video one. GIF means a 256-colour palette, which is a real cost for gradients but nothing else here animates on a free account.</source>
+        <translation>未核实（互相矛盾）：参见图片那一行：两个官方页面分别写 80 MB 和 95 MB，而动态 GIF 是作为图片而不是视频提交的，所以适用的是那个上限而不是 1 GB 的视频上限。GIF 意味着 256 色调色板，这对渐变来说是实实在在的损失，但在免费账号下这里没有其他能播放动画的方式。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="160"/>
+        <source>Stream overlay (OBS)</source>
+        <translation>直播叠加层（OBS）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="161"/>
+        <source>VP9 WebM is native in OBS; no chroma-key. WebKit CANNOT decode alpha in WebM.</source>
+        <translation>VP9 WebM 在 OBS 中是原生格式；无需色度键。WebKit 无法解码 WebM 中的 alpha 通道。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="162"/>
+        <source>Transparent video (Safari / iOS)</source>
+        <translation>透明视频（Safari / iOS）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="163"/>
+        <source>HEVC+alpha needs Apple&apos;s VideoToolbox encoder; libx265 ADVERTISES yuva420p and then refuses it at open. hvc1 is mandatory: Safari rejects untagged hev1. Where VideoToolbox is unavailable, use the WebM/VP9 overlay destination instead.</source>
+        <translation>HEVC+alpha 需要 Apple 的 VideoToolbox 编码器；libx265 声称支持 yuva420p，但在打开时又拒绝它。hvc1 是必须的：Safari 会拒收未标注的 hev1。如果 VideoToolbox 不可用，请改用 WebM/VP9 叠加层目的地。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="164"/>
+        <source>YouTube re-encodes every upload. Official docs still recommend H.264/AAC; AV1/H.265 give more quality per bit. Codec is resolved by the ladder.</source>
+        <translation>YouTube 会重新编码每一次上传。官方文档仍推荐 H.264/AAC；AV1/H.265 每比特能提供更高的画质。编码格式通过阶梯规则确定。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="165"/>
+        <source>Website</source>
+        <translation>网站</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="166"/>
+        <source>Direct playback: decode compatibility dominates, so H.264 at every bucket. For transparency on the web, ship BOTH .webm (VP9) and .mov (HEVC hvc1).</source>
+        <translation>直接播放：解码兼容性最重要，所以每个档位都用 H.264。若要在网页上使用透明通道，请同时提供 .webm（VP9）和 .mov（HEVC hvc1）。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="167"/>
+        <source>Just a file (not sure yet)</source>
+        <translation>只是一个文件（还没确定）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="168"/>
+        <source>The fallback when the destination is unknown: maximum compatibility.</source>
+        <translation>目的地未知时的兜底选项：最大兼容性。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="169"/>
+        <source>Keep a master copy</source>
+        <translation>保留母版副本</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="170"/>
+        <source>At Lossless quality this is FFV1, which carries alpha (yuva420p); the other buckets pick H.265, which cannot encode alpha here at all.</source>
+        <translation>在无损质量下使用 FFV1，它携带 alpha（yuva420p）；其他档位选择 H.265，而 H.265 在这里根本无法编码 alpha。</translation>
+    </message>
+    <message>
+        <source>FFV1 (lossless master)</source>
+        <translation type="vanished">FFV1（无损母版）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="183"/>
+        <source>%1 (%2)</source>
+        <translation>%1（%2）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="185"/>
+        <source>hardware</source>
+        <translation>硬件</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="186"/>
+        <source>software</source>
+        <translation>软件</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="196"/>
+        <source>%1. This site re-encodes uploads, so source quality matters more than compatibility</source>
+        <translation>%1。此网站会重新编码上传的内容，所以源画质比兼容性更重要</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="202"/>
+        <source>%1. This plays your file directly, so decode compatibility matters most</source>
+        <translation>%1。这里直接播放你的文件，所以解码兼容性最重要</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="207"/>
+        <source>%1. A master copy, so fidelity matters most</source>
+        <translation>%1。这是母版副本，所以保真度最重要</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="218"/>
+        <source>%1, about %2s here</source>
+        <translation>%1，本机约需 %2 秒</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="235"/>
+        <source>Quality intent not applied: the destination table declares no &lt;bucket_positions&gt;, so &apos;%1&apos; was left at its own default.</source>
+        <translation>未应用质量意图：目的地表没有声明 &lt;bucket_positions&gt;，因此“%1”保持自身默认值。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="250"/>
+        <source>&apos;%1&apos; is a lossy codec, so Lossless here means its highest quality, not a lossless file.</source>
+        <translation>“%1”是有损编码器，所以这里的“无损”指它的最高画质，而不是无损文件。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="320"/>
+        <source>cannot open %1</source>
+        <translation>无法打开 %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="341"/>
+        <source>%1: missing &lt;export_targets&gt; root</source>
+        <translation>%1：缺少 &lt;export_targets&gt; 根元素</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="572"/>
+        <source>no frames selected</source>
+        <translation>未选择任何帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="583"/>
+        <source>%1 frames from %2 separate ranges</source>
+        <translation>来自 %2 个独立区间的 %1 帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="613"/>
+        <source>Size forced to %1x%2 (required by this destination); the art is %3.</source>
+        <translation>尺寸强制为 %1x%2（此目的地要求），画面已%3。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="619"/>
+        <source>cropped to fill it</source>
+        <translation>裁剪填满</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="620"/>
+        <source>padded to fit it</source>
+        <translation>补边适配</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="660"/>
+        <source>Frame rate reduced %1 -&gt; %2 fps (destination limit).</source>
+        <translation>帧率已因目的地限制从 %1 fps 降至 %2 fps。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="672"/>
+        <source>Trimmed %1 -&gt; %2 frames (%3s limit).</source>
+        <translation>已从 %1 帧裁剪到 %2 帧（%3 秒上限）。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="684"/>
+        <source>Trimmed %1 -&gt; %2 frames (destination limit).</source>
+        <translation>已从 %1 帧裁剪到 %2 帧（目的地限制）。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="693"/>
+        <source>WARNING: destination needs at least %1 frames but only %2 are available, so the upload will likely be rejected.</source>
+        <translation>警告：此目的地至少需要 %1 帧，但目前只有 %2 帧，上传很可能被拒收。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="711"/>
+        <source>WARNING: destination needs at least %1 s but this export is %2 s, so the upload will likely be rejected. Select a longer frame range.</source>
+        <translation>警告：此目的地至少需要 %1 秒，而本次导出为 %2 秒，上传很可能被拒收。请选择更长的帧范围。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="783"/>
+        <source>%1 via %2, the fastest of %3 that runs here</source>
+        <translation>%1，使用 %2（本机可运行的 %3 个中最快）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="788"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="821"/>
+        <source>%1 via %2</source>
+        <translation>%1，使用 %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="803"/>
+        <source>%1/%2 (~%3s)</source>
+        <translation>%1/%2（约 %3 秒）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="817"/>
+        <source>%1: nothing here is fast enough for this budget (%2), so this is the fastest available</source>
+        <translation>%1：本机没有任何编码器能满足这个时间预算（%2），所以这是可用的最快方案</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="829"/>
+        <source>no suitable encoder found in this build</source>
+        <translation>此构建中没有找到合适的编码器</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="842"/>
+        <source>no destination selected</source>
+        <translation>未选择目的地</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="846"/>
+        <source>invalid source size</source>
+        <translation>源尺寸无效</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="858"/>
+        <source>%1 is required by this destination.</source>
+        <translation>此目的地要求%1。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="871"/>
+        <source>Transparency</source>
+        <translation>透明度</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="873"/>
+        <source>Audio</source>
+        <translation>音频</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="883"/>
+        <source>no frames selected for export</source>
+        <translation>未选择要导出的帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="923"/>
+        <source>%1; the ranges play back to back and the frames between them are not exported.</source>
+        <translation>%1；这些区间会首尾相接播放，区间之间的帧不会被导出。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="945"/>
+        <source>no encoder available for this destination in this build</source>
+        <translation>此构建中没有可用于该目的地的编码器</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="979"/>
+        <source>WARNING: this destination&apos;s limits are UNVERIFIED; re-check before relying on them.</source>
+        <translation>警告：此目的地的限制未经核实，依赖前请再次确认。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1006"/>
+        <source>One still image (frame %1), written as %2. The frame range above does not apply.</source>
+        <translation>单张静图（第%1帧），以 %2 格式写出。上方的帧范围不适用。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1013"/>
+        <source>%1 frames written as numbered .%2 files.</source>
+        <translation>写出 %1 个编号的 .%2 文件。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1069"/>
+        <source>%1 requires transparency, but &apos;%2&apos; cannot encode an alpha channel in this build (it advertises %3 and then refuses it). Use a destination whose codec carries alpha: WebM/VP9, APNG, or FFV1.</source>
+        <translation>%1 需要透明通道，但在此构建中“%2”无法编码 alpha 通道（它声明支持 %3，随后又拒绝）。请改用编码器支持 alpha 的目的地：WebM/VP9、APNG 或 FFV1。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1078"/>
+        <source>%1: %2 could not encode %3 and no fallback worked (%4)</source>
+        <translation>%1：%2 无法编码 %3，也没有可用的备选方案（%4）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1085"/>
+        <source>Transparency dropped: &apos;%1&apos; advertises %2 but cannot encode it here, so %3 is used instead.</source>
+        <translation>已放弃透明通道：“%1”声明支持 %2，但在这里无法编码它，因此改用%3。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1091"/>
+        <source>the encoder default</source>
+        <translation>编码器的默认值</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1152"/>
+        <source>No sound: %1 does not accept an audio track.</source>
+        <translation>无声音：%1 不接受音轨。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1157"/>
+        <source>WARNING: %1 expects sound but this project has no audio track.</source>
+        <translation>警告：%1 需要声音，但本项目没有音轨。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1184"/>
+        <source>no frames left</source>
+        <translation>没有剩余帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1222"/>
+        <source>could not write %1</source>
+        <translation>无法写入 %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1230"/>
+        <source>no files produced</source>
+        <translation>没有生成任何文件</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1272"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1296"/>
+        <source>no file produced</source>
+        <translation>没有生成文件</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1330"/>
+        <source>frames: the plan selected %1, but %2 were supplied</source>
+        <translation>帧数：计划为 %1 帧，但实际提供了 %2 帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="580"/>
+        <source>%1 frame</source>
+        <translation>%1 帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="581"/>
+        <source>%1 frames</source>
+        <translation>%1 帧</translation>
+    </message>
+    <message>
+        <source>frame mismatch: the plan selects %1 but %2 were supplied (render plan.selection.indices())</source>
+        <translation type="vanished">帧数不匹配：计划为%1，实际提供了 %2 帧（render plan.selection.indices()）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1399"/>
+        <source>canceled</source>
+        <translation>已取消</translation>
+    </message>
+</context>
+<context>
     <name>ExportWidgetUI</name>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="529"/>
+        <location filename="../../src/gui/exportdiag.h" line="302"/>
+        <source>Choose where this is going</source>
+        <translation>选择发布到哪里</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="622"/>
         <source>Open Palette</source>
         <translation>开启调色板</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="530"/>
+        <location filename="../../src/gui/exportdiag.h" line="623"/>
         <source>FFmpeg palette file (*.png)</source>
         <translation>FFmpeg 调色板文件 (*.png)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="637"/>
+        <source>Auto</source>
+        <translation>自动</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="790"/>
+        <source>PNG sequence</source>
+        <translation>PNG 序列</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="791"/>
+        <source>JPEG sequence</source>
+        <translation>JPEG 序列</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="917"/>
+        <source>CRF:</source>
+        <translation>CRF：</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="918"/>
+        <source>Quality:</source>
+        <translation>质量：</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1389"/>
+        <source>First frame %1</source>
+        <translation>起始帧%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1390"/>
+        <source>Last frame %1</source>
+        <translation>结束帧%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1494"/>
+        <source>Width</source>
+        <translation>宽度</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1495"/>
+        <source>Height</source>
+        <translation>高度</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1496"/>
+        <source>Frame rate</source>
+        <translation>帧率</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1497"/>
+        <source>First frame</source>
+        <translation>起始帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1498"/>
+        <source>Last frame</source>
+        <translation>结束帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1499"/>
+        <source>Format</source>
+        <translation>格式</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1500"/>
+        <source>Codec</source>
+        <translation>编码器</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1501"/>
+        <source>Quality</source>
+        <translation>质量</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1502"/>
+        <source>Quality override</source>
+        <translation>质量覆盖值</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1503"/>
+        <source>Image quality</source>
+        <translation>图像质量</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1504"/>
+        <source>Bitrate</source>
+        <translation>比特率</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1505"/>
+        <source>Destination</source>
+        <translation>目的地</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1506"/>
+        <source>Advanced</source>
+        <translation>高级</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1507"/>
+        <source>Export</source>
+        <translation>导出</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1508"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1509"/>
+        <source>Export with transparency</source>
+        <translation>透明导出</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1510"/>
+        <source>Loop animation</source>
+        <translation>循环动画</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1511"/>
+        <source>Export with audio</source>
+        <translation>带音频导出</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1512"/>
+        <source>Custom palette</source>
+        <translation>自定义色板</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1513"/>
+        <source>Keep aspect ratio</source>
+        <translation>保持长宽比</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1514"/>
+        <source>Insert range</source>
+        <translation>插入区间</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1515"/>
+        <source>Remove range</source>
+        <translation>移除范围</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1516"/>
+        <source>Set width to native</source>
+        <translation>恢复原始宽度</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1517"/>
+        <source>Set height to native</source>
+        <translation>恢复原始高度</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1518"/>
+        <source>Set frame rate to native</source>
+        <translation>恢复原始帧率</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1519"/>
+        <source>Image quality to auto</source>
+        <translation>图像质量设为自动</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1520"/>
+        <source>Quality override to auto</source>
+        <translation>质量覆盖值设为自动</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1521"/>
+        <source>Bitrate to auto</source>
+        <translation>比特率设为自动</translation>
     </message>
 </context>
 <context>
     <name>Exporter</name>
     <message>
-        <source>Finishing up</source>
-        <translation type="vanished">完工</translation>
+        <location filename="../../src/ctrl/Exporter.cpp" line="99"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="124"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="157"/>
+        <source>Invalid common parameters.</source>
+        <translation>通用参数无效。</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="106"/>
+        <source>Invalid directory path.</source>
+        <translation>目录路径无效。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="132"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="165"/>
+        <source>Exporting was canceled.</source>
+        <translation>导出过程已被取消。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="193"/>
+        <source>No available video encoder can carry the &apos;%1&apos; container.</source>
+        <translation>没有可用的视频编码器能支持“%1”容器。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="206"/>
+        <source>Encoder not available in this build: %1</source>
+        <translation>此构建中没有可用的编码器：%1</translation>
+    </message>
+    <message>
+        <source>The &apos;%1&apos; container cannot carry the %2 video codec.</source>
+        <translation type="vanished">“%1”容器无法承载 %2 视频编码。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="212"/>
+        <source>The &apos;%1&apos; container cannot carry the %2 video encoder.</source>
+        <translation>“%1”容器无法承载 %2 视频编码器。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="225"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="265"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="537"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="641"/>
+        <source>Video encoder error.
+%1</source>
+        <translation>视频编码错误。
+%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="295"/>
+        <source>Finishing up</source>
+        <translation>完工</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="297"/>
         <source>Rendering</source>
-        <translation type="vanished">图层效果</translation>
+        <translation>图层效果</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="312"/>
+        <source>Export was canceled.</source>
+        <translation>导出已取消。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="347"/>
+        <source>Failed to initialize TextureDrawer</source>
+        <translation>初始化 TextureDrawer 失败</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="579"/>
+        <source>GIF encoder error.
+%1</source>
+        <translation>GIF 编码错误。
+%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="619"/>
+        <source>Audio mixing error.
+%1</source>
+        <translation>音频混音错误。
+%1</translation>
     </message>
 </context>
 <context>
@@ -436,7 +1994,7 @@
     </message>
     <message>
         <source>Linear</source>
-        <translation type="vanished">线型</translation>
+        <translation type="vanished">线性</translation>
     </message>
     <message>
         <source>Sine</source>
@@ -567,23 +2125,54 @@
         <translation type="vanished">构建对象树...</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="269"/>
         <source>Building an Object Tree...</source>
-        <translation type="vanished">构建对象树...</translation>
+        <translation>构建对象树...</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="597"/>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="725"/>
         <source>Building object trees...</source>
-        <translation type="vanished">构建对象树...</translation>
+        <translation>构建对象树...</translation>
+    </message>
+</context>
+<context>
+    <name>ImageFileLoader</name>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="522"/>
+        <source>Select ORA file type</source>
+        <translation>选择ora文件类型</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="523"/>
+        <source>How do you wish to load this ORA file?</source>
+        <translation>您希望如何加载这个ora文件？</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="524"/>
+        <source>Load layered</source>
+        <translation>分层加载</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="525"/>
+        <source>Load merged</source>
+        <translation>合并加载</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ImageFileLoader.cpp" line="528"/>
+        <source>Cancel file load</source>
+        <translation>取消加载</translation>
     </message>
 </context>
 <context>
     <name>LoadMus</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="168"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="177"/>
         <source>Load audio configuration</source>
         <translation>加载音频配置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="170"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="179"/>
         <source>Anie audio configuration file (*.aemus)</source>
         <translation>Anie音频配置文件(*.aemus)</translation>
     </message>
@@ -591,63 +2180,198 @@
 <context>
     <name>LoadMusOverwrite</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="192"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="201"/>
         <source>Loading this file will overwrite your current audio configuration, continue?</source>
         <translation>加载此文件将覆盖您当前的音频配置，是否继续？</translation>
     </message>
 </context>
 <context>
+    <name>MainWindow</name>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="26"/>
+        <source>%1 GB</source>
+        <translation>%1 GB</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="29"/>
+        <source>%1 MB</source>
+        <translation>%1 MB</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="31"/>
+        <source>%1 KB</source>
+        <translation>%1 KB</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="38"/>
+        <source>yes</source>
+        <translation>是</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="39"/>
+        <source>no</source>
+        <translation>否</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="47"/>
+        <source>This destination cannot be exported: %1</source>
+        <translation>无法按此目的地导出：%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="59"/>
+        <source>%1 x %2, frame %3 (the one on the timeline)</source>
+        <translation>%1 x %2，第%3帧（时间轴当前帧）</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="68"/>
+        <source>%1 x %2, %3 frames (timing is set on the upload page)</source>
+        <translation>%1 x %2，共%3帧（时序在上传页面设置）</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="74"/>
+        <source>%1 x %2, %3 fps</source>
+        <translation>%1 x %2，%3 fps</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="81"/>
+        <source>Artifact: one %1 image</source>
+        <translation>输出：一张 %1 图片</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="84"/>
+        <source>Artifact: %1 numbered %2 files</source>
+        <translation>输出：%1个编号的 %2 文件</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="89"/>
+        <source>Codec: animated GIF</source>
+        <translation>编码器：动态 GIF</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="90"/>
+        <source>Codec: %1 in %2</source>
+        <translation>编码器：%2 中的 %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="102"/>
+        <source>not accepted by this destination</source>
+        <translation>此目的地不支持</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="104"/>
+        <source>none in this project</source>
+        <translation>本项目中没有</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="106"/>
+        <source>off in this dialog</source>
+        <translation>在此对话框中关闭</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="110"/>
+        <source>Transparency: %1   Audio: %2</source>
+        <translation>透明度：%1&#x3000;音频：%2</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="119"/>
+        <source>max %1</source>
+        <translation>最大 %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="121"/>
+        <source>max %1 s</source>
+        <translation>最长 %1 秒</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="123"/>
+        <source>min %1 s</source>
+        <translation>最短 %1 秒</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="125"/>
+        <source>max %1 frames</source>
+        <translation>最多 %1 帧</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="127"/>
+        <source>max %1 fps</source>
+        <translation>最高 %1 fps</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="132"/>
+        <source>Limits: %1</source>
+        <translation>上限：%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="133"/>
+        <source>, </source>
+        <translation>、</translation>
+    </message>
+</context>
+<context>
     <name>NetworkCheckForUpdate</name>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="241"/>
         <source>Failed</source>
-        <translation type="vanished">失效</translation>
+        <translation>失效</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="242"/>
         <source>&lt;center&gt;Unable to get latest version. &lt;br&gt;Please check your internet connection and if you have curl or wget installed.&lt;/center&gt;</source>
-        <translation type="vanished">&lt;center&gt;无法获得最新版本。&lt;br&gt;请检查你的网络连接，以及你是否安装了curl或wget。&lt;/center&gt;</translation>
+        <translation>&lt;center&gt;无法获得最新版本。&lt;br&gt;请检查你的网络连接，以及你是否安装了curl或wget。&lt;/center&gt;</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="252"/>
         <source>On latest</source>
-        <translation type="vanished">最新</translation>
+        <translation>最新</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="254"/>
         <source>&lt;center&gt;You already have the latest stable release available. &lt;br&gt;Version: </source>
-        <translation type="vanished">&lt;center&gt;当前为最新稳定版。&lt;br&gt;Version: </translation>
+        <translation>&lt;center&gt;当前为最新稳定版。&lt;br&gt;Version: </translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="266"/>
         <source>On preview</source>
-        <translation type="vanished">预览</translation>
+        <translation>预览</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="268"/>
         <source>&lt;center&gt;Your current version is higher than the latest stable release. &lt;br&gt;Version: </source>
-        <translation type="vanished">&lt;center&gt;当前版本高于最新稳定版本&lt;br&gt;版本: </translation>
+        <translation>&lt;center&gt;当前版本高于最新稳定版本&lt;br&gt;版本: </translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="280"/>
         <source>New release available</source>
-        <translation type="vanished">新版本可用</translation>
+        <translation>新版本可用</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="282"/>
         <source>&lt;center&gt;A new stable release is available, version: </source>
-        <translation type="vanished">&lt;center&gt;新稳定版已经推出，版本: </translation>
+        <translation>&lt;center&gt;新稳定版已经推出，版本: </translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="286"/>
         <source>.&lt;br&gt;Do you wish to download it or to go to the GitHub page?&lt;/center&gt;</source>
-        <translation type="vanished">&lt;br&gt;直接下载还是去GitHub页面？&lt;/center&gt;</translation>
+        <translation>&lt;br&gt;直接下载还是去GitHub页面？&lt;/center&gt;</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="297"/>
         <source>Download</source>
-        <translation type="vanished">下载</translation>
+        <translation>下载</translation>
     </message>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="299"/>
         <source>Go to page</source>
-        <translation type="vanished">前往页面</translation>
+        <translation>前往页面</translation>
     </message>
 </context>
 <context>
     <name>NetworkUtil</name>
     <message>
+        <location filename="../../src/util/NetworkUtil.cpp" line="193"/>
         <source>Currently downloading:</source>
-        <translation type="vanished">当前正在加载：</translation>
+        <translation>当前正在加载：</translation>
     </message>
 </context>
 <context>
@@ -665,20 +2389,86 @@
         <translation type="vanished">贝塞尔曲线编辑器</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/prop_Items.cpp" line="247"/>
+        <location filename="../../src/gui/prop/prop_Items.cpp" line="246"/>
         <source>Easing</source>
         <translation>缓动</translation>
     </message>
 </context>
 <context>
+    <name>QObject</name>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1294"/>
+        <source>needs %1</source>
+        <translation>需要 %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1362"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1406"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1472"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1510"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1557"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1580"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1611"/>
+        <source>Export Error</source>
+        <translation>导出错误</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1363"/>
+        <source>Unknown export destination: %1</source>
+        <translation>未知的导出目的地：%1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1425"/>
+        <source>File exists</source>
+        <translation>文件已存在</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1426"/>
+        <source>The file &quot;%1&quot; already exists. Overwrite?</source>
+        <translation>文件“%1”已存在。要覆盖吗？</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1473"/>
+        <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
+        <translation>%1限制了文件大小，这意味着需要多次编码，而这需要把全部%2帧都放在内存中（约%3 MB）。请减少导出帧数，或选择没有体积限制的目的地。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1488"/>
+        <source>Fitting under %1&apos;s %2 KB limit...</source>
+        <translation>正在适配%1的%2 KB上限...</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1501"/>
+        <source>Export Canceled</source>
+        <translation>导出已取消</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1502"/>
+        <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
+        <translation>在适配%1的体积上限时导出被中止。已写入的文件是最后一次尝试的结果，可能超出该上限。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1511"/>
+        <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
+%4</source>
+        <translation>%1把文件限制在%2 KB以内，而即使最小的设置也放不进（%3 KB）。
+%4</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1519"/>
+        <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
+        <translation>经过%2次尝试后适配到%1字节（%3x%4）。</translation>
+    </message>
+</context>
+<context>
     <name>SaveMus</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="156"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="165"/>
         <source>Save audio configuration</source>
         <translation>保存音频配置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="158"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="167"/>
         <source>Anie audio configuration file (*.aemus)</source>
         <translation>Anie音频配置文件(*.aemus)</translation>
     </message>
@@ -686,42 +2476,113 @@
 <context>
     <name>SelectMus</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="390"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="428"/>
         <source>Open audio file</source>
         <translation>打开音频文件</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="392"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="430"/>
         <source>Audio Files (*.mp3 *.mp4 *.wav *.ogg *.flac)</source>
         <translation>音频文件 (*.mp3 *.mp4 *.wav *.ogg *.flac)</translation>
     </message>
 </context>
 <context>
+    <name>UILog</name>
+    <message>
+        <location filename="../../src/ctrl/BoneEditor.cpp" line="32"/>
+        <source>Bone Editor : </source>
+        <translation>骨骼编辑 ：</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/BoneEditor.cpp" line="118"/>
+        <location filename="../../src/ctrl/MeshEditor.cpp" line="96"/>
+        <source>An object with invalid pose was given.</source>
+        <translation>一个姿态无效的对象。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/FFDEditor.cpp" line="187"/>
+        <source>FFD Editor : </source>
+        <translation>FFD 编辑</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/FFDEditor.cpp" line="265"/>
+        <source>There are no objects with meshes.</source>
+        <translation>无带网格对象。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/MeshEditor.cpp" line="25"/>
+        <source>Mesh Editor : </source>
+        <translation>网格编辑 ：</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/MeshEditor.cpp" line="29"/>
+        <source>The object can&apos;t own a mesh key.</source>
+        <translation>该对象不能创建网格帧.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/PoseEditor.cpp" line="29"/>
+        <source>Pose Editor : </source>
+        <translation>姿势编辑 ：</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/PoseEditor.cpp" line="90"/>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="80"/>
+        <source>An object with invalid posture was given.</source>
+        <translation>一个姿态无效的对象。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/PoseEditor.cpp" line="118"/>
+        <source>There are no bones in the selected layer that can be posed.</source>
+        <translation>所选图层中无可用于摆姿势的骨骼。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="30"/>
+        <source>The transformed object has one or more bones bound to it, SRT keys may not work as expected.</source>
+        <translation>已变形对象已绑定一根或多根骨骼，SRT（缩放、旋转、平移）关键帧可能无法按预期工作。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="31"/>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="128"/>
+        <source>SRT Editor : </source>
+        <translation>SRT编辑 ：</translation>
+    </message>
+</context>
+<context>
     <name>audioWidget</name>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="335"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="350"/>
         <source>Enable playback</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="336"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="354"/>
+        <source>Export</source>
+        <translation>导出</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="355"/>
+        <source>Mix this track into exported files. Untick it for a track you only need as timing reference (a voice pass, a temp music bed): it still plays while you animate, and it stays out of the file.</source>
+        <translation>将此音轨混入导出的文件。如果某条音轨只作为对时参考（配音草稿、临时配乐），可以取消勾选：它在制作动画时仍会播放，但不会进入文件。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="361"/>
         <source>Add new audio track</source>
         <translation>新增音轨</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="337"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="362"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Playback start frame&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;播放起始帧&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="338"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="363"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Playback end frame&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;播放结束帧&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="339"/>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="437"/>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="442"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="364"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="475"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="480"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Duration (in frames): &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;持续时间（帧）&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -730,43 +2591,42 @@
         <translation type="vanished">媒体音量</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="357"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="383"/>
         <source>Select audio file...</source>
         <translation>选择音频文件...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="375"/>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="415"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="418"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="453"/>
         <source>Remove next audio track</source>
         <translation>移除下个音轨</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.cpp" line="379"/>
         <source>Remove current audio track</source>
-        <translation>移除当前音轨</translation>
+        <translation type="vanished">移除当前音轨</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="157"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="166"/>
         <source>Audio Player</source>
         <translation>音频播放</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="158"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="167"/>
         <source>Audio player</source>
         <translation>音频播放</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="159"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="168"/>
         <source>Save current audio configuration</source>
         <translation>保存当前音频配置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="160"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="169"/>
         <source>Load audio configuration from file</source>
         <translation>从文件加载音频配置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/AudioPlaybackWidget.h" line="161"/>
+        <location filename="../../src/gui/AudioPlaybackWidget.h" line="170"/>
         <source>Save/Load audio config</source>
         <translation>保存/加载音频配置</translation>
     </message>
@@ -856,152 +2716,134 @@
 <context>
     <name>data_load</name>
     <message>
-        <location filename="../../src/gui/Main.cpp" line="165"/>
         <source>Unable to locate data folder, please select it</source>
-        <translation>无法找到数据文件夹，请选择文件。</translation>
+        <translation type="vanished">无法找到数据文件夹，请选择文件。</translation>
     </message>
 </context>
 <context>
     <name>exportWidget</name>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="873"/>
+        <location filename="../../src/gui/exportdiag.h" line="1423"/>
         <source>Export parameters</source>
         <translation>导出参数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="874"/>
         <source>Intermediate </source>
-        <translation>过渡 </translation>
+        <translation type="vanished">过渡 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="875"/>
+        <location filename="../../src/gui/exportdiag.h" line="1424"/>
         <source>Keep aspect ratio</source>
         <translation>保持长宽比</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="876"/>
+        <location filename="../../src/gui/exportdiag.h" line="1425"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- Last frame -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;-尾帧 -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="877"/>
         <source>Export type:</source>
-        <translation>导出类型：</translation>
+        <translation type="vanished">导出类型：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="878"/>
         <source>Intermediate type:</source>
-        <translation>过渡 类型：</translation>
+        <translation type="vanished">过渡 类型：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="879"/>
         <source>Custom</source>
-        <translation>自定义</translation>
+        <translation type="vanished">自定义</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="880"/>
+        <location filename="../../src/gui/exportdiag.h" line="1435"/>
         <source>Insert range</source>
         <translation>插入区间</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="881"/>
+        <location filename="../../src/gui/exportdiag.h" line="1436"/>
         <source>Remove range</source>
         <translation>移除范围</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="882"/>
+        <location filename="../../src/gui/exportdiag.h" line="1437"/>
         <source>Custom palette</source>
         <translation>自定义色板</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="883"/>
         <source>Force piped export </source>
-        <translation>强制管道导出 </translation>
+        <translation type="vanished">强制管道导出 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="884"/>
         <source>PNG</source>
-        <translation>PNG</translation>
+        <translation type="vanished">PNG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="885"/>
         <source>BMP</source>
-        <translation>BMP</translation>
+        <translation type="vanished">BMP</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="886"/>
         <source>JPG</source>
-        <translation>JPG</translation>
+        <translation type="vanished">JPG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="887"/>
         <source>JPEG</source>
-        <translation>跳过</translation>
+        <translation type="vanished">跳过</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="888"/>
         <source>PPM</source>
-        <translation>PPM</translation>
+        <translation type="vanished">PPM</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="889"/>
+        <location filename="../../src/gui/exportdiag.h" line="1438"/>
         <source>Width: </source>
         <translation>宽度： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="890"/>
         <source>One-to-one</source>
-        <translation>一对一</translation>
+        <translation type="vanished">一对一</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="891"/>
-        <location filename="../../src/gui/exportdiag.h" line="896"/>
-        <location filename="../../src/gui/exportdiag.h" line="901"/>
+        <location filename="../../src/gui/exportdiag.h" line="1440"/>
+        <location filename="../../src/gui/exportdiag.h" line="1443"/>
+        <location filename="../../src/gui/exportdiag.h" line="1446"/>
         <source>Set to native</source>
         <translation>设为预置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="892"/>
         <source>Post</source>
-        <translation>后期</translation>
+        <translation type="vanished">后期</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="893"/>
         <source>Active parameters:</source>
-        <translation>有效参数：</translation>
+        <translation type="vanished">有效参数：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="894"/>
+        <location filename="../../src/gui/exportdiag.h" line="1441"/>
         <source>Height:</source>
         <translation>高度：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="895"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Exporting&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;导出&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;导出&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="897"/>
+        <location filename="../../src/gui/exportdiag.h" line="1444"/>
         <source>FPS:</source>
         <translation>FPS：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="898"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Rendering&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;渲染效果&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;渲染效果&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="899"/>
         <source>Animation</source>
-        <translation>动画</translation>
+        <translation type="vanished">动画</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="900"/>
         <source>Image sequence</source>
-        <translation>图像序列</translation>
+        <translation type="vanished">图像序列</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="902"/>
+        <location filename="../../src/gui/exportdiag.h" line="1447"/>
         <source>Export with transparency</source>
         <translation>透明导出</translation>
     </message>
@@ -1010,161 +2852,243 @@
         <translation type="vanished">循环动画（仅限GIF）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="903"/>
+        <location filename="../../src/gui/exportdiag.h" line="1426"/>
+        <source>Format:</source>
+        <translation>格式：</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1427"/>
+        <source>Codec:</source>
+        <translation>编码器：</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1428"/>
+        <source>Destination:</source>
+        <translation>目的地：</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1429"/>
+        <source>Quality:</source>
+        <translation>质量：</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1430"/>
+        <source>Smaller file</source>
+        <translation>体积更小</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1431"/>
+        <source>Balanced</source>
+        <translation>均衡</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1432"/>
+        <source>Best quality</source>
+        <translation>最佳质量</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1433"/>
+        <source>Lossless</source>
+        <translation>无损</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1442"/>
+        <source>How to encode</source>
+        <translation>编码方式</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1445"/>
+        <source>What to export</source>
+        <translation>导出内容</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1448"/>
         <source>Loop animation</source>
         <translation>循环动画</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="904"/>
+        <location filename="../../src/gui/exportdiag.h" line="1449"/>
         <source>Export with audio</source>
         <translation>带音频导出</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="905"/>
+        <location filename="../../src/gui/exportdiag.h" line="1450"/>
+        <location filename="../../src/gui/exportdiag.h" line="1464"/>
         <source>Auto</source>
         <translation>自动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="906"/>
-        <location filename="../../src/gui/exportdiag.h" line="911"/>
+        <location filename="../../src/gui/exportdiag.h" line="1451"/>
+        <location filename="../../src/gui/exportdiag.h" line="1465"/>
+        <location filename="../../src/gui/exportdiag.h" line="1466"/>
         <source>Set to auto</source>
         <translation>设为自动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="907"/>
-        <source>Frames rendered: </source>
-        <translation>Frames 渲染: </translation>
+        <location filename="../../src/gui/exportdiag.h" line="1454"/>
+        <source>Frame range:</source>
+        <translation>帧范围：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="908"/>
+        <location filename="../../src/gui/exportdiag.h" line="1458"/>
+        <source>Advanced</source>
+        <translation>高级</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1463"/>
+        <source>Quality override:</source>
+        <translation>质量覆盖值：</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1539"/>
+        <source>&amp;Export</source>
+        <translation>&amp;导出</translation>
+    </message>
+    <message>
+        <source>Frames rendered: </source>
+        <translation type="vanished">Frames 渲染: </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/exportdiag.h" line="1455"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- First frame -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;- 首帧 -&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="909"/>
+        <location filename="../../src/gui/exportdiag.h" line="1456"/>
         <source>Bitrate (kB/s):</source>
         <translation>比特率（kB/s）：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="910"/>
+        <location filename="../../src/gui/exportdiag.h" line="1457"/>
         <source>Image quality:</source>
         <translation>图像质量：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="912"/>
         <source>Export with custom parameters</source>
-        <translation>用自定义参数导出</translation>
+        <translation type="vanished">用自定义参数导出</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="913"/>
+        <location filename="../../src/gui/exportdiag.h" line="1467"/>
         <source>Select palette path</source>
         <translation>选择调色板路径</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="914"/>
         <source>General Parameters</source>
-        <translation>常规参数</translation>
+        <translation type="vanished">常规参数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="915"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Pixel format:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;像素格式：&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;像素格式：&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="916"/>
         <source>MOV</source>
-        <translation>MOV</translation>
+        <translation type="vanished">MOV</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="921"/>
         <source>MKV</source>
-        <translation>MKV</translation>
+        <translation type="vanished">MKV</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="933"/>
         <source>Pixel Format availability depends on the selected format, we recommend you stick to yuv420p</source>
-        <translation>像素格式的可用性取决于所选格式，我们建议您坚持使用 yuv420p 格式</translation>
+        <translation type="vanished">像素格式的可用性取决于所选格式，我们建议您坚持使用 yuv420p 格式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="941"/>
         <source>MP4</source>
-        <translation>MP4</translation>
+        <translation type="vanished">MP4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="942"/>
         <source>AVI</source>
-        <translation>AVI</translation>
+        <translation type="vanished">AVI</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="951"/>
         <source>WEBM</source>
-        <translation>WEBM</translation>
+        <translation type="vanished">WEBM</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="963"/>
         <source>Format Parameters</source>
-        <translation>参数格式</translation>
+        <translation type="vanished">参数格式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="964"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Intermediate:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;过渡:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;过渡:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="965"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Post:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;后期:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;后期:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="966"/>
         <source>Add to Intermediate pass</source>
-        <translation>加入过渡传递</translation>
+        <translation type="vanished">加入过渡传递</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="967"/>
         <source>Add to Post</source>
-        <translation>添加到后期</translation>
+        <translation type="vanished">添加到后期</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="968"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Presets:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;预设:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;预设:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="970"/>
         <source>Remove preset</source>
-        <translation>移除预设</translation>
+        <translation type="vanished">移除预设</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="971"/>
-        <location filename="../../src/gui/exportdiag.h" line="972"/>
         <source>Save as preset...</source>
-        <translation>保存预设...</translation>
+        <translation type="vanished">保存预设...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="974"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;You may use these special attributes in your custom command:&lt;/p&gt;&lt;ul&gt;&lt;p&gt;&lt;li&gt; %exportfilename%&lt;/li&gt;&lt;/p&gt;&lt;p&gt;&lt;li&gt; %intermediatefilename%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %fps%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %palettepath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %exportpath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %intermediatepath%&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;您可以在自定义命令中使用这些特殊属性：&lt;/p&gt;&lt;ul&gt;&lt;p&gt;&lt;li&gt; %导出文件名%&lt;/li&gt;&lt;/p&gt;&lt;p&gt;&lt;li&gt; %过渡文件名%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %fps%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %palettepath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %exportpath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %过渡路径%&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;您可以在自定义命令中使用这些特殊属性：&lt;/p&gt;&lt;ul&gt;&lt;p&gt;&lt;li&gt; %导出文件名%&lt;/li&gt;&lt;/p&gt;&lt;p&gt;&lt;li&gt; %过渡文件名%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %fps%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %palettepath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %exportpath%&lt;/p&gt;&lt;/li&gt;&lt;p&gt;&lt;li&gt; %过渡路径%&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="976"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Commands&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;命令&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;命令&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="977"/>
         <source>Custom Parameters</source>
-        <translation>自定义参数</translation>
+        <translation type="vanished">自定义参数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="978"/>
         <source>Export</source>
-        <translation>导出</translation>
+        <translation type="vanished">导出</translation>
     </message>
     <message>
-        <location filename="../../src/gui/exportdiag.h" line="979"/>
+        <location filename="../../src/gui/exportdiag.h" line="1541"/>
         <source>Cancel</source>
         <translation>取消</translation>
+    </message>
+</context>
+<context>
+    <name>gui</name>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="71"/>
+        <source>Send in a chat</source>
+        <translation>在聊天中发送</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="72"/>
+        <source>Post to a platform</source>
+        <translation>发布到平台</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="73"/>
+        <source>Stickers and emoji</source>
+        <translation>贴纸与表情</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="74"/>
+        <source>Overlays and transparency</source>
+        <translation>叠加层与透明通道</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="75"/>
+        <source>A file</source>
+        <translation>一个文件</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="76"/>
+        <source>Archive</source>
+        <translation>归档</translation>
     </message>
 </context>
 <context>
@@ -1199,63 +3123,88 @@
     </message>
 </context>
 <context>
+    <name>gui::DestinationPicker</name>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="131"/>
+        <source>Where are you posting this?</source>
+        <translation>你要发布到哪里？</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="143"/>
+        <source>Search: telegram, sticker, reels, illustration, 微信...</source>
+        <translation>搜索：telegram、sticker、reels、illustration、微信...</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="148"/>
+        <source>Search destinations</source>
+        <translation>搜索目的地</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="245"/>
+        <source>%1 destinations</source>
+        <translation>%1个目的地</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="250"/>
+        <source>My platform isn&apos;t listed (I&apos;ll choose the format)</source>
+        <translation>我的平台不在列表中（我自己选择格式）</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="252"/>
+        <source>Everything above is a destination we know the rules for. This one lets you state the format and codec yourself.</source>
+        <translation>上面每一项都是我们了解其规则的目的地。这一项让你自行指定格式和编码器。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/DestinationPicker.cpp" line="257"/>
+        <source>Use this destination</source>
+        <translation>使用此目的地</translation>
+    </message>
+</context>
+<context>
     <name>gui::ExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="36"/>
         <source>Export Animation</source>
-        <translation>导出动画</translation>
+        <translation type="vanished">导出动画</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="71"/>
-        <location filename="../../src/gui/ExportDialog.cpp" line="90"/>
-        <location filename="../../src/gui/ExportDialog.cpp" line="114"/>
         <source>Value is Odd</source>
-        <translation>明度是奇数</translation>
+        <translation type="vanished">明度是奇数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="72"/>
         <source>The width or height of the image ends with an odd number. Please change these parameters to an even number as they may cause the export to fail.</source>
-        <translation>图片的宽度或高度以奇数结尾。请将这些参数改为偶数，因为它们可能导致导出失败。</translation>
+        <translation type="vanished">图片的宽度或高度以奇数结尾。请将这些参数改为偶数，因为它们可能导致导出失败。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="91"/>
         <source>A width or height ending in an odd number may make the exporting process fail, please try another value.</source>
-        <translation>以奇数结尾的宽度或高度可能会使导出过程失败，请尝试其他数值。</translation>
+        <translation type="vanished">以奇数结尾的宽度或高度可能会使导出过程失败，请尝试其他数值。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="115"/>
         <source>A height or width ending in an odd number may make the exporting process fail, please try another value.</source>
-        <translation>以奇数结尾的高度或宽度可能会使导出过程失败，请尝试其他数值。</translation>
+        <translation type="vanished">以奇数结尾的高度或宽度可能会使导出过程失败，请尝试其他数值。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="135"/>
         <source>Image width</source>
-        <translation>图像宽度</translation>
+        <translation type="vanished">图像宽度</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="136"/>
         <source>Image height</source>
-        <translation>图像高度</translation>
+        <translation type="vanished">图像高度</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="137"/>
         <source>Fix aspect ratio</source>
-        <translation>固定长宽比</translation>
+        <translation type="vanished">固定长宽比</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="172"/>
         <source>Initial frame</source>
-        <translation>初始帧数</translation>
+        <translation type="vanished">初始帧数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="173"/>
         <source>Last frame</source>
-        <translation>最后一帧</translation>
+        <translation type="vanished">最后一帧</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="184"/>
         <source>FPS</source>
-        <translation>帧数</translation>
+        <translation type="vanished">帧数</translation>
     </message>
 </context>
 <context>
@@ -1269,12 +3218,12 @@
         <translation type="vanished">语言（需重启） :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="290"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="288"/>
         <source>Default keyframe easing</source>
         <translation>默认关键帧缓和</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="297"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="295"/>
         <source>Default keyframe range</source>
         <translation>默认关键帧范围</translation>
     </message>
@@ -1283,110 +3232,106 @@
         <translation type="vanished">时间轴格式 :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="283"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="281"/>
         <source>Language (needs restart)</source>
         <translation>语言（需重启）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="304"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="302"/>
         <source>Timeline format</source>
         <translation>时间轴格式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="320"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
         <source>System</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="320"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="320"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="335"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="333"/>
         <source>Theme</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="369"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="367"/>
         <source>Accent color</source>
         <translation>强调色</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="377"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="375"/>
         <source>Automatically save your project</source>
         <translation>自动保存项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="382"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="380"/>
         <source>Time (in minutes) between autosaves</source>
         <translation>自动保存之间的时间间隔（以分钟为单位）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="390"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
         <source>Show mesh when selecting FFD</source>
         <translation>选择FFD时显示网格</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="394"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="392"/>
         <source>On copy send keys to the clipboard</source>
         <translation>复制时将按键发送到剪贴板</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="398"/>
         <source>Always check for FFmpeg on export</source>
-        <translation>在导出时始终检查FFmpeg</translation>
+        <translation type="vanished">在导出时始终检查FFmpeg</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="402"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="397"/>
         <source>Enforce ID check on asset download</source>
         <translation>在下载素材时强制进行ID检查</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="406"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="401"/>
         <source>Ignore export warnings</source>
         <translation>忽略导出警告</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="410"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="405"/>
         <source>Allow donation menu</source>
         <translation>展示捐赠菜单</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="414"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="409"/>
         <source>Force project to load</source>
         <translation>强制装入工程</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="411"/>
         <source>Reset recent files list</source>
         <translation>重置最近文件列表</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="417"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
         <source>Deletes all project entries from your recents</source>
         <translation>从历史记录中删除所有项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="421"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="483"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="585"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="610"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="421"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
         <source>All entries have been successfully removed</source>
         <translation>所有条目删除成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="431"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="426"/>
         <source>Global keybind delay (ms)</source>
         <translation>全局快捷键延迟（ms）</translation>
     </message>
@@ -1411,60 +3356,50 @@
         <translation type="vanished">重启后，快捷键不重置。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="436"/>
         <source>Troubleshoot FFmpeg</source>
-        <translation>FFmpeg疑难解答</translation>
+        <translation type="vanished">FFmpeg疑难解答</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="450"/>
         <source>Check FFmpeg response ✓
 Check FFmpeg exporting ✓
 Check FFmpeg palette generation ✓</source>
-        <translation>检查 FFmpeg 响应 ✓
+        <translation type="vanished">检查 FFmpeg 响应 ✓
 检查 FFmpeg 导出 ✓
 检查 FFmpeg 调色板生成 ✓</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="458"/>
         <source>Select executable and automatically set up</source>
-        <translation>从可执行文件中选择并自动安装</translation>
+        <translation type="vanished">从可执行文件中选择并自动安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="489"/>
         <source>Download and automatically set up</source>
-        <translation>下载并自动安装</translation>
+        <translation type="vanished">下载并自动安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="586"/>
         <source>FFmpeg was successfully set up. Please restart AnimeEffects</source>
-        <translation>FFmpeg已成功设置。请重新启动AnimeEffects。</translation>
+        <translation type="vanished">FFmpeg已成功设置。请重新启动AnimeEffects。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="611"/>
         <source>FFmpeg was successfully set up.</source>
-        <translation>FFmpeg安装成功。</translation>
+        <translation type="vanished">FFmpeg安装成功。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="772"/>
         <source>FFmpeg was not found.</source>
-        <translation>未找到 FFmpeg。</translation>
+        <translation type="vanished">未找到 FFmpeg。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="774"/>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
 In the following screen you can instruct AnimeEffects to download and install it automatically for you, or you can download it by yourself and tell AnimeEffects where it is.</source>
-        <translation>导出视频需要在电脑上安装 FFmpeg。FFmpeg 是 AnimeEffects 用来创建视频文件的免费工具。
+        <translation type="vanished">导出视频需要在电脑上安装 FFmpeg。FFmpeg 是 AnimeEffects 用来创建视频文件的免费工具。
 在下面的界面中，你可以让 AnimeEffects 自动下载并安装 FFmpeg，也可以自行下载，然后告知 AnimeEffects 其所在位置。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="824"/>
         <source>FFmpeg was unable to export, please troubleshoot.</source>
-        <translation>FFmpeg 无法导出，请排查问题。</translation>
+        <translation type="vanished">FFmpeg 无法导出，请排查问题。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="854"/>
         <source>FFmpeg was unable to generate palettes, please troubleshoot.</source>
-        <translation>FFmpeg 无法生成调色板，请排查问题。</translation>
+        <translation type="vanished">FFmpeg 无法生成调色板，请排查问题。</translation>
     </message>
     <message>
         <source>Warning</source>
@@ -1479,37 +3414,32 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpeg可能丢失损坏或异常。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="823"/>
         <source>FFmpeg doesn&apos;t export</source>
-        <translation>FFmpeg不能导出</translation>
+        <translation type="vanished">FFmpeg不能导出</translation>
     </message>
     <message>
         <source>FFmpeg was unable to export, please check if it&apos;s a valid FFmpeg executable.</source>
         <translation type="vanished">FFmpeg无法导出，请检查FFmpeg是否可执行文件。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="853"/>
         <source>FFmpeg doesn&apos;t generate palettes</source>
-        <translation>FFmpeg生成调色板异常</translation>
+        <translation type="vanished">FFmpeg生成调色板异常</translation>
     </message>
     <message>
         <source>FFmpeg was unable to generate palettes, please check if it&apos;s a valid FFmpeg executable.</source>
         <translation type="vanished">FFmpeg无法生成调色板，请检查FFmpeg可执行文件。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="446"/>
         <source>FFmpeg test success</source>
-        <translation>FFmpeg测试成功</translation>
+        <translation type="vanished">FFmpeg测试成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="447"/>
         <source>All tests have passed, FFmpeg is working correctly.</source>
-        <translation>所有测试通过，FFmpeg工作正常。</translation>
+        <translation type="vanished">所有测试通过，FFmpeg工作正常。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="449"/>
         <source>FFmpeg at: </source>
-        <translation>FFmpeg 在: </translation>
+        <translation type="vanished">FFmpeg 在: </translation>
     </message>
     <message>
         <source>Check FFmpeg response 🗸
@@ -1524,93 +3454,83 @@ Check FFmpeg palette generation 🗸</source>
         <translation type="vanished">从可执行文件中选择并自动安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="460"/>
         <source>This will remove previous instances of FFmpeg from your tools directory and replace them with your custom executable, please make sure this is a valid FFmpeg executable.</source>
-        <translation>这将删除工具目录中以前的 FFmpeg 实例，并用您的自定义可执行文件取而代之，请确保这是一个有效的 FFmpeg 可执行文件。</translation>
+        <translation type="vanished">这将删除工具目录中以前的 FFmpeg 实例，并用您的自定义可执行文件取而代之，请确保这是一个有效的 FFmpeg 可执行文件。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="482"/>
         <source>Operation successful</source>
-        <translation>操作成功</translation>
+        <translation type="vanished">操作成功</translation>
     </message>
     <message>
         <source>Download and automatically setup</source>
         <translation type="vanished">下载并自动安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="503"/>
         <source>Unable to create directory</source>
-        <translation>无法创建目录</translation>
+        <translation type="vanished">无法创建目录</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="505"/>
         <source>An error has occurred while creating the tools directory in </source>
-        <translation>在创建工具目录时发生错误</translation>
+        <translation type="vanished">在创建工具目录时发生错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="506"/>
         <source> the application will use a fallback but if this doesn&apos;t work please run the app as administrator or use a folder that isn&apos;t write protected.</source>
-        <translation>应用程序将回退，但如果不起作用，请以管理员身份运行应用程序或使用未写保护的文件夹。</translation>
+        <translation type="vanished">应用程序将回退，但如果不起作用，请以管理员身份运行应用程序或使用未写保护的文件夹。</translation>
     </message>
     <message>
         <source>FFmpeg was successfully setup. Please restart AnimeEffects</source>
         <translation type="vanished">FFmpeg已成功设置。请重新启动AnimeEffects。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="602"/>
         <source>FFmpeg installed</source>
-        <translation>FFmpeg 已安装</translation>
+        <translation type="vanished">FFmpeg 已安装</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="603"/>
         <source>FFmpeg was installed but it requires to be set as executable, please right click &quot;ffmpeg&quot; go to properties and allow it to be executable as a program.</source>
-        <translation>FFmpeg 已安装，但需要将其设置为可执行文件。请右键单击“ffmpeg”，进入属性并允许其作为程序运行。</translation>
+        <translation type="vanished">FFmpeg 已安装，但需要将其设置为可执行文件。请右键单击“ffmpeg”，进入属性并允许其作为程序运行。</translation>
     </message>
     <message>
         <source>FFmpeg was successfully setup.</source>
         <translation type="vanished">FFmpeg安装成功。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="617"/>
         <source>Error</source>
-        <translation>错误</translation>
+        <translation type="vanished">错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="618"/>
         <source>While setting up FFmpeg an unexpected error has occurred, please send the below information to our devs.</source>
-        <translation>在设置FFmpeg时出现了一个意外错误，请将以下信息发送给我们的开发人员。</translation>
+        <translation type="vanished">在设置FFmpeg时出现了一个意外错误，请将以下信息发送给我们的开发人员。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="655"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="444"/>
         <source>General</source>
         <translation>一般</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="656"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="445"/>
         <source>QoL</source>
         <translation>QoL</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="657"/>
         <source>FFmpeg</source>
-        <translation>FFmpeg</translation>
+        <translation type="vanished">FFmpeg</translation>
     </message>
     <message>
         <source>Keybindings</source>
         <translation type="vanished">快捷键</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="644"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="433"/>
         <source>Inverse canvas scrolling</source>
         <translation>反向画布滚动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="648"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="437"/>
         <source>Inverse timeline scrolling</source>
         <translation>反转时间轴滚动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="652"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="441"/>
         <source>Middle mouse moves canvas</source>
         <translation>鼠标中键移动画布</translation>
     </message>
@@ -1620,12 +3540,12 @@ Check FFmpeg palette generation 🗸</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="658"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="446"/>
         <source>Keyboard</source>
         <translation>键盘</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="659"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="447"/>
         <source>Mouse</source>
         <translation>鼠标</translation>
     </message>
@@ -1633,27 +3553,23 @@ Check FFmpeg palette generation 🗸</source>
 <context>
     <name>gui::GifExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="293"/>
         <source>Optimize palette</source>
-        <translation>优化色板</translation>
+        <translation type="vanished">优化色板</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="294"/>
         <source>Relay bit rate (Kbps)</source>
-        <translation>中继比特率(Kbps)</translation>
+        <translation type="vanished">中继比特率(Kbps)</translation>
     </message>
 </context>
 <context>
     <name>gui::ImageExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="222"/>
         <source>Prefix name</source>
-        <translation>前缀名称</translation>
+        <translation type="vanished">前缀名称</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="235"/>
         <source>Quality</source>
-        <translation>品质</translation>
+        <translation type="vanished">品质</translation>
     </message>
 </context>
 <context>
@@ -1836,138 +3752,125 @@ Check FFmpeg palette generation 🗸</source>
 <context>
     <name>gui::MainMenuBar</name>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="121"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="91"/>
         <source>File</source>
         <translation>文件</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="123"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="93"/>
         <source>New project</source>
         <translation>新建项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="124"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="94"/>
         <source>Open project</source>
         <translation>打开项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="125"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="95"/>
         <source>Open recent</source>
         <translation>打开最近</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="151"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="121"/>
         <source>No other projects</source>
         <translation>没有其他项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="208"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="178"/>
         <source>Save project</source>
         <translation>保存项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="209"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="179"/>
         <source>Save project as</source>
         <translation>另存为</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="210"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="180"/>
         <source>Close project</source>
         <translation>关闭项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="211"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="181"/>
         <source>Export project as</source>
         <translation>导出项目为</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="212"/>
         <source>Legacy exporter (deprecated)</source>
-        <translation>tLegacy 导出器（已弃用）</translation>
+        <translation type="vanished">tLegacy 导出器（已弃用）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="219"/>
         <source>JPEG Sequence</source>
-        <translation>JPEG序列</translation>
+        <translation type="vanished">JPEG序列</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="220"/>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="237"/>
         <source>PNG Sequence</source>
-        <translation>PNG 序列</translation>
+        <translation type="vanished">PNG 序列</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="221"/>
         <source>GIF Animation</source>
-        <translation>GIF 动画</translation>
+        <translation type="vanished">GIF 动画</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="230"/>
         <source>Video</source>
-        <translation>视频</translation>
+        <translation type="vanished">视频</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="235"/>
         <source>Quickly export as</source>
-        <translation>快速导出为</translation>
+        <translation type="vanished">快速导出为</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="238"/>
         <source>GIF Animation (Transparent)</source>
-        <translation>GIF 动画（透明）</translation>
+        <translation type="vanished">GIF 动画（透明）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="239"/>
         <source>GIF Animation (Opaque)</source>
-        <translation>GIF 动画（不透明）</translation>
+        <translation type="vanished">GIF 动画（不透明）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="240"/>
         <source>WebM Animation (Transparent)</source>
-        <translation>WebM 动画（透明）</translation>
+        <translation type="vanished">WebM 动画（透明）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="241"/>
         <source>WebM Animation (Opaque)</source>
-        <translation>WebM 动画（不透明）</translation>
+        <translation type="vanished">WebM 动画（不透明）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="242"/>
         <source>MP4 Video</source>
-        <translation>MP4</translation>
+        <translation type="vanished">MP4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="243"/>
         <source>AVI Video</source>
-        <translation>AVI</translation>
+        <translation type="vanished">AVI</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="284"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="236"/>
         <source>Edit</source>
         <translation>编辑</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="286"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="238"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="287"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="239"/>
         <source>Redo</source>
         <translation>重置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="289"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="241"/>
         <source>Assets</source>
         <translation>素材</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="312"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="264"/>
         <source>Preferences</source>
         <translation>偏好设置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="314"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="266"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
@@ -1980,37 +3883,37 @@ Check FFmpeg palette generation 🗸</source>
         <translation type="vanished">鼠标设置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="315"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="267"/>
         <source>Keybindings</source>
         <translation>快捷键</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="343"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="295"/>
         <source>Help</source>
         <translation>帮助</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="345"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="297"/>
         <source>About AnimeEffects</source>
         <translation>关于AnimeEffects</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="354"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="306"/>
         <source>### AnimeEffects for </source>
         <translation>### AnimeEffects for </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="354"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="306"/>
         <source> version </source>
         <translation>版本</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="355"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="307"/>
         <source>An easy to use 2D animation software maintained by the [AnimeEffectsDevs](https://github.com/AnimeEffectsDevs).&lt;br /&gt;Licensed under the GPL v3.0 and powered by various open source libraries.</source>
         <translation>一款由 [AnimeEffectsDevs] 维护的易于使用的2D动画软件。(https://github.com/AnimeEffectsDevs).&lt;br /&gt;根据GPL v3.0许可证授权，并由多种开源库提供支持。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="358"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="315"/>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
 If we forgot to include you please let us know or open a PR!</source>
         <translation>&lt;br /&gt;&lt;br /&gt;贡献者：&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
@@ -2021,48 +3924,48 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">&lt;br /&gt;&lt;br /&gt;贡献者：&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [aki017](https://github.com/aki017), [picoHz](https://github.com/picoHz).</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="387"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="344"/>
         <source>About us</source>
         <translation>关于我们</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="393"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="350"/>
         <source>Check for updates</source>
         <translation>检查更新</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="399"/>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="552"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="355"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="500"/>
         <source>System telemetry</source>
         <translation>系统遥测</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="439"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="395"/>
         <source>Version: </source>
         <translation>版本: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="440"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="396"/>
         <source>Format version: </source>
         <translation>格式版本： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="441"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="397"/>
         <source>Platform: </source>
         <translation>平台: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="442"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="398"/>
         <source>Build ABI: </source>
         <translation>生成 ABI： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="467"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="423"/>
         <source>CPU vendor: </source>
         <translation>CPU 供应商： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="468"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="424"/>
         <source>CPU architecture: </source>
         <translation>CPU 结构： </translation>
     </message>
@@ -2071,77 +3974,101 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">CPU 核心： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="469"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="195"/>
+        <source>Quickly export as...</source>
+        <translation>快速导出为...</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="211"/>
+        <source>Export again</source>
+        <translation>再次导出</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="310"/>
+        <source>&lt;br /&gt;&lt;br /&gt;Video/audio encoding uses the FFmpeg libraries (https://ffmpeg.org), which are licensed under the GNU Lesser GPL v2.1+ (or GPL, depending on the build). Their corresponding source is available as required by that license.</source>
+        <translation>&lt;br /&gt;&lt;br /&gt;视频/音频编码使用 FFmpeg 库（https://ffmpeg.org），这些库按 GNU Lesser GPL v2.1+（视构建方式也可能为 GPL）授权。我们按照该许可的要求提供其对应源代码。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="425"/>
         <source>CPU threads: </source>
         <translation>CPU 线程： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="473"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="429"/>
         <source>System RAM:</source>
         <translation>系统 RAM</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="475"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="431"/>
         <source>System </source>
         <translation>系统 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="477"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="433"/>
         <source>Current GPU: </source>
         <translation>当前 GPU: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="510"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="466"/>
         <source>GPU Vendor: </source>
         <translation>GPU 厂商: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="511"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="467"/>
         <source>Max VRAM: </source>
         <translation>最大显存：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="512"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="468"/>
         <source>OpenGL version: </source>
         <translation>OpenGL 版本： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="513"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="469"/>
         <source>Qt Version: </source>
         <translation>Qt 版本: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="514"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="470"/>
         <source>System locale: </source>
         <translation>系统本地化： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="519"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="475"/>
         <source>Location Has Unicode: </source>
         <translation>位置包含 Unicode 字符：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="529"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="488"/>
         <source>Location Is Writable: </source>
         <translation>位置可写： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="546"/>
-        <source>FFmpeg Reach Type: </source>
-        <translation>FFmpeg 达标类型：</translation>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="494"/>
+        <source>libav licence: </source>
+        <translation>libav 许可证： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="548"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="495"/>
+        <source>libav configuration: </source>
+        <translation>libav 配置： </translation>
+    </message>
+    <message>
+        <source>FFmpeg Reach Type: </source>
+        <translation type="vanished">FFmpeg 达标类型：</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="496"/>
         <source>System specs successfully copied to the clipboard</source>
         <translation>系统规格已成功复制到剪贴板。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="563"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="511"/>
         <source>Donate</source>
         <translation>捐赠</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="288"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="240"/>
         <source>Project settings</source>
         <translation>项目设置</translation>
     </message>
@@ -2165,72 +4092,131 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">工具库</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="565"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="568"/>
         <source>Theme changed</source>
         <translation>主题已更改</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="567"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="570"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>更换主题后可能会出现视觉障碍，建议重新启动应用程序。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="784"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="791"/>
         <source> has been modified. Save changes?</source>
         <translation> 已改动。保存变动？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="786"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="793"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>一些项目已被修改。保存修改？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="794"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="801"/>
         <source>Save Changes</source>
         <translation>保存更改</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="795"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="802"/>
         <source>Discard Changes</source>
         <translation>放弃修改</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="796"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="803"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="817"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="824"/>
         <source>Undone : </source>
         <translation>撤消 : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="880"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="887"/>
         <source>Redone : </source>
         <translation>重置 : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="923"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="983"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1012"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1081"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="930"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="990"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1019"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1088"/>
         <source>Loading Error</source>
         <translation>加载错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="960"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="967"/>
         <source>Open File</source>
         <translation>打开文件</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1095"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1102"/>
         <source>Save File</source>
         <translation>保存文件</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1715"/>
+        <source>Exported %1 (%2 KB)</source>
+        <translation>已导出 %1（%2 KB）</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1721"/>
+        <source> (%1 of %2 KB allowed for %3)</source>
+        <translation> （%1，%3 的上限为 %2 KB）</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1726"/>
+        <source>; OVER THE LIMIT, it will be rejected</source>
+        <translation>；已超出上限，将被拒收</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1765"/>
+        <source>All files (*)</source>
+        <translation>所有文件 (*)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1766"/>
+        <source>%1 files (*.%2)</source>
+        <translation>%1 文件 (*.%2)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1942"/>
+        <source>My platform isn&apos;t listed (I&apos;ll choose the format)</source>
+        <translation>我的平台不在列表中（我自己选择格式）</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1984"/>
+        <source>%1 of %2 frames at %3 x %4</source>
+        <translation>%1，共%2帧，%3 x %4</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1990"/>
+        <source>Frame rate: %1 fps</source>
+        <translation>帧率：%1 fps</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="1996"/>
+        <source>%1 x %2, %3 fps</source>
+        <translation>%1 x %2，%3 fps</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="2001"/>
+        <source>Codec: %1 in %2</source>
+        <translation>编码器：%2 中的 %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="2010"/>
+        <source>%1 cannot carry transparency, so this export will be opaque.</source>
+        <translation>%1无法携带透明通道，因此本次导出的画面将不透明。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/MainWindow.cpp" line="2016"/>
+        <source>A GIF loops forever, so the Loop animation box is fixed on.</source>
+        <translation>GIF 会永远循环，所以“循环动画”复选框被固定为勾选状态。</translation>
+    </message>
+    <message>
         <source>FFmpeg was not found.</source>
-        <translation>未找到FFmpeg工具。</translation>
+        <translation type="vanished">未找到FFmpeg工具。</translation>
     </message>
     <message>
         <source>Exporting video requires FFmpeg to be installed on your computer, FFmpeg is a free tool that AnimeEffects uses to create video files.
@@ -2255,27 +4241,27 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpeg 无法生成调色板，请进行故障排查。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="153"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="156"/>
         <source>Animation</source>
         <translation>动画</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="166"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="169"/>
         <source>Properties</source>
         <translation>属性</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="212"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="215"/>
         <source>Tools</source>
         <translation>工具</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1032"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1039"/>
         <source>Recover unsaved project?</source>
         <translation>恢复未保存的项目？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1033"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1040"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -2286,155 +4272,123 @@ Open it?</source>
 要打开它吗？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1427"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1439"/>
         <source>Select your preset name</source>
-        <translation>选择预设名称</translation>
+        <translation type="vanished">选择预设名称</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1523"/>
         <source>Animated PNG</source>
-        <translation>PNG 动画</translation>
+        <translation type="vanished">PNG 动画</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1523"/>
         <source>AVI</source>
-        <translation>AVI</translation>
+        <translation type="vanished">AVI</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1523"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1523"/>
         <source>Flash Video</source>
-        <translation>FLV</translation>
+        <translation type="vanished">FLV</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1524"/>
         <source>GIF</source>
-        <translation>GIF</translation>
+        <translation type="vanished">GIF</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1524"/>
         <source>Matroska</source>
-        <translation>MKV</translation>
+        <translation type="vanished">MKV</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1524"/>
         <source>QuickTime Movie</source>
-        <translation>MOV</translation>
+        <translation type="vanished">MOV</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1524"/>
         <source>MPEG-2</source>
-        <translation>MPEG-2</translation>
+        <translation type="vanished">MPEG-2</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
         <source>MPEG-4</source>
-        <translation>MPEG-4</translation>
+        <translation type="vanished">MPEG-4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
         <source>Ogg Video</source>
-        <translation>OGG</translation>
+        <translation type="vanished">OGG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
         <source>Shockwave Flash</source>
-        <translation>Shockwave Flash</translation>
+        <translation type="vanished">Shockwave Flash</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
         <source>WEBM</source>
-        <translation>WEBM</translation>
+        <translation type="vanished">WEBM</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1525"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1530"/>
         <source>WEBP</source>
-        <translation>WEBP</translation>
+        <translation type="vanished">WEBP</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
         <source>BitMap</source>
-        <translation>BitMap</translation>
+        <translation type="vanished">BitMap</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
         <source>JPEG</source>
-        <translation>跳过</translation>
+        <translation type="vanished">跳过</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
         <source>PNG</source>
-        <translation>PNG</translation>
+        <translation type="vanished">PNG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1529"/>
         <source>Portable PixelMap</source>
-        <translation>PPM</translation>
+        <translation type="vanished">PPM</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1530"/>
         <source>X11 BitMap</source>
-        <translation>X11 BitMap</translation>
+        <translation type="vanished">X11 BitMap</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1530"/>
         <source>X11 PixelMap</source>
-        <translation>X11 PixelMap</translation>
+        <translation type="vanished">X11 PixelMap</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1530"/>
         <source>Tagged Image</source>
-        <translation>标签图片</translation>
+        <translation type="vanished">标签图片</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1662"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1717"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1759"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1834"/>
         <source>Export Folder</source>
         <translation>导出文件</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1687"/>
         <source>File already exists.</source>
-        <translation>文件已存在。</translation>
+        <translation type="vanished">文件已存在。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1688"/>
         <source>Do you want to overwrite the existing file?</source>
-        <translation>覆盖现有文件？</translation>
+        <translation type="vanished">覆盖现有文件？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1704"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1872"/>
         <source>Export Error</source>
-        <translation>导出错误</translation>
+        <translation type="vanished">导出错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1805"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1767"/>
         <source>Export File</source>
         <translation>导出文件</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1820"/>
         <source>Operation Error</source>
-        <translation>操作错误</translation>
+        <translation type="vanished">操作错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1820"/>
         <source>Invalid extension specified.</source>
-        <translation>指定的扩展名无效。</translation>
+        <translation type="vanished">指定的扩展名无效。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1864"/>
         <source>Video export requires FFmpeg.</source>
-        <translation>视频输出需要FFmpeg。</translation>
+        <translation type="vanished">视频输出需要FFmpeg。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1865"/>
         <source>Install FFmpeg on the system, or place a FFmpeg executable under &quot;/tools&quot; in the folder where you installed AnimeEffects.</source>
-        <translation>在系统中安装FFmpeg，或者在安装AnimeEffects的文件夹中的&quot;/tools &quot;下放置一个FFmpeg可执行文件。</translation>
+        <translation type="vanished">在系统中安装FFmpeg，或者在安装AnimeEffects的文件夹中的&quot;/tools &quot;下放置一个FFmpeg可执行文件。</translation>
     </message>
 </context>
 <context>
@@ -2487,13 +4441,13 @@ Open it?</source>
 <context>
     <name>gui::ObjectTreeWidget</name>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="146"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="609"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="145"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="608"/>
         <source>Contract</source>
         <translation>合同</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="149"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="148"/>
         <source>Add missing assets</source>
         <translation>添加缺失的素材</translation>
     </message>
@@ -2502,47 +4456,47 @@ Open it?</source>
         <translation type="vanished">添加新PSD</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="152"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="151"/>
         <source>Add new assets</source>
         <translation>添加新素材</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="155"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="154"/>
         <source>Rename</source>
         <translation>重命名</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="158"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="157"/>
         <source>Paste from clipboard</source>
         <translation>从剪贴板粘贴</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="161"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="160"/>
         <source>Create layer</source>
         <translation>创建图层</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="164"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="163"/>
         <source>Duplicate node</source>
         <translation>复制节点</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="167"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="166"/>
         <source>Add default keys</source>
         <translation>添加默认关键帧</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="170"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="169"/>
         <source>Create folder</source>
         <translation>创建文件夹</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="173"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="172"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="609"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="608"/>
         <source>Enlarge</source>
         <translation>放大</translation>
     </message>
@@ -2551,87 +4505,87 @@ Open it?</source>
         <translation type="vanished">未找到文件树</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="731"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="730"/>
         <source>File tree not found</source>
         <translation>未找到文件树</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="773"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="772"/>
         <source>Add</source>
         <translation>新增</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="779"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="778"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="816"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="815"/>
         <source>No trees selected</source>
         <translation>未选择对象树</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="817"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="816"/>
         <source>Please select at least one tree.</source>
         <translation>请至少选择一个对象树</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="822"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="821"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="822"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="821"/>
         <source>Tree addition was attempted, layers with duplicate names have been suppressed.</source>
         <translation>尝试添加对象树，已抑制同名图层。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="917"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="916"/>
         <source>The requested FFD key mesh (at frame %1) has %2 vertices, but the parent mesh of the targeted node has %3 vertices, artifacts may be present.</source>
         <translation>请求的 FFD 关键帧网格（第 %1 帧）有 %2 个顶点，但目标节点的父网格有 %3 个顶点，可能出现伪影。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="943"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="950"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="942"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="949"/>
         <source>Successfully pasted </source>
         <translation>成功粘贴 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="943"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="942"/>
         <source> keys.</source>
         <translation>帧</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="945"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="944"/>
         <source> keys. The log is available below.</source>
         <translation> 个关键帧。日志如下。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="945"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="944"/>
         <source>Warnings present for </source>
         <translation>警告: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="950"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="949"/>
         <source> keys.
 </source>
         <translation>帧</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="951"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="950"/>
         <source> error(s) have been detected.
 The log is available below.</source>
         <translation> 已检测到错误。
 日志如下。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="956"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="976"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="955"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="975"/>
         <source>Failed to paste key(s)</source>
         <translation>粘贴帧失败</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="959"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="958"/>
         <source>Clipboard does not contain valid JSON information or the timeline already has a key in the same frame.</source>
         <translation>剪贴板无有效的 JSON 信息，或时间轴关键帧被占用。</translation>
     </message>
@@ -2640,7 +4594,7 @@ The log is available below.</source>
         <translation type="vanished">剪贴板无有效的 JSON 信息，或时间轴关键帧被占用。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="979"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="978"/>
         <source>Timeline has a key in the same frame.</source>
         <translation>当前时间轴关键帧被占用。</translation>
     </message>
@@ -2743,17 +4697,17 @@ The log is available below.</source>
 <context>
     <name>gui::ProjectSettingDialog</name>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="669"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="553"/>
         <source>Project settings</source>
         <translation>项目设置</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="706"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="590"/>
         <source>Canvas size</source>
         <translation>画布大小</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="730"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="614"/>
         <source>Frame range</source>
         <translation>帧范围</translation>
     </message>
@@ -2762,12 +4716,12 @@ The log is available below.</source>
         <translation type="vanished">最大帧数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="736"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="620"/>
         <source>Loop animation</source>
         <translation>循环动画</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="742"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="626"/>
         <source>Frames per second</source>
         <translation>每秒帧数</translation>
     </message>
@@ -2945,7 +4899,7 @@ The log is available below.</source>
     </message>
     <message>
         <source>Linear</source>
-        <translation type="vanished">线型</translation>
+        <translation type="vanished">线性</translation>
     </message>
     <message>
         <source>Sine</source>
@@ -3133,39 +5087,32 @@ The log is available below.</source>
 <context>
     <name>gui::VideoExportDialog</name>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="354"/>
         <source>This codec requires a dedicated GPU.</source>
-        <translation>这个编解码器需要专用的GPU。</translation>
+        <translation type="vanished">这个编解码器需要专用的GPU。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="415"/>
         <source>Lossless</source>
-        <translation>无损的</translation>
+        <translation type="vanished">无损的</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="420"/>
         <source>Transparent</source>
-        <translation>透明</translation>
+        <translation type="vanished">透明</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="435"/>
         <source>Codec</source>
-        <translation>解码器</translation>
+        <translation type="vanished">解码器</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="439"/>
         <source>Color standard</source>
-        <translation>颜色标准</translation>
+        <translation type="vanished">颜色标准</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="441"/>
         <source>Pixel format</source>
-        <translation>像素格式</translation>
+        <translation type="vanished">像素格式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportDialog.cpp" line="456"/>
         <source>Bit rate (Kbps)</source>
-        <translation>比特率 （Kbps）</translation>
+        <translation type="vanished">比特率 （Kbps）</translation>
     </message>
 </context>
 <context>
@@ -3332,22 +5279,22 @@ The log is available below.</source>
 <context>
     <name>gui::prop::EasingPickWidget</name>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="537"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="536"/>
         <source>Easing</source>
         <translation>缓动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="546"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="545"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="800"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="799"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="803"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="802"/>
         <source>Paste</source>
         <translation>粘贴</translation>
     </message>
@@ -4031,41 +5978,38 @@ The log is available below.</source>
 <context>
     <name>projectSave</name>
     <message>
+        <location filename="../../src/ctrl/System.cpp" line="225"/>
         <source>Non ascii characters detected, this may cause issues.
 Save anyway?</source>
-        <translation type="vanished">检测到非ASCII字符，这可能会导致问题。仍然保存吗？</translation>
+        <translation>检测到非ASCII字符，这可能会导致问题。仍然保存吗？</translation>
     </message>
     <message>
+        <location filename="../../src/ctrl/System.cpp" line="231"/>
         <source>Unicode on filename detected</source>
-        <translation type="vanished">检测到文件名中包含Unicode字符</translation>
+        <translation>检测到文件名中包含Unicode字符</translation>
     </message>
 </context>
 <context>
     <name>splineWidget</name>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="293"/>
         <source>Bezier editor</source>
-        <translation>贝塞尔曲线编辑器</translation>
+        <translation type="vanished">贝塞尔曲线编辑器</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="294"/>
         <source>Paste</source>
-        <translation>粘贴</translation>
+        <translation type="vanished">粘贴</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="295"/>
         <source>Copy</source>
-        <translation>复制</translation>
+        <translation type="vanished">复制</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="296"/>
         <source>Cancel</source>
-        <translation>取消</translation>
+        <translation type="vanished">取消</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/splineWidget.h" line="297"/>
         <source>Apply</source>
-        <translation>应用</translation>
+        <translation type="vanished">应用</translation>
     </message>
 </context>
 <context>
@@ -4084,7 +6028,7 @@ Save anyway?</source>
     </message>
     <message>
         <source>Linear</source>
-        <translation type="vanished">线型</translation>
+        <translation type="vanished">线性</translation>
     </message>
     <message>
         <source>Sine</source>

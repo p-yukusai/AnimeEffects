@@ -124,7 +124,7 @@ namespace srt {
             mKeyOwner.pushOwningMoveKey(stack, *mTarget.timeLine(), frame);
 
             // create move command
-            mCommandRef = new CentroidMover(mProject, mTarget, centroidMove, positionMove, frame, mAdjustPosition);
+            mCommandRef = new CentroidMover(mTarget, centroidMove, positionMove, frame, mAdjustPosition);
             stack.push(mCommandRef);
         }
     }

@@ -129,7 +129,7 @@ void ResourceTreeWidget::resetTreeView(core::ResourceHolder& aHolder) {
     mHolder = &aHolder;
 
     for (auto data : aHolder.imageTrees()) {
-        auto item = res::ResourceUpdater::createGUITree(*this, *data.topNode, data.filePath);
+        auto item = res::ResourceUpdater::createGUITree(*data.topNode, data.filePath);
         XC_PTR_ASSERT(item);
         this->addTopLevelItem(item);
     }
@@ -225,7 +225,7 @@ void ResourceTreeWidget::onChangePathActionTriggered(bool) {
             cmnd::ScopedMacro macro(stack, CmndName::tr("Update asset file path"));
 
             // notifier
-            auto notifier = new res::ChangeFilePathNotifier(mViaPoint, item->node());
+            auto notifier = new res::ChangeFilePathNotifier(mViaPoint);
             macro.grabListener(notifier);
 
             img::ResourceNode* resNode = &(item->node());
@@ -279,7 +279,7 @@ void ResourceTreeWidget::endRenameEditor() {
             cmnd::ScopedMacro macro(stack, CmndName::tr("Rename asset"));
 
             // notifier
-            auto notifier = new res::RenameNotifier(mViaPoint, *mProject, item->treePos());
+            auto notifier = new res::RenameNotifier(*mProject, item->treePos());
             notifier->event().setSingleTarget(*nodePtr);
             macro.grabListener(notifier);
 

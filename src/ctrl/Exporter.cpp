@@ -5,6 +5,8 @@
 #include "gl/Global.h"
 #include "gl/Util.h"
 #include "ctrl/Exporter.h"
+
+#include <QCoreApplication>
 #include "media/FFmpegHelpers.h"
 #include "media/GifEncoder.h"
 
@@ -15,10 +17,10 @@ Exporter::Result::Result(): code(ResultCode_TERM) {}
 Exporter::Result::Result(ResultCode aCode, const QString& aMessage): code(aCode), message(aMessage) {}
 
 //-------------------------------------------------------------------------------------------------
-Exporter::CommonParam::CommonParam(): path(), size(), frame(), fps() {}
+Exporter::CommonParam::CommonParam(): path(), size(), selection(), fps() {}
 
 bool Exporter::CommonParam::isValid() const {
-    if (frame.diff() < 0) {
+    if (selection.isEmpty()) {
         return false;
     }
 
@@ -37,12 +39,12 @@ bool Exporter::CommonParam::isValid() const {
 Exporter::ImageParam::ImageParam(): name(), suffix("png"), quality(-1) {}
 
 //-------------------------------------------------------------------------------------------------
-Exporter::GifParam::GifParam(): optimizePalette(), intermediateBps() {
+Exporter::GifParam::GifParam() {
     // palettePath defaults to empty (adaptive palette).
 }
 
 //-------------------------------------------------------------------------------------------------
-Exporter::VideoParam::VideoParam(): format(), codecIndex(-1), colorIndex(), bps(), pixfmt(), codec(), transparent(false) {}
+Exporter::VideoParam::VideoParam(): container(), colorIndex(), bps(), pixfmt(), codec(), transparent(false) {}
 
 //-------------------------------------------------------------------------------------------------
 
@@ -60,8 +62,6 @@ Exporter::Exporter(core::Project& aProject):
     mUILogger(),
     mCommonParam(),
     mImageParam(),
-    mVideoInCodec(),
-    mVideoInCodecQuality(),
     mVideoExporting(),
     mExporting(false),
     mIndex(0),
@@ -76,6 +76,7 @@ Exporter::~Exporter() {
     // kill buffer
     gl::Global::makeCurrent();
     destroyFramebuffers();
+    releaseExportVAO();
 }
 
 void Exporter::setOverwriteConfirmer(const OverwriteConfirmer& aConfirmer) { mOverwriteConfirmer = aConfirmer; }
@@ -95,14 +96,14 @@ void Exporter::setAudioTracks(const QVector<media::AudioMixer::Track>& aTracks,
 Exporter::Result Exporter::execute(const CommonParam& aCommon, const ImageParam& aImage) {
     // check param
     if (!aCommon.isValid()) {
-        mLog = "Invalid common parameters.";
+        mLog = QCoreApplication::translate("Exporter", "Invalid common parameters.");
         return Result(ResultCode_InvalidOperation, mLog);
     }
 
     // check directory
     QFileInfo path(aCommon.path);
     if (!path.exists() || !path.isDir()) {
-        mLog = "Invalid directory path.";
+        mLog = QCoreApplication::translate("Exporter", "Invalid directory path.");
         return Result(ResultCode_InvalidOperation, mLog);
     }
 
@@ -120,7 +121,7 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const ImageParam&
 Exporter::Result Exporter::execute(const CommonParam& aCommon, const GifParam& aGif) {
     // check param
     if (!aCommon.isValid()) {
-        mLog = "Invalid common parameters.";
+        mLog = QCoreApplication::translate("Exporter", "Invalid common parameters.");
         return Result(ResultCode_InvalidOperation, mLog);
     }
 
@@ -128,7 +129,7 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const GifParam& a
     mOverwriteConfirmation = false;
     QFileInfo filePath(aCommon.path);
     if (!checkOverwriting(filePath)) {
-        mLog = "Exporting was canceled.";
+        mLog = QCoreApplication::translate("Exporter", "Exporting was canceled.");
         mIsCanceled = true;
         return Result(ResultCode_Canceled, mLog);
     }
@@ -153,7 +154,7 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const GifParam& a
 Exporter::Result Exporter::execute(const CommonParam& aCommon, const VideoParam& aVideo) {
     // check param
     if (!aCommon.isValid()) {
-        mLog = "Invalid common parameters.";
+        mLog = QCoreApplication::translate("Exporter", "Invalid common parameters.");
         return Result(ResultCode_InvalidOperation, mLog);
     }
 
@@ -161,7 +162,7 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const VideoParam&
     mOverwriteConfirmation = false;
     QFileInfo filePath(aCommon.path);
     if (!checkOverwriting(filePath)) {
-        mLog = "Exporting was canceled.";
+        mLog = QCoreApplication::translate("Exporter", "Exporting was canceled.");
         mIsCanceled = true;
         return Result(ResultCode_Canceled, mLog);
     }
@@ -175,22 +176,23 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const VideoParam&
     {
         const QString outPath = filePath.absoluteFilePath();
 
-        VideoCodec videoCodec;
-        if (aVideo.codecIndex != -1 && !aVideo.format.codecs.isEmpty())
-            videoCodec = aVideo.format.codecs.at(aVideo.codecIndex);
+        // The container decides the muxer, so it is the thing every other
+        // question is asked against. Empty means the historical default, mp4.
+        const QString container = aVideo.container.isEmpty() ? QStringLiteral("mp4")
+                                                             : aVideo.container;
 
-        // Codec: explicit override > preset codec > a muxer-aware container
-        // default. The explicit override lets the dialog's per-container encoder
-        // choice be honored instead of always falling back to the container
-        // default. (command/colorspace/icodec are CLI-subprocess artifacts; the
-        // in-process encoder consumes only name/pixfmt/transparent.)
+        // Codec: explicit > the container's probed default. A hand-written
+        // preset used to sit between the two (a table of friendly codec names per
+        // container); it could not be trusted, because it listed encoders a build
+        // may not have and encoders a container cannot carry, and the exporter had
+        // to re-validate every one of them anyway.
         QString codecName = aVideo.codec;
-        if (codecName.isEmpty() && !videoCodec.name.isEmpty())
-            codecName = videoCodec.name;
         if (codecName.isEmpty()) {
-            codecName = media::ffmpeg::defaultCodecForContainer(aVideo.format.name);
+            codecName = media::ffmpeg::defaultCodecForContainer(container);
             if (codecName.isEmpty()) {
-                mLog = "No available video encoder can carry the '" + aVideo.format.name + "' container.";
+                mLog = QCoreApplication::translate(
+                           "Exporter", "No available video encoder can carry the '%1' container.")
+                           .arg(container);
                 return Result(ResultCode_EncoderOpenFailed, mLog);
             }
         }
@@ -201,51 +203,67 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const VideoParam&
         // muxer failure at write time.
         codecName = media::ffmpeg::resolveEncoderName(codecName);
         if (codecName.isEmpty()) {
-            mLog = "Encoder not available in this build: " + aVideo.codec;
+            mLog = QCoreApplication::translate("Exporter",
+                                               "Encoder not available in this build: %1")
+                       .arg(aVideo.codec);
             return Result(ResultCode_EncoderOpenFailed, mLog);
         }
-        if (!media::ffmpeg::muxerSupportsCodec(aVideo.format.name, codecName)) {
-            mLog = "The '" + aVideo.format.name + "' container cannot carry the " + codecName + " video codec.";
+        if (!media::ffmpeg::muxerSupportsCodec(container, codecName)) {
+            mLog = QCoreApplication::translate(
+                       "Exporter", "The '%1' container cannot carry the %2 video encoder.")
+                       .arg(container, codecName);
             return Result(ResultCode_EncoderOpenFailed, mLog);
         }
 
         QString encoderError;
         media::VideoEncoder::Config cfg = media::VideoEncoder::makeConfig(
-            aVideo.format.name, codecName, aVideo.pixfmt, videoCodec.transparent || aVideo.transparent,
+            container, codecName, aVideo.pixfmt, aVideo.transparent,
             mCommonParam.size.width(), mCommonParam.size.height(), mCommonParam.fps,
             aVideo.bps, &encoderError);
 
         if (cfg.codec.isEmpty()) {
-            mLog = "Video encoder error.\n" + encoderError;
+            mLog = QCoreApplication::translate("Exporter", "Video encoder error.\n%1")
+                       .arg(encoderError);
             return Result(ResultCode_EncoderOpenFailed, mLog);
         }
         cfg.outputPath = outPath;
+        // The destination's encoder-level requirements: its private options and
+        // its stream codec tag (hvc1 for Apple HEVC), plus how to reconcile the
+        // rendered frame with an exact output size.
+        cfg.encOptions = aVideo.encOptions;
+        cfg.codecTag = aVideo.codecTag;
+        cfg.fit = aCommon.fit;
 
         // Configure the audio stream (muxed in the same pass) when tracks were
         // supplied AND the container supports a standard audio codec we have.
         // This keeps AVI/Ogg exports video-only rather than failing on an
         // audio codec the container can't carry.
         if (mHasAudio) {
-            const QString container = aVideo.format.name;
-            static const QStringList audioContainers = {
-                QStringLiteral("mp4"), QStringLiteral("mov"),
-                QStringLiteral("webm"), QStringLiteral("mkv"), QStringLiteral("matroska"),
-            };
-            if (audioContainers.contains(container)) {
-                const QString audioCodec = container == QLatin1String("webm")
-                                               ? QStringLiteral("libopus")
-                                               : QStringLiteral("aac");
+            if (media::ffmpeg::containerCarriesAudio(container)) {
+                // The destination's audio spec wins; the container-derived
+                // default is the fallback (WebM cannot carry AAC, so the codec
+                // is never simply taken from the table without this check).
+                QString audioCodec = aVideo.audioCodec;
+                if (audioCodec.isEmpty()) {
+                    audioCodec = container == QLatin1String("webm")
+                                     ? QStringLiteral("libopus")
+                                     : QStringLiteral("aac");
+                }
                 if (media::ffmpeg::encoderAvailable(audioCodec.toUtf8().constData())) {
                     cfg.audioCodec = audioCodec;
-                    cfg.audioChannels = mAudioChannels;
-                    cfg.audioSampleRate = mAudioSampleRate;
-                    cfg.audioBitrate = 128000;
+                    cfg.audioChannels = aVideo.audioChannels > 0 ? aVideo.audioChannels : mAudioChannels;
+                    cfg.audioSampleRate = aVideo.audioSampleRate > 0 ? aVideo.audioSampleRate : mAudioSampleRate;
+                    cfg.audioBitrate = aVideo.audioBitrate > 0 ? aVideo.audioBitrate : 128000;
                 }
             }
         }
 
-        if (!mVideoEncoder.open(cfg)) {
-            mLog = "Video encoder error.\n" + mVideoEncoder.error();
+        // Frame-sink mode writes no file: the caller fits and encodes the frames
+        // itself. Opening the encoder here would create an empty file that the
+        // caller's own encode then has to overwrite.
+        if (!mFrameSink && !mVideoEncoder.open(cfg)) {
+            mLog = QCoreApplication::translate("Exporter", "Video encoder error.\n%1")
+                       .arg(mVideoEncoder.error());
             return Result(ResultCode_EncoderOpenFailed, mLog);
         }
     }
@@ -291,7 +309,7 @@ Exporter::Result Exporter::execute() {
 
             if (mProgressReporter->wasCanceled()) {
                 finish();
-                mLog = "Export was canceled.";
+                mLog = QCoreApplication::translate("Exporter", "Export was canceled.");
                 mIsCanceled = true;
                 return Result(ResultCode_Canceled, mLog);
             }
@@ -305,20 +323,40 @@ Exporter::Result Exporter::start() {
     // reset value
     mIndex = 0;
     mProgress = 0.0f;
-    mDigitCount = getDigitCount(mCommonParam.frame, mCommonParam.fps, mOriginTimeInfo.fps);
+    // Flatten the selection once: every frame that will be rendered, in output
+    // order. updateTime() indexes this instead of assuming min() + n, which is
+    // what made several ranges export as one span.
+    mSelectedFrames = mCommonParam.selection.indices();
+    mDigitCount = getDigitCount((int)mSelectedFrames.size(), mCommonParam.fps, mOriginTimeInfo.fps);
 
     // initialize graphics
     {
         gl::Global::makeCurrent();
 
+        // Bind a vertex array object for the whole export (see mExportVAO).
+        // Nothing else in the draw path can substitute for it, and without it the
+        // failure is invisible: draws are dropped under a Core profile, the
+        // transform-feedback pass that computes mesh positions produces zeros,
+        // and the exporter writes a complete, well-formed file of empty frames.
+        mExportVAO.reset(new gl::VertexArrayObject());
+        gl::Global::functions().glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &mPreviousVAO);
+        mExportVAO->bind();
+
         // texture drawer
         if (!mTextureDrawer.init()) {
-            mLog = "Failed to initialize TextureDrawer";
-            Result(ResultCode_UnclassfiedError, mLog);
+            mLog = QCoreApplication::translate("Exporter", "Failed to initialize TextureDrawer");
+            // This Result used to be built and discarded, so the export carried on with
+            // an uninitialised drawer and the failure was never reported to anyone.
+            return Result(ResultCode_UnclassfiedError, mLog);
         }
 
-        // framebuffers
-        createFramebuffers(mProject.attribute().imageSize(), mCommonParam.size);
+        // framebuffers scale from the native size to what we RENDER at, which is
+        // the output size unless the destination asked for an exact size that the
+        // project's aspect does not match (then renderSize, and the encoder pads).
+        const QSize renderTarget = (mCommonParam.renderSize.isValid() && !mCommonParam.renderSize.isEmpty())
+                                       ? mCommonParam.renderSize
+                                       : mCommonParam.size;
+        createFramebuffers(mProject.attribute().imageSize(), renderTarget);
 
         // clipping frame
         mClippingFrame.reset(new core::ClippingFrame());
@@ -340,20 +378,30 @@ Exporter::Result Exporter::start() {
 bool Exporter::updateTime(core::TimeInfo& aDst) {
     aDst = mOriginTimeInfo;
 
-    const int range = mCommonParam.frame.diff() + 1;
+    // Output frame mIndex maps onto a position in the flattened selection,
+    // scaled by the fps ratio (the export fps need not match the project's).
     const double current = (mIndex * mOriginTimeInfo.fps) / (double)mCommonParam.fps;
-    const double frame = mCommonParam.frame.min() + current;
+    const int base = (int)current;
+    const int count = (int)mSelectedFrames.size();
 
-    // end of export
-    if (0 < mIndex && mCommonParam.frame.max() < frame) {
+    // end of export (same boundary as before: a fractional overshoot past the
+    // last selected frame ends the run rather than emitting a tail frame)
+    if (base >= count || (0 < mIndex && current > (double)(count - 1))) {
         return false;
     }
-    if (mOriginTimeInfo.frameRange.max() < (int)frame) {
+    if (mOriginTimeInfo.frameRange.max() < mSelectedFrames[base]) {
         return false;
     }
+
+    // Interpolate toward the NEXT SELECTED frame, not the next project frame:
+    // with several ranges the following output frame is not frame + 1.
+    const double frac = current - base;
+    const int next = std::min(base + 1, count - 1);
+    const double frame = mSelectedFrames[base]
+                         + frac * (double)(mSelectedFrames[next] - mSelectedFrames[base]);
 
     aDst.frame = core::Frame::fromDecimal(frame);
-    mProgress = (float)current / range;
+    mProgress = (float)current / (double)count;
 
     // to next index
     ++mIndex;
@@ -458,9 +506,21 @@ bool Exporter::update() {
 }
 
 bool Exporter::exportImage(const QImage& aFboImage, int aIndex) {
+    // Frame-sink mode: nothing is written here. The frames are handed over in
+    // finish(), at the render size, for the caller to fit and encode.
+    if (mFrameSink) {
+        mSinkFrames.append(aFboImage);
+        return true;
+    }
+
+    // Frames leave here at the RENDER size; an exact-size destination needs the
+    // output size, so reconcile once here for the paths that do not go through
+    // the encoder (which does its own pad/crop from the same helper).
+    const QImage outImage = media::fitImage(aFboImage, mCommonParam.size, mCommonParam.fit);
+
     // GIF mode: accumulate the rendered frames (encoded in finish()).
     if (mCollectFrames) {
-        mGifFrames.append(aFboImage);
+        mGifFrames.append(outImage);
         return true;
     }
 
@@ -474,14 +534,15 @@ bool Exporter::exportImage(const QImage& aFboImage, int aIndex) {
         // Feed the frame to the in-process encoder (no intermediate raster,
         // no CLI subprocess).
         if (!mVideoEncoder.write(aFboImage)) {
-            mLog = "Video encoder error.\n" + mVideoEncoder.error();
+            mLog = QCoreApplication::translate("Exporter", "Video encoder error.\n%1")
+                       .arg(mVideoEncoder.error());
             return false;
         }
     } else {
         // QImage image(aFboImage.constBits(), aFboImage.width(),
         //              aFboImage.height(), QImage::Format_ARGB32);
         // image.save(aFilePath);
-        aFboImage.save(filePath.filePath(), Q_NULLPTR, mImageParam.quality);
+        outImage.save(filePath.filePath(), Q_NULLPTR, mImageParam.quality);
     }
 
     return true;
@@ -489,6 +550,20 @@ bool Exporter::exportImage(const QImage& aFboImage, int aIndex) {
 
 Exporter::Result Exporter::finish() {
     Result result(ResultCode_Success, "Success.");
+
+    if (mFrameSink && !mSinkFrames.isEmpty()) {
+        FrameSink sink = mFrameSink;
+        QList<QImage> frames = mSinkFrames;
+        // Cleared BEFORE the call: the sink typically re-encodes, and a sink that
+        // reported failure must not leave the exporter able to hand the same
+        // frames over twice.
+        mSinkFrames.clear();
+        mFrameSink = nullptr;
+        sink(frames);
+        mExporting = false;
+        releaseExportVAO();
+        return result;
+    }
 
     if (mExporting) {
         if (mCollectFrames) {
@@ -501,46 +576,89 @@ Exporter::Result Exporter::finish() {
             gcfg.palettePath = mGifPalettePath; // empty => adaptive palette
             QString gerr;
             if (!gif.encode(mGifFrames, gcfg, &gerr)) {
-                mLog = "GIF encoder error.\n" + gerr;
+                mLog = QCoreApplication::translate("Exporter", "GIF encoder error.\n%1").arg(gerr);
                 result = Result(ResultCode_EncodeError, mLog);
             }
             mCollectFrames = false;
             mGifFrames.clear();
         } else if (mVideoExporting) {
-            // Mix the supplied multi-track audio (in project frames) into the
-            // export window and mux it with the video in the same pass.
+            // Mix the supplied multi-track audio and mux it with the video in the
+            // same pass.
+            //
+            // One mix per SELECTED RANGE, concatenated in order, because the
+            // exporter writes the selected ranges back to back (see FrameSelection):
+            // a gapped selection plays 0-1 then 10-11 as four consecutive frames, so
+            // its audio is those same four frames' sound, in that order. The mixer
+            // takes one window at a time; mixing the whole span instead would lay
+            // down eight frames of sound under four frames of picture.
             if (mHasAudio) {
-                media::AudioMixer mixer;
-                media::AudioMixer::Config acfg;
-                acfg.fps = mCommonParam.fps;
-                acfg.totalFrames = mCommonParam.frame.diff() + 1; // export length
-                acfg.sampleRate = mAudioSampleRate;
-                acfg.channels = mAudioChannels;
-                QVector<media::AudioMixer::Track> tracks = mAudioTracks;
-                const int minFrame = mCommonParam.frame.min();
-                for (auto& t : tracks) {
-                    t.startFrame -= minFrame;
-                    if (t.endFrame > 0)
-                        t.endFrame -= minFrame;
+                media::AudioMixer::Config base;
+                base.fps = mCommonParam.fps;
+                base.sampleRate = mAudioSampleRate;
+                base.channels = mAudioChannels;
+
+                QVector<float> all;
+                int gotChannels = 0;
+                int gotRate = 0;
+                bool mixFailed = false;
+                for (const FrameRange& range : mCommonParam.selection.ranges) {
+                    if (!range.valid() || range.count() <= 0)
+                        continue;
+                    media::AudioMixer::Config cfg = base;
+                    cfg.totalFrames = range.count();
+                    // Tracks are in project frames; this window starts at the
+                    // range's first frame, exactly as the single-window case did.
+                    QVector<media::AudioMixer::Track> tracks = mAudioTracks;
+                    for (auto& t : tracks) {
+                        t.startFrame -= range.first;
+                        if (t.endFrame > 0)
+                            t.endFrame -= range.first;
+                    }
+                    media::AudioMixer chunk;
+                    if (!chunk.mix(tracks, cfg)) {
+                        mLog = QCoreApplication::translate("Exporter", "Audio mixing error.\n%1")
+                                   .arg(chunk.error());
+                        result = Result(ResultCode_EncodeError, mLog);
+                        mixFailed = true;
+                        break;
+                    }
+                    if (all.isEmpty()) {
+                        gotChannels = chunk.channels();
+                        gotRate = chunk.sampleRate();
+                    }
+                    const int count = chunk.sampleCount() * chunk.channels();
+                    const float* src = chunk.samples();
+                    for (int i = 0; i < count; ++i)
+                        all.append(src[i]);
                 }
-                if (mixer.mix(tracks, acfg)) {
-                    mVideoEncoder.setAudio(mixer.samples(), mixer.channels(),
-                                           mixer.sampleRate(), mixer.sampleCount());
-                } else {
-                    mLog = "Audio mixing error.\n" + mixer.error();
-                    result = Result(ResultCode_EncodeError, mLog);
+                if (!mixFailed && !all.isEmpty() && gotChannels > 0) {
+                    mVideoEncoder.setAudio(all.constData(), gotChannels, gotRate,
+                                           all.size() / gotChannels);
                 }
             }
 
             if (!mVideoEncoder.close()) {
-                mLog = "Video encoder error.\n" + mVideoEncoder.error();
+                mLog = QCoreApplication::translate("Exporter", "Video encoder error.\n%1")
+                       .arg(mVideoEncoder.error());
                 result = Result(ResultCode_EncodeError, mLog);
             }
         }
 
         mExporting = false;
     }
+    releaseExportVAO();
     return result;
+}
+
+void Exporter::releaseExportVAO() {
+    if (mExportVAO) {
+        // Give the previous binding back BEFORE deleting our own: deleting a
+        // bound VAO leaves the binding at 0, and a canvas that bound its VAO once
+        // at initializeGL would then be drawing with none — turning a completed
+        // export into a broken interactive view.
+        gl::Global::functions().glBindVertexArray((GLuint)mPreviousVAO);
+        mExportVAO.reset();
+    }
 }
 
 void Exporter::destroyFramebuffers() {
@@ -593,8 +711,15 @@ void Exporter::setTextureParam(QOpenGLFramebufferObject& aFbo) {
 }
 
 bool Exporter::decideImagePath(int aIndex, QFileInfo& aPath) {
-    const QString number = QString("%1").arg(aIndex, mDigitCount, 10, QChar('0'));
-    QFileInfo filePath(mCommonParam.path + "/" + mImageParam.name + number + "." + mImageParam.suffix);
+    // A still destination writes the one file the caller named; everything else is
+    // a numbered sequence. The index is ignored in the single-file case, so a
+    // selection that somehow held two frames would still produce one image rather
+    // than two files with the same name.
+    const QString stem = mImageParam.singleFile
+                             ? mImageParam.name
+                             : mImageParam.name
+                                   + QString("%1").arg(aIndex, mDigitCount, 10, QChar('0'));
+    QFileInfo filePath(mCommonParam.path + "/" + stem + "." + mImageParam.suffix);
 
     // check overwrite
     if (!checkOverwriting(filePath)) {
@@ -616,9 +741,9 @@ bool Exporter::checkOverwriting(const QFileInfo& aPath) {
     return true;
 }
 
-int Exporter::getDigitCount(const util::Range& aRange, int aFps, int aFpsOrigin) {
+int Exporter::getDigitCount(int aFrameCount, int aFps, int aFpsOrigin) {
     int digitCount = 1;
-    double count = (aFps * (aRange.diff() + 1)) / (double)aFpsOrigin;
+    double count = (aFps * aFrameCount) / (double)aFpsOrigin;
     for (; count >= 10.0; count *= 0.1)
         ++digitCount;
     return std::max(digitCount, 4);

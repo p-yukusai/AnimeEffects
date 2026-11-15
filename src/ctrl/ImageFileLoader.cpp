@@ -223,7 +223,6 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     using img::PSDFormat;
     using img::PSDReader;
     using img::PSDUtil;
-    typedef PSDFormat::LayerList::reverse_iterator ReverseIterator;
 
     aReporter.setSection("Loading PSD file...");
     aReporter.setMaximum(1);
@@ -421,9 +420,12 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     mLog = "success";
     return true;
 }
-QString tr(const QString& str){
-    return QCoreApplication::translate("image_file_loader", str.toStdString().c_str());
-}
+// The free tr() that used to stand here asked for the context "image_file_loader",
+// which no catalog has, while lupdate files these five strings under "ImageFileLoader"
+// (the class) and all six catalogs translate them THERE. So the ORA import prompt was
+// English in every language with its translations sitting one context away. The class
+// declares tr() for itself now (see ImageFileLoader.h), which is the same mechanism
+// the Qt Ui classes use and the context the catalogs already carry.
 void ImageFileLoader::parseOraLayer(layer &lyr, FolderNode* current, img::ResourceNode* resCurrent,  const float* globalDepth, const float* parentDepth, core::Project* aProject){
     auto resNode = createLayerResource(lyr);
     resCurrent->children().pushBack(resNode);
@@ -521,7 +523,9 @@ bool ImageFileLoader::loadOra(Project& aProject, util::IProgressReporter& aRepor
         loadMerged.setText(tr("How do you wish to load this ORA file?"));
         QAbstractButton* layerButton = loadMerged.addButton(tr("Load layered"), QMessageBox::YesRole);
         QAbstractButton* mergeButton = loadMerged.addButton(tr("Load merged"), QMessageBox::YesRole);
-        QAbstractButton* cancelButton = loadMerged.addButton(tr("Cancel file load"), QMessageBox::NoRole);
+        // Any other outcome (this button, Escape or the window close box) falls
+        // through to the cancel branch below, so the button is not read back.
+        loadMerged.addButton(tr("Cancel file load"), QMessageBox::NoRole);
         loadMerged.exec();
         if (loadMerged.clickedButton() != mergeButton && loadMerged.clickedButton() != layerButton) {
             mLog = "User cancelled image load";

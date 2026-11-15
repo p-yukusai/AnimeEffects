@@ -2,9 +2,10 @@
 #define GUI_MAINMENUBAR_H
 
 #include <QCheckBox>
+#include <QMenu>
 #include <QSpinBox>
 #include "core/Project.h"
-#include "ctrl/VideoFormat.h"
+#include "ctrl/ExportTarget.h"
 #include "gui/EasyDialog.h"
 #include "gui/GUIResources.h"
 #include "qprocess.h"
@@ -35,13 +36,24 @@ public:
 
 private:
     QScopedPointer<QProcess> mProcess;
-    void loadVideoFormats();
     void onProjectSettingsTriggered();
 
     ViaPoint& mViaPoint;
     core::Project* mProject;
     QVector<QAction*> mProjectActions;
-    QList<ctrl::VideoFormat> mVideoFormats;
+    // "Export again": enabled by the main window once an export has succeeded.
+    QAction* mExportAgainAction = nullptr;
+    // "Quickly export as": rebuilt on every show, because its first entries are the
+    // destinations this user has actually exported to.
+    // The window the quick-export entries call into. Held as a member because the
+    // menu is REBUILT (on every show), so the entries cannot capture a local.
+    MainWindow* mMainWindow = nullptr;
+    void addQuickExportEntry(QMenu* aMenu, const ctrl::ExportTarget& aTarget);
+public:
+    // Enabled by the main window once an export has succeeded: "again" means the
+    // same export, and there is nothing to repeat until there has been one.
+    void setExportAgainEnabled(bool aOn);
+private:
     GUIResources& mGUIResources;
 };
 

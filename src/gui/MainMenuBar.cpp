@@ -8,6 +8,7 @@
 #include "core/FormatVersion.h"
 #include "core/ObjectNodeUtil.h"
 #include "ctrl/CmndName.h"
+#include "ctrl/ExportTarget.h"
 #include "gui/MainMenuBar.h"
 #include "gui/MainWindow.h"
 #include "gui/ResourceDialog.h"
@@ -26,36 +27,6 @@
 
 namespace gui {
 //-------------------------------------------------------------------------------------------------
-QDomDocument getVideoExportDocument() {
-    QFile file(":/encode/VideoEncode.txt");
-
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << file.errorString();
-        return {};
-    }
-
-    QDomDocument prop;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    auto result = prop.setContent(&file, QDomDocument::ParseOption::Default);
-    if (!result) {
-        qDebug() << "invalid xml file. " << file.fileName() << result.errorMessage << ", line = " << result.errorLine
-                 << ", column = " << result.errorColumn;
-        return {};
-    }
-#else
-    QString errorMessage;
-    int errorLine = 0;
-    int errorColumn = 0;
-    if (!prop.setContent(&file, false, &errorMessage, &errorLine, &errorColumn)) {
-        qDebug() << "invalid xml file. " << file.fileName() << errorMessage << ", line = " << errorLine
-                 << ", column = " << errorColumn;
-        return {};
-    }
-#endif
-    file.close();
-
-    return prop;
-}
 #ifdef Q_PROCESSOR_X86_64
     // This is gonna be rough
     #ifdef _WIN32
@@ -111,12 +82,11 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
     mViaPoint(aViaPoint),
     mProject(),
     mProjectActions(),
-    mVideoFormats(),
     mGUIResources(aGUIResources) {
     // load the list of video formats from a setting file.
-    loadVideoFormats();
 
     MainWindow* mainWindow = &aMainWindow;
+    mMainWindow = &aMainWindow;
 
     auto fileMenu = new QMenu(tr("File"), this);
     {
@@ -209,56 +179,39 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
         auto saveProjectAs = new QAction(tr("Save project as"), this);
         auto closeProject = new QAction(tr("Close project"), this);
         auto exportWindow = new QAction(tr("Export project as"), this);
-        auto exportAs = new QMenu(tr("Legacy exporter (deprecated)"), this);
-        {
-            ctrl::VideoFormat gifFormat;
-            gifFormat.name = "gif";
-            gifFormat.label = "GIF";
-            gifFormat.icodec = "ppm";
-
-            auto jpgs = new QAction(tr("JPEG Sequence"), this);
-            auto pngs = new QAction(tr("PNG Sequence"), this);
-            auto gif = new QAction(tr("GIF Animation"), this);
-            connect(jpgs, &QAction::triggered, [=]() { mainWindow->onExportImageSeqTriggered("jpg"); });
-            connect(pngs, &QAction::triggered, [=]() { mainWindow->onExportImageSeqTriggered("png"); });
-            connect(gif, &QAction::triggered, [=]() { mainWindow->onExportVideoTriggered(gifFormat); });
-            exportAs->addAction(jpgs);
-            exportAs->addAction(pngs);
-            exportAs->addAction(gif);
-
-            for (const auto& format : mVideoFormats) {
-                auto video = new QAction(format.label + " " + tr("Video"), this);
-                connect(video, &QAction::triggered, [=]() { mainWindow->onExportVideoTriggered(format); });
-                exportAs->addAction(video);
-            }
-        }
-        auto quickExport = new QMenu(tr("Quickly export as"), this);
-        {
-            auto pngs = new QAction(tr("PNG Sequence"), this);
-            auto gif_transparent = new QAction(tr("GIF Animation (Transparent)"), this);
-            auto gif_opaque = new QAction(tr("GIF Animation (Opaque)"), this);
-            auto webm_transparent = new QAction(tr("WebM Animation (Transparent)"), this);
-            auto webm_opaque = new QAction(tr("WebM Animation (Opaque)"), this);
-            auto mp4 = new QAction(tr("MP4 Video"), this);
-            auto avi = new QAction(tr("AVI Video"), this);
-
-            QVector<QAction*> actions = {pngs, gif_transparent, gif_opaque, webm_transparent, webm_opaque, mp4, avi};
-            QStringList formats = {"png", "gif_t", "gif_o", "webm_t", "webm_o", "mp4", "avi"};
-            assert(actions.size() == formats.size());
-            int i = 0;
-            for (auto action: actions) {
-                connect(action, &QAction::triggered, [=]() { mainWindow->onQuickExportTriggered(formats.at(i)); });
-                quickExport->addAction(action);
-                i++;
-            }
-        }
+        // "Quickly export as" is a QUICK action, so it leads with what this user
+        // actually exports to. It used to list all fifty-five destinations in six
+        // groups, which is a browsing list wearing a shortcut's name -- and it grew
+        // a second column the moment the chat and post families arrived. The
+        // recents come first and the full grouped list is one level down, so
+        // nothing became unreachable.
+        // "Quickly export as..." opens the destination picker (see
+        // gui/DestinationPicker) and exports as soon as one is chosen: no dialogs
+        // after that, the folder is remembered per destination.
+        //
+        // It was a submenu per family, which made this four levels deep
+        // (File -> Quickly export as -> family -> destination) and, at any level, a
+        // list of fifty-five rows. A menu cannot be searched; the picker can.
+        auto quickExport = new QAction(tr("Quickly export as..."), this);
+        quickExport->setObjectName(QString::fromUtf8("quickExportAction"));
+        connect(quickExport, &QAction::triggered, [mainWindow]() {
+            mainWindow->onQuickExportTriggered();
+        });
 
         mProjectActions.push_back(saveProject);
         mProjectActions.push_back(saveProjectAs);
         mProjectActions.push_back(closeProject);
         mProjectActions.push_back(exportWindow);
-        mProjectActions.push_back(exportAs->menuAction());
-        mProjectActions.push_back(quickExport->menuAction());
+        mProjectActions.push_back(quickExport);
+
+        // Re-export: the same export, one click, no dialogs. Export is not a
+        // one-shot here — the same sticker gets exported a dozen times while the
+        // art is adjusted — and until now every one of those runs meant re-walking
+        // the menu, the destination and the file dialog from scratch.
+        mExportAgainAction = new QAction(tr("Export again"), this);
+        mExportAgainAction->setEnabled(false);
+        connect(mExportAgainAction, &QAction::triggered, mainWindow,
+                &MainWindow::onExportAgainTriggered);
 
         connect(newProject, &QAction::triggered, mainWindow, &MainWindow::onNewProjectTriggered);
         connect(openProject, &QAction::triggered, mainWindow, &MainWindow::onOpenProjectTriggered);
@@ -274,9 +227,8 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
         fileMenu->addAction(saveProject);
         fileMenu->addAction(saveProjectAs);
         fileMenu->addAction(exportWindow);
-        fileMenu->addAction(quickExport->menuAction());
-        fileMenu->addSeparator();
-        fileMenu->addAction(exportAs->menuAction());
+        fileMenu->addAction(quickExport);
+        fileMenu->addAction(mExportAgainAction);
         fileMenu->addSeparator();
         fileMenu->addAction(closeProject);
     }
@@ -397,9 +349,8 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
 
         auto checkForUpdates = new QAction(tr("Check for updates"), this);
         connect(checkForUpdates, &QAction::triggered, [=]() {
-            const util::NetworkUtil networking;
             const QString url("https://api.github.com/repos/AnimeEffectsDevs/AnimeEffects/tags");
-            util::NetworkUtil::checkForUpdate(url, networking, this);
+            util::NetworkUtil::checkForUpdate(url, this);
         });
         auto diagnostics = new QAction(tr("System telemetry"), this);
         connect(diagnostics, &QAction::triggered, [=] {
@@ -535,24 +486,13 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
             }
             const QString isFolderWritable = isWritable ? "True" : "False";
             detail += tr("Location Is Writable: ") + isFolderWritable + "\n";
-            // FFmpeg Check
-            QFileInfo ffmpeg_file;
-            QString ffmpeg;
-            if (util::NetworkUtil::os() == "win") {
-                ffmpeg_file = QFileInfo("./tools/ffmpeg.exe");
-            } else {
-                ffmpeg_file = QFileInfo("./tools/ffmpeg");
-            }
-            if (!ffmpeg_file.exists() || !ffmpeg_file.isExecutable()) {
-                ffmpeg = "ffmpeg";
-            } else {
-                ffmpeg = ffmpeg_file.absoluteFilePath();
-            }
-            bool fExists = util::NetworkUtil::libExists(ffmpeg, "-version");
-            QString ffmpegType = ffmpeg == "ffmpeg" ? "Process" : "File";
-            QString ffmpegReach = fExists ? "True" : "False";
-            detail += tr("FFmpeg Reach Type: ") + ffmpegType + "\n";
-            detail += tr(QString("FFmpeg Reachable: " + ffmpegReach).toStdString().c_str());
+            // THE MEDIA BACKEND, AS LINKED. There is no ffmpeg process to check for:
+            // media/ links libav* directly, so what a bug report needs is the build
+            // of those libraries, not the reachability of a binary nothing invokes.
+            // licence() and configuration() are libav's own answers, and the
+            // configuration line is what names the encoders this build carries.
+            detail += tr("libav licence: ") + media::ffmpeg::license() + "\n";
+            detail += tr("libav configuration: ") + media::ffmpeg::configuration() + "\n";
             msgBox.setText(tr("System specs successfully copied to the clipboard"));
             QClipboard *clipboard = QGuiApplication::clipboard();
             clipboard->setText(detail);
@@ -588,6 +528,10 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
     setProject(nullptr);
 }
 
+void MainMenuBar::setExportAgainEnabled(bool aOn) {
+    if (mExportAgainAction) mExportAgainAction->setEnabled(aOn);
+}
+
 void MainMenuBar::setProject(core::Project* aProject) {
     mProject = aProject;
 
@@ -602,74 +546,6 @@ void MainMenuBar::setProject(core::Project* aProject) {
     }
 }
 
-void MainMenuBar::loadVideoFormats() {
-    using util::TextUtil;
-
-    QDomDocument doc = getVideoExportDocument();
-    QDomElement domRoot = doc.firstChildElement("video_encode");
-
-    // for each format
-    QDomElement domFormat = domRoot.firstChildElement("format");
-    while (!domFormat.isNull()) {
-        ctrl::VideoFormat format;
-        // neccessary attribute
-        format.name = domFormat.attribute("name");
-        if (format.name.isEmpty())
-            continue;
-        // optional attributes
-        format.label = domFormat.attribute("label");
-        format.icodec = domFormat.attribute("icodec");
-        format.command = domFormat.attribute("command");
-        if (format.label.isEmpty())
-            format.label = format.name;
-        if (format.icodec.isEmpty())
-            format.icodec = "png";
-        // add one format
-        mVideoFormats.push_back(format);
-
-        // for each codec
-        QDomElement domCodec = domFormat.firstChildElement("codec");
-        while (!domCodec.isNull()) {
-            ctrl::VideoCodec codec;
-            // neccessary attribute
-            codec.name = domCodec.attribute("name");
-            if (codec.name.isEmpty())
-                continue;
-            // optional attributes
-            codec.label = domCodec.attribute("label");
-            codec.icodec = domCodec.attribute("icodec");
-            codec.command = domCodec.attribute("command");
-            if (codec.label.isEmpty())
-                codec.label = codec.name;
-            if (codec.icodec.isEmpty())
-                codec.icodec = format.icodec;
-            if (codec.command.isEmpty())
-                codec.command = format.command;
-            {
-                auto hints = TextUtil::splitAndTrim(domCodec.attribute("hint"), ',');
-                for (const auto& hint : hints) {
-                    if (hint == "lossless")
-                        codec.lossless = true;
-                    else if (hint == "transparent")
-                        codec.transparent = true;
-                    else if (hint == "colorspace")
-                        codec.colorspace = true;
-                    else if (hint == "gpuenc")
-                        codec.gpuenc = true;
-                }
-            }
-            codec.pixfmts = TextUtil::splitAndTrim(domCodec.attribute("pixfmt"), ',');
-
-            // add one codec
-            mVideoFormats.back().codecs.push_back(codec);
-
-            // to next sibling
-            domCodec = domCodec.nextSiblingElement("codec");
-        }
-        // to next sibling
-        domFormat = domFormat.nextSiblingElement("format");
-    }
-}
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------

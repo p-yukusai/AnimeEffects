@@ -42,7 +42,7 @@ public:
     static cmnd::Base* createNodeUnbinderForDelete(ObjectNode& aNode);
     // static cmnd::Base* createNodeUnbinderForMove(
     //         ObjectTree& aTree, const util::TreePos& aFrom, const util::TreePos& aTo);
-    static cmnd::Base* createNodesUnbinderForMove(ObjectTree& aTree, const BoneUnbindWorkspacePtr& aWorkspace);
+    static cmnd::Base* createNodesUnbinderForMove(const BoneUnbindWorkspacePtr& aWorkspace);
 
 private:
     static void onTimeLineModified(

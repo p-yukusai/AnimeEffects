@@ -21,6 +21,25 @@ public:
         int endFrame = 0;   // 0 = to the end of the export range; else clamp
         float volume = 1.0f; // linear gain applied before mixing
         bool enabled = true;
+
+        // The settings an editor UI collects, mapped onto a mixer track. It lives
+        // here so the mapping is unit-testable without the GUI, and because the
+        // per-track export switch is the one field that keeps getting lost on the
+        // way: it was hardcoded true in the GUI's own converter, so a track the user
+        // had marked "reference only" was still mixed into the exported file while
+        // the plan counted it as excluded.
+        //
+        // aVolume is 0..1: the UI owns its own percentage curve.
+        static Track fromSettings(const QString& aPath, float aVolume, int aStartFrame,
+                                  int aEndFrame, bool aExportEnabled) {
+            Track t;
+            t.path = aPath;
+            t.startFrame = aStartFrame;
+            t.endFrame = aEndFrame;
+            t.volume = aVolume;
+            t.enabled = aExportEnabled;
+            return t;
+        }
     };
 
     struct Config {

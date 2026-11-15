@@ -101,6 +101,44 @@
     <file>shaders/PartialScreenCopyingFrag.glsl</file>
     <file>shaders/PartialScreenCopyingVert.glsl</file>
     <file>shaders/TestBlurVert.glsl</file>
-    <file>encode/VideoEncode.txt</file>
-  </qresource>
+    <file>export/ExportTargets.txt</file>
+      <file>icons/brand-bilibili.svg</file>
+    <file>icons/brand-bluesky.svg</file>
+    <file>icons/brand-discord.svg</file>
+    <file>icons/brand-instagram.svg</file>
+    <file>icons/brand-kakaotalk.svg</file>
+    <file>icons/brand-line.svg</file>
+    <file>icons/brand-mastodon.svg</file>
+    <file>icons/brand-messenger.svg</file>
+    <file>icons/brand-obsstudio.svg</file>
+    <file>icons/brand-qq.svg</file>
+    <file>icons/brand-reddit.svg</file>
+    <file>icons/brand-signal.svg</file>
+    <file>icons/brand-sinaweibo.svg</file>
+    <file>icons/brand-telegram.svg</file>
+    <file>icons/brand-tiktok.svg</file>
+    <file>icons/brand-niconico.svg</file>
+    <file>icons/brand-facebook.svg</file>
+    <file>icons/brand-tumblr.svg</file>
+    <file>icons/brand-pinterest.svg</file>
+    <file>icons/brand-pixiv.svg</file>
+    <file>icons/brand-snapchat.svg</file>
+    <file>icons/brand-dailymotion.svg</file>
+    <file>icons/brand-vimeo.svg</file>
+    <file>icons/brand-deviantart.svg</file>
+    <file>icons/brand-newgrounds.svg</file>
+    <file>icons/brand-twitch.svg</file>
+    <file>icons/brand-vk.svg</file>
+    <file>icons/brand-wechat.svg</file>
+    <file>icons/brand-whatsapp.svg</file>
+    <file>icons/brand-x.svg</file>
+    <file>icons/brand-youtube.svg</file>
+    <file>icons/dest-archive.svg</file>
+    <file>icons/dest-attachment.svg</file>
+    <file>icons/dest-audio.svg</file>
+    <file>icons/dest-chat.svg</file>
+    <file>icons/dest-film.svg</file>
+    <file>icons/dest-sticker.svg</file>
+    <file>icons/dest-website.svg</file>
+</qresource>
 </RCC>

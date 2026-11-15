@@ -21,8 +21,36 @@ include(GNUInstallDirs)
 find_package(Qt6 REQUIRED COMPONENTS Core5Compat Core Gui OpenGL OpenGLWidgets Svg Xml Concurrent Widgets Multimedia Quick Qml QuickWidgets LinguistTools)
 # Qt's i18n CMake support: declares the translated languages lupdate/lrelease
 # operate on, and enables the qt_add_translations/update_translations targets.
-# The translation sources live in data/locale/translation_<locale>.ts.
+# The translation sources live in assets/locale/translation_<locale>.ts.
 qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES es ja ko ru zh)
+
+# ---------------------------------------------------------------------------
+# Warning policy for first-party code.
+#
+# This project compiled with no warning flags at all, which is why a test
+# section could be defined and never called (`-Wunused-function` is not on by
+# default; it needs -Wall) and why the compiler had nothing to say about it.
+# The policy is a function each first-party directory calls explicitly rather
+# than a global add_compile_options, so that:
+#   - the flag set has exactly one definition, and
+#   - vendored subprojects (src/deps/pugixml) do not inherit our flags and get
+#     linted as if the warnings were ours.
+#
+# Deliberately NOT -Werror: this codebase is built by several compilers, and
+# promoting warnings to errors turns a compiler difference into a broken build.
+# The point is to see the warnings, not to be blocked by them.
+#
+# MSVC is not enabled here. It IS a supported path (the Windows CI uses
+# win64_msvc2022_64, whose equivalent level is /W4), but that path cannot be
+# verified from this machine, and switching on a warning level blind would put
+# unverified noise into CI. Left as a documented gap rather than a guess.
+# ---------------------------------------------------------------------------
+function(ae_enable_warnings)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-Wall -Wextra)
+    endif()
+endfunction()
+
 # Get sources
 add_subdirectory(src/util)
 add_subdirectory(src/thr)

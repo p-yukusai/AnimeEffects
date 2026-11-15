@@ -1,3 +1,8 @@
+# The tests are first-party code, so they use the project warning policy
+# (see ae_enable_warnings in the top-level CMakeLists.txt): a test whose
+# sections can silently not run is a test that reads as coverage.
+ae_enable_warnings()
+
 # Regression test for the BoneKey::deserialize use-after-free (dangling
 # &mBindingCaches.back() captured into a deferred IDSolver lambda that runs
 # after the QList reallocates). Self-contained; see bonekey_regression.cpp.
@@ -18,7 +23,17 @@ target_link_libraries(bonekey_regression PRIVATE
 
 # Round-trip project loader/saver harness (open -> serialize -> reload -> close).
 # Takes .anie paths on the command line; used to exercise real project files.
-add_executable(roundtrip roundtrip_main.cpp)
+#
+# It needs the embedded resources: loading a project initialises GL, which reads
+# :/shaders/*.glsl. Without assets.qrc the harness dies with
+# "XC_FATAL FileIO Error No such file or directory :/shaders/MeshTransformVert.glsl"
+# on the first real project — i.e. the one tool whose job is to round-trip real
+# projects could not open one. The sibling GL harness (media_exporter_e2e) has
+# always embedded them; this one was left behind when the assets moved from a
+# data directory on disk into the binary.
+add_executable(roundtrip roundtrip_main.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+)
 target_include_directories(roundtrip PRIVATE ..)
 target_compile_definitions(roundtrip PRIVATE
     AE_MAJOR_VERSION=1
@@ -121,6 +136,85 @@ target_link_libraries(easing_picker_layout PRIVATE
 # Interactive behavior probe for the EasingPickWidget (mode switch, slider
 # drag-outside, knob clip, bezier spin input). Same source set as the layout
 # gate; prints PASS/FAIL lines for each behavior.
+# What the destination picker shows, offscreen: the list's own state, which is the
+# part a person is affected by (what is selected when it opens, what typing selects).
+# No display: the GUI probes ask the same question and need a bus and a window manager
+# to do it, which is why this went unnoticed.
+add_executable(destination_picker
+    destination_picker.cpp
+    ../src/gui/DestinationPicker.cpp
+    ../src/gui/GUIResources.cpp
+    ../src/gui/AppStyle.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/gui/theme/Theme.cpp
+    ../src/ctrl/ExportTarget.cpp)
+target_include_directories(destination_picker PRIVATE .. ../src/gui)
+target_compile_definitions(destination_picker PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_RESOURCE_DIR="${CMAKE_SOURCE_DIR}/assets"
+    AE_EXPORT_TARGETS_PATH="${CMAKE_SOURCE_DIR}/assets/export/ExportTargets.txt"
+    # The .qm are build artifacts (not sources) and they are what the app actually
+    # loads, so the language assertions need the built catalog and a dependency on
+    # it: without release_translations this test would read a stale file and pass.
+    AE_I18N_QM_DIR="${PROJECT_BINARY_DIR}/src/gui"
+)
+add_dependencies(destination_picker release_translations)
+target_link_libraries(destination_picker PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml Qt6::Svg
+    media
+)
+
+# The export dialog, headless: what it STATES and what it OFFERS per destination.
+# This is the coverage hole the session named twice: every export-form bug was either
+# a fact contradicting a control or a control the destination did not decide, and both
+# are questions about text and widget state rather than about pixels. Compiles
+# ExportTarget.cpp + ExportFacts.cpp + the dialog header (GL-free), so it needs no
+# project, no GL context and no display. See tests/export_form.cpp.
+add_executable(export_form
+    export_form.cpp
+    ../src/gui/ExportFacts.cpp
+    ../src/gui/GUIResources.cpp
+    ../src/gui/AppStyle.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/gui/theme/Theme.cpp
+    ../src/ctrl/ExportTarget.cpp
+    ../src/gui/exportdiag.h
+    # The destination TABLE, embedded the way the application embeds it.
+    #
+    # The table is loaded two ways: this test passes a path (AE_EXPORT_TARGETS_PATH) for
+    # the plan and the facts, while the DIALOG's own lookups - the codec's quality span,
+    # the quality buckets, the time budgets - call the static loaders, whose default path
+    # is the embedded ":/export/ExportTargets.txt". Without this resource the test's
+    # dialog sees an EMPTY table: every codec looks like it has no quality knob, the
+    # override control is never offered (measured: 0 of 56 rows), and the assertions that
+    # ask about it were skipped for every row while the suite stayed green. A dialog test
+    # that reads a different table than the application is not testing the application.
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(export_form PRIVATE .. ../src/gui)
+target_compile_definitions(export_form PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_RESOURCE_DIR="${CMAKE_SOURCE_DIR}/assets"
+    AE_EXPORT_TARGETS_PATH="${CMAKE_SOURCE_DIR}/assets/export/ExportTargets.txt"
+    AE_EXPORT_STRINGS_PATH="${CMAKE_SOURCE_DIR}/src/ctrl/ExportTargetStrings.h"
+    # .qm are build artifacts (release_translations); the runtime translation
+    # assertion loads one from the build output, never from source.
+    AE_I18N_QM_DIR="${PROJECT_BINARY_DIR}/src/gui"
+)
+target_link_libraries(export_form PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml Qt6::Svg
+    media
+)
+# The runtime translation assertion reads a BUILT catalog, so the test has to depend on
+# the catalog being rebuilt: without this it can run against a stale .qm and report that
+# the table arrives untranslated, which is exactly what happened the first time.
+add_dependencies(export_form release_translations)
+
 add_executable(picker_probe
     picker_probe.cpp
     ../src/gui/prop/EasingPickWidget.cpp
@@ -133,6 +227,7 @@ target_compile_definitions(picker_probe PRIVATE
     AE_MAJOR_VERSION=1
     AE_MINOR_VERSION=7
     AE_MICRO_VERSION=1
+    AE_ICONS_DIR="${CMAKE_SOURCE_DIR}/assets/icons"
     USE_GL_CORE_PROFILE
 )
 target_link_libraries(picker_probe PRIVATE
@@ -321,23 +416,34 @@ target_link_libraries(media_audio_mixer PRIVATE
     media
 )
 
-# V3 — export preset compatibility matrix. Parses assets/encode/VideoEncode.txt
-# and asserts every preset maps to an available libav encoder and a supported
-# pixel format (the compatibility gate). Headless. See media_preset_matrix.cpp.
-add_executable(media_preset_matrix media_preset_matrix.cpp)
-target_include_directories(media_preset_matrix PRIVATE ..)
-target_compile_definitions(media_preset_matrix PRIVATE
+# Export-destination table prototype: loads assets/export/ExportTargets.txt,
+# validates every row against the linked libav* build, checks the size/cap
+# rules, resolves the codec ladder, and encodes real files from resolved plans.
+# Compiles ExportTarget.cpp directly (GL-free) so it links only media + Qt
+# Core/Gui/Xml. Headless. See media_export_target.cpp.
+add_executable(media_export_target
+    media_export_target.cpp
+    ../src/ctrl/ExportTarget.cpp
+    ../src/ctrl/ExportTarget.h
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(media_export_target PRIVATE ..)
+target_compile_definitions(media_export_target PRIVATE
     AE_MAJOR_VERSION=1
     AE_MINOR_VERSION=7
     AE_MICRO_VERSION=1
     USE_GL_CORE_PROFILE
-    AE_VIDEOENCODE_PATH="${CMAKE_SOURCE_DIR}/assets/encode/VideoEncode.txt"
+    AE_EXPORT_TARGETS_PATH="${CMAKE_SOURCE_DIR}/assets/export/ExportTargets.txt"
+    AE_EXPORT_STRINGS_PATH="${CMAKE_SOURCE_DIR}/src/ctrl/ExportTargetStrings.h"
 )
-target_link_libraries(media_preset_matrix PRIVATE
+target_link_libraries(media_export_target PRIVATE
     Qt6::Core
+    Qt6::Gui
     Qt6::Xml
     media
 )
+# (Warning flags come from the directory-wide ae_enable_warnings() call at the
+# top of this file; this target used to set -Wall -Wextra on its own, from when
+# it was the only target that had them.)
 
 # End-to-end export harness: offscreen (GL via a QOpenGLWidget) render of a
 # minimal project -> ctrl::Exporter -> a real mp4, verified with ffprobe. This

@@ -7,7 +7,7 @@
 #include "img/Util.h"
 
 #include "oraParser.h"
-#include "deps/zip_file.h"
+#include <zip_file.h>
 #include "gui/res/res_ResourceUpdater.h"
 
 #include <QMessageBox>
