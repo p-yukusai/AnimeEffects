@@ -12,13 +12,19 @@ namespace {
 // so the nulls are dropped here either way rather than trusted from the count.
 QString decodeUnicodeName(const uint8* aData, uint32 aUnitCount)
 {
-    // swap the units to native order by hand: QString::fromUtf16 reads the host's
-    // byte order, and the block is big-endian by definition.
-    std::vector<unsigned short> units(aUnitCount);
+    // Swap the units to native order by hand: QString::fromUtf16 reads the host's byte
+    // order, and the block is big-endian by definition.
+    //
+    // THE BUFFER IS char16_t, which is the type QString::fromUtf16 takes (the
+    // `unsigned short*` overload is deprecated): the units are decoded into it directly
+    // rather than poured into a uint16 buffer and reinterpret_cast - two 16-bit integer
+    // types are not interchangeable through a pointer without breaking the aliasing rule,
+    // and the cast would have been the only reason to do it.
+    std::vector<char16_t> units(aUnitCount);
     for (uint32 i = 0; i < aUnitCount; ++i) {
-        units[i] = (unsigned short)((aData[i * 2] << 8) | aData[i * 2 + 1]);
+        units[i] = char16_t((aData[i * 2] << 8) | aData[i * 2 + 1]);
     }
-    QString name = QString::fromUtf16(units.data(), (int)units.size());
+    QString name = QString::fromUtf16(units.data(), qsizetype(units.size()));
     while (!name.isEmpty() && name.at(name.size() - 1).isNull()) {
         name.chop(1);
     }

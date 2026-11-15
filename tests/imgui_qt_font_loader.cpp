@@ -23,6 +23,7 @@
 // and the process exits non-zero; a precondition that regressed is asserted rather than
 // skipped, so a broken CJK path cannot pass quietly.
 
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
@@ -438,6 +439,68 @@ int main(int argc, char** argv)
               "' ' reports the face's own space advance (%.3f px, Qt says %.3f px), not a fallback character's",
               (double)space.advanceX, (double)spaceAdvance.x());
         check(space.sourceIdx == 0, "' ' comes from source 0 (Geist), like every other ASCII codepoint");
+    }
+
+    printf("\n== 2c. the panel's own size: advances are WHOLE pixels ==\n");
+    {
+        // WHY THIS IS A GATE. gui::GraphPanelFrame draws the panel's numbers with this loader,
+        // at the size panelFontPixelSize() derives, and ImGui truncates a run's origin ONCE
+        // and then accumulates each glyph's AdvanceX in floats (ImFont::RenderText's "align to
+        // be pixel perfect"). A fractional advance therefore puts every glyph after the first
+        // on a fractional column, and the atlas is sampled with GL_LINEAR - so each of them is
+        // bilinearly blurred while the first is sharp. That is what made the graph panel's
+        // ruler numbers read blurrier than the timeline's beside them: MEASURED at 12px the
+        // digit advance is 7.1875, the run "0123456789" put its glyphs at 8, 16.1875, 22.375,
+        // 29.5625 ..., and the rendered frame carried 6.4% of the run's inked pixels at full
+        // coverage against Qt's 12.7% (the first glyph, the only one on a whole pixel, matched
+        // Qt byte for byte). installQtFontLoader() adds every source with PixelSnapH, and
+        // ImGui applies it in BOTH the render and the metrics path, so what is drawn and what
+        // CalcTextSize() measures are the same rounded number - which is why the assertion is
+        // on the advance the atlas carries and not on a drawn pixel.
+        QFont panelFont(QStringLiteral("Geist"));
+        panelFont.setPointSizeF(9.0); // what the application sets: 9pt -> 12px at 96 dpi
+        const float panelSize = gui::imgui_qt::panelFontPixelSize(panelFont, 96.0);
+        ImFontAtlas panelAtlas;
+        const int panelSources = gui::imgui_qt::installQtFontLoader(panelAtlas, panelFont, panelSize, 1);
+        panelAtlas.Build();
+        QRawFont panelFace;
+        panelFace.loadFromData(geistBytes, panelSize, QFont::PreferDefaultHinting);
+        printf("panel size: installQtFontLoader(%.1f) -> %d sources; face valid=%d\n", (double)panelSize,
+               panelSources, panelFace.isValid() ? 1 : 0);
+        check(panelSize > 0.0f && panelSources >= 1 && panelFace.isValid(),
+              "the panel's size (%.1f px) installs %d source(s) and Qt resolves the face", (double)panelSize,
+              panelSources);
+        float firstDigitAdvance = 0.0f;
+        float firstFaceAdvance = 0.0f;
+        bool wholePixels = true;
+        bool tabular = true;
+        bool roundedFromQt = true;
+        for (ImWchar codepoint = '0'; codepoint <= '9'; ++codepoint) {
+            const GlyphProbe digit = probeGlyph(panelAtlas, panelSize, codepoint);
+            const QList<quint32> indexes = panelFace.glyphIndexesForString(QString(QChar(codepoint)));
+            QPointF faceAdvance;
+            const bool haveIndex = !indexes.isEmpty() && indexes.at(0) != 0 &&
+                panelFace.advancesForGlyphIndexes(&indexes[0], &faceAdvance, 1);
+            if (codepoint == '0') {
+                firstDigitAdvance = digit.advanceX;
+                firstFaceAdvance = (float)faceAdvance.x();
+            }
+            wholePixels = wholePixels && digit.found && (digit.advanceX == std::floor(digit.advanceX));
+            tabular = tabular && (digit.advanceX == firstDigitAdvance);
+            roundedFromQt = roundedFromQt && haveIndex &&
+                (std::lround(digit.advanceX) == std::lround(faceAdvance.x()));
+            printf("  digit '%c' @%.1fpx: found=%d advance=%.4f (Qt %.4f, rounded %ld)\n", (char)codepoint,
+                   (double)panelSize, digit.found ? 1 : 0, (double)digit.advanceX, (double)faceAdvance.x(),
+                   haveIndex ? std::lround(faceAdvance.x()) : -1L);
+        }
+        check(tabular, "every digit reports the same advance (%.4f px): the face's figures are tabular",
+              (double)firstDigitAdvance);
+        check(wholePixels,
+              "every digit's advance is a WHOLE number of pixels (%.1f px) - a fractional one is what put the "
+              "panel's glyphs after the first on half pixels and blurred them", (double)firstDigitAdvance);
+        check(roundedFromQt,
+              "the whole-pixel advance is Qt's own advance ROUNDED (%.4f -> %.1f px), not a different metric",
+              (double)firstFaceAdvance, (double)firstDigitAdvance);
     }
 
     printf("\n== 3. CJK: U+4E00 from a FALLBACK source ==\n");

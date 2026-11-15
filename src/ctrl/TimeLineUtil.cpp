@@ -1,4 +1,5 @@
 #include <QDebug>
+#include <QSet>
 #include "cmnd/BasicCommands.h"
 #include "cmnd/ScopedMacro.h"
 #include "core/TimeKeyType.h"
@@ -9,6 +10,7 @@
 #include "ctrl/TimeLineUtil.h"
 #include "ctrl/CmndName.h"
 #include "ctrl/graph/graph_Channel.h"
+#include "ctrl/proportional/prop_Keys.h"
 
 using namespace core;
 
@@ -16,8 +18,78 @@ namespace ctrl {
 
 namespace TimeLineUtil {
 
+    namespace {
+
+        // ONE key's proportional flag and weights, as ONE undo step. Enabling
+        // derives the weights from the key's CURRENT position against its CURRENT
+        // absolute neighbours (the only time a weight is derived); disabling drops
+        // them entirely.
+        class SetProportionalKeyCommand: public cmnd::Stable {
+        public:
+            SetProportionalKeyCommand(core::TimeLine& aLine, core::TimeKey& aKey, bool aEnable):
+                mKey(&aKey), mEnable(aEnable), mBaseEnabled(aKey.isProportional()), mBaseState(), mNextState() {
+                if (mBaseEnabled) {
+                    mBaseState = *aKey.proportionalState();
+                }
+                if (aEnable) {
+                    mNextState = proportional::rebaseState(
+                        aKey, proportional::findBounds(aLine.map(aKey.type()), aKey)
+                    );
+                }
+            }
+
+            virtual void undo() {
+                if (mBaseEnabled) {
+                    mKey->setProportionalState(mBaseState);
+                } else {
+                    mKey->clearProportionalState();
+                }
+            }
+
+            virtual void redo() {
+                if (mEnable) {
+                    mKey->setProportionalState(mNextState);
+                } else {
+                    mKey->clearProportionalState();
+                }
+            }
+
+        private:
+            core::TimeKey* mKey;
+            bool mEnable;
+            bool mBaseEnabled;
+            core::TimeKey::Proportional mBaseState;
+            core::TimeKey::Proportional mNextState;
+        };
+
+        // The VALUE half of one key edit, seen as a whole: every proportional key
+        // of the edited key's map follows the edit from its stored weights, and
+        // undo restores their values AND weights. The capture runs before the
+        // edited value is written (construction of this command); apply/restore
+        // run after that write in exec and before its undo, which is why the
+        // caller pushes this command AFTER the edit command in the same macro.
+        class ReflowValuesCommand: public cmnd::Stable {
+        public:
+            ReflowValuesCommand(core::TimeLine& aLine, core::TimeKeyType aType, core::TimeKey& aEditedKey) {
+                mReflow.capture(aLine, aType, QVector<core::TimeKey*> {&aEditedKey});
+            }
+
+            // No proportional key in the map: nothing to reflow, so the caller
+            // must not push an empty history entry.
+            bool hasWork() const { return !mReflow.empty(); }
+
+            virtual void undo() { mReflow.restore(); }
+            virtual void redo() { mReflow.apply(); }
+
+        private:
+            proportional::ValueReflow mReflow;
+        };
+
+    } // namespace
+
     //---------------------------------------------------------------------------------------
-    MoveFrameOfKey::MoveFrameOfKey(const TimeLineEvent& aCommandEvent): mSortedTargets(), mCurrent(0), mMove(0) {
+    MoveFrameOfKey::MoveFrameOfKey(const TimeLineEvent& aCommandEvent):
+        mSortedTargets(), mContexts(), mCurrent(0), mMove(0) {
         for (const TimeLineEvent::Target& target : aCommandEvent.targets()) {
             // check validity of initial values
             XC_ASSERT(target.pos.index() == target.subIndex);
@@ -26,6 +98,69 @@ namespace TimeLineUtil {
         }
         // sort targets for the purpose of the move with no conflict.
         std::sort(mSortedTargets.begin(), mSortedTargets.end(), lessThan);
+
+        // One context per (line, type): the map is what a projection reads, and
+        // keys of different maps never share bounds.
+        for (int i = 0; i < mSortedTargets.size(); ++i) {
+            TimeLineEvent::Target& target = mSortedTargets[i];
+            TimeLine* line = target.pos.line();
+            if (!line)
+                continue;
+
+            Context* context = nullptr;
+            for (Context& candidate : mContexts) {
+                if (candidate.line == line && candidate.type == target.pos.type()) {
+                    context = &candidate;
+                    break;
+                }
+            }
+            if (!context) {
+                Context fresh;
+                fresh.line = line;
+                fresh.type = target.pos.type();
+                mContexts.append(fresh);
+                context = &mContexts.last();
+            }
+            context->targetIndices.append(i);
+        }
+
+        for (Context& context : mContexts) {
+            const TimeLine::MapType& map = context.line->map(context.type);
+
+            // Every selected key of this map: a selected target owns its own
+            // frame, a proportional one also remembers the weights it had before
+            // the move so undo can restore them exactly.
+            QSet<TimeKey*> selectedKeys;
+            for (int index : context.targetIndices) {
+                TimeKey* key = mSortedTargets[index].pos.key();
+                if (!key)
+                    continue;
+                selectedKeys.insert(key);
+                if (key->isProportional()) {
+                    SelectedProportional selected;
+                    selected.key = key;
+                    selected.baseState = *key->proportionalState();
+                    context.selected.append(selected);
+                }
+            }
+
+            // Every OTHER proportional key of the map follows the move. Its
+            // weights are stored, never re-derived per step: rebaseState is only
+            // reached when a different key has become its bound.
+            for (TimeKey* key : map) {
+                if (!key || selectedKeys.contains(key) || !key->isProportional())
+                    continue;
+
+                ProjectedKey projected;
+                projected.key = key;
+                projected.baseFrame = key->frame();
+                projected.currentFrame = projected.baseFrame;
+                projected.nextFrame = projected.baseFrame;
+                projected.baseState = *key->proportionalState();
+                projected.nextState = projected.baseState;
+                context.projected.append(projected);
+            }
+        }
     }
 
     bool MoveFrameOfKey::lessThan(const TimeLineEvent::Target& aLhs, const TimeLineEvent::Target& aRhs) {
@@ -35,19 +170,25 @@ namespace TimeLineUtil {
         return aLhs.pos.index() > aRhs.pos.index();
     }
 
-    bool MoveFrameOfKey::contains(const core::TimeLine::MapType& aMap, int aIndex) {
-        if (mCurrent == 0) {
-            for (const TimeLineEvent::Target& target : mSortedTargets) {
-                if (&target.pos.map() == &aMap && target.pos.index() == aIndex)
-                    return true;
-            }
-        } else {
-            for (const TimeLineEvent::Target& target : mSortedTargets) {
-                if (&target.pos.map() == &aMap && target.subIndex == aIndex)
-                    return true;
-            }
+    int MoveFrameOfKey::finalFrameOf(
+        const Context& aContext, const TimeKey& aKey, const QVector<int>& aFinalFrames
+    ) const {
+        for (int index : aContext.targetIndices) {
+            if (index < 0 || aFinalFrames.size() <= index)
+                continue;
+            const TimeLineEvent::Target& target = mSortedTargets[index];
+            if (target.pos.type() != aContext.type)
+                continue;
+
+            // The key this target owns is at its ORIGINAL frame before the batch
+            // runs and at the recorded destination afterwards. The key pointer is
+            // the same object either way; resolving it through the map (instead of
+            // pos.key()) is what stays correct once that frame has moved.
+            const int current = (mCurrent == 0) ? target.pos.index() : target.subIndex;
+            if (target.pos.map().value(current) == &aKey)
+                return aFinalFrames[index];
         }
-        return false;
+        return aKey.frame();
     }
 
     bool MoveFrameOfKey::modifyMove(TimeLineEvent& aModEvent, int aAdd, const util::Range& aFrame, int* aClampedAdd) {
@@ -69,11 +210,13 @@ namespace TimeLineUtil {
         if (aAdd == 0)
             return true;
 
-        // if next frames has an invalid value, nothing to do
+        // Candidate frames of the explicitly moved keys. The same vector answers a
+        // bound's FINAL frame while the projected keys are computed below.
+        Pending pending;
+        pending.selectedFrames.reserve(mSortedTargets.size());
         for (const TimeLineEvent::Target& target : mSortedTargets) {
             XC_ASSERT(!target.pos.isNull());
 
-            const int current = (mCurrent == 0) ? target.pos.index() : target.subIndex;
             const int next = target.subIndex + aAdd;
 
             // check out of range (fail-safe code)
@@ -81,12 +224,84 @@ namespace TimeLineUtil {
                 return false;
 
             // key isn't exist
+            const int current = (mCurrent == 0) ? target.pos.index() : target.subIndex;
             if (!target.pos.map().contains(current))
                 return false;
 
-            // conflict with other key
-            if (target.pos.map().contains(next)) {
-                if (!contains(target.pos.map(), next))
+            pending.selectedFrames.append(next);
+        }
+
+        // Project every proportional key of each touched map from its stored
+        // weights and the bounds' FINAL frames. Nothing is written yet: a refused
+        // batch must leave the document exactly as it was.
+        pending.projectedFrames.resize(mContexts.size());
+        pending.projectedStates.resize(mContexts.size());
+        for (int ci = 0; ci < mContexts.size(); ++ci) {
+            Context& context = mContexts[ci];
+            const TimeLine::MapType& map = context.line->map(context.type);
+            pending.projectedFrames[ci].reserve(context.projected.size());
+            pending.projectedStates[ci].reserve(context.projected.size());
+
+            for (ProjectedKey& projected : context.projected) {
+                const proportional::Bounds bounds = proportional::findBounds(map, *projected.key);
+
+                // A different key becoming a bound is the ONE case that re-derives
+                // a weight; from the key's current position, once, and held.
+                const bool stale = proportional::boundsChanged(*projected.key, bounds);
+                const TimeKey::Proportional state =
+                    stale ? proportional::rebaseState(*projected.key, bounds) : *projected.key->proportionalState();
+
+                int frame = projected.currentFrame;
+                if (state.timeValid && bounds.left && bounds.right) {
+                    const double left = finalFrameOf(context, *bounds.left, pending.selectedFrames);
+                    const double right = finalFrameOf(context, *bounds.right, pending.selectedFrames);
+                    frame = qRound(left + static_cast<double>(state.timeWeight) * (right - left));
+                }
+
+                pending.projectedFrames[ci].append(frame);
+                pending.projectedStates[ci].append(state);
+            }
+        }
+
+        // Validate the WHOLE batch of every context before any of it runs: two
+        // keys may not claim one frame, and a frame already taken may only be
+        // taken by a key that this batch vacates.
+        for (int ci = 0; ci < mContexts.size(); ++ci) {
+            const Context& context = mContexts[ci];
+            const TimeLine::MapType& map = context.line->map(context.type);
+
+            QSet<int> sources;
+            QSet<int> destinations;
+            QSet<int> vacated;
+
+            auto collect = [&](int aFrom, int aTo) -> bool {
+                if (!map.contains(aFrom))
+                    return false;
+                if (sources.contains(aFrom))
+                    return false;
+                sources.insert(aFrom);
+
+                if (aFrom == aTo)
+                    return true; // frozen key: it stays where it is
+                if (destinations.contains(aTo))
+                    return false;
+                destinations.insert(aTo);
+                vacated.insert(aFrom);
+                return true;
+            };
+
+            for (int index : context.targetIndices) {
+                const int from = (mCurrent == 0) ? mSortedTargets[index].pos.index()
+                                                 : mSortedTargets[index].subIndex;
+                if (!collect(from, pending.selectedFrames[index]))
+                    return false;
+            }
+            for (int j = 0; j < context.projected.size(); ++j) {
+                if (!collect(context.projected[j].currentFrame, pending.projectedFrames[ci][j]))
+                    return false;
+            }
+            for (int destination : destinations) {
+                if (map.contains(destination) && !vacated.contains(destination))
                     return false;
             }
         }
@@ -96,50 +311,112 @@ namespace TimeLineUtil {
 
         if (mCurrent == 0) // this command is not executed
         {
+            // Only record where the keys would go. The frame map itself stays as
+            // it is until the command is pushed (exec -> redo).
+            for (int ci = 0; ci < mContexts.size(); ++ci) {
+                Context& context = mContexts[ci];
+                for (int j = 0; j < context.projected.size(); ++j) {
+                    ProjectedKey& projected = context.projected[j];
+                    projected.nextFrame = pending.projectedFrames[ci][j];
+                    projected.nextState = pending.projectedStates[ci][j];
+                    // The state is installed by exec/redo with the frame move; a
+                    // not-yet-pushed command must not touch the document.
+                }
+            }
             for (TimeLineEvent::Target& target : mSortedTargets) {
                 target.subIndex += aAdd;
             }
         } else // this command was already executed
         {
             // setup mod event
-            for (TimeLineEvent::Target& target : mSortedTargets) {
-                aModEvent.pushTarget(*target.node, target.pos.type(), target.subIndex, target.subIndex + aAdd);
+            for (int i = 0; i < mSortedTargets.size(); ++i) {
+                TimeLineEvent::Target& target = mSortedTargets[i];
+                aModEvent.pushTarget(
+                    *target.node, target.pos.type(), target.subIndex, pending.selectedFrames[i]
+                );
             }
 
-            // move all (we have to avoid conflict)
-            if (aAdd < 0) {
-                for (TimeLineEvent::Target& target : mSortedTargets) {
-                    auto success = target.pos.line()->move(target.pos.type(), target.subIndex, target.subIndex + aAdd);
-                    XC_ASSERT(success);
-                    (void)success;
-                    target.subIndex += aAdd;
-                }
-            } else if (aAdd > 0) {
-                for (auto itr = mSortedTargets.rbegin(); itr != mSortedTargets.rend(); ++itr) {
-                    auto& target = *itr;
-                    auto success = target.pos.line()->move(target.pos.type(), target.subIndex, target.subIndex + aAdd);
-                    XC_ASSERT(success);
-                    (void)success;
-                    target.subIndex += aAdd;
-                }
-            }
+            applyForward(pending);
         }
         return true;
     }
 
-    void MoveFrameOfKey::undo() {
-        if (mMove < 0) {
-            for (auto itr = mSortedTargets.rbegin(); itr != mSortedTargets.rend(); ++itr) {
-                auto& target = *itr;
-                auto success = target.pos.line()->move(target.pos.type(), target.subIndex, target.pos.index());
+    void MoveFrameOfKey::applyForward(const Pending& aPending) {
+        for (int ci = 0; ci < mContexts.size(); ++ci) {
+            Context& context = mContexts[ci];
+
+            // Selected and projected keys move in ONE batch, so a chained move
+            // (a key into a frame this same step vacates) never depends on order.
+            QVector<QPair<int, int>> moves;
+            moves.reserve(context.targetIndices.size() + context.projected.size());
+            for (int index : context.targetIndices) {
+                const int from = mSortedTargets[index].subIndex;
+                const int to = aPending.selectedFrames[index];
+                if (from != to)
+                    moves.append(qMakePair(from, to));
+            }
+            for (int j = 0; j < context.projected.size(); ++j) {
+                const int from = context.projected[j].currentFrame;
+                const int to = aPending.projectedFrames[ci][j];
+                if (from != to)
+                    moves.append(qMakePair(from, to));
+            }
+
+            if (!moves.isEmpty()) {
+                const bool success = context.line->moveKeys(context.type, moves);
                 XC_ASSERT(success);
                 (void)success;
             }
-        } else if (mMove > 0) {
-            for (TimeLineEvent::Target& target : mSortedTargets) {
-                auto success = target.pos.line()->move(target.pos.type(), target.subIndex, target.pos.index());
+
+            for (int index : context.targetIndices) {
+                mSortedTargets[index].subIndex = aPending.selectedFrames[index];
+            }
+            for (int j = 0; j < context.projected.size(); ++j) {
+                ProjectedKey& projected = context.projected[j];
+                projected.currentFrame = aPending.projectedFrames[ci][j];
+                projected.nextFrame = projected.currentFrame;
+                projected.nextState = aPending.projectedStates[ci][j];
+                projected.key->setProportionalState(projected.nextState);
+            }
+
+            // A selected proportional key is re-based from the frame it now owns:
+            // the exact derivation, held for the next step.
+            const TimeLine::MapType& map = context.line->map(context.type);
+            for (SelectedProportional& selected : context.selected) {
+                proportional::rebase(*selected.key, proportional::findBounds(map, *selected.key));
+                selected.nextState = *selected.key->proportionalState();
+                selected.nextStateValid = true;
+            }
+        }
+    }
+
+    void MoveFrameOfKey::undo() {
+        for (Context& context : mContexts) {
+            QVector<QPair<int, int>> moves;
+            moves.reserve(context.targetIndices.size() + context.projected.size());
+            for (int index : context.targetIndices) {
+                const TimeLineEvent::Target& target = mSortedTargets[index];
+                if (target.subIndex != target.pos.index())
+                    moves.append(qMakePair(target.subIndex, target.pos.index()));
+            }
+            for (const ProjectedKey& projected : context.projected) {
+                if (projected.currentFrame != projected.baseFrame)
+                    moves.append(qMakePair(projected.currentFrame, projected.baseFrame));
+            }
+
+            if (!moves.isEmpty()) {
+                const bool success = context.line->moveKeys(context.type, moves);
                 XC_ASSERT(success);
                 (void)success;
+            }
+
+            for (ProjectedKey& projected : context.projected) {
+                projected.key->setProportionalState(projected.baseState);
+                projected.currentFrame = projected.baseFrame;
+            }
+            for (SelectedProportional& selected : context.selected) {
+                selected.key->setProportionalState(selected.baseState);
+                selected.nextStateValid = false;
             }
         }
 
@@ -147,22 +424,88 @@ namespace TimeLineUtil {
     }
 
     void MoveFrameOfKey::redo() {
-        if (mMove < 0) {
-            for (TimeLineEvent::Target& target : mSortedTargets) {
-                auto success = target.pos.line()->move(target.pos.type(), target.pos.index(), target.subIndex);
+        for (Context& context : mContexts) {
+            QVector<QPair<int, int>> moves;
+            moves.reserve(context.targetIndices.size() + context.projected.size());
+            for (int index : context.targetIndices) {
+                const TimeLineEvent::Target& target = mSortedTargets[index];
+                if (target.pos.index() != target.subIndex)
+                    moves.append(qMakePair(target.pos.index(), target.subIndex));
+            }
+            for (const ProjectedKey& projected : context.projected) {
+                if (projected.baseFrame != projected.nextFrame)
+                    moves.append(qMakePair(projected.baseFrame, projected.nextFrame));
+            }
+
+            if (!moves.isEmpty()) {
+                const bool success = context.line->moveKeys(context.type, moves);
                 XC_ASSERT(success);
                 (void)success;
             }
-        } else if (mMove > 0) {
-            for (auto itr = mSortedTargets.rbegin(); itr != mSortedTargets.rend(); ++itr) {
-                auto& target = *itr;
-                auto success = target.pos.line()->move(target.pos.type(), target.pos.index(), target.subIndex);
-                XC_ASSERT(success);
-                (void)success;
+
+            for (ProjectedKey& projected : context.projected) {
+                projected.key->setProportionalState(projected.nextState);
+                projected.currentFrame = projected.nextFrame;
+            }
+
+            const TimeLine::MapType& map = context.line->map(context.type);
+            for (SelectedProportional& selected : context.selected) {
+                if (!selected.nextStateValid) {
+                    // A first redo (the one exec makes) has no state yet: derive it
+                    // from the frame the batch just gave the key.
+                    proportional::rebase(*selected.key, proportional::findBounds(map, *selected.key));
+                    selected.nextState = *selected.key->proportionalState();
+                    selected.nextStateValid = true;
+                } else {
+                    selected.key->setProportionalState(selected.nextState);
+                }
             }
         }
 
         mCurrent = 1;
+    }
+
+    //---------------------------------------------------------------------------------------
+    void setProportionalKeys(Project& aProject, const TimeLineEvent& aTargets, bool aEnabled) {
+        QVector<QPair<TimeLine*, TimeKey*>> keys;
+        QVector<TimeLineEvent::Target> targets;
+        QSet<TimeKey*> seen;
+
+        for (const TimeLineEvent::Target& source : aTargets.targets()) {
+            // A non-const copy: pos.line()/pos.key() have no const overload.
+            TimeLineEvent::Target target = source;
+            TimeLine* line = target.pos.line();
+            if (!line)
+                continue;
+
+            TimeKey* key = target.pos.key();
+            if (!key || key->isDefaultKey() || seen.contains(key))
+                continue;
+            seen.insert(key);
+
+            keys.append(qMakePair(line, key));
+            targets.append(target);
+        }
+
+        // Nothing valid targeted: pushing a macro would still announce a commit.
+        if (keys.isEmpty())
+            return;
+
+        cmnd::ScopedMacro macro(
+            aProject.commandStack(),
+            aEnabled ? CmndName::tr("Make keys proportional") : CmndName::tr("Make keys absolute")
+        );
+
+        auto notifier = new Notifier(aProject);
+        notifier->event().setType(TimeLineEvent::Type_ChangeKeyProportional);
+        for (const TimeLineEvent::Target& target : targets) {
+            notifier->event().pushTarget(*target.node, target.pos.type(), target.pos.index());
+        }
+        macro.grabListener(notifier);
+
+        for (const QPair<TimeLine*, TimeKey*>& pair : keys) {
+            aProject.commandStack().push(new SetProportionalKeyCommand(*pair.first, *pair.second, aEnabled));
+        }
     }
 
     //---------------------------------------------------------------------------------------
@@ -206,6 +549,14 @@ namespace TimeLineUtil {
                                                                  : aTarget.timeLine()->timeKey(tType, aFrame));
         XC_PTR_ASSERT(key);
 
+        // Capture the proportional followers BEFORE the value write. The command
+        // itself is pushed AFTER the edit, so exec applies them after the edited
+        // component and undo restores them before it.
+        ReflowValuesCommand* reflow = nullptr;
+        if (aFrame != TimeLine::kDefaultKeyIndex) {
+            reflow = new ReflowValuesCommand(*aTarget.timeLine(), tType, *key);
+        }
+
         {
             cmnd::ScopedMacro macro(aProject.commandStack(), aText);
 
@@ -220,6 +571,14 @@ namespace TimeLineUtil {
 
             auto command = new cmnd::Assign<typename tKey::Data>(&(key->data()), aNewData);
             aProject.commandStack().push(command);
+
+            if (reflow) {
+                if (reflow->hasWork()) {
+                    aProject.commandStack().push(reflow);
+                } else {
+                    delete reflow; // no proportional key to follow the edit
+                }
+            }
         }
     }
 
@@ -245,7 +604,7 @@ namespace TimeLineUtil {
             }
             macro.grabListener(notifier);
 
-            auto command = new cmnd::Assign<util::Easing::Param>(&(key->data().easing()), aNewData);
+            auto command = new cmnd::Assign<util::Easing::Param>(&(key->data().easing(0)), aNewData);
             aProject.commandStack().push(command);
         }
     }
@@ -264,6 +623,13 @@ namespace TimeLineUtil {
                                                                  : aTarget.timeLine()->timeKey(tType, aFrame));
         XC_PTR_ASSERT(key);
 
+        // Same capture-before / push-after rule as assignKeyData: aFunc writes the
+        // edited key, then the followers reflow inside the same macro.
+        ReflowValuesCommand* reflow = nullptr;
+        if (aFrame != TimeLine::kDefaultKeyIndex) {
+            reflow = new ReflowValuesCommand(*aTarget.timeLine(), tType, *key);
+        }
+
         {
             cmnd::ScopedMacro macro(aProject.commandStack(), aText);
 
@@ -277,6 +643,14 @@ namespace TimeLineUtil {
             macro.grabListener(notifier);
 
             aFunc(key);
+
+            if (reflow) {
+                if (reflow->hasWork()) {
+                    aProject.commandStack().push(reflow);
+                } else {
+                    delete reflow; // no proportional key to follow the edit
+                }
+            }
         }
     }
 

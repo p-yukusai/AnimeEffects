@@ -4,6 +4,7 @@
 #include <QColor>
 #include <QString>
 
+#include "core/TimeKeyType.h"
 #include "TailwindPalette.h" // generated: the full Tailwind v4 table (pure data)
 
 namespace theme {
@@ -227,6 +228,61 @@ static constexpr int kKeyColorColumnLight = 6;
 static constexpr int kKeyColorColumnDark = 4;
 
 // ---------------------------------------------------------------------------
+// THE CHANNEL HUE TABLE (design section 7, "One colour per channel").
+//
+// A graph channel is ONE COMPONENT of a key type (ctrl/graph/graph_Channel.h:
+// "Move X", "Move Y", "Scale X", ...). This is the one colour assignment both
+// views read - the timeline (ctrl/time/time_Renderer.cpp) and the graph panel
+// (theme::Graph / gui::buildGraphPanelModel) - so a channel's hue can never
+// disagree between the lane it is edited on and the curve it is drawn as.
+//
+// THE RULE: axis where there is an axis, type otherwise.
+//   * A component that lies on a layout axis takes that axis's hue: X red,
+//     Y green, Z blue. These are the palette's rose, green and sky rows at the
+//     key column (kKeyColorColumnLight/Dark) - the design's own cells: dark
+//     #fb7185 (rose-400), #4ade80 (green-400), #38bdf8 (sky-400), and their
+//     one-step-deeper light counterparts rose-600/green-600/sky-600.
+//   * Every other channel keeps its key type's hue (the kKeyColorRow table
+//     above), so opacity stays amber, an angle stays its type's hue, etc.
+//   * A type's FIRST component is what the timeline draws its key and its lane
+//     label in: the X component (or Blur's first radius) is X, so Move, Scale,
+//     Image and Blur read red on the timeline, and their second component reads
+//     green in the panel. The type's own name on the lane/chip/group is what says
+//     Move vs Scale.
+//
+// WHICH COMPONENTS LIE ON AN AXIS. The first and second component of every
+// type whose values are an X/Y pair: Move, Scale and Image (named "X"/"Y") and
+// Blur (its two radii, "Radius X"/"Radius Y"). Blur's third component is an
+// angle. Rotate's angle, Depth, Opa and HSV's three values have no axis. No
+// graphable channel is a Z today: Depth is a value the design leaves on its
+// type's hue, and the two angles are not axes - the Z cell is stated for
+// completeness of the convention.
+// ---------------------------------------------------------------------------
+enum ChannelAxis { kChannelAxisX, kChannelAxisY, kChannelAxisZ, kChannelAxisCount };
+static constexpr int kChannelAxisRow[] = {
+    16, // X: rose  (#fb7185 dark / #e11d48 light)
+    5,  // Y: green (#4ade80 dark / #16a34a light)
+    9,  // Z: sky   (#38bdf8 dark / #0284c7 light)
+};
+static_assert(sizeof(kChannelAxisRow) / sizeof(kChannelAxisRow[0]) == kChannelAxisCount,
+              "kChannelAxisRow must have one row per ChannelAxis");
+
+// The layout axis of one channel, or -1 for a channel with no axis.
+inline int channelAxis(core::TimeKeyType aType, int aComponent) {
+    switch (aType) {
+    case core::TimeKeyType_Move:
+    case core::TimeKeyType_Scale:
+    case core::TimeKeyType_Image:
+    case core::TimeKeyType_Blur:
+        if (aComponent == 0) return kChannelAxisX;
+        if (aComponent == 1) return kChannelAxisY;
+        return -1;
+    default:
+        return -1;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Design tokens for an appearance (light/dark x accent hue).
 //
 // This is the single source of truth for every surface the custom-painted
@@ -309,6 +365,12 @@ struct Colors {
     QColor imageKey;
     QColor HSVKey;
     QColor blurKey;
+    // The channel hue table's axis cells (see THE CHANNEL HUE TABLE): X red,
+    // Y green, Z blue. Both views read these through channelColor() below;
+    // no widget derives an axis hue of its own.
+    QColor axisX;
+    QColor axisY;
+    QColor axisZ;
 
     bool isDark; // which elevation model the tokens were computed with
 
@@ -368,6 +430,12 @@ struct Colors {
             paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnLight]), // imageKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnLight]), // HSVKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnLight]), // blurKey
+            // The channel hue table's axis cells, at the same key column as
+            // the type hues so an axis channel and a no-axis channel read at
+            // one brightness (THE CHANNEL HUE TABLE).
+            paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisX]][kKeyColorColumnLight]), // axisX
+            paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisY]][kKeyColorColumnLight]), // axisY
+            paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisZ]][kKeyColorColumnLight]), // axisZ
             false, // isDark
         };
         return c;
@@ -425,6 +493,12 @@ struct Colors {
             paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnDark]), // imageKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnDark]), // HSVKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnDark]), // blurKey
+            // The channel hue table's axis cells (THE CHANNEL HUE TABLE): rose,
+            // green and sky at the dark key column = #fb7185, #4ade80, #38bdf8,
+            // the three cells design section 7 names.
+            paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisX]][kKeyColorColumnDark]), // axisX
+            paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisY]][kKeyColorColumnDark]), // axisY
+            paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisZ]][kKeyColorColumnDark]), // axisZ
             true, // isDark
         };
         return c;
@@ -486,6 +560,48 @@ struct Colors {
         return aTemplate;
     }
 };
+
+// A key type's own hue, i.e. the channel hue of a type with no axis. This is
+// the kKeyColorRow row for every type (including bone/pose/mesh/FFD, which the
+// TIMELINE draws; the graph cannot reach them - componentCount() is 0 - so the
+// panel's table does not list them). baseKey is the neutral fallback.
+inline QColor keyTypeColor(const Colors& aColors, core::TimeKeyType aType) {
+    switch (aType) {
+    case core::TimeKeyType_Move: return aColors.moveKey;
+    case core::TimeKeyType_Rotate: return aColors.rotateKey;
+    case core::TimeKeyType_Scale: return aColors.scaleKey;
+    case core::TimeKeyType_Depth: return aColors.depthKey;
+    case core::TimeKeyType_Opa: return aColors.opaKey;
+    case core::TimeKeyType_Bone: return aColors.boneKey;
+    case core::TimeKeyType_Pose: return aColors.poseKey;
+    case core::TimeKeyType_Mesh: return aColors.meshKey;
+    case core::TimeKeyType_FFD: return aColors.FFDKey;
+    case core::TimeKeyType_Image: return aColors.imageKey;
+    case core::TimeKeyType_HSV: return aColors.HSVKey;
+    case core::TimeKeyType_Blur: return aColors.blurKey;
+    case core::TimeKeyType_TERM: break;
+    }
+    return aColors.baseKey; // the neutral key
+}
+
+// THE TABLE. One channel of one key type -> its hue: the axis hue where the
+// component lies on an axis, the type's own hue otherwise (THE CHANNEL HUE
+// TABLE above states the rule and the cells). Both views call this and nothing
+// else:
+//   * ctrl/time/time_Renderer.cpp draws a timeline key - which belongs to the
+//     TYPE, not to a component - in channelColor(colors, type, 0), and its lane
+//     label in the same hue at 0.42;
+//   * gui::buildGraphPanelModel fills PanelChannelRow::color with
+//     channelColor(colors, channel.type(), channel.component()), and the
+//     drawing layer inks that row's curve, markers and chip with it.
+inline QColor channelColor(const Colors& aColors, core::TimeKeyType aType, int aComponent) {
+    switch (channelAxis(aType, aComponent)) {
+    case kChannelAxisX: return aColors.axisX;
+    case kChannelAxisY: return aColors.axisY;
+    case kChannelAxisZ: return aColors.axisZ;
+    default: return keyTypeColor(aColors, aType);
+    }
+}
 
 inline Colors& activeColors() {
     static Colors s = Colors::dark(kDefaultAccent);

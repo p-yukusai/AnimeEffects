@@ -43,6 +43,11 @@ public:
     void write(const QMatrix4x4& aValue);
     void write(const Frame& aValue);
     void write(const util::Easing::Param& aValue);
+    // One key's whole easing array: aCount consecutive params (the key's
+    // kComponents). The single-param write above is the element form; this is
+    // the per-key form every key's serialize() uses, so the count cannot drift
+    // between key types.
+    void writeEasings(const util::Easing::Param* aValue, int aCount);
     void write(const QPolygonF& aValue);
     void write(const QString& aValue);
     void write(const XCMemBlock& aValue);

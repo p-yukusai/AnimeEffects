@@ -1,6 +1,11 @@
 #include "core/ResourceUpdatingWorkspace.h"
+#include "ctrl/time/time_BodyModel.h"
+#include <algorithm>
 #include <climits>
+#include <QSet>
 #include "core/BlurKey.h"
+#include "core/KeyEasing.h"
+#include "core/KeyEasingAccess.h"
 #include "core/TimeKeyExpans.h"
 #include "ffd/ffd_Target.h"
 #include "qapplication.h"
@@ -93,8 +98,46 @@ void TimeLineEditor::clearRows() {
     clearSelection();
 }
 
+void TimeLineEditor::resetRows() {
+    // A row rebuild is a VIEW change (an expand/collapse, a scroll sync, a tree
+    // reshuffle). The selection belongs to the document, so it survives; the caller
+    // prunes only what the new rows do not show (retainSelectionInRows).
+    mRows.clear();
+    clearState();
+}
+
+bool TimeLineEditor::retainSelectionInRows() {
+    // A closed folder's descendants are drawn in its summary lane, so they are still
+    // visible: the predicate inserts every node the rebuilt rows REPRESENT, not only
+    // the rows' own nodes. That is what makes "collapse the folder that contains the
+    // selected layer" keep the selection while its summary shows the keys, and makes
+    // "collapse the root" (no rows at all) clear it.
+    QSet<core::ObjectNode*> visible;
+    for (const TimeLineRow& row : mRows) {
+        if (!row.node)
+            continue;
+        visible.insert(row.node);
+        if (!row.closedFolder)
+            continue;
+        ObjectNode::Iterator itr(row.node);
+        while (itr.hasNext())
+            visible.insert(itr.next());
+    }
+    return mSelection.retain([&visible](const time::Selection::Item& aItem) {
+        return aItem.target.node && visible.contains(aItem.target.node);
+    });
+}
+
 // Gesture state only — the selection survives (it is the visual anchor of
 // what is selected; the marquee box is transient).
+bool TimeLineEditor::extendMarquee(const QPoint& aWorldPoint) {
+    if (mState != State_EncloseKeys || !mMarquee.isActive())
+        return false;
+    mMarquee.update(aWorldPoint);
+    applyMarquee();
+    return true;
+}
+
 void TimeLineEditor::clearState() {
     mState = State_Standby;
     mMoveRef = nullptr;
@@ -183,6 +226,39 @@ void TimeLineEditor::updateProjectAttribute() {
     }
 }
 
+bool TimeLineEditor::updatePlayWindow(PlayWindowStep aStep, core::Frame aFrame) {
+    // The window is clamped into the project frame range: playback previews
+    // frames the project owns, never content beyond its extent (which stays
+    // reachable through free navigation). The clamp is part of the gesture, so
+    // every caller gets it - the timeline's ruler and the graph's band alike.
+    const int frame = qBound(mFrameRange.min(), aFrame.get(), mFrameRange.max());
+    const PlayWindow before = mPlayWindow;
+
+    switch (aStep) {
+    case PlayWindowStep::Begin:
+        // A press only ANCHORS: nothing is drawn until the first drag, so a
+        // Shift-click can dismiss an existing window without flashing it.
+        mWindowAnchorFrame = frame;
+        mWindowDragged = false;
+        break;
+    case PlayWindowStep::Drag:
+        mPlayWindow.set(mWindowAnchorFrame, frame);
+        mWindowDragged = true;
+        break;
+    case PlayWindowStep::End:
+        // A click in disguise dismisses the window: a press and release with no
+        // drag, or a drag that collapsed to a single frame (easy at max zoom -
+        // and a 1-frame active window would gate playback to that one frame
+        // while rendering nothing). A drag keeps what it set.
+        if (!mWindowDragged || mPlayWindow.start == mPlayWindow.end)
+            mPlayWindow.clear();
+        mWindowDragged = false;
+        break;
+    }
+
+    return before.start != mPlayWindow.start || before.end != mPlayWindow.end;
+}
+
 TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers) {
     UpdateFlags flags = 0;
 
@@ -202,13 +278,10 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
         // click dismisses it. It takes precedence over the playhead handle
         // and the header seek.
         if (shift && isOnRuler(aCursor.screenPos().y())) {
-            // The window is clamped into the project frame range: playback
-            // previews frames the project owns, never content beyond its
-            // extent (which stays reachable through free navigation).
-            mWindowAnchorFrame = qBound(
-                mFrameRange.min(), mTimeScale.frame(worldPoint.x() - kTimeLineMargin), mFrameRange.max()
-            );
-            mWindowDragged = false;
+            // The same three steps the graph panel's band drives (see
+            // updatePlayWindow): the clamp into the project frame range and the
+            // click/drag ending rule live there, once.
+            updatePlayWindow(PlayWindowStep::Begin, Frame(mTimeScale.frame(worldPoint.x() - kTimeLineMargin)));
             mState = State_SetWindow;
         } else if ((aCursor.screenPos() - handlePos).length() < mTimeCurrent.handleRange()) {
             // playhead: handle or header click moves the current frame
@@ -268,11 +341,7 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
         }
     } else if (aCursor.emitsLeftDraggedEvent()) {
         if (mState == State_SetWindow) {
-            mPlayWindow.set(
-                mWindowAnchorFrame,
-                qBound(mFrameRange.min(), mTimeScale.frame(worldPoint.x() - kTimeLineMargin), mFrameRange.max())
-            );
-            mWindowDragged = true;
+            updatePlayWindow(PlayWindowStep::Drag, Frame(mTimeScale.frame(worldPoint.x() - kTimeLineMargin)));
             flags |= UpdateFlag_ModView;
         } else if (mState == State_MoveCurrent) {
             mTimeCurrent.setHandlePos(mTimeScale, aCursor.worldPos().toPoint());
@@ -296,13 +365,10 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
         }
     } else if (aCursor.emitsLeftReleasedEvent()) {
         if (mState == State_SetWindow) {
-            // A shift-click (press and release without dragging) dismisses
-            // the window; a drag keeps what it set. A drag that collapses to
-            // a single frame (start == end, easy at max zoom) is likewise a
-            // click in disguise — keep it, and a 1-frame active window would
-            // gate playback to that one frame while rendering nothing.
-            if (!mWindowDragged || mPlayWindow.start == mPlayWindow.end)
-                mPlayWindow.clear();
+            // The ending rule (a click, or a drag collapsed to one frame,
+            // dismisses; a real drag keeps what it set) lives with the gesture
+            // in updatePlayWindow, because the graph's band ends it too.
+            updatePlayWindow(PlayWindowStep::End, Frame(mTimeScale.frame(worldPoint.x() - kTimeLineMargin)));
             mState = State_Standby;
             flags |= UpdateFlag_ModView;
         } else if (mState == State_MoveKeys) {
@@ -449,6 +515,42 @@ void TimeLineEditor::endTemporarySelection() {
     mSelection.clear();
     mSelectionTemporary = false;
 }
+
+bool TimeLineEditor::selectAllKeys() {
+    // The marquee's row walk (see time_Marquee.cpp) without its box: every row,
+    // every live key of its node's timeline, and - for a closed folder - its
+    // descendants, whose keys are drawn on that row. The frame window is NOT
+    // applied: "all" is every key the row holds, not the slice on screen.
+    core::TimeLineEvent all;
+    for (const TimeLineRow& row : mRows) {
+        if (!row.node)
+            continue;
+        core::ObjectNode::Iterator nodeItr(row.node);
+        while (nodeItr.hasNext()) {
+            core::ObjectNode* node = nodeItr.next();
+            if (!node || !node->timeLine())
+                continue;
+            const core::TimeLine& timeLine = *(node->timeLine());
+            for (int i = 0; i < core::TimeKeyType_TERM; ++i) {
+                const core::TimeKeyType type = core::TimeLine::getTimeKeyTypeInOrderOfOperations(i);
+                const core::TimeLine::MapType& map = timeLine.map(type);
+                for (auto itr = map.begin(); itr != map.end(); ++itr) {
+                    if (itr.value())
+                        all.pushTarget(*node, type, itr.key());
+                }
+            }
+            if (!row.closedFolder)
+                break; // an open folder's children are rows of their own
+        }
+    }
+    // An explicit bulk selection replaces whatever was there, and a temporary
+    // right-click loan has no menu to outlive: drop both the gesture state and the
+    // loan flag so a stale press cannot anchor on the fresh selection.
+    mSelectionTemporary = false;
+    clearState();
+    return mSelection.set(all);
+}
+
 bool TimeLineEditor::retrieveSelectionTargets(TimeLineEvent& aEvent) const {
     if (mSelection.empty())
         return false;
@@ -468,13 +570,102 @@ static QVector2D objToVec(QJsonObject obj, const QString& varName) {
     return {static_cast<float>(obj[varName + "X"].toDouble()), static_cast<float>(obj[varName + "Y"].toDouble())};
 }
 
-static util::Easing::Param objToEasing(QJsonObject obj) {
-    util::Easing::Param easing;
-    easing.range = util::Easing::rangeToEnum(obj["aRange"].toString());
-    easing.type = util::Easing::easingToEnum(obj["eType"].toString());
-    easing.weight = static_cast<float>(obj["eWeight"].toDouble());
-    // qDebug() << easing.type << easing.range << easing.weight;
+// The clipboard's easing codec (see the header): the ONE description of these
+// fields. aRange/eType name the value the same way the timeline's menus and the
+// .anie files do; the two mode ordinals and the four cubic floats are what a
+// per-side Custom curve actually consists of.
+QJsonObject ctrl::TimeLineEditor::easingToJson(const util::Easing::Param& aParam) {
+    QJsonObject easing;
+    // The automatic pair, whatever its clamp: the preset writes AutoClamped
+    // (Easing::kAutoPresetHandleMode) and a deliberate per-side pick can write
+    // unclamped Auto. A build without the per-side model has only the retired
+    // Auto TYPE, whose shape was the clamped one, so both write "Auto" - the
+    // closest thing that reader has. The modes below are what THIS build reads
+    // back (and what a retired-Auto legacy payload, which has no modes, is
+    // disambiguated from).
+    const bool autoPreset = aParam.type == util::Easing::Type_Custom
+        && (aParam.handleIn == util::Easing::HandleMode_Auto
+            || aParam.handleIn == util::Easing::kAutoPresetHandleMode)
+        && aParam.handleIn == aParam.handleOut;
+    easing["eType"] = autoPreset ? QStringLiteral("Auto") : util::Easing::getTypeName(aParam.type);
+    easing["eRange"] = util::Easing::getRangeName(aParam.range);
+    easing["eWeight"] = aParam.weight;
+    easing["eIn"] = int(aParam.handleIn);
+    easing["eOut"] = int(aParam.handleOut);
+    easing["x1"] = aParam.cubicBezier.x1;
+    easing["y1"] = aParam.cubicBezier.y1;
+    easing["x2"] = aParam.cubicBezier.x2;
+    easing["y2"] = aParam.cubicBezier.y2;
     return easing;
+}
+
+util::Easing::Param ctrl::TimeLineEditor::easingFromJson(const QJsonObject& aObject) {
+    util::Easing::Param easing;
+    const QString name = aObject["eType"].toString();
+    easing.type = util::Easing::easingToEnum(name);
+    easing.range = util::Easing::rangeToEnum(aObject["eRange"].toString());
+    easing.weight = static_cast<float>(aObject["eWeight"].toDouble(1.0));
+
+    // A payload with modes describes them exactly (0.15+). A payload without
+    // them predates the per-side model: "Auto" there was the retired Auto TYPE,
+    // which always CLAMPED - the same behaviour the preset writes now, so the
+    // name round-trips losslessly. Every other legacy name kept its stored modes'
+    // default (Aligned), which is what that build wrote.
+    const bool hasModes = aObject.contains("eIn") && aObject.contains("eOut");
+    if (hasModes) {
+        const int in = aObject["eIn"].toInt();
+        const int out = aObject["eOut"].toInt();
+        if (0 <= in && in < util::Easing::HandleMode_TERM)
+            easing.handleIn = static_cast<util::Easing::HandleMode>(in);
+        if (0 <= out && out < util::Easing::HandleMode_TERM)
+            easing.handleOut = static_cast<util::Easing::HandleMode>(out);
+    } else if (name == QStringLiteral("Auto")) {
+        easing.type = util::Easing::Type_Custom;
+        easing.handleIn = util::Easing::kDefaultAutomaticHandleMode;
+        easing.handleOut = util::Easing::kDefaultAutomaticHandleMode;
+    }
+    if (aObject.contains("x1") && aObject.contains("y1")
+        && aObject.contains("x2") && aObject.contains("y2")) {
+        easing.cubicBezier.x1 = static_cast<float>(aObject["x1"].toDouble());
+        easing.cubicBezier.y1 = static_cast<float>(aObject["y1"].toDouble());
+        easing.cubicBezier.x2 = static_cast<float>(aObject["x2"].toDouble());
+        easing.cubicBezier.y2 = static_cast<float>(aObject["y2"].toDouble());
+    }
+
+    // An invalid mode/type/range would be a document-corrupting paste; the model's
+    // own validity rule is the guard, and a bad field falls back to the default's.
+    if (!easing.isValidParam())
+        return util::Easing::Param();
+    return easing;
+}
+
+QVector<util::Easing::Param> ctrl::TimeLineEditor::easingsFromJson(
+    const QJsonObject& aObject, const int aStoredCount) {
+    const int count = qMax(0, aStoredCount);
+    QVector<util::Easing::Param> result;
+    result.reserve(count);
+    const QJsonArray array = aObject["eEasings"].toArray();
+    for (int component = 0; component < count; ++component) {
+        if (component < array.size() && array.at(component).isObject()) {
+            result.push_back(easingFromJson(array.at(component).toObject()));
+            continue;
+        }
+        if (component == 0)
+            result.push_back(easingFromJson(aObject));
+        else
+            result.push_back(array.isEmpty() ? result.front() : util::Easing::Param());
+    }
+    return result;
+}
+
+// One param per component: a key's components own their curves, so a paste must
+// write each one it was given and never broadcast component 0 over its siblings.
+template<typename TKey>
+static void assignClipboardEasing(TKey* aKey, const QVector<util::Easing::Param>& aEasings) {
+    const int count = qMin(aEasings.size(), int(TKey::kComponents));
+    for (int component = 0; component < count; ++component) {
+        aKey->data().easing(component) = aEasings.at(component);
+    }
 }
 
 static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> project, bool isFolder, ObjectNode* aOwner) {
@@ -491,35 +682,35 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
             moveKey->data().setPos(pos);
             moveKey->data().setCentroid(centre);
             moveKey->data().setSpline(spline);
-            moveKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(moveKey, TimeLineEditor::easingsFromJson(obj, core::MoveKey::kComponents));
             moveKey->setFrame(obj["Frame"].toInt());
             return moveKey;
         }
         case TimeKeyType_Rotate: {
             auto* rotateKey = new RotateKey;
             rotateKey->setRotate(obj["Rotate"].toDouble());
-            rotateKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(rotateKey, TimeLineEditor::easingsFromJson(obj, core::RotateKey::kComponents));
             rotateKey->setFrame(obj["Frame"].toInt());
             return rotateKey;
         }
         case TimeKeyType_Scale: {
             auto* scaleKey = new ScaleKey;
             scaleKey->setScale(objToVec(obj, "Scale"));
-            scaleKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(scaleKey, TimeLineEditor::easingsFromJson(obj, core::ScaleKey::kComponents));
             scaleKey->setFrame(obj["Frame"].toInt());
             return scaleKey;
         }
         case TimeKeyType_Depth: {
             auto* depthKey = new DepthKey;
             depthKey->setDepth(static_cast<float>(obj["Depth"].toDouble()));
-            depthKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(depthKey, TimeLineEditor::easingsFromJson(obj, core::DepthKey::kComponents));
             depthKey->setFrame(obj["Frame"].toInt());
             return depthKey;
         }
         case TimeKeyType_Opa: {
             auto* opaKey = new OpaKey;
             opaKey->setOpacity(static_cast<float>(obj["Opacity"].toDouble()));
-            opaKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(opaKey, TimeLineEditor::easingsFromJson(obj, core::OpaKey::kComponents));
             opaKey->setFrame(obj["Frame"].toInt());
             return opaKey;
         }
@@ -551,6 +742,10 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
                 bones.append(newBone);
             }
             poseKey->data().topBones() = bones;
+            // Pose carries ONE shared easing (kComponents == 1); it travels like
+            // every other key's, so a copy no longer drops it.
+            assignClipboardEasing(
+                poseKey, TimeLineEditor::easingsFromJson(obj, core::PoseKey::kComponents));
             poseKey->setFrame(obj["Frame"].toInt());
             return poseKey;
         }
@@ -567,7 +762,7 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
         }
         case TimeKeyType_FFD: {
             FFDKey* ffdKey = new FFDKey;
-            ffdKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(ffdKey, TimeLineEditor::easingsFromJson(obj, core::FFDKey::kComponents));
             ffdKey->deserializeFromJson(obj);
             ffdKey->setFrame(obj["Frame"].toInt());
             return ffdKey;
@@ -578,7 +773,7 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
                 return nullptr;
             }
             auto* imageKey = new ImageKey;
-            imageKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(imageKey, TimeLineEditor::easingsFromJson(obj, core::ImageKey::kComponents));
             if (imageKey->deserializeFromJson(obj, project)) {
                 return imageKey;
             }
@@ -586,7 +781,7 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
         }
         case TimeKeyType_HSV: {
             auto* hsvKey = new HSVKey;
-            hsvKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(hsvKey, TimeLineEditor::easingsFromJson(obj, core::HSVKey::kComponents));
             QList hsv{obj["Hue"].toInt(), obj["Saturation"].toInt(), obj["Value"].toInt(), obj["Absolute"].toInt()};
             hsvKey->setHSV(hsv);
             hsvKey->setFrame(obj["Frame"].toInt());
@@ -594,7 +789,7 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
         }
         case TimeKeyType_Blur: {
             auto* blurKey = new BlurKey;
-            blurKey->data().easing() = objToEasing(obj);
+            assignClipboardEasing(blurKey, TimeLineEditor::easingsFromJson(obj, core::BlurKey::kComponents));
             blurKey->setAmount(obj["Amount"].toDouble());
             // directional data only exists in newer clipboard payloads; fall back to the
             // isotropic amount otherwise
@@ -628,6 +823,9 @@ QList<TimeKey*> TimeLineEditor::getTypesFromCb(util::LifeLink::Pointee<Project> 
         // To get all keys isFolder is set to false.
         TimeKey* pastedKey = getKeyFromObj(keyObj, project, false, node);
         if (pastedKey != nullptr) {
+            // The clipboard carries the flag only: the weights are empty until the
+            // key's next projection resolves its bounds here.
+            pastedKey->setProportional(keyObj["Proportional"].toBool());
             keyList.append(pastedKey);
         }
     }
@@ -647,7 +845,10 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
     for (QJsonValue key : tlKeys) {
         auto keyObj = key.toObject();
         TimeKey* pastedKey = getKeyFromObj(keyObj, project, isFolder, &objItem->node());
-        if (pastedKey != nullptr) { keyList.append(pastedKey); }
+        if (pastedKey != nullptr) {
+            pastedKey->setProportional(keyObj["Proportional"].toBool());
+            keyList.append(pastedKey);
+        }
         else {
             auto keyType = TimeLine::getTimeKeyType(keyObj["Type"].toString());
             keyErrored.append(TimeLine::getTimeKeyName(keyType));
@@ -716,6 +917,11 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
                         auto parentKey = copiedKey->parent();
 
                         TimeKey* newKey = copiedKey->createClone();
+                        // createClone copies the key's data only, so the flag the
+                        // clipboard reader armed on the source key is re-armed here
+                        // (fresh id, empty weights; the bounds resolve lazily).
+                        if (copiedKey->isProportional())
+                            newKey->setProportional(true);
 
                         newKey->setFrame(newFrame);
 
@@ -866,6 +1072,12 @@ bool TimeLineEditor::pasteCopiedKeys(TimeLineEvent& aEvent, const QPoint& aWorld
             auto parentKey = copiedKey->parent();
 
             TimeKey* newKey = copiedKey->createClone();
+            // createClone copies the key's data only (ids and the proportional
+            // state are deliberately not cloned), so the flag is re-armed here:
+            // a fresh id and empty weights are what a paste wants, and the
+            // destination's bounds are resolved lazily on the next projection.
+            if (copiedKey->isProportional())
+                newKey->setProportional(true);
 
             auto newFrame = copiedKey->frame() + frameOffset;
             newKey->setFrame(newFrame);
@@ -925,6 +1137,238 @@ void TimeLineEditor::deleteCheckedKeys(TimeLineEvent& aEvent) {
     clearSelection();
 }
 
+bool TimeLineEditor::assignSelectionEasing(
+    const std::function<util::Easing::Param(const util::Easing::Param&)>& aNext) {
+    if (!mProject)
+        return false;
+
+    // WHAT CAN BE WRITTEN, collected before the batch is pushed: pushEasingWrites
+    // drops a param that would not change, and pushes NOTHING when nothing is left
+    // (cmnd::Stack appends a macro even when it holds no command and counts it as
+    // an edit - the same guard the graph panel's own action carries).
+    QVector<EasingWrite> writes;
+    // The live selection, the only set that names a COMPONENT: a timeline gesture
+    // selects whole keys (kKeyLevel), a graph-panel press selects one marker. A
+    // whole-key entry edits every component the type stores; a marker edits ONLY
+    // its own - the rule that keeps one channel's edit from overwriting its
+    // siblings'.
+    for (const time::Selection::Item& item : mSelection.items()) {
+        // The selection is iterated by CONST reference, but TimeKeyPos::key() is a
+        // non-const member (it hands out the mutable key), so the position is taken
+        // by value and asked there: three words of copy, no cast, and the key it
+        // names is the document's own.
+        core::TimeLineEvent::Target target = item.target;
+        core::TimeKeyPos pos = target.pos;
+        core::TimeKey* key = pos.key();
+        if (!key || !target.node)
+            continue; // a stale selection names a key that is not in the document
+
+        const int stored = core::easingStorageCount(pos.type());
+        const bool wholeKey = (item.component == time::Selection::kKeyLevel);
+        if (!wholeKey && (item.component < 0 || stored <= item.component))
+            continue;
+
+        for (int component = 0; component < stored; ++component) {
+            if (!wholeKey && component != item.component)
+                continue;
+
+            // The one key -> param bridge: graphable components, Pose/FFD's shared
+            // param and an Image key's stored pair; Bone/Mesh answer null.
+            util::Easing::Param* param = core::keyEasingOf(*key, pos.type(), component);
+            if (!param)
+                continue;
+            EasingWrite write;
+            write.param = param;
+            write.next = aNext(*param);
+            write.node = target.node;
+            write.type = pos.type();
+            write.frame = core::Frame(key->frame());
+            writes.append(write);
+        }
+    }
+    return pushEasingWrites(*mProject, writes, CmndName::tr("Change key(s) easing"));
+}
+
+bool TimeLineEditor::assignSelectionAutoHandles() {
+    if (!mProject)
+        return false;
+
+    // The Auto preset writes the SEGMENT LEAVING each selected key (see the
+    // header): that segment's curve is the key's own param and its two tangents
+    // are the key's OUTGOING side and the NEXT key's INCOMING side. Nothing
+    // before the key is written. A key with NO next key has no leaving segment
+    // yet, so the preset writes that key's OWN pair instead - both sides plus
+    // the type - which is what makes it automatic as soon as a neighbour is
+    // added. appendAutoPresetWrites merges a param named twice, so a multi-key
+    // selection writes each param once.
+    QVector<EasingWrite> writes;
+    for (const time::Selection::Item& item : mSelection.items()) {
+        core::TimeLineEvent::Target target = item.target;
+        core::TimeKeyPos pos = target.pos;
+        core::TimeKey* key = pos.key();
+        if (!key || !target.node)
+            continue; // a stale selection names a key that is not in the document
+
+        const int stored = core::easingStorageCount(pos.type());
+        const bool wholeKey = (item.component == time::Selection::kKeyLevel);
+        if (!wholeKey && (item.component < 0 || stored <= item.component))
+            continue;
+
+        for (int component = 0; component < stored; ++component) {
+            if (!wholeKey && component != item.component)
+                continue;
+            if (!core::keyEasingOf(*key, pos.type(), component))
+                continue; // Bone/Mesh: no easing at all
+            appendAutoPresetWrites(*pos.line(), *target.node, pos.type(), component,
+                                   core::Frame(key->frame()), writes);
+        }
+    }
+    // The action's name is the SEMANTIC, not the type: it makes the segment
+    // LEAVING each selected key automatic (the history entry says so too).
+    return pushEasingWrites(
+        *mProject, writes, CmndName::tr("Make the segment after the key automatic"));
+}
+
+void TimeLineEditor::appendAutoPresetWrites(core::TimeLine& aLine, core::ObjectNode& aNode,
+                                            const core::TimeKeyType aType, const int aComponent,
+                                            const core::Frame aFrame,
+                                            QVector<EasingWrite>& aOut) {
+    // The only neighbour that matters is the NEXT key in ITS OWN map: this key's
+    // segment LEAVING it ends there. The PREVIOUS key is never read - the
+    // segment arriving at this key is not the one this action owns. Same type,
+    // same component - one curve per component, so the neighbour's mode for the
+    // SAME component is the one that shapes the segment.
+    const core::TimeLine::MapType& map = aLine.map(aType);
+    auto self = map.constFind(aFrame.get());
+    if (self == map.constEnd() || !self.value())
+        return;
+
+    core::TimeKey* next = nullptr;
+    auto after = self;
+    ++after;
+    if (after != map.constEnd())
+        next = after.value();
+
+    // The forced fields: aType makes the segment's curve a Custom one (without it
+    // this key's OUTGOING mode would be inert), aIn/aOut are the two automatic
+    // sides. A param already in aOut is MERGED, so an entry is never written
+    // twice and two selected neighbours agree rather than append twice.
+    const auto write = [&aOut, &aNode, &aType, aComponent](
+                           core::TimeKey* aKey, const bool aForceType, const bool aForceIn,
+                           const bool aForceOut) {
+        if (!aKey)
+            return;
+        util::Easing::Param* param = core::keyEasingOf(*aKey, aType, aComponent);
+        if (!param)
+            return;
+
+        for (EasingWrite& existing : aOut) {
+            if (existing.param != param)
+                continue;
+            if (aForceType)
+                existing.next.type = util::Easing::Type_Custom;
+            if (aForceIn)
+                existing.next.handleIn = util::Easing::kAutoPresetHandleMode;
+            if (aForceOut)
+                existing.next.handleOut = util::Easing::kAutoPresetHandleMode;
+            return;
+        }
+
+        EasingWrite entry;
+        entry.param = param;
+        entry.next = *param;
+        entry.node = &aNode;
+        entry.type = aType;
+        entry.frame = core::Frame(aKey->frame());
+        if (aForceType)
+            entry.next.type = util::Easing::Type_Custom;
+        if (aForceIn)
+            entry.next.handleIn = util::Easing::kAutoPresetHandleMode;
+        if (aForceOut)
+            entry.next.handleOut = util::Easing::kAutoPresetHandleMode;
+        aOut.append(entry);
+    };
+
+    // A LAST key (including the ONLY key) has no segment leaving it YET, so the
+    // preset shapes the key's OWN pair instead: BOTH of its sides become
+    // automatic, and its type becomes Custom so either side is consulted when a
+    // segment appears beside it. The pair is then symmetric by construction -
+    // one slope for both sides - which is what the user asked Auto for even
+    // before they add the neighbour that will use it. No other param is named:
+    // there is no next incoming side to write.
+    if (!next) {
+        write(self.value(), true, true, true);
+        return;
+    }
+
+    // this -> next: the segment's curve IS this key's param, so its TYPE is
+    // forced Custom and its OUTGOING side becomes the automatic start tangent.
+    // This key's INCOMING side is left alone: it is the end tangent of the
+    // segment ARRIVING here, which belongs to the previous key's segment.
+    write(self.value(), true, false, true);
+    // ...and the next key's INCOMING side is the segment's automatic end
+    // tangent. Its type is not touched - that param shapes the segment AFTER it.
+    write(next, false, true, false);
+}
+
+bool TimeLineEditor::pushEasingWrites(core::Project& aProject,
+                                      const QVector<EasingWrite>& aWrites,
+                                      const QString& aName) {
+    // Only a param that actually CHANGES is written: pushing a command whose exec
+    // and undo are the same value is a history entry for a change that did not
+    // happen. A param named twice (a stale/duplicated selection entry) is written
+    // once; the merged Auto batch is already unique by construction.
+    QVector<EasingWrite> changed;
+    changed.reserve(aWrites.size());
+    for (const EasingWrite& edit : aWrites) {
+        if (!edit.param || !edit.node)
+            continue;
+        if (edit.next == *edit.param)
+            continue;
+        bool duplicate = false;
+        for (const EasingWrite& kept : changed) {
+            if (kept.param == edit.param) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (!duplicate)
+            changed.append(edit);
+    }
+    if (changed.isEmpty())
+        return false;
+
+    // ONE macro and ONE notifier for the whole batch, so a multi-key (and, for the
+    // Auto preset, multi-param) edit is ONE entry in the history. The command per
+    // param is the one the timeline's per-key route pushes
+    // (TimeLineUtil::assignKeyEasing: a cmnd::Assign of the key's
+    // util::Easing::Param plus a Type_ChangeKeyValue notifier). That per-key helper
+    // CANNOT be called in this loop: it opens a macro of its own, and
+    // cmnd::Stack::beginMacro asserts on a nested one.
+    cmnd::ScopedMacro macro(aProject.commandStack(), aName);
+    auto* notifier = new TimeLineUtil::Notifier(aProject);
+    notifier->event().setType(core::TimeLineEvent::Type_ChangeKeyValue);
+    macro.grabListener(notifier);
+    for (const EasingWrite& edit : changed) {
+        // One notification per KEY: the components of one key are one change to
+        // its timeline.
+        bool named = false;
+        for (const TimeLineEvent::Target& pushed : notifier->event().targets()) {
+            if (pushed.node == edit.node && pushed.pos.type() == edit.type
+                && pushed.pos.index() == edit.frame.get()) {
+                named = true;
+                break;
+            }
+        }
+        if (!named) {
+            notifier->event().pushTarget(*edit.node, edit.type, edit.frame.get());
+        }
+        aProject.commandStack().push(
+            new cmnd::Assign<util::Easing::Param>(edit.param, edit.next));
+    }
+    return true;
+}
+
 bool TimeLineEditor::updateWheel(int aDelta, bool aInvertScaling) {
     const bool changed = mTimeScale.update(aInvertScaling ? -aDelta : aDelta);
     if (!changed)
@@ -967,25 +1411,85 @@ int TimeLineEditor::frameEndPixel() const {
     return kTimeLineMargin + mTimeScale.maxPixelWidth();
 }
 
-int TimeLineEditor::pixelsPerFrame() const {
+double TimeLineEditor::pixelsPerFrame() const {
     return mTimeScale.pixelsPerFrame();
 }
 
-int TimeLineEditor::anchorPixelAfterScale(int aContentPixel, int aOldSpacing) const {
+TimeLineEditor::FrameFit TimeLineEditor::fitFrameRange(double aViewportWidth) const {
+    FrameFit fit;
+    fit.scaleIndex = mTimeScale.index();
+    if (!(aViewportWidth > 0.0))
+        return fit;
+
+    // The range's span on the content axis is ppf * frames, whatever the zoom;
+    // the frame range's inclusive ends are what the fit must show.
+    const double span = std::max(1.0, static_cast<double>(mFrameRange.diff()));
+
+    // THE RUNG: the sparsest one that fits the span PLUS a kTimeLineMargin
+    // gutter at each end. Asking for the span alone picks a rung whose margin is
+    // whatever the ladder leaves over - often none at all on one side - which is
+    // the asymmetry a fit must not have.
+    const auto ppfAt = [this](int aIndex) {
+        // time::Scaler's rate is a function of the index and its notch constant
+        // is private to the scaler, so the rate is read from a copy rather than
+        // re-derived here.
+        time::Scaler probe = mTimeScale;
+        probe.setIndex(aIndex);
+        return probe.pixelsPerFrame();
+    };
+    const double gutters = 2.0 * kTimeLineMargin;
+    double wantedRate = (aViewportWidth - gutters) / span;
+
+    // ...and the camera's OVERLAP BOUND (gui::TimeLineWidget::updateCamera) caps
+    // the rung when the range's CENTRE is left of the content origin: the centred
+    // view must not sit more than one viewport before that origin (v >= -viewport),
+    // or the camera shifts it right and the symmetry we just computed is lost. A
+    // range entirely left of frame 0 (negative ranges are valid) is exactly this
+    // case.
+    //   v = margin + ppf*min - (W - ppf*span)/2 >= -W
+    //   <=> ppf*(min + max)/2 >= -(W/2 + margin)
+    const double centre = 0.5 * (static_cast<double>(mFrameRange.min()) + static_cast<double>(mFrameRange.max()));
+    if (centre < 0.0)
+        wantedRate = std::min(wantedRate, (aViewportWidth / 2.0 + kTimeLineMargin) / -centre);
+
+    fit.scaleIndex = mTimeScale.indexForRate(wantedRate);
+
+    // CENTRED: the leftover width is split evenly, so the tick of frame min and
+    // the tick of frame max each keep the same distance from their end of the
+    // viewport. The view transform is whole content pixels, so the two paddings
+    // can differ by at most that one pixel (see the header).
+    const double ppf = ppfAt(fit.scaleIndex);
+    const double margin = (aViewportWidth - ppf * span) / 2.0;
+    fit.viewLeftPixel = qRound(kTimeLineMargin + ppf * static_cast<double>(mFrameRange.min()) - margin);
+    // Half-pixel rounding at the bound must not push the request past it: a view
+    // the camera will move is not a fit.
+    fit.viewLeftPixel = std::max(fit.viewLeftPixel, -qRound(aViewportWidth));
+    fit.valid = true;
+    return fit;
+}
+
+int TimeLineEditor::anchorPixelAfterScale(int aContentPixel, double aOldSpacing) const {
     // The zoom anchor is the content pixel under the mouse, scaled exactly
     // (no frame rounding, no range clamp). The half-spacing bias rounds
-    // half-up for positive content and away from zero for negative.
-    const int newSpacing = mTimeScale.pixelsPerFrame();
-    const qint64 num = (static_cast<qint64>(aContentPixel) - kTimeLineMargin) * newSpacing;
-    const qint64 scaled = num >= 0 ? num + aOldSpacing / 2 : num - aOldSpacing / 2;
-    return kTimeLineMargin + static_cast<int>(scaled / aOldSpacing);
+    // half-up for positive content and away from zero for negative. Both
+    // spacings are rates, so they are fractional below 1 px/frame - the
+    // ratio is what matters and it is exact.
+    const double newSpacing = mTimeScale.pixelsPerFrame();
+    const double scaled = (static_cast<double>(aContentPixel) - kTimeLineMargin) * newSpacing / aOldSpacing;
+    return kTimeLineMargin + static_cast<int>(scaled >= 0.0 ? scaled + 0.5 : scaled - 0.5);
 }
 
 void TimeLineEditor::render(
-    QPainter& aPainter, const CameraInfo& aCamera, theme::TimeLine& aTheme, const QRect& aCullRect
+    QPainter& aPainter, const core::CameraInfo& aCamera, theme::TimeLine& aTheme, const QRect& aCullRect
+) const {
+    paintBodyScene(aPainter, bodyScene(aCamera, aTheme, aCullRect));
+}
+
+ctrl::time::BodyScene TimeLineEditor::bodyScene(
+    const core::CameraInfo& aCamera, theme::TimeLine& aTheme, const QRect& aCullRect
 ) const {
     if (aCamera.screenWidth() < 2 * kTimeLineMargin)
-        return;
+        return ctrl::time::BodyScene();
 
     const QRect camRect(-aCamera.leftTopPos().toPoint(), aCamera.screenSize());
     const QRect cullRect(aCullRect.marginsAdded(QMargins(2, 2, 2, 2))); // use culling
@@ -994,23 +1498,20 @@ void TimeLineEditor::render(
     const int bgn = mTimeScale.frame(cullRect.left() - margin - 5);
     const int end = mTimeScale.frame(cullRect.right() - margin + 5);
 
-    time::Renderer renderer(aPainter, aCamera, aTheme);
-    renderer.setMargin(margin);
-    renderer.setRange(util::Range(bgn, end));
-    renderer.setTimeScale(mTimeScale);
-    renderer.setProjectRange(mFrameRange);
-    renderer.setPlayWindow(mPlayWindow);
+    // THE CALLER'S PALETTE, not a default one: the widget's theme carries the runtime colours
+    // (and the tests set them), so a default-constructed theme here would repaint every lane in
+    // the wrong ink.
+    ctrl::time::Inks inks;
+    inks.body = aTheme.trackColor();
+    inks.bodySelected = aTheme.trackSelectColor();
+    inks.edge = aTheme.trackEdgeColor();
+    inks.separator = aTheme.trackSeperatorColor();
 
-    renderer.renderLines(mRows, camRect, cullRect);
-    // Range hairlines are part of the track background: they paint over the
-    // fills and seams, but under the key graphics they must never cover.
-    renderer.renderRangeMarkers(camRect);
-    renderer.renderKeys(mRows, cullRect);
-    // renderer.renderHandle(mTimeCurrent.handlePos(), mTimeCurrent.handleRange());
-
-    if (mState == State_EncloseKeys && mMarquee.isActive()) {
-        renderer.renderSelectionRange(mMarquee.rect());
-    }
+    const QRect marquee = (mState == State_EncloseKeys && mMarquee.isActive()) ? mMarquee.rect() : QRect();
+    return buildBodyScene(
+        mRows, camRect, cullRect, mTimeScale, util::Range(bgn, end), mFrameRange, mPlayWindow.active(), marquee,
+        margin, inks
+    );
 }
 
 } // namespace ctrl

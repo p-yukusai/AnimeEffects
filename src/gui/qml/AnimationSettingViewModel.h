@@ -6,7 +6,7 @@
 
 namespace gui {
 
-// View-model backing the Animation settings dialog scene. The QML scene binds
+// View-model backing the Playback settings dialog scene. The QML scene binds
 // to these properties and calls reject() on the close button; the shell relays
 // each property change out via the dialog's own changed() signal and applies it
 // to the model live (there is no OK/Cancel/exec).

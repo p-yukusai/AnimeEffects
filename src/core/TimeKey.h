@@ -2,6 +2,7 @@
 #define CORE_TIMEKEY_H
 
 #include <limits>
+#include <memory>
 #include "util/LifeLink.h"
 #include "util/TreeNodeBase.h"
 #include "util/TreeIterator.h"
@@ -22,6 +23,23 @@ public:
     // set on load), so files are byte-compatible.
     static constexpr int kDefaultKeyIndex = std::numeric_limits<int>::min();
 
+    // Blur and HSV carry three graphable components; no key type has more.
+    static constexpr int kMaxProportionalComponents = 3;
+
+    // A proportional key keeps stored fractional weights between its nearest
+    // ABSOLUTE neighbours of the same type, so the resolved frame and values
+    // follow those neighbours when they move. The weights are stored rather
+    // than re-derived from the rounded positions: re-deriving would accumulate
+    // quantization drift over repeated edits.
+    struct Proportional {
+        int leftId = 0;   // 0 = no absolute bound on that side
+        int rightId = 0;
+        bool timeValid = false;
+        float timeWeight = 0.0f;
+        bool valueValid[kMaxProportionalComponents] = {false, false, false};
+        float valueWeight[kMaxProportionalComponents] = {0.0f, 0.0f, 0.0f};
+    };
+
     typedef util::TreeNodeBase<TimeKey>::Children ChildrenType;
     typedef util::TreeIterator<TimeKey, ChildrenType::Iterator> Iterator;
     typedef util::TreeIterator<const TimeKey, ChildrenType::ConstIterator> ConstIterator;
@@ -41,6 +59,23 @@ public:
 
     bool isDefaultKey() const { return mFrame == kDefaultKeyIndex; }
 
+    // Stable identity within a loaded project. Assigned from a file-local
+    // counter on construction and preserved by map moves and undo (they move
+    // the same objects); deserialization restores the stored id. Clones get a
+    // fresh id.
+    int id() const { return mId; }
+    // Raise the id counter so stored ids stay unique. Ids <= 0 are not stored
+    // ids (older files carry none), so they never move the counter.
+    static void reserveId(int aValue);
+
+    // Pointer presence is the enable flag: an absolute key pays one pointer.
+    bool isProportional() const { return static_cast<bool>(mProportional); }
+    void setProportional(bool aEnabled);
+    const Proportional* proportionalState() const { return mProportional.get(); }
+    Proportional* proportionalState() { return mProportional.get(); }
+    void setProportionalState(const Proportional& aState);
+    void clearProportionalState() { mProportional.reset(); }
+
     bool isFocused() const { return mFocus.isLinking(); }
     void setFocus(util::LifeLink& aLink) { mFocus = aLink; }
 
@@ -53,9 +88,16 @@ public:
     virtual bool deserialize(Deserializer& aIn) = 0;
 
 private:
+    // Restoring a serialized id is the loader's job, not an ordinary edit:
+    // TimeLine::deserializeTimeKey assigns the stored id after reserving it.
+    friend class TimeLine;
+    void setId(int aId) { mId = aId; }
+
     util::LifeLink::Node mFocus;
     util::LifeLink::Node mSelect;
     int mFrame;
+    int mId;
+    std::unique_ptr<Proportional> mProportional;
 };
 
 } // namespace core

@@ -1,7 +1,10 @@
 #ifndef CORE_IMAGEKEY_H
 #define CORE_IMAGEKEY_H
 
+#include <array>
+#include "XC.h"
 #include "util/Easing.h"
+#include "core/KeyEasing.h"
 #include "gl/Texture.h"
 #include "img/ResourceHandle.h"
 #include "img/BlendMode.h"
@@ -13,8 +16,13 @@ namespace core {
 
 class ImageKey: public TimeKey {
 public:
+    // One easing per graph channel: 0 offset x, 1 offset y. The offset is
+    // step-held, so playback does not consult either param; they are stored so
+    // the graph's own channel model stays one type-wide rule.
+    static constexpr int kComponents = easingComponentCount(TimeKeyType_Image);
+
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         img::ResourceHandle mResHandle;
         img::BlendMode mBlendMode;
         QVector2D mImageOffset;
@@ -24,8 +32,14 @@ public:
         Data();
         Data(const Data& aRhs);
         Data& operator=(const Data& aRhs);
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
         img::ResourceHandle& resource() { return mResHandle; }
         const img::ResourceHandle& resource() const { return mResHandle; }
         void setBlendMode(img::BlendMode aMode) { mBlendMode = aMode; }

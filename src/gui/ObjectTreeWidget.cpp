@@ -24,6 +24,7 @@
 #include "ctrl/ImageFileLoader.h"
 #include "gui/ResourceDialog.h"
 #include "gui/ProjectHook.h"
+#include "gui/theme/Colors.h"
 #include "gui/obj/obj_MoveItem.h"
 #include "gui/obj/obj_InsertItem.h"
 #include "gui/obj/obj_RemoveItem.h"
@@ -57,6 +58,22 @@ constexpr int kIconFadeRole = Qt::UserRole + 1;
 // Scrollable space kept after the last row so collapsing a branch near the
 // bottom doesn't make the view jump when the content height shrinks.
 static const int kBottomPadding = 12;
+// The selected row's rail (design s3): a 2px accent-bright bar at the row's
+// left edge — the mock's .tl-trow.sel draws the same thing as an inset 2px
+// box-shadow, and its row background is the lane's 0.06 tint.
+constexpr int kSelectRailWidth = 2;
+// The selected row's background: the SAME tint as the timeline's lane band
+// (theme::TimeLine::reset bakes the identical accentBright @0.06), because
+// selection is one treatment across the two columns — the rail plus the faint
+// tint over the row. The app-wide stylesheet paints every item view's selected
+// row with the shared selection token (the accent at 0.40, the flood), so the
+// widget that owns the rail restates just its own rows' fill below.
+constexpr double kSelectRowTintAlpha = 0.06;
+QColor selectRowTint() {
+    QColor tint = theme::Colors::current().accentBright;
+    tint.setAlphaF(kSelectRowTintAlpha);
+    return tint;
+}
 
 // QStyledItemDelegate maps the item's ForegroundRole brush onto the palette's
 // Text role only: selected text is drawn with HighlightedText, so a hidden
@@ -381,6 +398,21 @@ int ObjectTreeWidget::itemHeight(const core::ObjectNode& aNode) const {
     return ctrl::TimeLineRow::calculateHeight(aNode);
 }
 
+namespace {
+// A COLLAPSED folder with keys below it owns a dedicated summary lane. A folder with
+// own animation lanes keeps them and adds the band below; one without any own lane
+// uses the whole row for the summary (an empty lane above would be dead height).
+int folderDisplayHeight(const core::ObjectNode& aNode, bool aExpanded) {
+    const int base = ctrl::TimeLineRow::calculateHeight(aNode);
+    if (aExpanded || !aNode.parent() || !ctrl::TimeLineRow::hasDescendantKeys(aNode)) {
+        return base;
+    }
+    const bool hasOwnLanes = aNode.timeLine() && aNode.timeLine()->validTypeCount() > 0;
+    return hasOwnLanes ? base + ctrl::TimeLineRow::kFolderSummaryHeight
+                       : ctrl::TimeLineRow::kFolderSummaryHeight;
+}
+} // namespace
+
 void ObjectTreeWidget::updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bool aVisible) {
     // The label color is carried by the per-item foreground brush: the
     // stylesheet's ::item rules no longer declare a color (a matching QSS
@@ -435,7 +467,8 @@ void ObjectTreeWidget::updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bo
 obj::Item* ObjectTreeWidget::createFolderItem(core::ObjectNode& aNode) {
 
     obj::Item* item = new obj::Item(*this, aNode);
-    item->setSizeHint(kItemColumn, QSize(kItemSize, itemHeight(aNode)));
+    // A new item is collapsed, so its summary lane (if any) is part of the height.
+    item->setSizeHint(kItemColumn, QSize(kItemSize, folderDisplayHeight(aNode, false)));
     // item->setBackgroundColor(kItemColumn, QColor(235, 235, 235, 255));
     item->setIcon(kItemColumn, mGUIResources.icon("folder"));
     item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
@@ -531,7 +564,9 @@ bool ObjectTreeWidget::updateItemHeights(QTreeWidgetItem* aItem) {
     bool changed = false;
 
     if (objItem && !objItem->isTopNode()) {
-        const int height = itemHeight(objItem->node());
+        const core::ObjectNode& node = objItem->node();
+        const int height = node.canHoldChild() ? folderDisplayHeight(node, aItem->isExpanded())
+                                               : itemHeight(node);
         // update
         if (objItem->sizeHint(kItemColumn).height() != height) {
             objItem->setSizeHint(kItemColumn, QSize(kItemSize, height));
@@ -592,7 +627,25 @@ void ObjectTreeWidget::updateColumnWidth() {
 }
 
 void ObjectTreeWidget::onThemeUpdated(theme::Theme& aTheme) {
-    this->setStyleSheet(aTheme.loadStylesheet("standard.ssa"));
+    // The tree's selected row is the lane band's 0.06 tint plus the rail, not
+    // the shared selection token the app-wide stylesheet gives every item view
+    // (the accent at 0.40) — one treatment, so the two columns read as the same
+    // selection. The rule is restated for #objectTree alone: an ID makes it win
+    // the cascade wherever standard.ssa places its own rule, and keeps every
+    // other item view on the shared token. The value is written the way the
+    // theme writes its own translucent tokens (HexArgb keeps the 0.06 alpha;
+    // plain name() would drop it and paint an opaque accent).
+    const QColor tint = selectRowTint();
+    this->setStyleSheet(
+        aTheme.loadStylesheet("standard.ssa")
+        + QStringLiteral(
+              "QAbstractItemView#objectTree::item:pressed,"
+              "QAbstractItemView#objectTree::item:selected:!active,"
+              "QAbstractItemView#objectTree::item:selected:active,"
+              "QAbstractItemView#objectTree::item:selected:hover"
+              "{ background: %1; }")
+              .arg(tint.name(QColor::HexArgb))
+    );
 
     // Item colors are derived from the (possibly changed) palette and the icons
     // from the (rebuilt) icon map, so re-apply them to every node. Without this
@@ -617,9 +670,12 @@ void ObjectTreeWidget::onTimeLineModified(core::TimeLineEvent& aEvent, bool) {
     }
 
     // update height of items in proportion to the key type count
-    if (updateItemHeights(this->topLevelItem(0))) {
-        notifyViewUpdated();
-    }
+    updateItemHeights(this->topLevelItem(0));
+    // ALWAYS rebuild the timeline rows: a collapsed folder's summary lane depends on
+    // WHETHER its descendants have keys, and for a summary-only row the height does not
+    // change when the first/last key appears or disappears. Height equality is not
+    // "nothing changed" here.
+    notifyViewUpdated();
 }
 
 void ObjectTreeWidget::onItemChanged(QTreeWidgetItem* aItem, int aColumn) {
@@ -657,6 +713,10 @@ void ObjectTreeWidget::onItemCollapsed(QTreeWidgetItem* aItem) {
     (void)aItem;
     endRenameEditor();
 
+    // The collapsed row gains its summary lane (and an expanded one loses it), so the
+    // tree and the timeline must re-measure before the lanes are rebuilt - otherwise
+    // the folder's own keys would be laid out in the summary band's height.
+    updateItemHeights(this->topLevelItem(0));
     notifyViewUpdated();
 }
 
@@ -664,6 +724,7 @@ void ObjectTreeWidget::onItemExpanded(QTreeWidgetItem* aItem) {
     (void)aItem;
     endRenameEditor();
 
+    updateItemHeights(this->topLevelItem(0));
     notifyViewUpdated();
 }
 
@@ -1451,11 +1512,11 @@ void ObjectTreeWidget::onObjectMirrorTriggered() {
 
 template<typename T>
 void assignParam(T* key) {
-    QSettings settings;
-    util::Easing::Param aNext;
-    aNext.type = util::Easing::easingToEnum(QString());
-    aNext.range = util::Easing::rangeToEnum(QString());
-    key->data().easing() = aNext;
+    const util::Easing::Param aNext = util::Easing::defaultParam();
+    // Every component starts on the same default curve and then owns its copy.
+    for (int component = 0; component < T::kComponents; ++component) {
+        key->data().easing(component) = aNext;
+    }
 }
 void knockKeys(core::Project* mProject, core::ObjectNode& aTarget) {
     const auto tl = aTarget.timeLine();
@@ -1657,6 +1718,31 @@ void ObjectTreeWidget::onDeleteActionTriggered(bool) {
 void ObjectTreeWidget::paintEvent(QPaintEvent* aEvent) {
     QTreeWidget::paintEvent(aEvent);
 
+    // The selected object row's rail (design s3): a 2px accent-bright bar
+    // along the row's left edge, spanning its whole height. There is ONE rail
+    // and it is the tree's — a rail marks where a row STARTS, and a row starts
+    // in this column, so the lane band carries only the 0.06 tint (a second
+    // rail at the lane's left edge would be the same statement in a column a
+    // few hundred pixels away). The row the rail marks is the row the lanes
+    // tint: findSelectingRepresentNode() is the same authority the timeline
+    // uses, so a multi-selection (which marks no lane) gets no rail either.
+    if (const core::ObjectNode* represent = findSelectingRepresentNode()) {
+        QPainter painter(this->viewport());
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(theme::Colors::current().accentBright);
+        // The row's start in viewport coordinates: the item column's own
+        // position, so the rail stays on the row's edge when the tree is
+        // scrolled horizontally.
+        const int x = this->header()->sectionViewportPosition(kItemColumn);
+        for (QTreeWidgetItem* item : this->selectedItems()) {
+            obj::Item* objItem = obj::Item::cast(item);
+            if (!objItem || &objItem->node() != represent)
+                continue;
+            const QRect row = this->visualItemRect(item);
+            painter.drawRect(QRect(x, row.top(), kSelectRailWidth, row.height()));
+        }
+    }
+
     if (mDragIndex.isValid()) {
         QPainter painter(this->viewport());
 
@@ -1693,14 +1779,22 @@ void ObjectTreeWidget::dragMoveEvent(QDragMoveEvent* aEvent) {
     QPoint cheatPos = aEvent->position().toPoint();
     mDragIndex = cheatDragDropPos(cheatPos);
 
+    // THE POSITION'S TYPE IS THE Qt VERSION'S. QDragMoveEvent gained a QPointF constructor in
+    // 6.12 and deprecates the QPoint one (QT_DEPRECATED_VERSION_X_6_16); 6.11 has the QPoint
+    // constructor ONLY, and there it is not deprecated. So the newer spelling is used where it
+    // exists rather than casting anything, and the old one stays where it is the only one - the
+    // cheat point is an integer on purpose (a ROW's centre for the index lookup), so widening it
+    // is exact.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
     QDragMoveEvent dummyEvent(
-        cheatPos,
-        aEvent->dropAction(),
-        aEvent->mimeData(),
-        aEvent->buttons(),
-        aEvent->modifiers(),
+        QPointF(cheatPos), aEvent->dropAction(), aEvent->mimeData(), aEvent->buttons(), aEvent->modifiers(),
         aEvent->type()
     );
+#else
+    QDragMoveEvent dummyEvent(
+        cheatPos, aEvent->dropAction(), aEvent->mimeData(), aEvent->buttons(), aEvent->modifiers(), aEvent->type()
+    );
+#endif
     QTreeWidget::dragMoveEvent(&dummyEvent);
 
     if (!dummyEvent.isAccepted()) {

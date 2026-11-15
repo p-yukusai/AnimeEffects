@@ -111,10 +111,11 @@ assert_showing /tmp/ps_dialog.txt "OK" "and the OK action"
 assert_showing /tmp/ps_dialog.txt "Cancel" "and the Cancel action"
 assert_absent /tmp/ps_after.txt "Canvas size" "cancelling the dialog closes it"
 assert_absent /tmp/ps_after.txt "Frame range" "with the frame-range row gone too"
-# NOT "Loop animation": the main window's playback bar carries a button of that name
-# (PlayBackWidget.cpp), so the name is on screen before the dialog ever opens and an
-# absence assertion on it can never pass. "Frames per second" is the dialog's own.
+# "Loop animation" is the DIALOG's own name for the persisted interpolation flag: the
+# playback bar's live toggle is "Loop playback" (PlayBackWidget.cpp), so an absence
+# assertion on this one can now pass - and it is what distinguishes the two.
 assert_absent /tmp/ps_after.txt "Frames per second" "and the rate row gone"
+assert_absent /tmp/ps_after.txt "Loop animation" "and the loop row gone (the playback bar's own toggle is Loop playback)"
 # "Viewport background" is the dialog's own string (the QColorDialog's title shares the
 # words, but that dialog is not open here); "Choose…" exists nowhere else in the app.
 assert_absent /tmp/ps_after.txt "Viewport background" "and the viewport row gone"

@@ -6,7 +6,7 @@ namespace core {
 const MoveKey::SplineType MoveKey::kDefaultSplineType = MoveKey::SplineType_Linear;
 
 //-------------------------------------------------------------------------------------------------
-MoveKey::Data::Data(): mEasing(), mSpline(kDefaultSplineType), mPos(), mCentroid() {}
+MoveKey::Data::Data(): mEasings(), mSpline(kDefaultSplineType), mPos(), mCentroid() {}
 
 void MoveKey::Data::clampPos() {
     mPos.setX(xc_clamp(mPos.x(), Constant::transMin(), Constant::transMax()));
@@ -66,7 +66,7 @@ TimeKey* MoveKey::createClone() {
 }
 
 bool MoveKey::serialize(Serializer& aOut) const {
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
     aOut.write((int)mData.spline());
     aOut.write(mData.pos());
     aOut.write(mData.centroid());
@@ -77,7 +77,7 @@ bool MoveKey::deserialize(Deserializer& aIn) {
     aIn.pushLogScope("MoveKey");
 
     // easing
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
 

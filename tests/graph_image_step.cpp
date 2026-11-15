@@ -206,12 +206,17 @@ int sectionImageOffsetStaircase() {
     // rate, which a plain lerp would match. This pair does not.
     auto* k0 = new core::ImageKey();
     k0->setImageOffset(QVector2D(3.0f, 6.0f));
-    util::Easing::Param& easing0 = k0->data().easing();
+    util::Easing::Param& easing0 = k0->data().easing(0);
     easing0.type = util::Easing::Type_Custom;
     easing0.cubicBezier.x1 = 0.9f;
     easing0.cubicBezier.y1 = 0.1f;
     easing0.cubicBezier.x2 = 0.1f;
     easing0.cubicBezier.y2 = 0.9f;
+    // BOTH components carry the authored param: the easing is per channel now, and
+    // each channel's segment reads its OWN component's param (core::KeyEasing), so a
+    // fixture that authored only component 0 would leave component 1's curve on the
+    // default and its isCustom() false.
+    k0->data().easing(1) = easing0;
 
     // Frame 24: offset (13, 26). Distinguished from the first on BOTH components
     // and both non-zero, so a sampler that fell back to the default (0,0) or read
@@ -224,7 +229,11 @@ int sectionImageOffsetStaircase() {
     stack.push(node.timeLine()->createPusher(core::TimeKeyType_Image, 24, k1));
 
     CHECK(node.timeLine()->map(core::TimeKeyType_Image).size() == 2);
-    CHECK(ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Image) == &k0->data().easing());
+    CHECK(ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Image, 0) == &k0->data().easing(0));
+    // EACH component, not just the first: the timeline's chip/picker read an Image
+    // key through this same bridge (core::keyEasingOf), and a component the bridge
+    // could not name would make its curve unreadable/unwritable there.
+    CHECK(ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Image, 1) == &k0->data().easing(1));
 
     const float expectedV0[2] = { 3.0f, 6.0f };
     const float expectedV1[2] = { 13.0f, 26.0f };
@@ -276,7 +285,7 @@ int sectionImageOffsetStaircase() {
         CHECK(segment.easing.cubicBezier.x2 == 0.1f);
         CHECK(segment.easing.cubicBezier.y2 == 0.9f);
         // The authored param is the document's own (let a handle drag write it).
-        CHECK(ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Image) == &k0->data().easing());
+        CHECK(ctrl::graph::Curve::easingOf(*k0, core::TimeKeyType_Image, 0) == &k0->data().easing(0));
 
         // The polyline is a staircase: (0, v0), a tread holding v0 to frame 24,
         // then the riser to v1 at frame 24. Nothing is emitted strictly between

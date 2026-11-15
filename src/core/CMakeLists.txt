@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME}
     ../XCType.h
     AbstractCursor.cpp AbstractCursor.h
     Animator.h
+    AutoEasing.cpp AutoEasing.h
     Bone2.cpp Bone2.h
     BoneExpans.cpp BoneExpans.h
     BoneInfluenceMap.cpp BoneInfluenceMap.h

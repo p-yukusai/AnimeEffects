@@ -11,9 +11,19 @@
 // here — no eyeballing. It also writes the rendered widget to
 // easing_picker_layout.png for the record.
 //
+// Beyond the golden's boxes it asserts what a box list cannot see: the tile
+// catalog IS the display table's non-Custom entries position by position (read
+// back by clicking each tile), the hairline separator sits between tile-3 and
+// tile-4 - i.e. right after Auto, closing the four derived entries - and the
+// Auto tile's glyph is NOT the identity curve the Linear tile draws. Those three
+// are computed from live geometry/pixels, so a pure REORDER of the catalog
+// (which leaves every box where it was) is still caught without regenerating the
+// golden.
+//
 // Usage: easing_picker_layout [reference.json] [output.png]
 #include <QApplication>
 #include <QWidget>
+#include <QImage>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -21,6 +31,8 @@
 #include <QJsonArray>
 #include <QDir>
 #include <QDebug>
+#include <QLabel>
+#include <QToolButton>
 #include <cmath>
 #include <cstdio>
 #include "gui/prop/EasingPickWidget.h"
@@ -141,6 +153,166 @@ int main(int argc, char** argv) {
                     "FAIL  %-18s got(%4d,%4d,%4d,%4d) ref(%4.1f,%4.1f,%4.1f,%4.1f) tol %.0f   %s%s%s%s\n",
                     qPrintable(name), ax, ay, aw, ah, rx, ry, rw, rh, tol,
                     okX ? "" : " X", okY ? "" : " Y", okW ? "" : " W", okH ? "" : " H");
+        }
+    }
+
+    // ---- tile catalog: the order, the separator, and the Auto tile's own curve ----
+    // Three things the golden cannot see: the tiles' IDENTITY (it records a box at
+    // "tile-i", not which easing tile-i is), the separator (unnamed), and what the Auto
+    // glyph draws. All three matter after the reorder: the picker's catalog is the
+    // display table's non-Custom entries position by position - Linear, Floor, Round,
+    // Auto first - so the hairline closes the four non-curve entries and lands after the
+    // AUTO tile, not after Cubic, and the Auto tile draws the canonical automatic
+    // handle pair instead of collapsing to the identity (Linear) it shows when it is
+    // handed the edited key's empty neighbour context.
+    {
+        // (a) Order: a tile's click writes its easing into the draft, so walking
+        // the catalog reads its order back. The head is the three non-curve types;
+        // tile 3 is the AUTO PRESET (Custom with both handle sides Auto), so the
+        // curve family after it is the display table shifted by one. Restored
+        // afterwards so the screenshot below renders the same draft this gate
+        // started on.
+        bool order = true;
+        int catalog = 0;
+        for (int i = 0;; ++i) {
+            QToolButton* tile = w.findChild<QToolButton*>(QStringLiteral("tile-%1").arg(i));
+            if (!tile) break;
+            ++catalog;
+            tile->click();
+            app.processEvents();
+            const util::Easing::Param value = w.value();
+            const bool preset = value.type == util::Easing::Type_Custom
+                && value.handleIn == util::Easing::kAutoPresetHandleMode
+                && value.handleOut == util::Easing::kAutoPresetHandleMode;
+            if (i < 3)
+                order = order && !preset && int(value.type) == int(util::Easing::typeAtDisplayIndex(i));
+            else if (i == 3)
+                order = order && preset;
+            else
+                order = order && !preset
+                    && int(value.type) == int(util::Easing::typeAtDisplayIndex(i - 1));
+        }
+        order = order && catalog == util::Easing::displayCount();
+
+        // (a2) The Auto preset's CHECKED STATE and its label both come from the
+        // Param it writes: clicking the tile must check that tile and no other,
+        // and the button's name must be the Param's user-facing name (the two
+        // handle modes), never the interpolation type "Custom".
+        QToolButton* autoTile = w.findChild<QToolButton*>(QStringLiteral("tile-3"));
+        bool checkedOnlyAuto = autoTile != nullptr;
+        if (autoTile) {
+            autoTile->click();
+            app.processEvents();
+            for (int i = 0; i < catalog; ++i) {
+                QToolButton* tile = w.findChild<QToolButton*>(QStringLiteral("tile-%1").arg(i));
+                checkedOnlyAuto = checkedOnlyAuto && tile && tile->isChecked() == (i == 3);
+            }
+            // The preset is the CLAMPED automatic pair (the retired Auto type's
+            // behaviour), so its name is "Auto Clamped" - and the picker's own
+            // header must say that name, never the interpolation type "Custom".
+            const QString shown = util::Easing::getParamName(w.value());
+            QLabel* title = w.findChild<QLabel*>(QStringLiteral("popover-title"));
+            // The glyph-only tile's accessible text is the ACTION (automatic
+            // handles apply to the segment after the key) plus the pair it
+            // writes; the picker's TITLE still names only the parameter.
+            const QString accessible = autoTile->accessibleName();
+            checkedOnlyAuto = checkedOnlyAuto
+                && shown == util::Easing::getHandleModeName(util::Easing::kAutoPresetHandleMode)
+                && accessible.contains(shown)
+                && accessible.contains(QLatin1String("segment after the selected key"))
+                && title && title->text() == shown;
+            fprintf(stderr, "Auto preset: checked only tile-3=%d, name='%s', title='%s' -> %s\n",
+                    int(checkedOnlyAuto), qPrintable(shown),
+                    title ? qPrintable(title->text()) : "<none>", checkedOnlyAuto ? "OK" : "FAIL");
+        }
+        if (!checkedOnlyAuto) {
+            fprintf(stderr, "FAIL  the Auto preset's checked state/name is not the pair it writes\n");
+            ++failed;
+        }
+        w.setValue(initial); // back to the initial draft (and the initial glyph colours)
+        app.processEvents();
+
+        // (b) The separator: every same-row step is one tile plus one gap (36px); the
+        // step from tile-3 to tile-4 carries the 9px hairline too (49px). Nothing names
+        // the separator, so the step it leaves is the only handle on it.
+        int badSteps = 0;
+        for (int i = 1; i < catalog; ++i) {
+            QToolButton* a = w.findChild<QToolButton*>(QStringLiteral("tile-%1").arg(i - 1));
+            QToolButton* b = w.findChild<QToolButton*>(QStringLiteral("tile-%1").arg(i));
+            if (!a || !b) { ++badSteps; continue; }
+            const QPoint pa = a->mapTo(&w, QPoint(0, 0)), pb = b->mapTo(&w, QPoint(0, 0));
+            if (pa.y() != pb.y()) continue; // tile-i wrapped onto the next row
+            const int want = (i == 4) ? 49 : 36; // 32px tile + 4px gap (+ 9px separator)
+            if (pb.x() - pa.x() != want) ++badSteps;
+        }
+
+        // (c) The Auto glyph: neither tile is checked here, so both glyphs are painted
+        // the same muted colour and any pixel difference IS the Auto tile's image
+        // (its canonical curve plus the two handle dots/stems it now draws) rather
+        // than the identity curve the Linear tile paints.
+        auto grabGlyph = [&w](const char* aTile) {
+            QToolButton* tile = w.findChild<QToolButton*>(QString::fromLatin1(aTile));
+            gui::prop::CurveGlyph* g = tile ? tile->findChild<gui::prop::CurveGlyph*>() : nullptr;
+            return g ? g->grab().toImage() : QImage();
+        };
+        const QImage gLinear = grabGlyph("tile-0");
+        const QImage gAuto = grabGlyph("tile-3");
+        const bool sameSize = !gLinear.isNull() && gLinear.size() == gAuto.size();
+        int glyphDiff = -1;
+        if (sameSize) {
+            glyphDiff = 0;
+            for (int y = 0; y < gLinear.height(); ++y)
+                for (int x = 0; x < gLinear.width(); ++x)
+                    if (gLinear.pixel(x, y) != gAuto.pixel(x, y)) ++glyphDiff;
+        }
+
+        fprintf(stderr,
+                "tile catalog: %d tile(s) for %d entries (non-Custom + the Auto preset), order=%d, bad column steps=%d "
+                "(want tile+gap, +separator between tile-3 and tile-4), "
+                "Auto-vs-Linear differing glyph pixels=%d\n",
+                catalog, util::Easing::displayCount(), int(order), badSteps, glyphDiff);
+        if (!order) {
+            fprintf(stderr, "FAIL  tile catalog order is not the display table's\n");
+            ++failed;
+        }
+        if (badSteps != 0) {
+            fprintf(stderr, "FAIL  the separator does not sit between tile-3 and tile-4\n");
+            ++failed;
+        }
+        if (!sameSize || glyphDiff <= 0) {
+            fprintf(stderr, "FAIL  the Auto tile's glyph is missing or identical to Linear's\n");
+            ++failed;
+        }
+
+        // (d) THE AUTO GLYPH'S SHAPE, from the glyph's OWN param and context: a
+        // "not equal to Linear" gate accepts any non-straight curve, including the
+        // retired clamped pair's (which dived below the start and overshot the end).
+        // The canonical automatic pair derives (1/3, 0) and (2/3, 1); assert those.
+        {
+            gui::prop::CurveGlyph* g = w.findChild<QToolButton*>(QStringLiteral("tile-3"))
+                ? w.findChild<QToolButton*>(QStringLiteral("tile-3"))
+                      ->findChild<gui::prop::CurveGlyph*>()
+                : nullptr;
+            bool canonical = g != nullptr;
+            if (g) {
+                const util::Easing::Param& p = g->param();
+                const util::Easing::AutoContext& ctx = g->autoContext();
+                canonical = p.type == util::Easing::Type_Custom
+                    && p.handleIn == util::Easing::kAutoPresetHandleMode
+                    && p.handleOut == util::Easing::kAutoPresetHandleMode
+                    && ctx.inMode == util::Easing::kAutoPresetHandleMode;
+                const QPointF out = util::Easing::controlPoint(p, ctx.inMode, ctx, 1.0f, 0);
+                const QPointF in = util::Easing::controlPoint(p, ctx.inMode, ctx, 1.0f, 1);
+                canonical = canonical && std::fabs(out.x() - 1.0 / 3.0) < 1e-6
+                    && std::fabs(out.y() - 0.0) < 1e-6 && std::fabs(in.x() - 2.0 / 3.0) < 1e-6
+                    && std::fabs(in.y() - 1.0) < 1e-6;
+            }
+            fprintf(stderr, "Auto glyph control points are the canonical (1/3,0)/(2/3,1): %d\n",
+                    int(canonical));
+            if (!canonical) {
+                fprintf(stderr, "FAIL  the Auto tile is not drawing the canonical automatic pair\n");
+                ++failed;
+            }
         }
     }
 

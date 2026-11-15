@@ -140,12 +140,15 @@ int main(int argc, char** argv) {
         box("pipeline", hide->findChild<QWidget*>("pipeline"));
         fprintf(stderr, "  pipeline visible=%d\n",
                 hide->findChild<QWidget*>("pipeline") ? hide->findChild<QWidget*>("pipeline")->isVisible() : -1);
-        // tile wraps: count tiles per row by grouping on mapped-y.
+        // tile wraps: count tiles per row by grouping on mapped-y. The walk stops at the
+        // first name the picker does not own, so the count follows the picker's own tile
+        // table (EasingPickWidget's kTileOrderCount) instead of a number written here - a
+        // hardcoded 13 silently dropped the 14th tile (Auto) from the measurement.
         {
             int prevY = -9999, per = 0; QList<int> rows;
-            for (int i = 0; i < 13; ++i) {
+            for (int i = 0;; ++i) {
                 QToolButton* tile = hide->findChild<QToolButton*>(QStringLiteral("tile-%1").arg(i));
-                if (!tile) continue;
+                if (!tile) break;
                 const QPoint p = tile->mapTo(hide, QPoint(0, 0));
                 if (p.y() != prevY) { if (prevY != -9999 && per) rows << per; per = 0; prevY = p.y(); }
                 ++per;

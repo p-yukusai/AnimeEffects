@@ -2,7 +2,7 @@
 
 namespace core {
 
-HSVKey::Data::Data(): mEasing(), mHue(0), mSaturation(100), mValue(100), mAbsolute(0), mHSV{0, 100, 100, 0} {}
+HSVKey::Data::Data(): mEasings(), mHue(0), mSaturation(100), mValue(100), mAbsolute(0), mHSV{0, 100, 100, 0} {}
 
 HSVKey::HSVKey(): mData() {}
 
@@ -13,7 +13,7 @@ TimeKey* HSVKey::createClone() {
 }
 
 bool HSVKey::serialize(Serializer& aOut) const {
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
     aOut.write(mData.hsv());
     return aOut.checkStream();
 }
@@ -25,7 +25,7 @@ bool HSVKey::deserialize(Deserializer& aIn) {
         errorCorrection = true;
     }
 
-    if (!aIn.read(mData.easing(), errorCorrection)) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents, errorCorrection)) {
         return aIn.errored("invalid easing param");
     }
 

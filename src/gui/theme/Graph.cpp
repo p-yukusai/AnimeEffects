@@ -28,9 +28,19 @@ Graph Graph::from(const Colors& aColors) {
 }
 
 void Graph::assignFrom(const Colors& aColors) {
-    // The frame ticks read at the separator tone. There is no second, weaker
-    // tone: the panel draws ticks and no grid, so nothing is a step behind.
-    mGridMajor = aColors.hairline;
+    // The frame ticks read in the SAME ink as the frame numbers below them, at a
+    // tier's alpha: the timeline's own rule for its ruler, where one token
+    // (TimeRuler.cpp:106, headerContentColor == Colors::text) draws the ticks, the
+    // numbers and the boundary labels, and the tier is the ALPHA (TimeRuler.cpp:22-30:
+    // 0.85 major / 0.60 intermediate / 0.20 minor, one tick length for every level).
+    // The panel used to draw its ticks at the separator tone (hairline) under
+    // full-strength text numbers - two different tokens for one ruler, and the
+    // separator tone is the ink that disappears over mid-grey artwork (measured in
+    // Graph.h's axisText() note: 1.20:1 over mid-grey, against 4.54:1 for text).
+    // The drawing layer (gui::drawPanel) owns the tier table and applies the alpha;
+    // this token is the one ink both families are made of, the same one axisText()
+    // hands the numbers.
+    mGridMajor = aColors.text;
 
     // Value axis: the hover separator is the one line tone that stays legible
     // over the artwork the panel floats on.
@@ -65,6 +75,24 @@ void Graph::assignFrom(const Colors& aColors) {
     mAxisLine = aColors.hairlineHover;
     mAxisText = aColors.text;
 
+    // The frame ruler's band and hairline: the timeline's ruler tokens, read from the
+    // same palette cells the timeline does (theme::TimeLine::headerBackgroundColor ==
+    // base, rulerLineColor == hairline). The panel's ruler IS the timeline's ruler
+    // (see GraphPanelModel.h), so the two surfaces cannot drift.
+    mRulerBand = aColors.base;
+    mRulerLine = aColors.hairline;
+    // THE PLAYHEAD PILL'S NUMBER IS NOT THE RULER'S NUMBER INK. The pill is an
+    // accentBright FILL (Colors::accentBright, the same cell TimeCursor fills), so
+    // its number takes the token the timeline puts on that fill:
+    // theme::Colors::accentBrightText (TimeLineEditorWidget.cpp sets
+    // TimeCursor::setNumberColor to it, "max-contrast text on an accentBright
+    // pill"). It was Colors::text - the ink of a number on the BASE surface - which
+    // is near-white in the dark palette: near-white on the violet fill, measured at
+    // 2 lit pixels of (240,238,246) in the shipped build, i.e. an invisible number
+    // where the timeline draws a dark one. A pill's number is read against the
+    // PILL, so it takes the pill's text token.
+    mPlayheadText = aColors.accentBrightText;
+
     // Label halo: the palette's opaque floater body. The panel paints no
     // background of its own (see GraphPanelModel's header), so the halo is the
     // tone the text would sit on if it had one - and a halo that carried the
@@ -74,15 +102,16 @@ void Graph::assignFrom(const Colors& aColors) {
 
     mOutline = paletteColor(kTailwindRows[kTailwindNeutralRow][kNeutralBlackStep]);
 
-    // Fallback curve color, i.e. the generic line for a type keyColor() does
-    // not name: the bright brand edge, the same family the playhead and the
-    // selection read as.
+    // Fallback curve color, i.e. the generic line for a type channelColor()
+    // does not name: the bright brand edge, the same family the playhead and
+    // the selection read as.
     mCurve = aColors.accentBright;
 
     // Key markers: the channel's own hue as the fill (the drawing layer paints
-    // curve.color, which is keyColor(type)) inside a floor-coloured ring, so a key
-    // stays visible on top of any curve hue - including its own. The selected key is
-    // the brand edge, fill and ring alike.
+    // curve.color, which is channelColor(channel.type(), channel.component()))
+    // inside a floor-coloured ring, so a key stays visible on top of any curve
+    // hue - including its own. The selected key is the brand edge, fill and ring
+    // alike.
     mKeyEdge = aColors.base;
     mSelected = aColors.accentBright;
 
@@ -102,38 +131,61 @@ void Graph::assignFrom(const Colors& aColors) {
     mMenuHoverText = aColors.accentText;
     mMenuSeparator = aColors.hairline;
 
-    // Tangent handles: raised like the widgets they emulate, edged with the
-    // popup border tone, stems muted so they never outread the curve itself.
+    // Tangent handles: a stored pair is filled with the raised surface the reference
+    // fills it with; its stroke and stem take the CHANNEL's own hue where they are
+    // drawn (GraphPanelFrame.cpp), so the palette names no grey for them.
     mHandleFill = aColors.raised;
-    mHandleEdge = aColors.floaterEdge;
-    mHandleLine = aColors.textMuted;
 
-    // Per-type curve colors are the timeline's key hues, so a curve on the
-    // graph and its keys on the timeline read as the same feature. The
-    // neutral family shares baseKey (the timeline's default key color); the
-    // array covers every type below TimeKeyType_TERM.
+    // The channel hue table (theme::Colors, THE CHANNEL HUE TABLE): the axis
+    // cells, and each key type's own hue for a channel with no axis. Both the
+    // panel and the timeline read the one table in Colors.h; this copy exists
+    // so the panel's paint path does no palette lookup per curve.
+    mAxisColors[kChannelAxisX] = aColors.axisX;
+    mAxisColors[kChannelAxisY] = aColors.axisY;
+    mAxisColors[kChannelAxisZ] = aColors.axisZ;
+
+    // Only the GRAPHABLE types can reach the panel, and their component count is
+    // what proves it: ctrl::graph::Channel::componentCount() returns 0 for Bone,
+    // Pose, Mesh and FFD (graph_Channel.cpp:22-40), and Channel::graphableTypes()
+    // is the filter that walks componentCount() > 0 (graph_Channel.cpp:50-63) -
+    // so buildChannels (GraphPanelModel.cpp) can never publish a row or curve for
+    // them. They are therefore NOT in this table (design section 7: "should be
+    // DELETED rather than coloured"; section 8's one-line row still says they
+    // "keep their hues", which is unreachable code - section 7's own reasoning
+    // wins here); the TIMELINE still draws their keys, so
+    // theme::Colors keeps their tokens and keyTypeColor() still names them.
+    // baseKey stays the palette's neutral key tone, not a family's.
     mKeyColors[core::TimeKeyType_Move] = aColors.moveKey;
     mKeyColors[core::TimeKeyType_Rotate] = aColors.rotateKey;
     mKeyColors[core::TimeKeyType_Scale] = aColors.scaleKey;
     mKeyColors[core::TimeKeyType_Depth] = aColors.depthKey;
     mKeyColors[core::TimeKeyType_Opa] = aColors.opaKey;
-    mKeyColors[core::TimeKeyType_Bone] = aColors.baseKey;
-    mKeyColors[core::TimeKeyType_Pose] = aColors.baseKey;
-    mKeyColors[core::TimeKeyType_Mesh] = aColors.baseKey;
-    mKeyColors[core::TimeKeyType_FFD] = aColors.baseKey;
     mKeyColors[core::TimeKeyType_Image] = aColors.imageKey;
     mKeyColors[core::TimeKeyType_HSV] = aColors.HSVKey;
     mKeyColors[core::TimeKeyType_Blur] = aColors.blurKey;
 }
 
-QColor Graph::keyColor(core::TimeKeyType aType) const {
+QColor Graph::channelColor(core::TimeKeyType aType, int aComponent) const {
     // TimeKeyType_TERM is the sentinel, never a real key's type, and a value
     // past it is not a type this palette names: both fall back to the generic
-    // curve color.
+    // curve color, exactly as keyColor() always has.
     const int type = (int)aType;
     if (type < 0 || type >= core::TimeKeyType_TERM)
         return mCurve;
-    return mKeyColors[type];
+    const int axis = channelAxis(aType, aComponent);
+    if (axis >= 0 && axis < kChannelAxisCount)
+        return mAxisColors[axis];
+    // Bone/Pose/Mesh/FFD are graphable by no caller (see above), so an index
+    // here is either a graphable type's own hue or an unnamed fallback.
+    const QColor hue = mKeyColors[type];
+    return hue.isValid() ? hue : mCurve;
+}
+
+QColor Graph::keyColor(core::TimeKeyType aType) const {
+    // A timeline key belongs to the TYPE, so it takes the type's first
+    // component's hue from the same table: X red for Move/Scale/Image/Blur,
+    // its own hue otherwise (Opa amber, Rotate purple, ...).
+    return channelColor(aType, 0);
 }
 
 } // namespace theme

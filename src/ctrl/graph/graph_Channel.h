@@ -18,9 +18,10 @@ namespace graph {
 // Channel, so adding a key type to the graph is one edit in one file.
 //
 // Only types whose easing playback actually applies are graphable. Bone, pose,
-// mesh and FFD keys are structural: they carry no util::Easing::Param, and
-// drawing them as value curves would invent an interpolation the document does
-// not have.
+// mesh and FFD keys are structural: pose and FFD carry ONE easing that shapes
+// the whole key (core::easingStorageCount), not one per component, so drawing
+// them as value curves would invent an interpolation the document does not
+// have.
 class Channel {
 public:
     Channel();

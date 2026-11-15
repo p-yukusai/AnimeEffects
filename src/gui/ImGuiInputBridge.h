@@ -48,7 +48,7 @@ namespace gui {
 // QWheelEvent::position() already use and the space ImGui::GetCursorScreenPos()
 // reports. io.DisplaySize must therefore be the widget's logical size and
 // io.DisplayFramebufferScale the devicePixelRatio, which is exactly what
-// ImGuiOverlay::paint() sets up in the application today. ImGui scales the draw
+// gui::runPanelFrame() sets up in the application today. ImGui scales the draw
 // projection by ImDrawData::FramebufferScale itself, and the renderer backend
 // (ImGui_ImplOpenGL3) sets the GL viewport to the framebuffer size in device
 // pixels from draw_data. Feeding device pixels here would make hit-testing miss

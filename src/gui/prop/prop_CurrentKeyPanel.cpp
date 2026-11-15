@@ -17,7 +17,6 @@ namespace prop {
         KeyGroup(tr("Move"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
-        mEasing(),
         mSpline(),
         mPosition(),
         mCentroid(),
@@ -31,13 +30,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignMoveEasing(aNext);
-            };
 
             // spline
             mSpline = new ComboItem(this);
@@ -79,7 +71,7 @@ namespace prop {
     void MoveKeyGroup::setKeyValue(const core::TimeKey* aKey) {
         TIMEKEY_PTR_TYPE_ASSERT(aKey, Move);
         const core::MoveKey::Data data = ((const core::MoveKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
+
         mSpline->setValue(data.spline(), false);
         mPosition->setValue(data.pos());
         mCentroid->setValue(data.centroid());
@@ -89,7 +81,7 @@ namespace prop {
 
     //-------------------------------------------------------------------------------------------------
     RotateKeyGroup::RotateKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Rotate"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mRotate(), mKeyExists(false) {
+        KeyGroup(tr("Rotate"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mRotate(), mKeyExists(false) {
         using util::MathUtil;
         mKnocker = new KeyKnocker(tr("Rotate"), mGUIResources);
         mKnocker->set([=]() {
@@ -100,13 +92,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignRotateEasing(aNext);
-            };
 
             // rotate
             mRotate = new DecimalItem(this);
@@ -137,7 +122,7 @@ namespace prop {
     void RotateKeyGroup::setKeyValue(const core::TimeKey* aKey) {
         TIMEKEY_PTR_TYPE_ASSERT(aKey, Rotate);
         const core::RotateKey::Data data = ((const core::RotateKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
+
         mRotate->setValue(util::MathUtil::getDegreeFromRadian(data.rotate()));
     }
 
@@ -145,7 +130,7 @@ namespace prop {
 
     //-------------------------------------------------------------------------------------------------
     ScaleKeyGroup::ScaleKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Scale"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mScale(), mKeyExists(false) {
+        KeyGroup(tr("Scale"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mScale(), mKeyExists(false) {
         mKnocker = new KeyKnocker(tr("Scale"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewScale();
@@ -155,13 +140,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignScaleEasing(aNext);
-            };
 
             // scale
             mScale = new Vector2DItem(this);
@@ -187,7 +165,7 @@ namespace prop {
     void ScaleKeyGroup::setKeyValue(const core::TimeKey* aKey) {
         TIMEKEY_PTR_TYPE_ASSERT(aKey, Scale);
         const core::ScaleKey::Data data = ((const core::ScaleKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
+
         mScale->setValue(data.scale());
     }
 
@@ -195,7 +173,7 @@ namespace prop {
 
     //-------------------------------------------------------------------------------------------------
     DepthKeyGroup::DepthKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Depth"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mDepth(), mKeyExists(false) {
+        KeyGroup(tr("Depth"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mDepth(), mKeyExists(false) {
         mKnocker = new KeyKnocker(tr("Depth"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewDepth();
@@ -205,13 +183,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignDepthEasing(aNext);
-            };
 
             // depth
             mDepth = new DecimalItem(this);
@@ -237,7 +208,7 @@ namespace prop {
     void DepthKeyGroup::setKeyValue(const core::TimeKey* aKey) {
         TIMEKEY_PTR_TYPE_ASSERT(aKey, Depth);
         const core::DepthKey::Data& data = ((const core::DepthKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
+
         mDepth->setValue(data.depth());
     }
 
@@ -248,7 +219,6 @@ namespace prop {
         KeyGroup(tr("Opacity"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
-        mEasing(),
         mOpacity(),
         mKeyExists(false) {
         mKnocker = new KeyKnocker(tr("Opacity"), mGUIResources);
@@ -260,13 +230,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignOpaEasing(aNext);
-            };
 
             // opacity
             mOpacity = new DecimalItem(this);
@@ -293,7 +256,7 @@ namespace prop {
     void OpaKeyGroup::setKeyValue(const core::TimeKey* aKey) {
         TIMEKEY_PTR_TYPE_ASSERT(aKey, Opa);
         const core::OpaKey::Data& data = ((const core::OpaKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
+
         mOpacity->setValue(data.opacity());
     }
 
@@ -304,7 +267,6 @@ namespace prop {
         KeyGroup(tr("Blur"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
-        mEasing(),
         mAmount(),
         mBlurX(),
         mBlurY(),
@@ -320,13 +282,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignBlurEasing(aNext);
-            };
 
             // amount (isotropic radius, the default/direct mode)
             mAmount = new DecimalItem(this);
@@ -389,7 +344,7 @@ namespace prop {
     void BlurKeyGroup::setKeyValue(const core::TimeKey* aKey) {
         TIMEKEY_PTR_TYPE_ASSERT(aKey, Blur);
         const core::BlurKey::Data& data = ((const core::BlurKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
+
         mAmount->setValue(data.amount());
         // setValue (not box().setChecked) so the item's change stamp stays in sync -
         // a stale stamp swallows the user's next click (mStamp == value() == no signal)
@@ -428,7 +383,6 @@ namespace prop {
         KeyGroup(tr("HSV"), aLabelWidth, mGUIResources),
         mAccessor(aAccessor),
         mKnocker(),
-        mEasing(),
         mHue(),
         mSaturation(),
         mValue(),
@@ -442,13 +396,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignHSVEasing(aNext);
-            };
 
             // hue
             mHue = new IntegerItem(this);
@@ -495,7 +442,7 @@ namespace prop {
     void HSVKeyGroup::setKeyValue(const core::TimeKey* aKey) {
         TIMEKEY_PTR_TYPE_ASSERT(aKey, HSV);
         const core::HSVKey::Data& data = ((const core::HSVKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
+
         mHue->setValue(data.hsv()[0]);
         mSaturation->setValue(data.hsv()[1]);
         mValue->setValue(data.hsv()[2]);
@@ -506,7 +453,7 @@ namespace prop {
 
     //-------------------------------------------------------------------------------------------------
     PoseKeyGroup::PoseKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("Pose"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mKeyExists(false) {
+        KeyGroup(tr("Pose"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mKeyExists(false) {
         mKnocker = new KeyKnocker(tr("Pose"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewPose();
@@ -516,13 +463,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignPoseEasing(aNext);
-            };
         }
         setKeyEnabled(false);
         setKeyExists(false, false);
@@ -540,16 +480,17 @@ namespace prop {
     }
 
     void PoseKeyGroup::setKeyValue(const core::TimeKey* aKey) {
+        // The group's easing was its only value, and the timeline header's chip
+        // names the selection's now (see gui::TimeLineHeader): the type check is
+        // all that is left to do here.
         TIMEKEY_PTR_TYPE_ASSERT(aKey, Pose);
-        const core::PoseKey::Data& data = ((const core::PoseKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
     }
 
     bool PoseKeyGroup::keyExists() const { return mKeyExists; }
 
     //-------------------------------------------------------------------------------------------------
     FFDKeyGroup::FFDKeyGroup(gui::prop::Panel& aPanel, KeyAccessor& aAccessor, int aLabelWidth, GUIResources* mGUIResources):
-        KeyGroup(tr("FFD"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mEasing(), mKeyExists(false) {
+        KeyGroup(tr("FFD"), aLabelWidth, mGUIResources), mAccessor(aAccessor), mKnocker(), mKeyExists(false) {
         mKnocker = new KeyKnocker(tr("FFD"), mGUIResources);
         mKnocker->set([=]() {
             this->mAccessor.knockNewFFD();
@@ -559,13 +500,6 @@ namespace prop {
 
         {
             aPanel.addGroup(this);
-
-            // easing
-            mEasing = new EasingItem(this, mGUIResources);
-            this->addItem(tr("Easing"), mEasing);
-            mEasing->onValueUpdated = [=](util::Easing::Param, util::Easing::Param aNext) {
-                this->mAccessor.assignFFDEasing(aNext);
-            };
         }
         setKeyEnabled(false);
         setKeyExists(false, false);
@@ -583,9 +517,10 @@ namespace prop {
     }
 
     void FFDKeyGroup::setKeyValue(const core::TimeKey* aKey) {
+        // The group's easing was its only value, and the timeline header's chip
+        // names the selection's now (see gui::TimeLineHeader): the type check is
+        // all that is left to do here.
         TIMEKEY_PTR_TYPE_ASSERT(aKey, FFD);
-        const core::FFDKey::Data& data = ((const core::FFDKey*)aKey)->data();
-        mEasing->setValue(data.easing(), false);
     }
 
     bool FFDKeyGroup::keyExists() const { return mKeyExists; }

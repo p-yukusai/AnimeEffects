@@ -6,6 +6,7 @@
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "ctrl/ScopedModifier.h"
+#include "ctrl/srt/srt_AssignKeyCommand.h"
 #include "ctrl/srt/srt_IMode.h"
 #include "ctrl/srt/srt_KeyOwner.h"
 #include "ctrl/srt/srt_Symbol.h"
@@ -22,9 +23,13 @@ namespace srt {
         virtual void renderQt(const core::RenderInfo& aInfo, QPainter& aPainter);
 
     private:
-        typedef cmnd::ModifiableAssign<core::MoveKey::Data> AssignMoveCommand;
-        typedef cmnd::ModifiableAssign<core::RotateKey::Data> AssignRotateCommand;
-        typedef cmnd::ModifiableAssign<core::ScaleKey::Data> AssignScaleCommand;
+        // The three live value commands of a pose drag. They are the same one
+        // command template (srt_AssignKeyCommand.h): the key's whole Data, plus
+        // the proportional companions of its channel, in ONE stack entry that
+        // every later step rewrites.
+        typedef AssignKeyCommand<core::MoveKey, core::TimeKeyType_Move> AssignMoveCommand;
+        typedef AssignKeyCommand<core::RotateKey, core::TimeKeyType_Rotate> AssignRotateCommand;
+        typedef AssignKeyCommand<core::ScaleKey, core::TimeKeyType_Scale> AssignScaleCommand;
 
         void clearState();
         void assignMoveKey(core::MoveKey::Data& aNewData);

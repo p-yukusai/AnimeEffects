@@ -12,6 +12,7 @@
 #include "core/AbstractCursor.h"
 #include "core/Animator.h"
 #include "core/TimeLineEvent.h"
+#include "ctrl/AutoScroll.h"
 #include "gui/TimeLineEditorWidget.h"
 #include "gui/ViaPoint.h"
 #include "gui/GUIResources.h"
@@ -75,25 +76,50 @@ public:
     // ->selection()) is the set the panel shares, and its scale is what
     // visibleFrameRange() below is derived from.
     ctrl::TimeLineEditor* editor() const;
-    // Shows the application's own key EASING MENU at aGlobalPos for the keys
-    // aTargets names - the panel's right-click route to the timeline's menu (see
-    // TimeLineEditorWidget::showKeyContextMenu, which is where the menu and its
-    // action live). aGlobalPos is in GLOBAL (screen) coordinates, and an empty
-    // target list shows nothing.
-    void showKeyContextMenu(const core::TimeLineEvent& aTargets, const QPoint& aGlobalPos);
+    // Opens the timeline's own KEY MENU at aGlobalPos for the key aPressedKey names -
+    // the animation graph panel's right-click route to the menu a right-click in the
+    // timeline opens (see TimeLineEditorWidget::openKeyMenu, which owns the menu, the
+    // selection rule and the temporary loan). aGlobalPos is in GLOBAL (screen)
+    // coordinates. False when there is no menu to open: no editor, or aPressedKey is
+    // not a key the document holds.
+    bool openKeyMenu(const core::TimeLineEvent::Target& aPressedKey, const QPoint& aGlobalPos);
     // The frames this widget is showing right now: the visible window on the
     // content axis, in frames, derived through the editor's own scale (the same
     // mapping every input path here converts a pixel with). This is what the
     // animation graph panel's horizontal window IS while the two are attached
     // (see MainDisplayWidget::setTimeLineWidget).
     util::Range visibleFrameRange() const;
+    // The same edges EXACTLY (fractional frames): the shared frame window the panel
+    // maps, see GraphEditor::setFrameWindow. Both are 0.0 with no surface to read them
+    // from, which the caller treats as "no window".
+    void visibleFrameWindow(double& aLo, double& aHi) const;
     // The two horizontal gestures the panel delegates here, in FRAMES - the one
     // unit both views can agree on: a pan (positive reveals LATER frames) and a
-    // wheel notch about a frame. Both drive this widget's own view transform and
-    // zoom ladder, which is what keeps a gesture made over the panel and one made
-    // over the timeline from landing on different frames.
+    // wheel notch about aAnchorFrame, fractional, so the frame under a cursor the
+    // panel owns pixel-exactly can be anchored pixel-exactly here too. A held zoom
+    // carries its sub-pixel translation remainder between notches, so the frame
+    // under the pointer stays there over the WHOLE gesture, not only for one notch.
+    // Both drive this widget's own view transform and zoom ladder, which is what
+    // keeps a gesture made over the panel and one made over the timeline on the same
+    // frames.
     void scrollFramesBy(double aFrameDelta);
-    void zoomFramesAbout(int aWheelDelta, core::Frame aAnchorFrame);
+    void zoomFramesAbout(int aWheelDelta, double aAnchorFrame);
+
+    // THE FIT: scale and translate this widget's frame axis so the project's frame
+    // range is shown whole with the SAME gutter at each end (see
+    // ctrl::TimeLineEditor::fitFrameRange, which computes the two numbers). This is
+    // the header's fit button and the new-project fit (setProject), in one place.
+    // A widget with no laid-out width remembers the request and applies it on the
+    // first camera pass that has one.
+    void fitFrameRange();
+
+    // THE TEMPORARY PLAYBACK WINDOW'S GESTURE, for the animation graph's ruler band
+    // (ctrl::GraphEditor::setPlayWindowDelegate): one Begin/Drag/End step on the
+    // timeline's own ctrl::TimeLineEditor::PlayWindow. The window is the TIMELINE's
+    // state - the panel only overlays it - so the graph's Shift-drag moves exactly
+    // the window the timeline's own Shift-drag does, and this repaints both rulers.
+    // Returns true when the window's value changed.
+    bool updatePlayWindow(ctrl::TimeLineEditor::PlayWindowStep aStep, core::Frame aFrame);
 
 private:
     virtual void mouseMoveEvent(QMouseEvent* aEvent);
@@ -103,6 +129,7 @@ private:
     virtual void wheelEvent(QWheelEvent* aEvent);
     virtual void keyPressEvent(QKeyEvent* aEvent);
     virtual void resizeEvent(QResizeEvent* aEvent);
+    virtual void hideEvent(QHideEvent* aEvent);
     virtual QSize minimumSizeHint() const;
     virtual QSize sizeHint() const;
     virtual bool eventFilter(QObject* aObject, QEvent* aEvent);
@@ -120,6 +147,15 @@ private:
     void endScrollbarDrag();
     void scrollViewBy(int aValueDelta);
     void onPlayBackUpdated();
+    // Edge autoscroll for a marquee drag: the shared ctrl::autoscroll step is
+    // applied to the horizontal view and the object tree's vertical scroll, then
+    // the box is extended to the pointer's new world position (the pointer stays
+    // still while the content moves under it).
+    void updateMarqueeAutoScroll();
+    void autoScrollMarquee();
+    // The lanes' viewport, not the whole surface: the ruler/header above them is
+    // not a scroll edge, so a box dragged along the top row is near the LANE edge.
+    QRect marqueeScrollViewport() const;
     void syncAudioTracks();
     void onThemeUpdated(theme::Theme&);
     // Emits onViewRangeChanged when the visible frame window moved since the last
@@ -143,12 +179,19 @@ private:
     // the frame range. The horizontal scrollbar is a one-way projection of it
     // and never feeds back, except through explicit user slider actions.
     int mHorizontalOffset;
+    // A delegated pan's frame remainder, carried between scrollFramesBy calls so whole-content-pixel
+    // rounding cannot make the view drift behind the pointer over a drag.
+    double mPendingScrollPixels;
+    // A delegated zoom's sub-pixel remainder, carried between zoomFramesAbout calls for the same
+    // reason: the view transform is whole content pixels and the ladder makes each notch's
+    // fraction different, so discarding it per notch walks the anchored frame away over a held
+    // zoom (see ctrl::TimeLineEditor::zoomAnchorDelta).
+    double mPendingZoomPixels;
     bool mPendingScrollbarAdopt;
-    // The frame window the last onViewRangeChanged emission reported, so the
-    // signal only fires when visibleFrameRange() really answered something new.
-    // A window with min > max means "nothing reported yet" (no project, no
-    // geometry), which can never equal a real range.
-    util::Range mReportedFrameRange;
+    // The window the last onViewRangeChanged emission reported, in FRACTIONAL frames (the same
+    // values the signal's consumers get), so the signal fires on every change of it.
+    double mReportedWindowLo;
+    double mReportedWindowHi;
     // Custom scrollbar thumb drag: Qt remaps the mouse against the live
     // range, which compounds (exponential gain) while the track grows; the
     // drag is anchored instead — the value<->pixel ratio is frozen at press
@@ -158,6 +201,9 @@ private:
     double mScrollbarDragAnchorValue;
     int mScrollbarDragAnchorX;
     double mScrollbarDragRatio;
+    // A fit requested before this widget had a laid-out width (a project opened on
+    // a hidden timeline): updateCamera applies it on the first pass that has one.
+    bool mFitPending;
     bool mIsPanning;
     // WHICH button started the pan. The pan is a gesture of one button, and
     // only that button's release may end it: while a middle-drag pan is in
@@ -175,6 +221,12 @@ private:
 
     // for animation
     QTimer mTimer;
+    // The marquee's edge autoscroll (see updateMarqueeAutoScroll): one timer while a
+    // box drag is in flight, and the pointer's last SCREEN position, which stays put
+    // while the view scrolls under it.
+    QTimer mMarqueeScrollTimer;
+    QPoint mMarqueePointer;
+    ctrl::autoscroll::EdgeDwell mMarqueeDwell;
     QElapsedTimer mElapsed;
     core::Frame mBeginFrame;
     core::Frame mLastFrame;

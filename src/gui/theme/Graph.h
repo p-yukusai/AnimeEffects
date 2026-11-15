@@ -8,7 +8,7 @@
 namespace theme {
 
 // Appearance tokens for the animation graph overlay (gui::drawPanel, in
-// src/gui/ImGuiOverlay.cpp).
+// src/gui/GraphPanelFrame.cpp).
 //
 // The panel is drawn by the gui layer from gui::GraphPanelModel, so - exactly
 // like theme::TimeLine for ctrl::time::Renderer - the palette decisions live here
@@ -16,12 +16,14 @@ namespace theme {
 // theme::Colors, so an accent or light/dark change is one rebuild (Graph::from)
 // and never a per-widget color.
 //
-// Curves are colored by KEY TYPE through keyColor(), i.e. the same hues the
-// timeline draws its keys in: a curve on the graph and its keys on the timeline
-// read as the same feature. A KEY MARKER on the panel carries that hue too (its
-// fill), so the curve, its key squares and its legend swatch are one colour, and
-// the only thing the palette names for every key besides it is the edge that keeps
-// the fill legible over arbitrary artwork.
+// Curves are colored by CHANNEL through channelColor(), i.e. by the one hue
+// table in theme::Colors (design section 7: "axis where there is an axis, type
+// otherwise"), the same table the timeline draws its keys and lane labels from:
+// a curve on the graph and its keys on the timeline read as the same feature. A
+// KEY MARKER on the panel carries that hue too (its fill), so the curve, its key
+// squares and its legend swatch are one colour, and the only thing the palette
+// names for every key besides it is the edge that keeps the fill legible over
+// arbitrary artwork.
 class Graph {
 public:
     Graph();
@@ -31,6 +33,22 @@ public:
 
     QColor gridMajor() const { return mGridMajor; }  // the frame ticks (the panel has no grid)
     QColor axisLine() const { return mAxisLine; }    // value-axis base line
+    // THE FRAME RULER'S BAND, in the timeline's own tokens: the strip is the
+    // timeline's surface (theme::TimeLine::headerBackgroundColor() == Colors::base)
+    // and the 1px rule under it is the timeline's ruler line
+    // (theme::TimeLine::rulerLineColor() == Colors::hairline) - the two views'
+    // rulers are one chrome (see THE RULER in GraphPanelModel.h).
+    QColor rulerBand() const { return mRulerBand; }
+    QColor rulerLine() const { return mRulerLine; }
+    // The playhead pill's number. THE PILL'S OWN TEXT TOKEN, not the ruler's:
+    // the pill is an accentBright fill, so its number is
+    // theme::Colors::accentBrightText - the cell gui::TimeCursor is handed for the
+    // same pill (TimeLineEditorWidget.cpp), and the one that reads DARK on the
+    // violet fill in the dark palette (the shipped gate measured the old
+    // Colors::text here as two near-white pixels, i.e. an invisible number). The
+    // ruler's own numbers keep Colors::text through axisText(); a number on a fill
+    // and a number on the base surface are different inks on purpose.
+    QColor playheadText() const { return mPlayheadText; }
     // Value and frame labels. The FULL text token - the ink the timeline draws its own
     // ruler numbers in - not a muted one: these glyphs are the only panel content the
     // halo does not back (it ships off), so they sit on arbitrary artwork and a mid grey
@@ -43,7 +61,7 @@ public:
     // would sit on if it had one, and the text colour is chosen against it.
     QColor halo() const { return mHalo; }
     // Contrast outline: the ring the composite pass (gui::outline, in
-    // src/gui/ImGuiOverlay.cpp) draws around panel ink whose own colour is too
+    // src/gui/GraphPanelFrame.cpp) draws around panel ink whose own colour is too
     // close to the artwork underneath it. It is BLACK on both palettes, on
     // purpose: the ring exists only where the panel has lost contrast against
     // arbitrary artwork, and a theme's polarity is a statement about the
@@ -53,13 +71,19 @@ public:
     QColor outline() const { return mOutline; }
     QColor curve() const { return mCurve; }          // fallback curve color
     // The key marker's edge: the ring around a key square, and the ring around a
-    // legend swatch. The FILL is the channel's own colour (keyColor), which is what
+    // legend swatch. The FILL is the channel's own colour (channelColor), which is what
     // makes a key read as the feature it belongs to - see the class comment.
     QColor keyEdge() const { return mKeyEdge; }
-    QColor selected() const { return mSelected; }    // selected key / handle
-    QColor handleFill() const { return mHandleFill; } // tangent handle fill
-    QColor handleEdge() const { return mHandleEdge; } // tangent handle edge
-    QColor handleLine() const { return mHandleLine; } // tangent handle stem
+    // Structural accent: the playhead's line+pill and the marquee edge (a handle is
+    // NOT highlighted with it; a hovered handle is hue-derived, see GraphPanelFrame).
+    QColor selected() const { return mSelected; }
+    // A STORED tangent handle's fill: the raised surface the reference fills it with
+    // (mock-graph.js:898-900). Its stroke and its stem take the CHANNEL's own hue
+    // from the curve (PanelCurve::color), not from here - and the drawing layer
+    // mixes that hue toward halo() by a small factor so a handle reads where it sits
+    // ON its own curve (GraphPanelFrame.cpp's kHandleChromaMix). halo() is the
+    // neutral the panel's text is drawn against, i.e. the palette's floor tone.
+    QColor handleFill() const { return mHandleFill; }
     // The marquee: the live rectangle of a box-select drag. The same two decisions
     // the timeline's own box-select makes (ctrl/time/time_Renderer.cpp,
     // renderSelectionRange): the bright accent edge at 230/255 and the same hue as
@@ -75,7 +99,7 @@ public:
     // floaterBody and edged with floaterEdge, highlights a row with accentHover
     // under accentText text, and separates with the hairline - and these tokens are
     // those five decisions plus the disabled text. applyPanelStyle (declared in
-    // gui/ImGuiOverlay.h) copies them, and the panel's geometry tokens below, into
+    // gui/GraphPanelFrame.h) copies them, and the panel's geometry tokens below, into
     // ImGui's style; that is the ONE place the palette meets ImGuiStyle, and it is
     // re-applied on every frame so a runtime palette or accent change is picked up
     // without any signal (see applyPanelStyle).
@@ -104,8 +128,17 @@ public:
     float menuPadY() const { return kMenuPadY; }
     float menuItemPadX() const { return kMenuItemPadX; }
 
-    // The key-type's own color (the timeline's per-key hues). Falls back to
-    // curve() for a type the palette does not name.
+    // The hue of ONE graph channel: the shared table in theme::Colors (THE
+    // CHANNEL HUE TABLE), i.e. the axis hue where the component lies on an axis
+    // and the key type's own hue otherwise. Falls back to curve() for a type the
+    // palette does not name. The panel's curve stroke, key-marker fill and chip
+    // text all read this one answer.
+    QColor channelColor(core::TimeKeyType aType, int aComponent) const;
+
+    // The hue a TYPE's timeline key and lane label are drawn in: the type's
+    // first component through the same table (the X axis hue where that
+    // component lies on X - Move/Scale/Image/Blur - its own hue otherwise).
+    // Falls back to curve() for an unnamed type.
     QColor keyColor(core::TimeKeyType aType) const;
 
 private:
@@ -125,6 +158,9 @@ private:
 
     QColor mGridMajor;
     QColor mAxisLine;
+    QColor mRulerBand;
+    QColor mRulerLine;
+    QColor mPlayheadText;
     QColor mAxisText;
     QColor mHalo;
     QColor mOutline;
@@ -132,8 +168,6 @@ private:
     QColor mKeyEdge;
     QColor mSelected;
     QColor mHandleFill;
-    QColor mHandleEdge;
-    QColor mHandleLine;
     QColor mMarqueeFill;
     QColor mMarqueeEdge;
     QColor mMenuBody;
@@ -143,6 +177,9 @@ private:
     QColor mMenuHover;
     QColor mMenuHoverText;
     QColor mMenuSeparator;
+    // The channel hue table's axis cells, from theme::Colors, so channelColor()
+    // needs no palette lookup per paint.
+    QColor mAxisColors[kChannelAxisCount];
     QColor mKeyColors[core::TimeKeyType_TERM];
 };
 

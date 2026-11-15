@@ -14,7 +14,15 @@ namespace core {
 
 class TimeLineEvent {
 public:
-    enum Type { Type_PushKey, Type_RemoveKey, Type_MoveKey, Type_CopyKey, Type_ChangeKeyValue, Type_TERM };
+    enum Type {
+        Type_PushKey,
+        Type_RemoveKey,
+        Type_MoveKey,
+        Type_CopyKey,
+        Type_ChangeKeyValue,
+        Type_ChangeKeyProportional,
+        Type_TERM
+    };
 
     struct Target {
         Target(): node(), pos(), subIndex() {}

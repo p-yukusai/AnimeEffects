@@ -1175,14 +1175,6 @@ int main(int argc, char** argv) {
         QQuickItem* list = root->findChild<QQuickItem*>(QStringLiteral("pickerList"));
         check(list != nullptr, "precondition (D23): the list is addressable");
         if (list) {
-            auto spin = [](int ms) {
-                QElapsedTimer t;
-                t.start();
-                while (t.elapsed() < ms) {
-                    QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
-                    QThread::msleep(5);
-                }
-            };
             auto contentY = [list]() { return list->property("contentY").toReal(); };
             // Read from rest only: the ease above runs for 300 ms, so a step is taken
             // once contentY has stopped moving (8 quiet polls, ~40-160 ms), with a 2 s

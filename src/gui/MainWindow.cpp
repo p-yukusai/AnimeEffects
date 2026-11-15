@@ -163,7 +163,20 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         dockWidget->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
         this->addDockWidget(Qt::BottomDockWidgetArea, dockWidget);
 
-        mTarget = new TargetWidget(mViaPoint, mGUIResources, dockWidget, QSize(256, 256));
+        // 296 rather than the 256 this dock used before the header bar: the bar
+        // is 40px of fixed height above the surface, and the design's own budget
+        // is that the DOCK gains that height (the ruler, the lanes and the tree
+        // keep theirs) rather than the timeline losing it.
+        //
+        // The Graph tab does NOT raise it again: the tab is a second view of the
+        // SAME surface pane (TargetWidget stacks the timeline's surface and the
+        // panel in the one pane beside the tree), so both tabs are offered the
+        // 40px bar's old height - 256px. That is more than the design asks of the
+        // docked panel (~216px against the overlay's 430px, section 5's table), and
+        // the timeline's own ruler-and-lanes budget is exactly those 256: one hint
+        // serves both views, with the panel's extra height going to its plot rather
+        // than to a taller dock.
+        mTarget = new TargetWidget(mViaPoint, mGUIResources, dockWidget, QSize(256, 296));
         dockWidget->setWidget(mTarget);
         // The asset removal path reaches the object tree through ViaPoint to
         // delete the layers that reference a removed asset in ONE undo step.
@@ -564,6 +577,11 @@ void MainWindow::resetProjectRefs(core::Project* aProject) {
 
     mMainDisplay->setDriver(mDriverHolder->driver());
     mTool->setDriver(mDriverHolder->driver());
+    // The dock's Graph tab draws the SAME panel the viewport's overlay does, so it
+    // needs the same editor: the driver owns ctrl::GraphEditor and is created and
+    // destroyed with the project, so the docked page is handed it here, from this one
+    // call site, rather than reading it off the viewport.
+    mTarget->setDriver(mDriverHolder->driver());
 
     // The driver is created here (and later destroyed with the project), which
     // is the first moment the tree selection can be handed to the graph.

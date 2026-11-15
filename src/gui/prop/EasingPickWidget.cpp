@@ -6,6 +6,8 @@
 #include <QKeyEvent>
 #include <QAbstractSpinBox>
 #include <QLineEdit>
+#include <QScreen>
+#include <QWindow>
 #include <QStyleOptionSlider>
 #include <functional>
 #include <QLinearGradient>
@@ -20,6 +22,8 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QComboBox>
+#include <QSignalBlocker>
 #include "gui/theme/Colors.h"
 #include "gui/theme/Icons.h"
 
@@ -49,15 +53,50 @@ constexpr int kSliderHead = 18; // knob (14px) + 2px margin top/bottom so its to
 // value-axis headroom (mirrors the mock's VMIN/VMAX)
 constexpr double kVMIN = -0.35, kVMAX = 1.35;
 
-// Picker tile catalog in display order (mock PRIMARY + MORE; the vsep sits
-// between index 3 and 4). Keyed by position, not enum value.
-const util::Easing::Type kTileOrder[13] = {
-    util::Easing::Type_Linear, util::Easing::Type_Floor, util::Easing::Type_Round,
-    util::Easing::Type_Cubic,  util::Easing::Type_Sine,  util::Easing::Type_Quad,
-    util::Easing::Type_Quart,  util::Easing::Type_Quint, util::Easing::Type_Expo,
-    util::Easing::Type_Circ,   util::Easing::Type_Back,  util::Easing::Type_Elastic,
-    util::Easing::Type_Bounce,
+// Picker tile catalog in display order, keyed by position, not enum value. The
+// head is the three non-curve entries - Linear, Floor, Round - plus the AUTO
+// PRESET, which is not a type any more: it draws a Custom curve with BOTH sides
+// Auto (Blender's automatic handles) and clicking it writes those modes. The
+// ACTION is segment-level: automatic handles apply to the ONE segment AFTER each
+// selected key, so the host that owns the keys writes that key's type and
+// outgoing side plus the next key's incoming side (see
+// ctrl::TimeLineEditor::assignSelectionAutoHandles). The hairline separator
+// closes that head; the analytic family then follows in the table's order. The
+// type entries are asserted equal to the display table's non-Custom entries
+// position by position by tests/picker_probe.cpp #10; the preset is the one
+// entry that is a MODE pair rather than a Type.
+struct TileDef {
+    util::Easing::Type type;
+    bool autoPreset;
 };
+const TileDef kTileOrder[] = {
+    { util::Easing::Type_Linear, false }, { util::Easing::Type_Floor, false },
+    { util::Easing::Type_Round, false },  { util::Easing::Type_Custom, true },
+    { util::Easing::Type_Cubic, false },  { util::Easing::Type_Sine, false },
+    { util::Easing::Type_Quad, false },   { util::Easing::Type_Quart, false },
+    { util::Easing::Type_Quint, false },  { util::Easing::Type_Expo, false },
+    { util::Easing::Type_Circ, false },   { util::Easing::Type_Back, false },
+    { util::Easing::Type_Elastic, false }, { util::Easing::Type_Bounce, false },
+};
+constexpr int kTileOrderCount = int(sizeof(kTileOrder) / sizeof(kTileOrder[0]));
+
+// THE Auto preview context (see the header): one segment wide, a neighbour one
+// segment away on each side at the segment's own end values, both sides Auto. The
+// REAL rule - Easing::controlPoint - turns it into the canonical ease-in-out, so
+// the shape follows the derivation rather than a hardcoded path. It is not
+// constexpr-inline in the header on purpose: ONE definition, used by the tile, the
+// header's quick button and the tests.
+
+// Which context a glyph draws with. The catalog's Auto preset tile always uses
+// the canonical pair above; every other glyph (the blend thumbnails, the motion
+// preview, the timeline's chip through prop::EasingItem) draws the real
+// AutoContext of the keys it describes, so a preview stays honest.
+const util::Easing::AutoContext& glyphAutoContext(bool aAutoPreset,
+                                                  const util::Easing::AutoContext& aShown) {
+    // One canonical pair, defined once (see autoPreviewContext).
+    static const util::Easing::AutoContext kPreset = gui::prop::autoPreviewContext();
+    return aAutoPreset ? kPreset : aShown;
+}
 
 QString tileName(int aIdx) { return QString::fromLatin1("tile-%1").arg(aIdx); }
 
@@ -148,6 +187,24 @@ private:
 };
 
 } // namespace
+
+// Declared in the header (gui::prop::autoPreviewContext) and DEFINED HERE, outside the
+// file's anonymous namespace: a definition inside it would be a second, file-local
+// overload, and every qualified call would then be ambiguous (measured: "call to
+// autoPreviewContext is ambiguous", and the qualified ones link-failed against this
+// one's local name).
+util::Easing::AutoContext autoPreviewContext() {
+    util::Easing::AutoContext ctx;
+    // A symmetric neighbourhood whose CENTRAL differences are zero at both ends
+    // of the drawn segment: the keys before and after sit at the opposite end
+    // value, so the segment leaves and arrives flat. That is the canonical
+    // automatic ease-in-out, (1/3, 0) / (2/3, 1), produced by the real
+    // derivation rather than hardcoded.
+    ctx.prev = { true, -1.0f, 1.0f };
+    ctx.next = { true, 2.0f, 0.0f };
+    ctx.inMode = util::Easing::kAutoPresetHandleMode;
+    return ctx;
+}
 
 // BlendControl — the blending weight slider, drawn and driven by this widget
 // itself rather than by QSlider. It gates its drag on its own mDown flag, not
@@ -333,7 +390,9 @@ private:
 // ---------------------------------------------------------------------------
 void paintEasingCurve(QPainter& p, const QRectF& aRect,
                       const util::Easing::Param& aParam,
-                      const QColor& aColor, qreal aStrokeWidth) {
+                      const QColor& aColor, qreal aStrokeWidth,
+                      const util::Easing::AutoContext* aAuto,
+                      bool aAutoHandles) {
     const qreal w = aRect.width(), h = aRect.height();
     if (w <= 1 || h <= 1) return;
 
@@ -364,12 +423,31 @@ void paintEasingCurve(QPainter& p, const QRectF& aRect,
         return;
     }
 
+    // THE AUTO ICON SHOWS THE PRESET, NOT ONE KEY'S LUCK. With no neighbouring
+    // keys the derived handles are the identity, so an automatic pair would draw
+    // Linear's straight line - the glyph the user could not tell apart from
+    // Linear's. A menu entry names an EASING (every other tile draws its canonical
+    // shape), so an automatic entry with no neighbours draws the characteristic
+    // curve: a segment whose BOTH sides continue (neighbours outside the value
+    // range), which is the flat-at-both-ends shape an automatic handle produces.
+    const bool derivedSides = aParam.type == util::Easing::Type_Custom
+        && (util::Easing::isDerived(aParam.handleOut) || util::Easing::isDerived(aAuto ? aAuto->inMode
+                                                                                       : util::Easing::HandleMode_Aligned));
+    const util::Easing::AutoContext emptyAuto;
+    const util::Easing::AutoContext presetAuto = gui::prop::autoPreviewContext();
+    const bool noNeighbours = !(aAuto && aAuto->prev.valid) && !(aAuto && aAuto->next.valid);
+    const util::Easing::AutoContext& autoCtx =
+        (aAutoHandles && derivedSides && noNeighbours) ? presetAuto
+                                                       : (aAuto ? *aAuto : emptyAuto);
+
     const int N = 64;
     QPainterPath path;
     bool first = true;
     for (int i = 0; i <= N; ++i) {
         const double x = (double)i / N;
-        const double y = util::Easing::calculate(aParam, x, 0.0f, 1.0f, 1.0f);
+        // The 6-argument form: it reads the stored pair for a Custom curve whose
+        // sides are both stored, and derives each side by its own mode else.
+        const double y = util::Easing::calculate(aParam, autoCtx, x, 0.0f, 1.0f, 1.0f);
         const double vx = x0 + x * (x1 - x0);
         const double vy = pad + (kVMAX - y) / (kVMAX - kVMIN) * span;
         const QPointF s = toScreen(vx, vy);
@@ -377,21 +455,66 @@ void paintEasingCurve(QPainter& p, const QRectF& aRect,
         else path.lineTo(s);
     }
     p.drawPath(path);
+
+    // ---- the automatic-handle glyph ----------------------------------------
+    // The catalog tile (and a header button) draws an automatic easing as what
+    // it IS: a bezier whose control points were derived from the keys, with
+    // those points visible as detached dots joined to the endpoints by short
+    // stems. The flag is opt-in and only a Custom curve with a derived side
+    // reads it, so every other glyph - and every preview that leaves the flag
+    // off - paints exactly the curve it painted before. The dot radius and stem
+    // width scale with the rect, so the same call reads at the 28px tile and at
+    // a 16-18px button.
+    if (aAutoHandles && derivedSides) {
+        // The curve is sampled over one segment (d = 1), so derive its control
+        // points in that same span. A stored side returns its stored point.
+        const QPointF c1 = util::Easing::controlPoint(aParam, autoCtx.inMode, autoCtx, 1.0f, 0);
+        const QPointF c2 = util::Easing::controlPoint(aParam, autoCtx.inMode, autoCtx, 1.0f, 1);
+        auto toValueSpace = [&](double aX, double aY) {
+            return toScreen(x0 + aX * (x1 - x0),
+                            pad + (kVMAX - aY) / (kVMAX - kVMIN) * span);
+        };
+        const QPointF from = toValueSpace(0.0, 0.0);
+        const QPointF to = toValueSpace(1.0, 1.0);
+        const QPointF h1 = toValueSpace(c1.x(), c1.y());
+        const QPointF h2 = toValueSpace(c2.x(), c2.y());
+
+        QPen stemPen(aColor);
+        stemPen.setWidthF(qMax(0.9, aStrokeWidth * 0.75));
+        stemPen.setCapStyle(Qt::RoundCap);
+        p.setPen(stemPen);
+        p.drawLine(from, h1);
+        p.drawLine(to, h2);
+
+        // Sized to READ at a 16-18px button: the old 6% floor drew a ~1px speck
+        // that disappeared into the stroke beside it.
+        const qreal dotR = qBound(1.6, qMin(w, h) * 0.085, 2.4);
+        p.setPen(Qt::NoPen);
+        p.setBrush(aColor);
+        p.drawEllipse(h1, dotR, dotR);
+        p.drawEllipse(h2, dotR, dotR);
+        p.setBrush(Qt::NoBrush);
+    }
 }
 
 CurveGlyph::CurveGlyph(QWidget* aParent) : QWidget(aParent) {
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 }
 void CurveGlyph::setParam(const util::Easing::Param& aParam) { mParam = aParam; update(); }
+void CurveGlyph::setAutoContext(const util::Easing::AutoContext& aContext) {
+    mAuto = aContext;
+    update();
+}
 void CurveGlyph::setGlyphColor(const QColor& aColor) { mColor = aColor; update(); }
 void CurveGlyph::setStrokeWidth(double aWidth) { mStrokeWidth = aWidth; update(); }
+void CurveGlyph::setAutoHandlesVisible(bool aVisible) { mAutoHandles = aVisible; update(); }
 
 void CurveGlyph::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
     paintEasingCurve(p, QRectF(0, 0, width(), height()), mParam,
                      mColor.isValid() ? mColor : palette().color(QPalette::WindowText),
-                     mStrokeWidth);
+                     mStrokeWidth, &mAuto, mAutoHandles);
 }
 
 // ---------------------------------------------------------------------------
@@ -440,18 +563,25 @@ EasingPickWidget::EasingPickWidget(const util::Easing::Param& aInitial, QWidget*
     mAnimTimer->setInterval(16); // ~60fps
     connect(mAnimTimer, &QTimer::timeout, this, &EasingPickWidget::animStep);
 
-    // Session undo/redo (per-step inside the popup) + one commit on close.
-    // The popup records its own draft history; the model is only written once,
-    // in hideEvent, so the whole menu session is a single undo step. Continuous
-    // gestures (blend slider / bezier handle) are coalesced into one history
-    // entry so undo steps back a whole drag, not each tick. The blend slider's
-    // gesture start/stop arrive through BlendControl callbacks (onPressed /
-    // onReleased) wired in buildBlend.
+    // Session undo/redo (per-step inside the popup). A discrete edit records one
+    // entry as it happens; a continuous gesture (blend slider, bezier handle, one
+    // typed spin value) records ONE entry when it finishes, so undo steps back a
+    // whole gesture, not each tick. The blend slider's gesture start/stop arrive
+    // through BlendControl callbacks (onPressed / onReleased) wired in buildBlend.
     // The bezier editor mutates the draft while a tangent handle is dragged;
     // beginGesture snapshots the pre-drag curve, endGesture folds the drag into
-    // one history entry.
+    // one history entry. Every pointer move reports its step (curveDragged), so
+    // the model and every view follow the handle live - through ONE owner-held
+    // command (liveEditStarted/liveEditEnded), which is what keeps the whole
+    // drag a single undo entry in the DOCUMENT's history too.
+    // The session spans the POPUP, not the gesture: the owner's one command stays
+    // open until the popup closes (the rule the blend slider's close-time commit
+    // already follows), so two drags in one open are still one undo entry. Ending
+    // it at a release would make every drag its own entry.
     if (mBezierEditor) {
         connect(mBezierEditor, &BezierCurveEditor::dragStarted, this, &EasingPickWidget::beginGesture);
+        connect(mBezierEditor, &BezierCurveEditor::dragStarted, this, &EasingPickWidget::beginLiveEdit);
+        connect(mBezierEditor, &BezierCurveEditor::curveDragged, this, &EasingPickWidget::onBezierDragStep);
         connect(mBezierEditor, &BezierCurveEditor::editingFinished, this, &EasingPickWidget::endGesture);
     }
 
@@ -500,15 +630,37 @@ void EasingPickWidget::applyAppearance() {
     q += "QToolButton[easingRole=\"tile\"]:checked { background: " + rgba(c.accent, 0.22) + "; color: " + bright + "; }\n";
     q += "QPushButton[role=\"bact\"] { background: " + c.raised.name() + "; border: 0; border-radius: 4px; color: " + muted + "; font-size: 10px; padding: 5px; }\n";
     q += "QPushButton[role=\"bact\"]:hover { background: " + c.raisedHover.name() + "; color: " + text + "; }\n";
-    // bezier inputs (labeled fields, mock .fl/.fi): the app field standard —
-    // a geometry-reserving 1px border (raised at rest) that only recolors on
-    // hover/focus, matching the dock spinbox feedback (border 0 previously
-    // killed the inherited hover; no pressed/active state existed).
-    q += "QLabel[role=\"fl\"] { font-size: 9px; color: " + muted + "; }\n";
-    q += "QDoubleSpinBox[role=\"fi\"] { background: " + c.raised.name() + "; border: 1px solid " + c.raised.name() + "; border-radius: 4px; color: " + text + "; font-size: 11px; padding: 3px 5px; }\n";
-    q += "QDoubleSpinBox[role=\"fi\"]:hover { border-color: " + c.hover.name() + "; }\n";
-    q += "QDoubleSpinBox[role=\"fi\"]:focus { border-color: " + c.focus.name() + "; }\n";
-    q += "QDoubleSpinBox[role=\"fi\"]:hover:pressed { background: " + c.recessed.name() + "; }\n";
+    // The value column of a labelled field (.fi), for the BEZIER SPINS only.
+    // A combo is not given a field role of its own: the two per-side mode combos
+    // are built as ordinary QComboBox, exactly like the property panel's
+    // ComboItem, and styled by the app's OWN combo rule below. There is no
+    // per-widget stylesheet on either combo.
+    const QString field =
+        "QLabel[role=\"fl\"] { font-size: 9px; color: " + muted + "; }\n"
+        "QDoubleSpinBox[role=\"fi\"] { background: " + c.raised.name()
+        + "; border: 1px solid " + c.raised.name() + "; border-radius: 4px; color: " + text
+        + "; font-size: 11px; padding: 3px 5px; }\n"
+        "QDoubleSpinBox[role=\"fi\"]:hover { border-color: " + c.hover.name() + "; }\n"
+        "QDoubleSpinBox[role=\"fi\"]:focus { border-color: " + c.focus.name() + "; }\n"
+        "QDoubleSpinBox[role=\"fi\"]:hover:pressed { background: " + c.recessed.name() + "; }\n";
+    q += field;
+    // THE PROPERTY PANEL'S COMBO, verbatim in behaviour: propertywidget.ssa's
+    // shared field box (raised at rest, a geometry-reserving 1px border that only
+    // recolours on hover/focus) plus its caret-down drop-down. It is selected by
+    // the CLASS alone, so a QComboBox anywhere in this popover (there are exactly
+    // the two mode combos) is the same control the property rows use - no role
+    // attribute, no object name, no per-combo rule. The font is deliberately
+    // inherited (the app font), as it is in the property panel.
+    q += "QComboBox { background-color: " + c.raised.name()
+        + "; padding-top: 1px; padding-bottom: 1px; padding-left: 4px; padding-right: 4px;"
+        " border: 1px solid " + c.raised.name() + "; border-radius: 4px; color: " + text
+        + "; min-height: 1.25em; }\n";
+    q += "QComboBox:hover { border-color: " + c.hover.name() + "; }\n";
+    q += "QComboBox:focus { border-color: " + c.focus.name() + "; }\n";
+    q += "QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: right;"
+        " width: 1em; height: 1em; border: 0; background: transparent; }\n";
+    q += "QComboBox::down-arrow { image: url(" + theme::iconDir()
+        + "/caret-down.svg); width: 0.625em; height: 0.625em; }\n";
     setStyleSheet(q);
 }
 
@@ -537,7 +689,10 @@ QWidget* EasingPickWidget::buildHeader() {
     QHBoxLayout* l = new QHBoxLayout(head);
     l->setContentsMargins(12, 0, 8, 0);
     l->setSpacing(6);
-    mTitle = new QLabel(tr("Easing"), head);
+    // The header names the DRAFT'S Param, not its interpolation type: a Custom
+    // curve is named by its two handle modes, so the Auto preset reads "Auto
+    // Clamped" here - never the type name "Custom". refresh() keeps it in step.
+    mTitle = new QLabel(util::Easing::getParamName(mDraft), head);
     mTitle->setObjectName("popover-title");
     mTitle->setStyleSheet("font-size:12px;font-weight:600;color:" + C().text.name());
     l->addWidget(mTitle);
@@ -646,12 +801,16 @@ QWidget* EasingPickWidget::buildTrow() {
     mTrow = new QWidget(this);
     mTrow->setObjectName("trow");
     FlowLayout* flow = new FlowLayout(mTrow, kTileGap);
-    for (int i = 0; i < 13; ++i) {
-        QToolButton* tile = makeTileAt(i, kTileOrder[i]);
+    for (int i = 0; i < kTileOrderCount; ++i) {
+        QToolButton* tile = makeTileAt(i, kTileOrder[i].type, kTileOrder[i].autoPreset);
         tile->setObjectName(tileName(i));
         flow->addWidget(tile);
         mTileBtns.append(tile);
         if (i == 3) {
+            // The hairline closes the derived-easing cluster: the catalog's head
+            // is Linear, Floor, Round, Auto preset (kTileOrder), so the
+            // separator lands AFTER the preset and the first tile row is exactly
+            // those four with the curve family following.
             QFrame* sep = new QFrame(mTrow);
             sep->setObjectName("vsep");
             sep->setFixedSize(kVsepW, kTile);
@@ -667,7 +826,8 @@ QWidget* EasingPickWidget::buildTrow() {
     return mTrow;
 }
 
-QToolButton* EasingPickWidget::makeTileAt(int aIndex, util::Easing::Type aType) {
+QToolButton* EasingPickWidget::makeTileAt(int aIndex, util::Easing::Type aType, bool aAutoPreset) {
+    const TileDef def{ aType, aAutoPreset };
     QToolButton* tile = new QToolButton(mTrow);
     tile->setFixedSize(kTile, kTile);
     tile->setCursor(Qt::PointingHandCursor);
@@ -679,10 +839,51 @@ QToolButton* EasingPickWidget::makeTileAt(int aIndex, util::Easing::Type aType) 
     CurveGlyph* g = new CurveGlyph(tile);
     g->setObjectName("t-glyph");
     g->setFixedSize(kTileGlyph, kTileGlyph);
-    g->setParam(mkParam(aType, mDraft.range, mDraft.weight));
+    util::Easing::Param glyph = mkParam(def.type, mDraft.range, mDraft.weight);
+    if (def.autoPreset) {
+        glyph.type = util::Easing::Type_Custom;
+        glyph.handleIn = util::Easing::kAutoPresetHandleMode;
+        glyph.handleOut = util::Easing::kAutoPresetHandleMode;
+    }
+    g->setParam(glyph);
+    // The Auto preset tile draws the canonical automatic-handle pair, not the
+    // edited key's neighbours (a tile is a catalog image; see autoPreviewContext).
+    g->setAutoContext(glyphAutoContext(def.autoPreset, mAuto));
+    // The preset's catalog image must SAY it is a bezier with derived handles:
+    // draw the two control points and their stems. No other tile (nor the blend
+    // thumbnails) opts in, so their glyphs are unchanged.
+    g->setAutoHandlesVisible(def.autoPreset);
     g->setGlyphColor(C().textMutedDim);
     vl->addWidget(g, 0, Qt::AlignCenter);
-    connect(tile, &QToolButton::clicked, this, [this, aType] { setType(aType); });
+    // The tile's NAME is the user-facing name of the Param it writes, from the
+    // same function the chip and the header read: an ordinary type tile is its
+    // easing name, and the mode preset is named by its two handle sides ("Auto
+    // Clamped" for the clamped pair this tile creates). A glyph-only button has
+    // no text, so this is also its accessible text.
+    //
+    // THE PRESET'S NAME SAYS WHAT THE CLICK DOES, not only the pair it stores:
+    // automatic handles apply to one SEGMENT (a tangent pair belongs to a
+    // segment), so the action makes the segment AFTER each selected key automatic
+    // - that key's type and outgoing side plus the next key's incoming side, in
+    // ONE undo step. A LAST key (or the only key) has no segment after it YET,
+    // so it writes its OWN pair instead - type Custom and BOTH sides automatic -
+    // and the segments that appear when a neighbour is added derive on both
+    // sides. A screen-reader user gets the same words the tooltip shows.
+    const QString tileLabel = util::Easing::getParamName(glyph);
+    if (def.autoPreset) {
+        const QString action = tr("Make the segment after the selected key automatic");
+        tile->setAccessibleName(tr("%1 (%2)").arg(action, tileLabel));
+        tile->setToolTip(tr("%1 - %2 handles").arg(action, tileLabel));
+    } else {
+        tile->setAccessibleName(tileLabel);
+        tile->setToolTip(tr("Set the easing to %1").arg(tileLabel));
+    }
+    connect(tile, &QToolButton::clicked, this, [this, def] {
+        if (def.autoPreset)
+            this->setAutoHandlesPreset();
+        else
+            this->setType(def.type);
+    });
     Q_UNUSED(aIndex);
     return tile;
 }
@@ -790,8 +991,77 @@ QWidget* EasingPickWidget::buildBezierPanel() {
         mBezierSpins.append(s);
         QDoubleSpinBox::connect(s, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
                                 this, [this, i](double v) { onBezierSpin(i, v); });
+        // A typed number is ONE gesture: every keystroke/step streams a step into
+        // the owner's open command (see onBezierSpin), and finishing the edit folds
+        // the popup's own draft history into one entry - so a five-digit entry
+        // cannot leave five undo entries. The command itself stays open until the
+        // popup closes, like every other streamed gesture's.
+        QDoubleSpinBox::connect(s, &QAbstractSpinBox::editingFinished,
+                                this, [this] { endGesture(); });
     }
     l->addLayout(spins);
+
+    // THE PER-SIDE HANDLE MODES. Blender's five, one combo per side: the
+    // outgoing side (this param's handleOut) and the incoming side (its
+    // handleIn). They are separate controls because the two sides derive
+    // independently - dragging one side is what frees it, and the other keeps
+    // deriving.
+    //
+    // Each is a labelled field in the picker's own row geometry - a role=bfield
+    // box with its role=fl label above a 24px value, 5px between the columns, as
+    // the x1/y1/x2/y2 row above - but the value control is the property panel's
+    // OWN control: a plain QComboBox with ComboItem's properties and no local
+    // stylesheet, selected by class by the QComboBox rule in applyAppearance
+    // (propertywidget.ssa's field standard). Nothing here styles a combo
+    // individually.
+    {
+        QWidget* modes = new QWidget(panel);
+        modes->setObjectName("handle-modes");
+        QHBoxLayout* ml = new QHBoxLayout(modes);
+        ml->setContentsMargins(0, 0, 0, 0);
+        ml->setSpacing(5);
+        const struct {
+            bool incoming;
+            const char* label;
+            const char* name;
+        } defs[] = {
+            { true, QT_TR_NOOP("In"), "handle-in" },
+            { false, QT_TR_NOOP("Out"), "handle-out" },
+        };
+        for (const auto& def : defs) {
+            QWidget* field = new QWidget(modes);
+            field->setProperty("role", "bfield");
+            QVBoxLayout* f = new QVBoxLayout(field);
+            f->setContentsMargins(0, 0, 0, 0);
+            f->setSpacing(2);
+            QLabel* lab = new QLabel(tr(def.label), field);
+            lab->setProperty("role", "fl");
+            lab->setFixedHeight(12);
+            f->addWidget(lab);
+            // The property panel's ComboItem, exactly: a plain QComboBox that
+            // fills the field column, no role property, no local stylesheet and
+            // NO fixed height (ComboItem sets none either - its 24px field box is
+            // the font + propertywidget.ssa field rule, which is shared here).
+            // The popover's own QComboBox rule (see applyAppearance) is that same
+            // propertywidget.ssa rule. The object name is only the harness's
+            // handle on the control; it is not a style or construction property.
+            QComboBox* box = new QComboBox(field);
+            box->setObjectName(QString::fromLatin1(def.name));
+            box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            for (int m = 0; m < util::Easing::HandleMode_TERM; ++m) {
+                const auto mode = static_cast<util::Easing::HandleMode>(m);
+                box->addItem(util::Easing::getHandleModeName(mode), m);
+            }
+            const bool incoming = def.incoming;
+            connect(box, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, box, incoming](int) {
+                this->setHandleMode(incoming, static_cast<util::Easing::HandleMode>(box->currentData().toInt()));
+            });
+            f->addWidget(box);
+            ml->addWidget(field, 1);
+            (incoming ? mHandleIn : mHandleOut) = box;
+        }
+        l->addWidget(modes);
+    }
 
     // These spins are fed by the editor's paintEvent (which writes the
     // clamped values back); give it the vector so it can update them.
@@ -821,9 +1091,14 @@ QWidget* EasingPickWidget::buildBezierPanel() {
         const util::Easing::Param old = mDraft;
         mDraft.cubicBezier = { (float)v[0], (float)v[1], (float)v[2], (float)v[3] };
         if (mDraft == old) return;
+        // A pasted control point is a STORED value: any side it changed and that
+        // derived its point must read it from now on (the drag's own rule).
+        if (freeEditedSides(old.cubicBezier))
+            refreshTiles(); // a freed side may stop the draft reading as the preset
         pushState(old); // paste is a discrete edit
         renderBezier();
         emit changed(mDraft);
+        commitDiscrete(); // a discrete edit applies now, not on close
     });
     acts->addWidget(copy);
     acts->addWidget(paste);
@@ -838,39 +1113,116 @@ QWidget* EasingPickWidget::buildBezierPanel() {
     return panel;
 }
 
+bool EasingPickWidget::freeEditedSides(const util::Easing::CubicBezier& aBefore) {
+    if (mDraft.type != util::Easing::Type_Custom)
+        return false; // the modes are inert on an analytic type: nothing to free
+    bool freed = false;
+    // x1/y1 LEAVES the segment's from key: it is this param's handleOut.
+    if ((mDraft.cubicBezier.x1 != aBefore.x1 || mDraft.cubicBezier.y1 != aBefore.y1)
+        && util::Easing::isDerived(mDraft.handleOut)) {
+        mDraft.handleOut = util::Easing::HandleMode_Free;
+        freed = true;
+    }
+    // x2/y2 ARRIVES at the segment's to key: it is this param's handleIn.
+    if ((mDraft.cubicBezier.x2 != aBefore.x2 || mDraft.cubicBezier.y2 != aBefore.y2)
+        && util::Easing::isDerived(mDraft.handleIn)) {
+        mDraft.handleIn = util::Easing::HandleMode_Free;
+        freed = true;
+    }
+    return freed;
+}
+
 void EasingPickWidget::onBezierSpin(int aIndex, double aValue) {
     const util::Easing::Param old = mDraft;
+    // The first keystroke/step of this spin is the START of a gesture: snapshot
+    // before mutating, so the popup's own undo folds the whole entry into one
+    // step (endGesture runs on editing-finished) and the streamed session is
+    // joined once, not once per digit. A gesture is per EDIT; the streamed session
+    // spans the popup, so it is a different flag.
+    const bool firstStep = !mGestureActive;
+    if (firstStep) beginGesture();
     util::Easing::CubicBezier& b = mDraft.cubicBezier;
     if (aIndex == 0) b.x1 = (float)aValue;
     else if (aIndex == 1) b.y1 = (float)aValue;
     else if (aIndex == 2) b.x2 = (float)aValue;
     else b.y2 = (float)aValue;
-    if (mDraft == old) return;
-    pushState(old); // typed bezier value is a discrete edit
+    if (mDraft == old) {
+        // A keystroke that did not produce a new value (an intermediate "-" or a
+        // repeated digit) must not count as the gesture's first step.
+        if (firstStep) { mGestureActive = false; }
+        return;
+    }
+    // The typed side becomes stored if it was derived; the other side is untouched.
+    if (freeEditedSides(old.cubicBezier)) {
+        // A freed side stops the draft reading as the Auto preset, so the catalog
+        // tile that was checked must be unchecked now (it is the state the popup
+        // reopens the catalog on).
+        refreshHandleModes();
+        refreshTiles();
+    }
     // Sync the handle points from the new bezier so the paint event's
     // write-back keeps it (otherwise it reverts to a stale control point).
     if (mBezierEditor) { mBezierEditor->syncFromBezier(); mBezierEditor->update(); }
     emit changed(mDraft);
+    mApplied = mDraft;   // the owner's session writes the model on this step
+    beginLiveEdit();     // opens the owner's ONE command on the first step
+    emit liveEdited(mDraft);
+}
+
+void EasingPickWidget::onBezierDragStep() {
+    // The editor has already written the moved control point into the draft
+    // (BezierCurveEditor::mouseMoveEvent -> commitPoints). One pointer move is
+    // one STEP: report it and let the owner rewrite its open command, so the
+    // document, the graph and every view follow the handle NOW - not on release,
+    // and not on close. The side the drag stored is freed here (not at release)
+    // for the same reason: the derived side would otherwise ignore the write.
+    if (freeEditedSides(mGestureStart.cubicBezier)) {
+        refreshHandleModes(); // title + mode combos say "Free" while dragging
+        refreshTiles();       // …and the Auto tile stops reading as current
+    }
+    emit changed(mDraft);
+    mApplied = mDraft; // the model holds this step; close must not re-commit it
+    beginLiveEdit();   // defensive: the press opened it already
+    emit liveEdited(mDraft);
+}
+
+void EasingPickWidget::beginLiveEdit() {
+    if (mLiveEditActive) return;
+    mLiveEditActive = true;
+    emit liveEditStarted();
+}
+
+void EasingPickWidget::endLiveEdit() {
+    if (!mLiveEditActive) return;
+    mLiveEditActive = false;
+    // The owner closes its command here (the popup's close is the one undo entry
+    // for the session); the popup's own draft history was folded by endGesture.
+    emit liveEditEnded();
 }
 
 // ---- interactions ----------------------------------------------------------
 void EasingPickWidget::setType(util::Easing::Type aType) {
     const util::Easing::Param old = mDraft;
     mDraft.type = aType;
+    // A TYPE tile leaves the Custom panel (the only one that can be forced open).
+    mForceBezierPanel = false;
     if (mDraft == old) return;
     pushState(old); // discrete edit: one undo step
     refresh();
     emit changed(mDraft);
+    commitDiscrete();
 }
 void EasingPickWidget::setRange(util::Easing::Range aRange) {
     const util::Easing::Param old = mDraft;
     if (mDraft.type == util::Easing::Type_Custom)
         mDraft.type = util::Easing::Type_Cubic;
+    mForceBezierPanel = false;
     mDraft.range = aRange;
     if (mDraft == old) return;
     pushState(old);
     refresh();
     emit changed(mDraft);
+    commitDiscrete();
 }
 void EasingPickWidget::setWeight(float aWeight) {
     const util::Easing::Param old = mDraft;
@@ -878,28 +1230,152 @@ void EasingPickWidget::setWeight(float aWeight) {
     if (mDraft == old) return;
     refresh();
     // Blend is a continuous control: report the live value (chip / preview) but
-    // let endGesture() fold the whole drag into a single undo-history entry.
+    // do NOT commit; hideEvent writes the final draft once, so the whole drag is
+    // one undo step.
     emit changed(mDraft);
 }
 void EasingPickWidget::setCustom() {
     const util::Easing::Param old = mDraft;
+    // An explicit click on the Custom segment OPENS THE BEZIER PANEL, whatever the
+    // draft is - including the Auto preset, whose pair already makes the type
+    // Custom. Without this flag that click could neither change the model nor
+    // reach the controls (the preset is routed to the catalog; see refresh).
+    mForceBezierPanel = true;
     mDraft.type = util::Easing::Type_Custom;
-    if (mDraft == old) return;
+    // 'changed' is the SIGNAL: a local of that name shadows it and the emit below
+    // becomes a call on a bool (measured: clang reports "called object type 'bool'").
+    const bool didChange = !(mDraft == old);
+    if (didChange)
+        pushState(old);
+    refresh();
+    renderBezier();
+    if (didChange) {
+        emit changed(mDraft);
+        commitDiscrete();
+    }
+}
+
+void EasingPickWidget::setAutoHandlesPreset() {
+    const util::Easing::Param old = mDraft;
+    // The preset is the handle MODES, not a type: a Custom curve (the only kind
+    // whose controls the modes shape) with both sides deriving. It writes the
+    // CLAMPED automatic pair (kAutoPresetHandleMode, the retired Auto type's
+    // behaviour) - unclamped Auto overshoots by construction and is a deliberate
+    // per-side pick in the mode combos, not the preset.
+    mForceBezierPanel = false; // the preset is a CATALOG state (its tile stays visible)
+    mDraft.type = util::Easing::Type_Custom;
+    mDraft.handleIn = util::Easing::kAutoPresetHandleMode;
+    mDraft.handleOut = util::Easing::kAutoPresetHandleMode;
+    if (mDraft == old) {
+        // Already the preset: the popover must SHOW the catalog with the tile
+        // checked (a draft reached here from the bezier panel by the combos would
+        // otherwise stay on the bezier panel). The ACTION is still committed: the
+        // preset makes the segment AFTER each selected key automatic, so a key
+        // that is already the pair may still have a neighbour whose incoming side
+        // is not automatic (exactly what an edit made before the segment rule
+        // existed leaves behind). The host writes nothing when the whole rule is
+        // already satisfied.
+        refresh();
+        emit applied(mDraft);
+        return;
+    }
     pushState(old);
     refresh();
     renderBezier();
     emit changed(mDraft);
+    commitDiscrete();
+}
+
+void EasingPickWidget::setHandleMode(bool aIncoming, util::Easing::HandleMode aMode) {
+    if (aMode < 0 || util::Easing::HandleMode_TERM <= aMode)
+        return;
+    const util::Easing::Param old = mDraft;
+    util::Easing::HandleMode& mode = aIncoming ? mDraft.handleIn : mDraft.handleOut;
+    if (mode == aMode) return;
+    mode = aMode;
+    // A mode only shapes a Custom curve; the combos live in that panel, so the
+    // type is already Custom there. Programmatic callers get the same rule: a
+    // mode written onto an analytic type is inert by design (the type's formula
+    // is its shape), not silently switched underneath them.
+    pushState(old);
+    refresh();
+    renderBezier();
+    emit changed(mDraft);
+    commitDiscrete(); // a mode change applies at once, popup still open
 }
 void EasingPickWidget::setValue(const util::Easing::Param& aParam) {
     // Programmatic load (a new key's easing, or the open measurement dance):
     // reset the draft, the committed baseline, and the session history as one
-    // clean slate so nothing is emitted or committed.
+    // clean slate so nothing is emitted or committed. A streamed session also
+    // ends here: a loaded draft is not a step of the edit it replaced, so the
+    // owner must close that command rather than rewrite it with this value.
+    endLiveEdit();
     mDraft = aParam;
     mApplied = aParam;
     mUndo.clear();
     mRedo.clear();
     mGestureActive = false;
+    mForceBezierPanel = false; // a loaded draft opens where its own state routes
     refresh();
+}
+
+void EasingPickWidget::setAutoContext(const util::Easing::AutoContext& aContext) {
+    // The neighbour keys, not the draft, changed: re-render the curves the popup
+    // derives from them (the motion preview on its next tick, and the blend
+    // thumbnails) so an Auto draft is never shown as a shape no key has. The
+    // picker's Auto TILE is exempt by design: it is a catalog image and draws the
+    // canonical automatic-handle pair (see autoPreviewContext).
+    mAuto = aContext;
+    refreshTiles();
+}
+
+bool EasingPickWidget::setShownValue(
+    const util::Easing::Param& aParam, const util::Easing::AutoContext& aAutoContext
+) {
+    // A CLOSED POPUP HAS NOTHING TO KEEP IN STEP, and A GESTURE IN THE POPUP WINS: the
+    // value the user is dragging is the truth until the gesture ends, and the owner
+    // pushes the document's state again when it does (see isEditing). Both answers are
+    // "not adopted", so a caller can tell them from an adoption without inspecting
+    // this widget's state.
+    if (!this->isVisible() || isEditing())
+        return false;
+
+    // The same state it already holds: adopting it would be a refresh for a change that
+    // did not happen (every document notification reaches this).
+    if (mDraft == aParam && mAuto == aAutoContext)
+        return false;
+
+    // THE WHOLE SHOWN STATE, loaded the way a programmatic load is (see setValue) but
+    // WITHOUT closing a session: an external change is not the end of the user's edit,
+    // and this is not an edit of ours to commit. The session history describes the
+    // draft this replaced, so it goes with it. An externally re-read value is also
+    // already in the model (that is where it came from), so it is the baseline a
+    // close-time commit compares against - nothing is re-committed.
+    mAuto = aAutoContext;
+    mDraft = aParam;
+    mApplied = aParam;
+    mUndo.clear();
+    mRedo.clear();
+    // mForceBezierPanel is deliberately LEFT ALONE: the panel the user is looking at is
+    // their choice, and a graph edit must not jump the popup's tab under them.
+    refresh();
+    return true;
+}
+
+// ---- commit ---------------------------------------------------------------
+void EasingPickWidget::commitDiscrete() {
+    // A DISCRETE edit (tile / segment / custom / mode combo / paste) is a finished
+    // change: commit it to the model now, so the keys and every view that reads
+    // them update while the popup is still open. A STREAMED gesture (bezier drag /
+    // typed spin) does not come through here - its steps already wrote the model
+    // through the owner's open command - and the blend slider keeps the
+    // one-undo-on-close rule (hideEvent commits its final draft once). mApplied is
+    // the baseline, so an edit that wrote nothing (or a second commit of the same
+    // draft) emits nothing and close cannot re-commit it.
+    if (mDraft == mApplied)
+        return;
+    mApplied = mDraft;
+    emit applied(mDraft);
 }
 
 // ---- session undo/redo -----------------------------------------------------
@@ -909,7 +1385,8 @@ void EasingPickWidget::pushState(const util::Easing::Param& aState) {
 }
 
 void EasingPickWidget::beginGesture() {
-    // Snapshot the pre-drag draft so endGesture can coalesce the whole drag.
+    // Snapshot the pre-gesture draft so endGesture can fold the whole gesture into
+    // ONE history entry: a handle drag, a blend drag, or one typed spin value.
     // Do not record yet: a press-without-move must not leave a history entry.
     mGestureStart = mDraft;
     mGestureActive = true;
@@ -918,7 +1395,14 @@ void EasingPickWidget::beginGesture() {
 void EasingPickWidget::endGesture() {
     if (!mGestureActive) return;
     mGestureActive = false;
-    if (mDraft != mGestureStart) pushState(mGestureStart); // one entry per drag
+    // A bezier drag wrote stored control points: free whichever side it moved if
+    // that side derived its point (the canvas drag's own rule; see the header).
+    // The streamed steps already freed it; this is the same rule at the finish, so
+    // a gesture whose only step was the last one cannot leave it derived.
+    const bool freed = freeEditedSides(mGestureStart.cubicBezier);
+    if (mDraft != mGestureStart) pushState(mGestureStart); // one entry per gesture
+    if (freed)
+        refresh(); // the mode combos and panel must show the freed side
     emit changed(mDraft); // ensure derived views see the final draft
 }
 
@@ -928,6 +1412,12 @@ void EasingPickWidget::undo() {
     mDraft = mUndo.takeLast();
     refresh();
     emit changed(mDraft);
+    // During a streamed session the model must follow the popup's own history step
+    // too; it is a step of the SAME command, so no extra undo entry appears.
+    if (mLiveEditActive) {
+        mApplied = mDraft;
+        emit liveEdited(mDraft);
+    }
 }
 
 void EasingPickWidget::redo() {
@@ -936,20 +1426,42 @@ void EasingPickWidget::redo() {
     mDraft = mRedo.takeLast();
     refresh();
     emit changed(mDraft);
+    if (mLiveEditActive) {
+        mApplied = mDraft;
+        emit liveEdited(mDraft);
+    }
 }
 
 // ---- render -----------------------------------------------------------------
 void EasingPickWidget::refresh() {
-    const bool inBezier = mDraft.type == util::Easing::Type_Custom;
+    // THE ROUTING. Custom means the bezier panel - except when the draft IS the
+    // Auto preset, which is a catalog state: its tile must remain visible and
+    // checked, otherwise a preset selected by the tile (or loaded from a key)
+    // lands on a panel where the tile cannot be seen and the popover cannot say
+    // the preset is current. The Custom segment click sets mForceBezierPanel, so
+    // the bezier controls stay reachable on a preset without changing the pair.
+    const bool autoPreset = mDraft.type == util::Easing::Type_Custom
+        && mDraft.handleIn == util::Easing::kAutoPresetHandleMode
+        && mDraft.handleOut == util::Easing::kAutoPresetHandleMode;
+    const bool inBezier =
+        mDraft.type == util::Easing::Type_Custom && (mForceBezierPanel || !autoPreset);
     mAnimT = 0.0; // restart the motion preview on any change
+    // The header names the Param the same way the chip and every tile do (one
+    // vocabulary; a Custom curve by its handle pair, never "Custom").
+    if (mTitle)
+        mTitle->setText(util::Easing::getParamName(mDraft));
     refreshSeg();
     mNormalPanel->setVisible(!inBezier);
     mBezierPanel->setVisible(inBezier);
     // In Custom mode the top motion-preview bar is hidden (the animated value
     // rides the gauge beside the curve instead), matching the reference mock.
     if (mPipeline) mPipeline->setVisible(!inBezier);
+    // Run the tiles even while the Custom panel hides them: their checked state
+    // is the draft's, and a stale check left on another tile would be the truth
+    // the moment the catalog is shown again. (The Auto preset itself switches to
+    // Custom, so this is exactly the path that used to leave two tiles checked.)
+    refreshTiles();
     if (inBezier) renderBezier();
-    else refreshTiles();
     updateBlend();
     // Pin the popup's height to the known per-mode height. The popup is a
     // top-level Qt::Popup with a fixed width; its height is deterministic
@@ -975,8 +1487,12 @@ void EasingPickWidget::refreshSeg() {
 void EasingPickWidget::refreshTiles() {
     for (int i = 0; i < mTileBtns.size(); ++i) {
         QToolButton* tile = mTileBtns[i];
-        const util::Easing::Type type = kTileOrder[i];
-        const bool on = mDraft.type == type;
+        const TileDef& def = kTileOrder[i];
+        const bool on = def.autoPreset
+            ? (mDraft.type == util::Easing::Type_Custom
+               && mDraft.handleIn == util::Easing::kAutoPresetHandleMode
+               && mDraft.handleOut == util::Easing::kAutoPresetHandleMode)
+            : (mDraft.type == def.type);
         tile->setChecked(on);
         if (CurveGlyph* g = tile->findChild<CurveGlyph*>()) {
             // The selected tile's curve is accentBright (purple) on the
@@ -984,7 +1500,16 @@ void EasingPickWidget::refreshTiles() {
             // rather than relying on the QSS `color` reaching the glyph's
             // palette (it does not repaint on check-state change alone).
             g->setGlyphColor(on ? C().accentBright : C().textMutedDim);
-            g->setParam(mkParam(type, mDraft.range, mDraft.weight));
+            util::Easing::Param glyph = mkParam(def.type, mDraft.range, mDraft.weight);
+            if (def.autoPreset) {
+                glyph.type = util::Easing::Type_Custom;
+                glyph.handleIn = util::Easing::kAutoPresetHandleMode;
+                glyph.handleOut = util::Easing::kAutoPresetHandleMode;
+            }
+            g->setParam(glyph);
+            // The preset keeps its canonical catalog pair here too, so this
+            // refresh cannot turn its tile back into a straight line.
+            g->setAutoContext(glyphAutoContext(def.autoPreset, mAuto));
         }
     }
 }
@@ -994,12 +1519,31 @@ void EasingPickWidget::updateBlend() {
     mBlendVal->setText(QString::number(qRound(mDraft.weight * 100)) + "%");
 }
 
+void EasingPickWidget::refreshHandleModes() {
+    // The header names the Param the same way the chip and every tile do (one
+    // vocabulary; a Custom curve by its handle pair, never "Custom").
+    if (mTitle)
+        mTitle->setText(util::Easing::getParamName(mDraft));
+    // The two mode combos show the draft's own sides; a programmatic change (the
+    // Auto preset, a paste, setValue, a drag freeing a derived side) must move
+    // them without re-emitting.
+    if (mHandleIn) {
+        const QSignalBlocker block(mHandleIn);
+        mHandleIn->setCurrentIndex(int(mDraft.handleIn));
+    }
+    if (mHandleOut) {
+        const QSignalBlocker block(mHandleOut);
+        mHandleOut->setCurrentIndex(int(mDraft.handleOut));
+    }
+}
+
 void EasingPickWidget::renderBezier() {
     // The editor is authoritative: paintEvent reads the draft bezier, clamps
     // it, and writes the values back to bezier + the spins. Sync the handle
     // points first so a programmatic bezier change (spin/paste/setValue) is
     // not reverted by the paint event's write-back.
     if (mBezierEditor) { mBezierEditor->syncFromBezier(); mBezierEditor->update(); }
+    refreshHandleModes();
 }
 
 void EasingPickWidget::resizeEvent(QResizeEvent* aEvent) {
@@ -1104,9 +1648,18 @@ void EasingPickWidget::hideEvent(QHideEvent* aEvent) {
     // (openPopover re-establishes it at the end of the dance).
     mHasAnchor = false;
 
-    // Apply-on-close: the whole session commits to the model as ONE undo step
-    // here (not per edit), so fiddling in the menu collapses to a single
-    // "change easing" in the history. Only commit if the draft actually moved.
+    // A streamed session (a handle drag / a typed spin) closes here: the popup's
+    // close is the ONE undo entry for the session, the same close-time rule the
+    // blend slider follows, so the owner's open command ends now. Its steps
+    // already wrote the model, so the commit below has nothing left to do for it.
+    // An interrupted gesture's own draft-history entry is folded here too.
+    endLiveEdit();
+    if (mGestureActive) endGesture();
+
+    // Apply-on-close, for the DRAG remnant: discrete edits already committed as
+    // they happened (commitDiscrete), and a streamed gesture applied every step,
+    // so this normally writes only the final value of a blend-slider drag - one
+    // undo step for the whole gesture. Only commit if the draft actually moved.
     // hideEvent fires for both the ✕ and an outside-click dismiss of the popup.
     if (mDraft != mApplied) {
         mApplied = mDraft;
@@ -1117,12 +1670,16 @@ void EasingPickWidget::hideEvent(QHideEvent* aEvent) {
     mUndo.clear();
     mRedo.clear();
     mGestureActive = false;
+
+    // And the popup is gone: whoever lent it a temporary selection ends it now
+    // (after the commit above, so the commit still saw the keys it was for).
+    emit closed();
 }
 
 void EasingPickWidget::animStep() {
     mAnimT = std::fmod(mAnimT + 0.007, 1.0);
     if (!mPipeline || !mPipelineFill) return;
-    const float v = util::Easing::calculate(mDraft, (float)mAnimT, 0.0f, 1.0f, 1.0f);
+    const float v = util::Easing::calculate(mDraft, mAuto, (float)mAnimT, 0.0f, 1.0f, 1.0f);
     const float f = v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
     mPipelineFill->setFixedWidth(qRound(f * mPipeline->width()));
     // Drive the Custom-view animation gauge (the ball's Y = the live value).
@@ -1143,6 +1700,97 @@ void EasingPickWidget::refit() {
 void EasingPickWidget::setAnchorPoint(const QPoint& aPoint) {
     mAnchorPoint = aPoint;
     mHasAnchor = true;
+}
+
+void EasingPickWidget::popUpAt(const QPoint& aGlobalAnchor, const QWidget* aAnchorWidget,
+                               const util::Easing::Param& aShown,
+                               const util::Easing::AutoContext& aAutoContext) {
+    // 0-opacity first-frame trick: the Popup's live height is DPI-correct
+    // only after its native window is realized (a hidden popup's
+    // heightForWidth/sizeHint is stale — hidden 477 vs live 488 on this
+    // host; user saw 407→489). Show the tall Custom at opacity 0 for one
+    // frame so Qt sizes the native window live, then flip back to the
+    // requested mode at opacity 1. At that point liveCustomHeight() ==
+    // geometry().height() is authoritative — use it to reserve Custom
+    // height once, nudge up if it would clip, and let Custom grow down in
+    // place. (The popup opens flush at the anchor, gap 0.)
+    //
+    // The Auto context is installed before the first paint: the blend
+    // thumbnails and the motion preview derive their curves from the neighbours
+    // of the key this open names (the Auto tile draws the catalog's canonical
+    // pair instead - a tile is an image, not a preview of the user's keys).
+    setAutoContext(aAutoContext);
+
+    const util::Easing::Param requested = aShown;
+    const bool wasCustom = requested.type == util::Easing::Type_Custom;
+    if (!wasCustom) {
+        util::Easing::Param c = requested;
+        c.type = util::Easing::Type_Custom;
+        setValue(c);
+    } else {
+        setValue(requested);
+    }
+    const QScreen* scr = aAnchorWidget ? aAnchorWidget->screen() : nullptr;
+    if (!scr) scr = QGuiApplication::primaryScreen();
+    const QRect avail = scr ? scr->availableGeometry() : QRect();
+    int left = aGlobalAnchor.x();
+    if (!avail.isNull()) {
+        const int w = width() > 0 ? width() : kPopoverWidth;
+        if (left + w > avail.right() + 1) left = avail.right() + 1 - w;
+        if (left < avail.left()) left = avail.left();
+    }
+    // Realize the native window at the tall Custom height (0 opacity).
+    setWindowOpacity(0.0);
+    // Treat the popup as a transient child of the app window. A popup with
+    // no transient parent is left to the WM/compositor, which will nudge a
+    // growing popup to keep it on-screen — that is the "menu nudges to the
+    // right on mode switch" drift. On X11 the popup is still
+    // override-redirect (unmanaged, so this is a no-op there); on Wayland it
+    // stops the compositor relocating it.
+    winId();
+    if (auto* ph = windowHandle()) {
+        if (auto* top = aAnchorWidget ? aAnchorWidget->window() : nullptr) {
+            if (auto* wh = top->windowHandle())
+                ph->setTransientParent(wh);
+        }
+    }
+    move(left, aGlobalAnchor.y());
+    show();
+    raise();
+    // Two ticks: the live geometry is realized by then. We are STILL in
+    // Custom here, so reserve the Custom (tallest) height — reading it
+    // after flipping back to the requested mode gave the normal height and
+    // let the tall Custom panel clip off the bottom of the screen.
+    QTimer::singleShot(0, this, [this, requested, wasCustom, avail, left, aGlobalAnchor]() {
+        if (!this->isVisible()) return;
+        QTimer::singleShot(0, this, [this, requested, wasCustom, avail, left, aGlobalAnchor]() {
+            if (!this->isVisible()) return;
+            // Reserve the tallest (Custom) height so the popup never needs
+            // to be relocated when switching to Custom. The height is a
+            // KNOWN constant, not a measured one — the previous measurement
+            // (liveCustomHeight / heightForWidth / sizeHint) oscillated
+            // 476/478/510 and was nowhere near the real ~489. Use the
+            // deterministic constant and let the popup grow down in place.
+            const int reserveH = kCustomHeight;
+            int top = aGlobalAnchor.y();
+            if (!avail.isNull() && reserveH > 0) {
+                if (top + reserveH > avail.bottom() + 1)
+                    top = qMax(avail.top(), avail.bottom() + 1 - reserveH);
+            }
+            // Now flip back to the requested mode (sizes the normal panel).
+            if (!wasCustom) this->setValue(requested);
+            QTimer::singleShot(0, this, [this, left, top]() {
+                if (!this->isVisible()) return;
+                // Pin the anchor once; every later refit re-asserts it so
+                // the popup can never drift to the right on a mode switch.
+                // top is reserved for the tallest (Custom) height, so
+                // switching to Custom grows the popup down in place.
+                this->move(left, top);
+                this->setAnchorPoint(QPoint(left, top));
+                this->setWindowOpacity(1.0);
+            });
+        });
+    });
 }
 
 int EasingPickWidget::liveCustomHeight() const {
@@ -1169,7 +1817,7 @@ int EasingPickWidget::maxContentHeight() {
     // Cheap hidden estimate for reasoning/tests before the native window
     // exists. The authoritative live height is geometry().height() after show
     // (see liveCustomHeight and the 0-opacity first-frame trick in
-    // EasingItem::openPopover). The estimate forces Custom visible, reads
+    // EasingPickWidget::popUpAt). The estimate forces Custom visible, reads
     // sizeHint/heightForWidth, then restores the caller's mode; a hidden
     // popup's heightForWidth can be -1 or stale, so fall back to minimum.
     if (isVisible()) return geometry().height();

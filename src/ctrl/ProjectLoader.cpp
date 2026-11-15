@@ -1,6 +1,4 @@
 #include <fstream>
-#include "gui/MainMenuBar.h"
-#include "gui/MainWindow.h"
 #include "qdir.h"
 #include "util/IDSolver.h"
 #include "ctrl/ProjectLoader.h"

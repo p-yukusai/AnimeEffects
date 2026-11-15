@@ -3,6 +3,11 @@
 #include "gui/theme/Colors.h"
 #include "gui/theme/Icons.h"
 
+// The scroll bar's lane and pill - the SAME definition the graph panel paints
+// from (gui/GraphPanelFrame.cpp's bar pass), so the app's bar and the panel's
+// lanes cannot disagree about the thickness, the centring or the caps.
+#include "ctrl/graph/graph_ScrollBarGeometry.h"
+
 #include <algorithm>
 #include <QAbstractItemView>
 #include <QBitmap>
@@ -18,9 +23,6 @@
 namespace gui {
 
 namespace {
-constexpr int kTrackThickness = 12; // hit area / extent (invisible)
-constexpr int kPillThickness = 4;
-constexpr int kPillRadius = 2;
 // Easing blend slider (a QSlider with no QSS so it routes through CC_Slider):
 // a 4px gradient track and a round accent-bright knob, matching the mock.
 constexpr int kSliderGrooveThickness = 4;
@@ -135,7 +137,7 @@ void AppStyle::polish(QWidget* aWidget) {
 int AppStyle::pixelMetric(PixelMetric aMetric, const QStyleOption* aOption,
                                 const QWidget* aWidget) const {
     if (aMetric == PM_ScrollBarExtent)
-        return kTrackThickness;
+        return ctrl::graph::scrollBar::kLaneThickness;
     return QProxyStyle::pixelMetric(aMetric, aOption, aWidget);
 }
 
@@ -312,15 +314,12 @@ void AppStyle::drawComplexControl(ComplexControl aControl, const QStyleOptionCom
         if (slider.isEmpty())
             return;
 
-        // A 4px pill centered in the 12px track, spanning the slider's run.
-        QRect pill;
-        if (opt->orientation == Qt::Vertical) {
-            const int x = (opt->rect.width() - kPillThickness) / 2;
-            pill = QRect(x, slider.y(), kPillThickness, slider.height());
-        } else {
-            const int y = (opt->rect.height() - kPillThickness) / 2;
-            pill = QRect(slider.x(), y, slider.width(), kPillThickness);
-        }
+        // THE pill, from the one definition the graph panel paints from too
+        // (ctrl/graph/graph_ScrollBarGeometry.h): 4px centred in the 12px lane,
+        // spanning the slider's run, rounded by the shared radius. Nothing about
+        // the geometry is computed here.
+        const ctrl::graph::scrollBar::Pill pill =
+            ctrl::graph::scrollBar::pill(opt->rect, slider, opt->orientation);
 
         const bool hot =
             (opt->activeSubControls & SC_ScrollBarSlider) || (opt->state & QStyle::State_Sunken);
@@ -328,7 +327,7 @@ void AppStyle::drawComplexControl(ComplexControl aControl, const QStyleOptionCom
         aPainter->setRenderHint(QPainter::Antialiasing);
         aPainter->setPen(Qt::NoPen);
         aPainter->setBrush(hot ? theme::Colors::current().hover : theme::Colors::current().outline);
-        aPainter->drawRoundedRect(pill, kPillRadius, kPillRadius);
+        aPainter->drawRoundedRect(pill.rect, pill.radius, pill.radius);
         aPainter->restore();
         return;
     }

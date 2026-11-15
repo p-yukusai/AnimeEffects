@@ -51,6 +51,13 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     NewProjectDialog.cpp NewProjectDialog.h
     AppStyle.cpp AppStyle.h
     ObjectTreeWidget.cpp ObjectTreeWidget.h
+    # The dock header's channel list: the panel's ONE control is a view action, so the
+    # design hosts it in the header and the list is its own widget (not a QMenu: the
+    # design's 22px rows and its swatch gaps are not reachable through AppStyle's menu
+    # metrics). Part of the always-built set: it needs no ImGui, only the model's plain
+    # row struct and the theme tokens.
+    GraphChannelPopup.cpp GraphChannelPopup.h
+    TimeLineHeader.cpp TimeLineHeader.h
     PlayBackWidget.cpp PlayBackWidget.h
     ProjectHook.cpp ProjectHook.h
     ProjectTabBar.cpp ProjectTabBar.h
@@ -63,6 +70,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     TimeLineEditorWidget.cpp TimeLineEditorWidget.h
     TimeLineWidget.cpp TimeLineWidget.h
     TimeRuler.cpp TimeRuler.h
+    FrameRuler.cpp FrameRuler.h
     ToolWidget.cpp ToolWidget.h
     ViaPoint.cpp ViaPoint.h
     # The export form: a Qt Quick scene (qml/ExportDialog.qml) in a QDialog shell,
@@ -212,12 +220,15 @@ endif()
 # ae_imgui library that compiles ImGui's four core sources. The tests link that
 # same library, which is why neither the fetch nor the core sources live here.
 #
-# What each unit is: ImGuiOverlay draws the panel and takes its input;
-# GraphPanelModel is what it draws, as engine-neutral geometry (so the panel's
-# content is testable without GL); ImGuiInputBridge is the Qt->ImGuiIO translation
-# plus the WantCapture gate the application's key routing obeys;
-# ImGuiQtFontLoader makes ImGui rasterize through Qt (CJK, .ttc, CFF); ImGuiA11y
-# publishes the panel to the screen-reader tree, which ImGui itself cannot do.
+# What each unit is: GraphPanelFrame is the panel's frame driver and its ink (the
+# ImGui context, GL3 backend, atlas and per-frame body the dock's Graph tab runs,
+# plus gui::drawPanel and the two GL passes); GraphPanelWidget is that dock page, the
+# panel's only host; GraphPanelModel is what the frame draws, as engine-neutral
+# geometry (so the panel's content is testable without GL); ImGuiInputBridge is the
+# Qt->ImGuiIO translation plus the WantCapture gate the application's key routing
+# obeys; ImGuiQtFontLoader makes ImGui rasterize through Qt (CJK, .ttc, CFF);
+# ImGuiA11y publishes the panel to the screen-reader tree, which ImGui itself cannot
+# do.
 #
 # ImGuiGLBackend.cpp is the GL3 backend reached through a loader shim: it includes
 # gui/ImGuiGLBackend.h - the wrapper over gl::Global::functions() - ahead of the
@@ -226,9 +237,21 @@ endif()
 # ImGui_ImplOpenGL3_* twice. (It was called ImGuiSpikeGL while it belonged to the
 # spike that measured the integration.)
 # ---------------------------------------------------------------------------
+# THE CANVAS PAINTER HOST: the ruler's and the body's Canvas ink. The surface
+# (TimeLineEditorWidget) compiles its Canvas branch from the same definition.
+target_sources(${PROJECT_NAME} PRIVATE
+    FrameRulerCanvas.cpp FrameRulerCanvas.h
+InkCanvas.cpp InkCanvas.h
+    TimeBodyCanvas.cpp TimeBodyCanvas.h
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::CanvasPainter)
+target_compile_definitions(${PROJECT_NAME} PRIVATE AE_CANVAS_PAINTER=1)
+
 if(AE_ENABLE_IMGUI)
     target_sources(${PROJECT_NAME} PRIVATE
-        ImGuiOverlay.cpp ImGuiOverlay.h
+        GraphPanelFrame.cpp GraphPanelFrame.h
+        Ink.h InkImGui.h InkImGui.cpp InkQPainter.h InkQPainter.cpp
+        GraphPanelWidget.cpp GraphPanelWidget.h
         ImGuiGLBackend.cpp ImGuiGLBackend.h
         ImGuiInputBridge.cpp ImGuiInputBridge.h
         ImGuiQtFontLoader.cpp ImGuiQtFontLoader.h
@@ -239,7 +262,7 @@ if(AE_ENABLE_IMGUI)
         ${imgui_SOURCE_DIR}/backends
     )
     target_link_libraries(${PROJECT_NAME} PRIVATE ae_imgui)
-    # The one compile-time gate the overlay's hooks obey.
+    # The one compile-time gate the panel's units obey.
     target_compile_definitions(${PROJECT_NAME} PRIVATE AE_ENABLE_IMGUI=1)
 endif()
 

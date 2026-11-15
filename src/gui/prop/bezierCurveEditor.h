@@ -27,10 +27,18 @@ public:
     signals:
     // Emitted when a tangent-handle drag starts (a handle is grabbed). The
     // owner (the easing picker popup) uses it to snapshot the pre-drag curve so
-    // the whole drag folds into one undo-history entry.
+    // the whole drag folds into one undo-history entry, and to open the one
+    // rewriteable command its steps are streamed into.
     void dragStarted();
-    // Emitted when a tangent-handle drag ends. The owner uses it to coalesce
-    // the drag into one undo-history entry (rather than one per pointer move).
+    // One STEP of a tangent-handle drag: the grabbed control point moved and
+    // `bezier` already holds the new curve (commitPoints ran). Emitted on every
+    // pointer move of the drag, so the owner can write/report each step at once
+    // instead of waiting for the release; the owner still folds the whole drag
+    // into ONE undo entry (dragStarted/editingFinished bracket it).
+    void curveDragged();
+    // Emitted when a tangent-handle drag ends. The owner uses it to close the
+    // drag's own history entry (rather than one per pointer move); the streamed
+    // command stays open until the owner's session ends.
     void editingFinished();
 
     public slots:
@@ -89,6 +97,12 @@ public:
     // event's write-back doesn't revert it to a stale control point. NOT used
     // during a drag (the drag owns m_points).
     void syncFromBezier();
+    // Clamp the two control points in value space and write them into `bezier`.
+    // The paint event calls it before drawing; a DRAG calls it on every move, so
+    // the model follows the pointer rather than the next repaint (an owner that
+    // reads the draft at release - the picker's side-freeing rule - must see the
+    // dragged value even when no paint happened in between).
+    void commitPoints();
 
     QPointF         m_points[4];
 

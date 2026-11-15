@@ -62,13 +62,18 @@ namespace time {
                 const int validNum = timeLine.validTypeCount();
                 int validIndex = 0;
 
+                // A closed folder's descendants are drawn in its summary lane, not
+                // in the folder's own lanes: the hit must use that band's centre.
+                const bool summaryChild = line.closedFolder && line.summaryHeight() > 0 && node != line.node;
+
                 for (int i = 0; i < TimeKeyType_TERM; ++i) {
                     auto type = TimeLine::getTimeKeyTypeInOrderOfOperations(i);
                     const TimeLine::MapType& map = timeLine.map(type);
                     if (map.isEmpty())
                         continue;
 
-                    const float keyY = line.keyHeight(validIndex, validNum);
+                    const float keyY = summaryChild ? line.summaryCenterY()
+                                                    : line.keyHeight(validIndex, validNum);
                     ++validIndex;
 
                     // a lane whose vertical gap alone already reaches the best
@@ -120,13 +125,16 @@ namespace time {
                 const int validNum = timeLine.validTypeCount();
                 int validIndex = 0;
 
+                const bool summaryChild = line.closedFolder && line.summaryHeight() > 0 && node != line.node;
+
                 for (int i = 0; i < TimeKeyType_TERM; ++i) {
                     auto type = TimeLine::getTimeKeyTypeInOrderOfOperations(i);
                     const TimeLine::MapType& map = timeLine.map(type);
                     if (map.isEmpty())
                         continue;
 
-                    const float height = line.keyHeight(validIndex, validNum);
+                    const float height = summaryChild ? line.summaryCenterY()
+                                                      : line.keyHeight(validIndex, validNum);
                     ++validIndex;
                     if (height < box.top() || box.bottom() < height)
                         continue;

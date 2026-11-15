@@ -12,7 +12,7 @@ namespace gui {
 class AnimationSettingViewModel;
 class QmlTheme;
 
-// Animation settings, rendered as a full-bleed Qt Quick scene (see
+// Playback settings, rendered as a full-bleed Qt Quick scene (see
 // qml/AnimationSettingDialog.qml) inside this widget, shown as a Qt::Popup
 // anchored to the playback bar's options button — the same idiom as
 // EasingPickWidget. Dismisses on an outside click.

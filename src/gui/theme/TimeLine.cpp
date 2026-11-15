@@ -25,10 +25,23 @@ void TimeLine::reset() {
     mTrackColor = c.base;
     mTrackEdgeColor = c.hairline;
     mTrackTextColor = c.text;
-    // selected track: the brand selection fill from the tokens (fixed alpha;
-    // theme differences live in the Tailwind columns, not per-widget)
-    mTrackSelectColor = c.selection;
-    mTrackSeperatorColor = c.hairlineHover;
+    // Selected track: the lane band's tint — the accent at 6%, "a whisper, not
+    // a flood" (design s3). It replaces the old whole-lane @selection@ fill
+    // (accent @0.40); the row's 2px rail is the object tree's, because a rail
+    // marks where a row STARTS and a row starts in the tree column. Selection
+    // is ONE treatment across the two columns: this band tints the lanes' whole
+    // visible width, and the tree row carries the same 0.06 tint plus the rail
+    // (ObjectTreeWidget overrides the shared @selection@ row rule with this
+    // tint in its own loaded stylesheet, since the app-wide rule's token is the
+    // 0.40 flood). accentBright is the token the mock's proposed fill uses
+    // (--accent-bright at 0.06) and the one the app builds translucent accent
+    // overlays from.
+    mTrackSelectColor = c.accentBright;
+    mTrackSelectColor.setAlphaF(0.06);
+    // Same hue as the row seams (hairline), so the LOWER alpha really is a lower
+    // contrast. hairlineHover was a brighter token, and at 40% it could match the
+    // 70% row seam - the "no opacity difference" report.
+    mTrackSeperatorColor = c.hairline;
     shade();
 }
 
@@ -36,8 +49,11 @@ void TimeLine::shade() {
     mTrackColor = QColor(mTrackColor.red(), mTrackColor.green(), mTrackColor.blue(), 180);
     mTrackEdgeColor = QColor(mTrackEdgeColor.red(), mTrackEdgeColor.green(), mTrackEdgeColor.blue(), 180);
     mTrackTextColor = QColor(mTrackTextColor.red(), mTrackTextColor.green(), mTrackTextColor.blue(), 180);
+    // The fine type separators inside a lane: a 4-on/4-off dash at 40%. The dash is
+    // what tells them apart from the SOLID 70% seams between rows/layers; solid at
+    // both levels made the two concepts look the same.
     mTrackSeperatorColor =
-        QColor(mTrackSeperatorColor.red(), mTrackSeperatorColor.green(), mTrackSeperatorColor.blue(), 180);
+        QColor(mTrackSeperatorColor.red(), mTrackSeperatorColor.green(), mTrackSeperatorColor.blue(), 102);
 }
 
 QColor TimeLine::headerContentColor() const { return mHeaderContentColor; }

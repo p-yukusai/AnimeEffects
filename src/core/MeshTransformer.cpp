@@ -124,9 +124,17 @@ void MeshTransformer::callGL(
         ggl.glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, 0);
     }
 
-    ggl.glFlush();
+    // No glFlush here: GL executes a context's commands in order, and the frame
+    // submits once at the end (MainDisplayWidget::paintGL). One flush per mesh only
+    // forced an extra driver submission per layer.
 
-    XC_ASSERT(ggl.glGetError() == GL_NO_ERROR);
+    // The per-layer error probe is OPT-IN, not free: glGetError is a pipeline question
+    // and measured ~23 us per call on radeonsi - 0.77 ms of a 4.8 ms frame across 33
+    // layers. AE_GL_STRICT=1 keeps it for a driver investigation; the frame-level
+    // GL_CHECK_ERROR() in the paint path still reports every error in any build.
+    if (qEnvironmentVariableIsSet("AE_GL_STRICT")) {
+        XC_ASSERT(ggl.glGetError() == GL_NO_ERROR);
+    }
 }
 
 } // namespace core

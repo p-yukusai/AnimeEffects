@@ -59,6 +59,12 @@ public:
     void read(QMatrix4x4& aValue);
     void read(Frame& aValue);
     bool read(util::Easing::Param& aValue, bool errorCorrection=false);
+    // One key's whole easing array. Files from before per-component easing
+    // (minor < 14) wrote exactly ONE param for every key, so that one is read
+    // and BROADCAST to all aCount components - lossless for what such a file
+    // described, where every component shared that param. Files at 14 onward
+    // write aCount.
+    bool readEasings(util::Easing::Param* aValue, int aCount, bool errorCorrection = false);
     void read(QPolygonF& aValue);
     void read(QString& aValue, int aMax = 0);
     bool read(const XCMemBlock& aValue);

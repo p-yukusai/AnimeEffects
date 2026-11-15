@@ -43,6 +43,25 @@ void BezierCurveEditor::syncFromBezier() {
     m_points[EndPoint] = QPointF(valueToX(kMaxX, width()), valueToY(1.0, height()));
 }
 
+void BezierCurveEditor::commitPoints() {
+    if (!bezier || width() <= 0 || height() <= 0)
+        return; // no canvas: the maps would divide by zero
+    // Clamp the handles in value space to the fixed viewport: y may swing
+    // ±kUnderOverRange past the 0..1 band, x stays in the [0, 1] domain.
+    m_points[ControlPoint1] = QPointF(
+        valueToX(clampX(xToValue(m_points[ControlPoint1].x(), width())), width()),
+        valueToY(clampValue(yToValue(m_points[ControlPoint1].y(), height())), height()));
+    m_points[ControlPoint2] = QPointF(
+        valueToX(clampX(xToValue(m_points[ControlPoint2].x(), width())), width()),
+        valueToY(clampValue(yToValue(m_points[ControlPoint2].y(), height())), height()));
+
+    // Y is inverted in pixels (y grows downward), hence the inverse map.
+    bezier->x1 = static_cast<float>(xToValue(m_points[ControlPoint1].x(), width()));
+    bezier->y1 = static_cast<float>(yToValue(m_points[ControlPoint1].y(), height()));
+    bezier->x2 = static_cast<float>(xToValue(m_points[ControlPoint2].x(), width()));
+    bezier->y2 = static_cast<float>(yToValue(m_points[ControlPoint2].y(), height()));
+}
+
 BezierCurveEditor::BezierCurveEditor(QWidget *parent, util::Easing::CubicBezier* cubicBezier, QVector<QDoubleSpinBox*> spins, float* pro):
     QWidget(parent), m_dragging(false) {
     const theme::Colors c = theme::Colors::current();
@@ -85,9 +104,16 @@ void BezierCurveEditor::mouseMoveEvent(QMouseEvent *event)
     }
     if(m_dragging) {
         m_points[m_selectedPoint] = event->pos();
+        // The model follows the pointer NOW, not on the next paint: the owner
+        // reads the draft at release (and frees a derived side the drag stored).
+        commitPoints();
         // Editing restarts the preview from the new curve; hover alone must
         // not freeze it (mouse tracking fires move events without buttons).
         *progress = 0;
+        // …and the owner learns about this STEP now, so the document, the graph
+        // and every view can follow the handle instead of waiting for the release
+        // (and for the popup to close).
+        emit curveDragged();
     }
     update();
 }
@@ -154,22 +180,9 @@ void BezierCurveEditor::paintEvent(QPaintEvent *)
     // end; only the tangent handles move.
     m_points[StartPoint] = QPointF(valueToX(kMinX, width()), valueToY(0.0, height()));
     m_points[EndPoint]   = QPointF(valueToX(kMaxX, width()), valueToY(1.0, height()));
-    // Clamp the handles in value space to the fixed viewport: y may swing
-    // ±kUnderOverRange past the 0..1 band, x stays in the [0, 1] domain.
-    m_points[ControlPoint1] = QPointF(
-        valueToX(clampX(xToValue(m_points[ControlPoint1].x(), width())), width()),
-        valueToY(clampValue(yToValue(m_points[ControlPoint1].y(), height())), height()));
-    m_points[ControlPoint2] = QPointF(
-        valueToX(clampX(xToValue(m_points[ControlPoint2].x(), width())), width()),
-        valueToY(clampValue(yToValue(m_points[ControlPoint2].y(), height())), height()));
-
-    // The editor is authoritative: write the clamped values back so bezier
-    // (and the spin boxes below) always hold viewport values. Y is inverted
-    // in pixels (y grows downward), hence the inverse map.
-    bezier->x1 = static_cast<float>(xToValue(m_points[ControlPoint1].x(), width()));
-    bezier->y1 = static_cast<float>(yToValue(m_points[ControlPoint1].y(), height()));
-    bezier->x2 = static_cast<float>(xToValue(m_points[ControlPoint2].x(), width()));
-    bezier->y2 = static_cast<float>(yToValue(m_points[ControlPoint2].y(), height()));
+    // The editor is authoritative: the clamped points are written back so bezier
+    // (and the spin boxes below) always hold viewport values.
+    commitPoints();
 
     if (!spinBoxes.empty() && spinBoxes.at(0)) {
         for (const auto box : spinBoxes) {

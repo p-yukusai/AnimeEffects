@@ -2,7 +2,7 @@
 
 namespace core {
 
-OpaKey::Data::Data(): mEasing(), mOpacity(1.0f) {}
+OpaKey::Data::Data(): mEasings(), mOpacity(1.0f) {}
 
 bool OpaKey::Data::isZero() const { return mOpacity == 0.0f; }
 
@@ -17,7 +17,7 @@ TimeKey* OpaKey::createClone() {
 }
 
 bool OpaKey::serialize(Serializer& aOut) const {
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
     aOut.write(mData.opacity());
     return aOut.checkStream();
 }
@@ -25,7 +25,7 @@ bool OpaKey::serialize(Serializer& aOut) const {
 bool OpaKey::deserialize(Deserializer& aIn) {
     aIn.pushLogScope("OpaKey");
 
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
 

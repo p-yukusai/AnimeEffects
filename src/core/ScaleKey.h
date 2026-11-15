@@ -1,23 +1,35 @@
 #ifndef CORE_SCALEKEY_H
 #define CORE_SCALEKEY_H
 
+#include <array>
+#include "XC.h"
 #include "util/Easing.h"
+#include "core/KeyEasing.h"
 #include "core/TimeKey.h"
 
 namespace core {
 
 class ScaleKey: public TimeKey {
 public:
+    // One easing per graph channel: 0 is scale x, 1 is scale y.
+    static constexpr int kComponents = easingComponentCount(TimeKeyType_Scale);
+
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         QVector2D mScale;
         void clamp();
 
     public:
         Data();
 
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
 
         void setScale(const QVector2D& aScale) {
             mScale = aScale;

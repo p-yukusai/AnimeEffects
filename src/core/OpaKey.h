@@ -1,23 +1,34 @@
 #ifndef CORE_OPAKEY_H
 #define CORE_OPAKEY_H
 
+#include <array>
+#include "XC.h"
 #include "util/Easing.h"
+#include "core/KeyEasing.h"
 #include "core/TimeKey.h"
 
 namespace core {
 
 class OpaKey: public TimeKey {
 public:
+    static constexpr int kComponents = easingComponentCount(TimeKeyType_Opa);
+
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         float mOpacity;
         void clamp();
 
     public:
         Data();
 
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
 
         void setOpacity(float aOpacity) {
             mOpacity = aOpacity;

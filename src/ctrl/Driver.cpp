@@ -68,13 +68,14 @@ bool Driver::updateCursor(const core::AbstractCursor& aCursor, const core::Camer
         mProject.animator().stop();
     }
 
-    // The graph is a HUD over the canvas, so it arbitrates against the tools:
-    // exactly one of them handles the event. It only takes it inside its own
-    // rect (or while it owns a drag), so the tools keep working everywhere else.
-    if (mGraphEditor && mGraphEditor->isVisible() && mGraphEditor->ownsCursor(aCamera, aCursor)) {
-        return mGraphEditor->updateCursor(aCamera, aCursor);
-    }
-
+    // THE VIEWPORT'S events are the TOOLS' alone. The graph panel used to arbitrate
+    // here as a viewport overlay, against GraphEditor::currentPanelRect (the WHOLE
+    // viewport), so a canvas press could open a graph marquee instead of running the
+    // current tool. The panel lives in the dock now: gui::GraphPanelWidget owns its
+    // own page's events and is the only thing that routes them to the editor (see
+    // its routeCursor), so nothing of the panel's is decided here - no rect test, no
+    // visibility flag, and no press the user aimed at the canvas can be swallowed by
+    // it.
     if (mEditor) {
         return mEditor->updateCursor(aCamera, aCursor);
     }
@@ -202,30 +203,12 @@ void Driver::renderQt(const core::RenderInfo& aRenderInfo, QPainter& aPainter) c
     // GraphEditor::renderQt were removed with that cutover.
 }
 
-void Driver::setGraphEditorVisible(bool aVisible) {
-    // The graph owns its drag state, so hiding goes through the editor rather
-    // than around it: a short circuit here could leave a gesture open.
-    mGraphEditor->setVisible(aVisible);
-}
-
 void Driver::setGraphTargets(const QVector<core::ObjectNode*>& aTargets) {
     mGraphEditor->setTargets(aTargets);
 }
 
 void Driver::setGraphModifiers(Qt::KeyboardModifiers aModifiers) {
     mGraphEditor->setModifiers(aModifiers);
-}
-
-bool Driver::updateGraphWheel(
-    const core::CameraInfo& aCamera, const QPoint& aPos, int aWheelDelta, Qt::KeyboardModifiers aModifiers
-) {
-    // A hidden graph never swallows the wheel: reporting true here would stop
-    // the viewport from zooming the canvas while nothing on screen reacted.
-    if (mGraphEditor->isVisible()) {
-        return mGraphEditor->updateWheel(aCamera, aPos, aWheelDelta, aModifiers);
-    }
-
-    return false;
 }
 
 void Driver::drawOutline(const core::RenderInfo& aRenderInfo, QPainter& aPainter) {

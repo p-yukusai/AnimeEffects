@@ -3,10 +3,11 @@
 // popup to the right, and the tall Custom view must not clip off the bottom of
 // the screen.
 //
-// Reproduces EasingItem::openPopover's placement (right-edge clamp, the
-// 0-opacity realize-the-tall-Custom dance, transient parent, and the anchor
-// re-assert on refit), then toggles Custom<->normal and prints geometry().x()
-// and whether the Custom bottom stays on-screen.
+// It opens the popover through the SHIPPING placement — EasingPickWidget::popUpAt,
+// which is the right-edge clamp, the 0-opacity realize-the-tall-Custom dance, the
+// transient parent and the anchor re-assert on refit — then toggles Custom<->normal
+// and prints geometry().x() and whether the Custom bottom stays on-screen, so what
+// is measured is the popup the application pops and not a copy of its maths.
 //
 // Same source set as the layout gate / behavior probe.
 #include <QApplication>
@@ -15,7 +16,6 @@
 #include <QTimer>
 #include <QEventLoop>
 #include <QGuiApplication>
-#include <QWindow>
 #include <cstdio>
 #include "gui/prop/EasingPickWidget.h"
 #include "gui/theme/Colors.h"
@@ -35,54 +35,14 @@ static void report(const char* label, EasingPickWidget& w) {
             label, w.geometry().x(), w.geometry().y(), w.width(), w.height());
 }
 
-// Faithful copy of the (fixed) EasingItem::openPopover placement logic.
-static void openPopoverLike(QApplication& app, EasingPickWidget& w,
-                            QWidget& chip, const QPoint& anchor) {
-    const util::Easing::Param requested = w.value();
-    const bool wasCustom = requested.type == util::Easing::Type_Custom;
-    if (!wasCustom) {
-        util::Easing::Param c = requested;
-        c.type = util::Easing::Type_Custom;
-        w.setValue(c);
-    }
-    const QScreen* scr = QGuiApplication::primaryScreen();
-    const QRect avail = scr ? scr->availableGeometry() : QRect();
-    int left = anchor.x();
-    if (!avail.isNull()) {
-        const int wid = w.width() > 0 ? w.width() : 300;
-        if (left + wid > avail.right() + 1) left = avail.right() + 1 - wid;
-        if (left < avail.left()) left = avail.left();
-    }
-    w.setWindowOpacity(0.0);
-    w.winId();
-    if (auto* ph = w.windowHandle()) {
-        if (auto* top = chip.window()) {
-            if (auto* wh = top->windowHandle())
-                ph->setTransientParent(wh);
-        }
-    }
-    w.move(left, anchor.y());
-    w.show();
-    w.raise();
-    QTimer::singleShot(0, &w, [&w, requested, wasCustom, avail, left, anchor]() {
-        if (!w.isVisible()) return;
-        QTimer::singleShot(0, &w, [&w, requested, wasCustom, avail, left, anchor]() {
-            if (!w.isVisible()) return;
-            int customH = EasingPickWidget::kCustomHeight; // known tallest height, not measured
-            int top = anchor.y();
-            if (!avail.isNull() && customH > 0) {
-                if (top + customH > avail.bottom() + 1)
-                    top = qMax(avail.top(), avail.bottom() + 1 - customH);
-            }
-            if (!wasCustom) w.setValue(requested);
-            QTimer::singleShot(0, &w, [&w, left, top]() {
-                if (!w.isVisible()) return;
-                w.move(left, top);
-                w.setAnchorPoint(QPoint(left, top));
-                w.setWindowOpacity(1.0);
-            });
-        });
-    });
+// Opens the popover the way the application does. The placement itself is the
+// picker's (EasingPickWidget::popUpAt): it needs the anchor, the widget the anchor
+// belongs to (for the screen and the transient parent) and the value to show, and it
+// runs its own realize/clamp/re-assert dance asynchronously - so settle() here just
+// lets those zero-timers fire before anything is measured.
+static void openPickerAt(QApplication& app, EasingPickWidget& w,
+                         QWidget& chip, const QPoint& anchor) {
+    w.popUpAt(anchor, &chip, w.value(), util::Easing::AutoContext());
     settle(app, 50);
 }
 
@@ -123,7 +83,7 @@ int main(int argc, char** argv) {
     w.setWindowFlags(w.windowFlags() | Qt::Popup | Qt::FramelessWindowHint);
     w.setAttribute(Qt::WA_TranslucentBackground, true);
 
-    openPopoverLike(app, w, chip, anchor);
+    openPickerAt(app, w, chip, anchor);
     report("open(normal)", w);
     const int x0 = w.geometry().x();
     const int top0 = w.geometry().y();
@@ -148,7 +108,7 @@ int main(int argc, char** argv) {
     w.hide(); w.setValue(initial);
     const QPoint anchorBR(avail.right() - 30, avail.bottom() - 40);
     chip.move(anchorBR); chip.show(); app.processEvents();
-    openPopoverLike(app, w, chip, anchorBR);
+    openPickerAt(app, w, chip, anchorBR);
     report("open(bottom-right)", w);
     assertCustomFits(app, w, scr, "custom-bottomright");
 

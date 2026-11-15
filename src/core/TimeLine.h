@@ -3,7 +3,9 @@
 
 #include <array>
 #include <QMap>
+#include <QPair>
 #include <QScopedPointer>
+#include <QVector>
 #include "cmnd/Vector.h"
 #include "core/TimeKey.h"
 #include "core/TimeKeyType.h"
@@ -31,6 +33,9 @@ public:
     typedef QMap<int, TimeKey*> MapType;
 
     static QString getTimeKeyName(TimeKeyType aType);
+    // The name a UI should print. Serialization keeps the compact token ("Opa");
+    // a label reads "Opacity".
+    static QString getTimeKeyDisplayName(TimeKeyType aType);
     static TimeKeyType getTimeKeyType(const QString& aName);
     static TimeKeyType getTimeKeyTypeInOrderOfOperations(int aIndex);
 
@@ -59,6 +64,12 @@ public:
     const TimeKeyExpans& working() const { return *mWorking; }
 
     bool move(TimeKeyType aType, int aFrom, int aTo);
+    // Moves several keys of one type in one step. aMoves are (fromFrame,toFrame).
+    // Fails (and mutates nothing) when a source is missing, two moves share a
+    // source or a destination, or a destination is occupied by a key that is
+    // not itself moving. Used by the frame-projection command so selected and
+    // projected keys can swap/chain without order-dependent move() failures.
+    bool moveKeys(TimeKeyType aType, const QVector<QPair<int, int>>& aMoves);
     bool overwriteMove(TimeKeyType aType, int aFrom, int aTo);
     cmnd::Base* createPusher(TimeKeyType aType, int aFrame, TimeKey* aTimeKey);
     cmnd::Base* createRemover(TimeKeyType aType, int aFrame, bool aOptional = false);

@@ -460,7 +460,9 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
         ggl.glDisable(GL_BLEND);
     }
 
-    ggl.glFlush();
+    // No glFlush here: the frame flushes once, in MainDisplayWidget::paintGL. A flush
+    // per layer measured ~5 us each - one driver submission per layer, for no ordering
+    // benefit (GL orders a context's commands itself).
 }
 
 cmnd::Vector LayerNode::createResourceUpdater(const ResourceEvent& aEvent) {

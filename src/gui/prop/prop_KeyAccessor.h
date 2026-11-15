@@ -6,6 +6,7 @@
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/BlurKey.h"
+#include "core/TimeLineEvent.h"
 
 namespace gui {
 namespace prop {
@@ -88,6 +89,24 @@ namespace prop {
         core::Project* mProject;
         core::ObjectNode* mTarget;
     };
+
+    // The Auto context of one component of a KEY - not of the frame the playhead
+    // happens to be on, which is the frame KeyAccessor itself is bound to: the
+    // picker and the header's chip edit the keys the caller SELECTED, and a
+    // selection is not at the playhead. aComponent is the component being edited
+    // (an Auto Move x segment is shaped by x values, its y segment by y values).
+    // The derivation is the blender's and the graph panel's (see
+    // core::autoEasingContext): the key's successor in its own lane ends the
+    // segment it shapes, and the keys either side of that pair shape its handles.
+    // Empty when the lane has no such pair, which leaves an Auto curve the neutral
+    // straight line.
+    //
+    // A key's Auto context is a DOCUMENT fact, so it is here rather than inside
+    // the widget that happens to open the picker: this is the one walk every reader of it
+    // (the header's chip and the picker) is given, so a second copy cannot drift from
+    // the shape the blender plays.
+    util::Easing::AutoContext autoContextOf(
+        const core::TimeLineEvent::Target& aTarget, const core::TimeKey& aKey, int aComponent);
 
 } // namespace prop
 } // namespace gui

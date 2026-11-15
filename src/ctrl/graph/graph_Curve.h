@@ -5,6 +5,7 @@
 #include <QVector>
 #include "core/TimeKey.h"
 #include "core/TimeLine.h"
+#include "util/Range.h"
 #include "util/Easing.h"
 #include "ctrl/graph/graph_Channel.h"
 
@@ -51,6 +52,10 @@ public:
         float fromValue;
         float toValue;
         util::Easing::Param easing;
+        // The TO key's incoming handle mode. The arriving control point belongs
+        // to the TO key even though its STORED value is the FROM param's x2/y2,
+        // so a segment needs both keys' modes to derive its two sides.
+        util::Easing::HandleMode inMode = util::Easing::HandleMode_Aligned;
     };
     int segmentCount() const;
     // The drawable segment at aIndex (0 <= aIndex < segmentCount()).
@@ -61,32 +66,106 @@ public:
     // segment's value span. That normalization is what makes a handle mean the
     // same thing at any zoom, and it is the space core::TimeKeyBlender consumes.
     // aHandleIndex 0 is the handle leaving `from`, 1 the handle arriving at `to`.
+    // These read the STORED pair (what a gesture writes back); use
+    // effectiveHandles() for the pair the curve is actually drawn with.
+    //
+    // "Fully authored": a Custom curve whose BOTH sides read their stored value.
+    // This is the STORED-PAIR question, never a per-side one: a segment with one
+    // derived side is not fully authored, but it still has a stored handle on the
+    // other side (see derivesHandle). Anything that publishes or draws handles one
+    // at a time must ask derivesHandle for that side.
     bool isCustom(const Segment& aSegment) const;
+    // Whether ONE side of the segment is derived (Vector/Auto/AutoClamped) rather
+    // than stored. aHandleIndex is the handlePoint order: 0 is the FROM key's
+    // outgoing side (its handleOut), 1 the TO key's incoming one (inMode). This is
+    // the per-side rule the drawing layer and the hit-test share: a derived side
+    // is a ghost, a stored side is the document's handle.
+    static bool derivesHandle(const Segment& aSegment, int aHandleIndex);
     static QPointF handle(const Segment& aSegment, int aHandleIndex);
     // Writes a handle back into an easing param: x is clamped into [0,1] (a
     // cubic bezier requires it) while y stays free, so overshoot remains
     // expressible.
     static void setHandle(util::Easing::Param& aEasing, int aHandleIndex, const QPointF& aNormalized);
 
-    // Polyline of the channel across [aFrom,aTo] in (frame, value) space; the
-    // caller maps it through the Scaler. aSamplesPerSegment bounds the error of
-    // the analytic curves (one sample per frame is NOT enough: Expo and Elastic
-    // are steep inside a single frame at high zoom).
+    // THE PAIR THE SEGMENT IS DRAWN AND GRABBED WITH, per side: a Free/Aligned
+    // side is its stored control point, a derived side (Vector/Auto/
+    // AutoClamped) is the one util::Easing::controlPoint derives from the
+    // neighbours. The per-side decision is derivesHandle (publication's query),
+    // and controlPoint is what playback's Easing::calculate runs for that side,
+    // so the two sides cannot be classified one way and evaluated another. False
+    // when the segment exposes no handles at all (an analytic easing, or a null
+    // segment). This is the ONE mapping the drawing layer, the editor's hit-test
+    // and a drag's starting point all use, so they cannot disagree about where a
+    // dot is.
+    //
+    // FALSE IS ALSO THE ANSWER FOR A DERIVED INCOMING MODE ON AN ANALYTIC SEGMENT,
+    // and the panel must publish nothing for it: a segment's curve is its FROM
+    // key's param, so an analytic FROM never calls controlPoint and the TO key's
+    // handleIn is inert for this segment. (A key still OWNS both tangents - the
+    // incoming one becomes live the moment the segment's FROM is Custom, which is
+    // what the Auto preset now arranges by also writing the previous key.)
+    bool effectiveHandles(const Segment& aSegment, QPointF aOut[2]) const;
+
+    // A segment's DERIVED pair, or empty when neither side derives one (both
+    // modes stored, an analytic easing, the last key of a channel, or a type
+    // that carries no easing). The pair is the EFFECTIVE one - a stored side is
+    // returned as its stored control point - because the caller draws a mixed
+    // segment's two dots from one pair. Kept as a QVector (the panel's handle
+    // pass wants a pair-or-empty answer) and in the same normalized space
+    // handle() reads.
+    QVector<QPointF> ghostHandles(const core::TimeKey& aFrom) const;
+
+    // Polyline of the channel across [aFrom,aTo] in (frame, value) space; the caller maps it through
+    // the Scaler. aSamplesPerSegment bounds the error of the analytic curves (one sample per frame is
+    // NOT enough: Expo and Elastic are steep inside a single frame at high zoom) and is spent on the
+    // part of each segment the window SHOWS, plus each touched segment's own endpoints for the caller
+    // to clip against. The frames outside the keys follow setLoop below: a hold SPANS the window even
+    // when the window misses the keys entirely (a horizontal segment at the nearest key's value),
+    // because a polyline of one point is not a drawable curve.
     void buildPolyline(core::Frame aFrom, core::Frame aTo, int aSamplesPerSegment, QVector<QPointF>& aOut) const;
 
-    // The easing param that shapes the segment starting at one key, for a
-    // graphable type. Null for a type that carries no easing.
-    static const util::Easing::Param* easingOf(const core::TimeKey& aKey, core::TimeKeyType aType);
-    static util::Easing::Param* easingOf(core::TimeKey& aKey, core::TimeKeyType aType);
+    // How the frames OUTSIDE the keys are evaluated, which is the project's own playback rule
+    // (core::TimeKeyGatherer reads core::TimeInfo the same way):
+    //   * inside the frame range, loop ON  - the value is the eased segment from the LAST key back
+    //     to the FIRST, wrapped by the range's span (the animation repeats over the range, so the
+    //     first key sits one span ahead of the last);
+    //   * inside it, loop OFF - the value HOLDS: the first key before it, the last key after it;
+    //   * OUTSIDE the range the frame is CLAMPED into it, so the curve is flat at the range's edge
+    //     value - the animation is defined over the range and a repeated period is not something a
+    //     curve should extrapolate to infinity.
+    // A single key, or a range with no span, means no wrap.
+    void setLoop(bool aLoop, const util::Range& aRange);
+    bool isLooped() const;
+
+
+    // The easing param that shapes one key's segment of a graph channel, for a
+    // graphable type and one of its components. Null for a type that carries no
+    // easing (bone, mesh) and for a component the type does not have. Pose and
+    // FFD store one shared param at index 0 (their channel count is 0, but the
+    // timeline chip and the header's quick easings edit them), so they answer it.
+    static const util::Easing::Param* easingOf(const core::TimeKey& aKey, core::TimeKeyType aType, int aComponent);
+    static util::Easing::Param* easingOf(core::TimeKey& aKey, core::TimeKeyType aType, int aComponent);
 
 private:
     // The key whose segment starts at or before aFrame, and its successor.
     // Mirrors the gatherer's no-key / single / sandwiched cases.
     const core::TimeKey* findLower(core::Frame aFrame) const;
+    // The keys either side of the segment aFrom -> aTo in this channel's map:
+    // the blender gatherer's point(-1) / point(2). Either is null at an end of
+    // the key list. They are what a derived (Auto/AutoClamped) handle reads,
+    // and what the Move spline takes its Catmull-Rom velocities from.
+    void neighborsOf(const core::TimeKey& aFrom, const core::TimeKey& aTo,
+                     const core::TimeKey*& aPrev, const core::TimeKey*& aNext) const;
     float sampleBetween(const core::TimeKey& aFrom, const core::TimeKey& aTo, core::Frame aFrame) const;
+    // The value aAt (a float frame) inside the pair aFrom/aTo over a length of aD frames: the easing
+    // belongs to aFrom, and aD is the pair's effective length - the frames' own difference, or the
+    // loop span for a wrapped pair.
+    float sampleOver(const core::TimeKey& aFrom, const core::TimeKey& aTo, float aAt, float aD) const;
 
     const core::TimeLine* mTimeLine;
     Channel mChannel;
+    bool mLoop;
+    util::Range mLoopRange;
 };
 
 } // namespace graph

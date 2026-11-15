@@ -5,7 +5,7 @@
 namespace core {
 
 //-------------------------------------------------------------------------------------------------
-FFDKey::Data::Data(): mEasing(), mBuffer(), mVtxCount(0) {}
+FFDKey::Data::Data(): mEasings(), mBuffer(), mVtxCount(0) {}
 
 void FFDKey::Data::alloc(int aVtxCount) {
     XC_ASSERT(aVtxCount > 0);
@@ -123,7 +123,7 @@ void FFDKey::deserializeFromJson(QJsonObject json) {
 
 bool FFDKey::serialize(Serializer& aOut) const {
     // easing
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
 
     // vertex count
     aOut.write(mData.count());
@@ -139,7 +139,7 @@ bool FFDKey::serialize(Serializer& aOut) const {
 bool FFDKey::deserialize(Deserializer& aIn) {
     aIn.pushLogScope("FFDKey");
 
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
 

@@ -54,18 +54,19 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
 
   # The timeline track has no accessible name, so its rectangle is derived from
   # the Animation panel it sits in. The offsets are the panel-local ones for the
-  # object tree on the left (72px) and the transport button column on the right
-  # (32px), the panel title plus the ruler above the lanes (37px) and the
-  # horizontal scrollbar strip below them (13px). Measured on the 1440x900 probe
-  # window: panel [0 185 382 270] -> track x 72..350, y 222..442.
+  # object tree on the left (72px), the panel title plus the ruler above the lanes
+  # (37px, measured) plus the dock header bar above the ruler (40px), and the
+  # horizontal scrollbar strip below the lanes (13px). There is no offset on the
+  # right: the transport is no longer a 32px column beside the splitter but the
+  # header's own left group, so the timeline reaches the panel's right edge.
   P=$(ae extents "Animation")
   if [ -z "$P" ]; then
       echo "NO GEOMETRY: no visible widget named Animation" > /tmp/tlm_geom.txt
       kill $app 2>/dev/null; wait $app 2>/dev/null; exit 0
   fi
   read -r PX PY PW PH <<< "$P"
-  TX0=$((PX + 72)); TX1=$((PX + PW - 32))
-  TY0=$((PY + 37)); TY1=$((PY + PH - 13))
+  TX0=$((PX + 72)); TX1=$((PX + PW))
+  TY0=$((PY + 37 + 40)); TY1=$((PY + PH - 13))
   CW=$((TX1 - TX0)); CH=$((TY1 - TY0))
   # Track-local press/drag points, in the empty lanes below the top row.
   AX=$((TX0 + CW / 4));  AY=$((TY1 - 110))

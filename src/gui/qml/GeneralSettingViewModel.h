@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariantList>
+#include "util/Easing.h" // Init::easingIndex names displayIndexOf (Qt6::Core only)
 
 namespace gui {
 
@@ -101,11 +102,13 @@ public:
     // "before" and the "now" side, so nothing reads as changed on open.
     struct Init {
         int languageIndex = 0;              // "Auto"
-        // Display index of util::Easing::Type_Linear in util/Easing.cpp's
-        // kEasingDisplayOrder (Floor, Round, Linear, ...). The shell always seeds
-        // the real value via util::Easing::displayIndexOf; this is only the fallback
-        // for a bare model.
-        int easingIndex = 2;
+        // util::Easing::Type_Linear's display index in util/Easing.cpp's
+        // kEasingDisplayOrder - the SAME expression GeneralSettingDialog.cpp's read
+        // block seeds when no setting is present, so a bare model and the dialog open
+        // on the same easing. It was the literal 2 ("Linear" only while Linear
+        // happened to sit third, which the reorder to Linear, Floor, Round, Auto, ...
+        // broke: 2 is Round now), so it is derived instead of restated.
+        int easingIndex = util::Easing::displayIndexOf(util::Easing::Type_Linear);
         int rangeIndex = 2;                 // "All"
         int timeFormatIndex = 0;            // Frame number
         QString themeKey = QStringLiteral("dark");
@@ -153,6 +156,19 @@ public:
 
     QVariantList languageOptions() const;
     QVariantList easingOptions() const;
+    // THE AUTO CLAMPED OPTION. Automatic handles are per-side MODES, not an easing
+    // TYPE, so the display table cannot carry them - but the default keyframe
+    // easing CAN be the automatic pair (a migrated 0.14 Auto, or a stored "Auto"),
+    // and a combo that showed Linear for it would misname the default every new key
+    // gets. The option is appended after the table's non-Custom entries, labelled
+    // with the handle-mode name, and SAVED as the retired ordinal 14
+    // (util::Easing::Type_TERM), the one value util::Easing::defaultParam maps to
+    // Custom + kDefaultAutomaticHandleMode. optionForSetting resolves a stored
+    // value (name or ordinal, the legacy forms included) to an option index, and
+    // storedValueForOption is the inverse for the save path.
+    static int autoClampedOptionIndex();
+    static int optionForSetting(const QVariant& aStored);
+    static int storedValueForOption(int aOptionIndex);
     QVariantList rangeOptions() const;
     QVariantList timeFormatOptions() const;
     QVariantList themeOptions() const { return mThemeOptions; }

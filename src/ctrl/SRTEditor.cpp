@@ -34,10 +34,10 @@ bool SRTEditor::initializeKey(TimeLine& aLine, QString* aMessage) {
 
     if (mKeyOwner.ownsMoveKey) {
         mKeyOwner.moveKey = new MoveKey();
-        util::Easing::Param aParam;
-        aParam.range = util::Easing::rangeToEnum(QString());
-        aParam.type = util::Easing::easingToEnum(QString());
-        mKeyOwner.moveKey->data().easing() = aParam;
+        const util::Easing::Param aParam = util::Easing::defaultParam();
+        for (int component = 0; component < MoveKey::kComponents; ++component) {
+            mKeyOwner.moveKey->data().easing(component) = aParam;
+        }
         mKeyOwner.moveKey->setPos(current.srt().pos());
         mKeyOwner.moveKey->setCentroid(current.srt().centroid());
     } else {
@@ -48,10 +48,10 @@ bool SRTEditor::initializeKey(TimeLine& aLine, QString* aMessage) {
     mKeyOwner.ownsRotateKey = !rotateMap.contains(frame);
     if (mKeyOwner.ownsRotateKey) {
         mKeyOwner.rotateKey = new RotateKey();
-        util::Easing::Param aParam;
-        aParam.range = util::Easing::rangeToEnum(QString());
-        aParam.type = util::Easing::easingToEnum(QString());
-        mKeyOwner.rotateKey->data().easing() = aParam;
+        const util::Easing::Param aParam = util::Easing::defaultParam();
+        for (int component = 0; component < RotateKey::kComponents; ++component) {
+            mKeyOwner.rotateKey->data().easing(component) = aParam;
+        }
         mKeyOwner.rotateKey->setRotate(current.srt().rotate());
     } else {
         mKeyOwner.rotateKey = dynamic_cast<RotateKey*>(rotateMap.value(frame));
@@ -61,10 +61,10 @@ bool SRTEditor::initializeKey(TimeLine& aLine, QString* aMessage) {
     mKeyOwner.ownsScaleKey = !scaleMap.contains(frame);
     if (mKeyOwner.ownsScaleKey) {
         mKeyOwner.scaleKey = new ScaleKey();
-        util::Easing::Param aParam;
-        aParam.range = util::Easing::rangeToEnum(QString());
-        aParam.type = util::Easing::easingToEnum(QString());
-        mKeyOwner.scaleKey->data().easing() = aParam;
+        const util::Easing::Param aParam = util::Easing::defaultParam();
+        for (int component = 0; component < ScaleKey::kComponents; ++component) {
+            mKeyOwner.scaleKey->data().easing(component) = aParam;
+        }
         mKeyOwner.scaleKey->setScale(current.srt().scale());
     } else {
         mKeyOwner.scaleKey = dynamic_cast<ScaleKey*>(scaleMap.value(frame));

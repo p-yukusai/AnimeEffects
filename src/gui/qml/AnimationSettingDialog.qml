@@ -9,7 +9,7 @@ pragma Translator: "AnimeEffects.Dialogs"
 import QtQuick
 import QtQuick.Layouts
 
-// The Animation settings popup, rendered as a full-bleed Qt Quick scene inside
+// The Playback settings popup, rendered as a full-bleed Qt Quick scene inside
 // the AnimationSettingDialog QWidget shell. The shell is thin (translucent,
 // transparent clear color, rounded window mask); ALL of the visual chrome —
 // rounded body, border, header + close, and the form — lives here in Qt Quick.
@@ -54,7 +54,7 @@ Rectangle {
         anchors.leftMargin: 12
         anchors.rightMargin: 8
         Text {
-            text: qsTr("Animation settings")
+            text: qsTr("Playback settings")
             color: theme.text
             font.pixelSize: 12
             font.bold: true
@@ -104,7 +104,7 @@ Rectangle {
             columnSpacing: 12
             rowSpacing: 12
 
-            Text { text: qsTr("Loop animation"); color: theme.text; font.pixelSize: 12 }
+            Text { text: qsTr("Loop playback"); color: theme.text; font.pixelSize: 12 }
             Rectangle {
                 id: loopBox
                 readonly property bool hover: loopHov.hovered

@@ -13,6 +13,11 @@ LocaleDecider::LocaleDecider(): mLocaleParam(), mTranslator(), mHasTranslator() 
         auto language = langVar.isValid() ? langVar.toString() : QString();
 
         if (language == "English") {
+            // Load the English catalog even though English is the source language:
+            // it is where Qt's NUMERUS forms live ("%n key(s)" -> "1 key"/"2 keys",
+            // "%n channel(s)" -> "1 channel"/"3 channels"). Without it the source
+            // string's developer shorthand is what the user sees.
+            locAbb = "en";
         } else if (language == "Japanese") {
             locAbb = "ja";
         } else if (language == "Chinese") {
@@ -29,6 +34,9 @@ LocaleDecider::LocaleDecider(): mLocaleParam(), mTranslator(), mHasTranslator() 
         }
         else {
             auto language = QLocale::system().language();
+            if (language == QLocale::English) {
+                locAbb = "en";
+            }
             if (language == QLocale::Japanese) {
                 locAbb = "ja";
             }

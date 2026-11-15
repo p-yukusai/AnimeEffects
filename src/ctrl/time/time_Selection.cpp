@@ -1,14 +1,22 @@
 #include "ctrl/time/time_Selection.h"
 
+#include <algorithm>
+
 using namespace core;
 
 namespace ctrl {
 namespace time {
 
     //-------------------------------------------------------------------------------------------------
-    void Selection::clear() {
+    bool Selection::clear() {
+        // Nothing to clear is not a change: the set answers so, and does not
+        // announce one.
+        if (mItems.isEmpty())
+            return false;
         mItems.clear();
         rebuildFocus();
+        notifyChanged();
+        return true;
     }
 
     bool Selection::contains(const TimeLineEvent::Target& aTarget) const {
@@ -20,34 +28,123 @@ namespace time {
         return false;
     }
 
+    bool Selection::namesMarker(const Item& aItem, const TimeLineEvent::Target& aTarget, int aComponent) {
+        if (!sameKey(aItem.target, aTarget))
+            return false;
+        // A key-level entry IS the whole key's mark set: every component of its key
+        // is selected, so it covers this marker too.
+        return aItem.component == kKeyLevel || aItem.component == aComponent;
+    }
+
+    bool Selection::containsMarker(const TimeLineEvent::Target& aTarget, int aComponent) const {
+        for (const Item& item : mItems) {
+            if (namesMarker(item, aTarget, aComponent)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    QVector<int> Selection::componentsOf(const TimeLineEvent::Target& aTarget, int aStoredCount) const {
+        QVector<int> result;
+        if (aStoredCount <= 0)
+            return result;
+        const auto add = [&result](int aComponent) {
+            if (!result.contains(aComponent))
+                result.push_back(aComponent);
+        };
+        for (const Item& item : mItems) {
+            if (!sameKey(item.target, aTarget))
+                continue;
+            if (item.component == kKeyLevel) {
+                for (int component = 0; component < aStoredCount; ++component)
+                    add(component);
+            } else if (0 <= item.component && item.component < aStoredCount) {
+                add(item.component);
+            }
+        }
+        std::sort(result.begin(), result.end());
+        return result;
+    }
+
     bool Selection::sameKey(const TimeLineEvent::Target& aLhs, const TimeLineEvent::Target& aRhs) {
         // the map is unique per (line, type); address equality is exact
         return &aLhs.pos.map() == &aRhs.pos.map() && aLhs.pos.type() == aRhs.pos.type() &&
                aLhs.pos.index() == aRhs.pos.index();
     }
 
-    void Selection::set(const TimeLineEvent& aEvent) {
-        mItems.clear();
+    bool Selection::sameEntries(const QVector<Item>& aLhs, const QVector<Item>& aRhs) {
+        if (aLhs.size() != aRhs.size())
+            return false;
+        for (int i = 0; i < aLhs.size(); ++i) {
+            const Item& lhs = aLhs[i];
+            const Item& rhs = aRhs[i];
+            // The stored key pointer is only compared, never dereferenced, exactly
+            // like every other use of it here.
+            if (lhs.component != rhs.component || lhs.key != rhs.key || !sameKey(lhs.target, rhs.target))
+                return false;
+        }
+        return true;
+    }
+
+    bool Selection::retain(const std::function<bool(const Item&)>& aKeep) {
+        QVector<Item> next;
+        next.reserve(mItems.size());
+        for (const Item& item : mItems) {
+            if (aKeep(item))
+                next.push_back(item);
+        }
+        if (sameEntries(mItems, next))
+            return false;
+        mItems = next;
+        rebuildFocus();
+        notifyChanged();
+        return true;
+    }
+
+    bool Selection::set(const TimeLineEvent& aEvent) {
+        // Built BESIDE the live set, so "did this change anything" is answerable
+        // before the set is replaced: a re-selection of what is already selected is
+        // not a change, and is not announced as one.
+        QVector<Item> next;
+        for (const TimeLineEvent::Target& src : aEvent.targets()) {
+            bool duplicate = false;
+            for (const Item& item : next) {
+                if (sameKey(item.target, src)) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (duplicate)
+                continue;
+            TimeLineEvent::Target t = src;
+            next.push_back(Item(t, t.pos.key()));
+        }
+        if (sameEntries(mItems, next))
+            return false;
+        mItems = next;
+        rebuildFocus();
+        notifyChanged();
+        return true;
+    }
+
+    bool Selection::add(const TimeLineEvent& aEvent) {
+        bool changed = false;
         for (const TimeLineEvent::Target& src : aEvent.targets()) {
             if (!contains(src)) {
                 TimeLineEvent::Target t = src;
                 mItems.push_back(Item(t, t.pos.key()));
+                changed = true;
             }
         }
+        if (!changed)
+            return false;
         rebuildFocus();
+        notifyChanged();
+        return true;
     }
 
-    void Selection::add(const TimeLineEvent& aEvent) {
-        for (const TimeLineEvent::Target& src : aEvent.targets()) {
-            if (!contains(src)) {
-                TimeLineEvent::Target t = src;
-                mItems.push_back(Item(t, t.pos.key()));
-            }
-        }
-        rebuildFocus();
-    }
-
-    void Selection::subtract(const TimeLineEvent& aEvent) {
+    bool Selection::subtract(const TimeLineEvent& aEvent) {
         bool changed = false;
         for (const TimeLineEvent::Target& t : aEvent.targets()) {
             for (auto itr = mItems.begin(); itr != mItems.end();) {
@@ -59,31 +156,101 @@ namespace time {
                 }
             }
         }
-        if (changed) {
-            rebuildFocus();
-        }
+        if (!changed)
+            return false;
+        rebuildFocus();
+        notifyChanged();
+        return true;
     }
 
-    void Selection::toggle(const TimeLineEvent::Target& aTarget) {
-        for (auto itr = mItems.begin(); itr != mItems.end(); ++itr) {
+    bool Selection::toggle(const TimeLineEvent::Target& aTarget) {
+        // The timeline's toggle is a KEY's: it takes the key out - every entry that
+        // names it, a marker entry included, since a key the user sees highlighted
+        // is one thing there - or puts it in whole.
+        bool removed = false;
+        for (auto itr = mItems.begin(); itr != mItems.end();) {
             if (sameKey(itr->target, aTarget)) {
-                mItems.erase(itr);
-                rebuildFocus();
-                return;
+                itr = mItems.erase(itr);
+                removed = true;
+            } else {
+                ++itr;
             }
         }
-        TimeLineEvent::Target t = aTarget;
-        mItems.push_back(Item(t, t.pos.key()));
+        if (!removed) {
+            TimeLineEvent::Target t = aTarget;
+            mItems.push_back(Item(t, t.pos.key()));
+        }
         rebuildFocus();
+        notifyChanged();
+        return true;
+    }
+
+    bool Selection::setMarker(const TimeLineEvent::Target& aTarget, int aComponent) {
+        TimeLineEvent::Target t = aTarget;
+        QVector<Item> next;
+        next.push_back(Item(t, t.pos.key(), aComponent < 0 ? kKeyLevel : aComponent));
+        if (sameEntries(mItems, next))
+            return false;
+        mItems = next;
+        rebuildFocus();
+        notifyChanged();
+        return true;
+    }
+
+    bool Selection::addMarker(const TimeLineEvent::Target& aTarget, int aComponent) {
+        // The component a caller may hand in is kKeyLevel itself, and then the
+        // question is "does anything name this key", not "does anything name this
+        // component": a key already selected must not gain a second entry.
+        const bool covered = (aComponent < 0) ? contains(aTarget) : containsMarker(aTarget, aComponent);
+        if (covered)
+            return false;
+        TimeLineEvent::Target t = aTarget;
+        mItems.push_back(Item(t, t.pos.key(), aComponent < 0 ? kKeyLevel : aComponent));
+        rebuildFocus();
+        notifyChanged();
+        return true;
+    }
+
+    bool Selection::subtractMarker(const TimeLineEvent::Target& aTarget, int aComponent) {
+        bool removed = false;
+        for (auto itr = mItems.begin(); itr != mItems.end();) {
+            const bool names = sameKey(itr->target, aTarget)
+                               && (aComponent < 0 || itr->component == kKeyLevel || itr->component == aComponent);
+            if (names) {
+                itr = mItems.erase(itr);
+                removed = true;
+            } else {
+                ++itr;
+            }
+        }
+        if (!removed)
+            return false;
+        rebuildFocus();
+        notifyChanged();
+        return true;
     }
 
     void Selection::assign(TimeLineEvent& aOut) const {
-        for (const Item& item : mItems) {
-            aOut.pushTarget(*item.target.node, item.target.pos);
+        // ONE TARGET PER KEY. The event is the timeline's currency and it names a
+        // key, while this set can hold one entry per component of one key: the
+        // second entry for a key is not a second key, so it is not a second target -
+        // a consumer that walked both would remove, copy or re-ease the same key
+        // twice.
+        for (int i = 0; i < mItems.size(); ++i) {
+            bool alreadyNamed = false;
+            for (int j = 0; j < i; ++j) {
+                if (sameKey(mItems[j].target, mItems[i].target)) {
+                    alreadyNamed = true;
+                    break;
+                }
+            }
+            if (alreadyNamed)
+                continue;
+            aOut.pushTarget(*mItems[i].target.node, mItems[i].target.pos);
         }
     }
 
-    void Selection::refresh() {
+    bool Selection::refresh() {
         QVector<Item> next;
         next.reserve(mItems.size());
         for (const Item& item : mItems) {
@@ -115,10 +282,19 @@ namespace time {
             moved.target = TimeLineEvent::Target(*item.target.node, item.target.pos, frame);
             moved.target.pos.setIndex(frame);
             moved.key = item.key;
+            // The marker an entry names is the user's choice, not the document's:
+            // a key that moved to a new frame is the same key, so it is still
+            // selected in the same component.
+            moved.component = item.component;
             next.push_back(moved);
         }
+
+        if (sameEntries(mItems, next))
+            return false; // a data-only edit: every entry is still exactly what it was
         mItems = next;
         rebuildFocus();
+        notifyChanged();
+        return true;
     }
 
     void Selection::rebuildFocus() {

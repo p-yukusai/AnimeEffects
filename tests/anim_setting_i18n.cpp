@@ -1,6 +1,6 @@
 // QML-module i18n verification.
 //
-// The Animation settings dialog's qsTr() strings must resolve through the SAME
+// The Playback settings dialog's qsTr() strings must resolve through the SAME
 // QTranslator the app installs on QCoreApplication (Main.cpp installs the
 // LocaleDecider catalog that way; QML qsTr() consults the application's
 // translators). The dialog strings use an explicit, rename-safe translation
@@ -36,19 +36,19 @@
 namespace {
 // source string -> per-locale translation; order matches the array below.
 const char* kSources[4] = {
-    "Animation settings", "Loop animation", "Frame range", "Frames per second"
+    "Playback settings", "Loop playback", "Frame range", "Frames per second"
 };
 const QString kExpected[5][4] = {
     // es, ja, ko, ru, zh
-    { QString::fromUtf8("Configuración de animación"), QString::fromUtf8("Reproducir en bucle"),
+    { QString::fromUtf8("Ajustes de reproducción"), QString::fromUtf8("Reproducción en bucle"),
       QString::fromUtf8("Rango de fotogramas"), QString::fromUtf8("Fotogramas por segundo") },
-    { QString::fromUtf8("アニメーション設定"), QString::fromUtf8("ループ再生"),
+    { QString::fromUtf8("再生設定"), QString::fromUtf8("ループ再生"),
       QString::fromUtf8("フレーム範囲"), QString::fromUtf8("フレーム毎秒") },
-    { QString::fromUtf8("애니메이션 설정"), QString::fromUtf8("애니메이션 반복"),
+    { QString::fromUtf8("재생 설정"), QString::fromUtf8("반복 재생"),
       QString::fromUtf8("프레임 범위"), QString::fromUtf8("초당 프레임") },
-    { QString::fromUtf8("Настройки анимации"), QString::fromUtf8("Зациклить анимацию"),
+    { QString::fromUtf8("Настройки воспроизведения"), QString::fromUtf8("Зацикленное воспроизведение"),
       QString::fromUtf8("Диапазон кадров"), QString::fromUtf8("Кадров в секунду") },
-    { QString::fromUtf8("动画设置"), QString::fromUtf8("循环动画"),
+    { QString::fromUtf8("播放设置"), QString::fromUtf8("循环播放"),
       QString::fromUtf8("帧范围"), QString::fromUtf8("每秒帧数") },
 };
 

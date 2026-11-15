@@ -1,13 +1,19 @@
 #include "gui/TargetWidget.h"
 #include "gui/AnimationSettingDialog.h"
+#ifdef AE_ENABLE_IMGUI
+#include "gui/GraphPanelWidget.h"
+#endif
 #include "gui/MainMenuBar.h"
+#include "gui/TimeLineHeader.h"
 #include "cmnd/BasicCommands.h"
 #include "cmnd/ScopedMacro.h"
 #include "ctrl/CmndName.h"
+#include "ctrl/TimeLineEditor.h"
 #include "core/ProjectEvent.h"
 #include <QDialog>
 #include <QHBoxLayout>
 #include <QScopedPointer>
+#include <QVBoxLayout>
 
 namespace gui {
 
@@ -17,6 +23,19 @@ TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidge
     mViaPoint(aViaPoint),
     mSizeHint(aSizeHint),
     mHorizontalSplitter(nullptr),
+    mObjTree(nullptr),
+    mSurfaceStack(nullptr),
+    mTimeLine(nullptr),
+#ifdef AE_ENABLE_IMGUI
+    mGraphPanel(nullptr),
+    mFrameSlot(),
+    mSelectionSlot(),
+    mDocumentSlot(),
+    mAttributeSlot(),
+    mSelectionChangedSlot(),
+    mSelectionSource(nullptr),
+#endif
+    mHeader(nullptr),
     mSuspendCount(0) {
     mHorizontalSplitter = new ThinSplitter(Qt::Horizontal, this);
     // The hitbox grab area sits 2px into the object tree / 10px into the
@@ -24,34 +43,277 @@ TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidge
     // the boundary.
     mHorizontalSplitter->setHitBoxOffset(4);
     mObjTree = new ObjectTreeWidget(aViaPoint, aResources, mHorizontalSplitter);
-    mTimeLine = new TimeLineWidget(aResources, aViaPoint, *this, mHorizontalSplitter);
-    // The playback bar is a fixed-width toolbar: it lives next to the
-    // splitter, not inside it, so there is no draggable boundary and the
-    // buttons can never be resized.
+
+    // The dock's body, as ONE pane with the views stacked in it (design section 5):
+    // the timeline's own surface and, when the graph panel is part of the build, the
+    // animation graph panel. The tab in the header is what swaps them; the TREE stays
+    // the splitter's first widget in both, so it is on screen either way. A
+    // QStackedWidget rather than hide/show by hand: the layout of the hidden page is
+    // not computed, and the surface the user sees is the one Qt sizes and shows.
+    mSurfaceStack = new QStackedWidget(mHorizontalSplitter);
+    mTimeLine = new TimeLineWidget(aResources, aViaPoint, *this, mSurfaceStack);
+#ifdef AE_ENABLE_IMGUI
+    // The Graph tab is the SAME panel the viewport's overlay draws, docked: it is the
+    // panel's own widget (gui::GraphPanelWidget), pinned over the dock's floor at the
+    // dock's size - no scrim, because that floor is already opaque.
+    mGraphPanel = new GraphPanelWidget(aResources, mSurfaceStack);
+#endif
+    mSurfaceStack->addWidget(mTimeLine);
+#ifdef AE_ENABLE_IMGUI
+    mSurfaceStack->addWidget(mGraphPanel);
+
+    // THE PANEL IS THE SAME CURRENT FRAME'S SECOND VIEW. What a step, a playback tick or
+    // a ruler gesture changes is the project's current frame, and the ONE announcement of
+    // that is the timeline's own onFrameUpdated - TimeLineWidget::setFrame emits it (after
+    // mInner->setFrame, so the frame is already the new one when it fires) and so does the
+    // cursor pass that moves the frame, exactly once per move. The panel draws its
+    // playhead from core::Project::currentTimeInfo() through the editor, i.e. from a value
+    // that changes without touching this widget's pixels, so without this connection the
+    // Graph tab's playhead stands still while the transport steps the frame (measured:
+    // twenty ctrl+Right presses, zero pixels changed, with the Graph tab current).
+    //
+    // ONE EMISSION, ONE update(), ONE PAINT: the notification is emitted once per frame
+    // move (setFrame and the frame-moving cursor pass each emit it once), refresh() is
+    // update(), and Qt coalesces requests; nothing in this path forces a paint out of
+    // order, and the frame is already the new one when the notification fires, so the
+    // panel can never read the value a step just left. While the timeline tab is up the
+    // request lands on a hidden page and is dropped by Qt; the tab switch has its own
+    // refresh (onSurfaceChanged).
+    mFrameSlot = mTimeLine->onFrameUpdated.connect([this]() {
+        if (mGraphPanel)
+            mGraphPanel->refresh();
+    });
+
+    // AND THE TREE SELECTS WHAT IT DRAWS. The tree is the splitter's first widget, so it
+    // is on screen in this tab as well - the design keeps it here because it names the
+    // layers and picks whose channels the panel draws. A selection change is a different
+    // model (new targets), and nothing about it touches this page's pixels: the graph
+    // would keep drawing the previous layer's curves. The same one-request-per-change rule
+    // applies (refresh() is update(), Qt coalesces, and a hidden page drops it); the
+    // selection is a different event from a frame move, so the two never double up.
+    mSelectionSlot = mObjTree->onSelectionChanged.connect([this](core::ObjectNode*) {
+        if (mGraphPanel)
+            mGraphPanel->refresh();
+    });
+#endif
+    mSurfaceStack->setCurrentWidget(mTimeLine);
+
+    // The transport is a fixed-size group of buttons; it belongs to the header
+    // bar's own layout (not to the splitter, and no longer to a column beside
+    // it), so it can never be resized and the lanes get the dock's full width.
     mPlayBack = new PlayBackWidget(aResources, this, *mProject);
 
     mHorizontalSplitter->addWidget(mObjTree);
-    mHorizontalSplitter->addWidget(mTimeLine);
+    mHorizontalSplitter->addWidget(mSurfaceStack);
     mHorizontalSplitter->setCollapsible(0, false);
     mHorizontalSplitter->setCollapsible(1, false);
 
 
-    auto* lay = new QHBoxLayout(this);
+    // The dock's header: the 40px bar the transport moved into, above the
+    // splitter, spanning the dock. The row below it is the one the dock has
+    // always had - object tree | surface - now without the transport column.
+    mHeader = new TimeLineHeader(aResources, mPlayBack, this);
+    mHeader->setTimeLineWidget(mTimeLine);
+#ifdef AE_ENABLE_IMGUI
+    // The header's tab is the dock's view switch, for the whole life of the dock: the
+    // tab names the page, so the panel needs no title of its own and both pages keep
+    // the one header's transport, chip, quick easings and zoom.
+    connect(mHeader, &TimeLineHeader::surfaceChanged, this, &TargetWidget::onSurfaceChanged);
+#endif
+
+    auto* row = new QHBoxLayout();
+    row->setContentsMargins(0, 0, 0, 0);
+    row->setSpacing(0);
+    row->addWidget(mHorizontalSplitter, 1);
+
+    auto* lay = new QVBoxLayout(this);
     lay->setContentsMargins(0, 0, 0, 0);
     lay->setSpacing(0);
-    lay->addWidget(mHorizontalSplitter, 1);
-    lay->addWidget(mPlayBack);
+    lay->addWidget(mHeader);
+    lay->addLayout(row, 1);
 
     mPlayBack->setPushDelegate([=](PlayBackWidget::PushType aType) { this->onPlayBackButtonPushed(aType); });
 }
 
+TargetWidget::~TargetWidget() {
+#ifdef AE_ENABLE_IMGUI
+    // The signaler lives in the timeline widget, the receiver is the panel; both are
+    // children destroyed after this body, and the connection is dropped here so nothing
+    // can be emitted into the panel while the dock is being torn down.
+    mTimeLine->onFrameUpdated.disconnect(mFrameSlot);
+    mObjTree->onSelectionChanged.disconnect(mSelectionSlot);
+    if (mProject) {
+        mProject->onTimeLineModified.disconnect(mDocumentSlot);
+        mProject->onProjectAttributeModified.disconnect(mAttributeSlot);
+    }
+    // The selection lives in the timeline's editor, which is a child destroyed after this
+    // body: drop the last connection here for the same reason as the others.
+    if (mSelectionSource)
+        mSelectionSource->onChanged.disconnect(mSelectionChangedSlot);
+#endif
+}
+
 void TargetWidget::setProject(core::Project* aProject) {
     mPlayBack->pushPauseButton();
+#ifdef AE_ENABLE_IMGUI
+    // The OUTGOING project's notifications go first: the panel must never be asked to
+    // redraw from a document that is being dropped, and the old project may be gone the
+    // moment MainWindow finishes this reset.
+    if (mProject) {
+        mProject->onTimeLineModified.disconnect(mDocumentSlot);
+        mProject->onProjectAttributeModified.disconnect(mAttributeSlot);
+    }
+#endif
     mProject = aProject;
+#ifdef AE_ENABLE_IMGUI
+    if (mProject) {
+        // THE PANEL IS A VIEW OF THIS DOCUMENT. Two of the project's changes alter what it
+        // draws without touching this page's pixels, and each is announced by the project
+        // AFTER the write that made it - the panel's repaint always reads the new state:
+        //
+        //  * onTimeLineModified: a key edit made from beside the dock (the property panel,
+        //    or the easing picker's commit, which goes through the timeline's notifier).
+        //    TimeLineUtil::Notifier is a cmnd::Listener, and the stack executes the command
+        //    first and calls onExecuted/onRedone/onUndone afterwards (cmnd::Scalable::
+        //    tryExec / Stack::Macro: the command loop, then the listeners), so the keys are
+        //    already written when it fires. The graph's OWN gestures fire it too, after
+        //    their command landed - the panel has already asked for that repaint from its
+        //    cursor pass, so here it is a second update() on the same paint (Qt coalesces).
+        //    The dock's header reads the same document through its quick easings, so this
+        //    notification re-reads them as well: an undo/redo or a paste can change the
+        //    easing a selected key carries WITHOUT moving the selection, which is the only
+        //    other state they follow.
+        //  * onProjectAttributeModified: fps and the frame range, which move the panel's
+        //    frame axis. Project::Attribute's setters assign the member and only then call
+        //    the project's notifier (core/Project.cpp: setFrameRange/setFps/... all return
+        //    early when the value did not change, so this is one emission per real change).
+        //
+        // NO LOOP IS POSSIBLE: the panel's refresh() is update(), which writes nothing, and
+        // refreshFrame() only updates the header's controls; neither writes the document,
+        // so a repaint cannot re-emit either signal, and neither signal is emitted from a
+        // paint.
+        mDocumentSlot = mProject->onTimeLineModified.connect([this](core::TimeLineEvent&, bool) {
+            if (mGraphPanel)
+                mGraphPanel->refresh();
+            mHeader->refreshFrame();
+        });
+        mAttributeSlot = mProject->onProjectAttributeModified.connect([this](core::ProjectEvent&, bool) {
+            if (mGraphPanel)
+                mGraphPanel->refresh();
+        });
+    }
+#endif
+#ifdef AE_ENABLE_IMGUI
+    // THE PANEL'S DRIVER DIES WITH THE PROJECT, and the bar below asks the panel for its
+    // channel rows (the header's channels button names them). When the project is being
+    // CLEARED the old driver is already destroyed while this widget still holds the
+    // pointer, so the question would reach a dead editor: measured 2026-10-19 as a
+    // SIGSEGV inside GraphEditor::isLooping from channelRows via
+    // TimeLineHeader::refreshFrame, on every "open a project from the command line".
+    // Dropping the driver FIRST makes graphEditor() null, which channelRows() already
+    // answers with no rows. The new project's driver arrives in setDriver, in the same
+    // resetProjectRefs pass.
+    if (!aProject && mGraphPanel)
+        mGraphPanel->setDriver(nullptr);
+#endif
     mObjTree->setProject(aProject);
     mTimeLine->setProject(aProject);
     mPlayBack->aProject = aProject;
+    // The bar's timeline-derived state must follow the editor that was just set
+    // above (or cleared): refreshFrame() re-reads the quick easings' availability
+    // and active type from the timeline's live selection, and (in a build with the
+    // panel) the channels button's own words.
+    mHeader->refreshFrame();
+    // The Graph tab's panel (when the panel is part of the build) is NOT re-read
+    // here: it reads the document through the driver, and this call comes BEFORE
+    // MainWindow hands the new one over - the previous project's driver is already
+    // destroyed at this point, so a refresh here would read a dead editor.
+    // setDriver() itself re-reads the panel, in the same resetProjectRefs pass, and a
+    // tab switch re-reads it again.
 }
+
+void TargetWidget::setDriver(ctrl::Driver* aDriver) {
+#ifdef AE_ENABLE_IMGUI
+    // The driver owns ctrl::GraphEditor, and it is created and destroyed with the
+    // project: MainWindow hands it over from the same call site that hands it to the
+    // viewport and the tool widget, so the docked panel and the overlay read the ONE
+    // editor of the project on screen (see MainWindow::resetProjectRefs).
+    mGraphPanel->setDriver(aDriver);
+
+    // THE SHARED SELECTION. ctrl::GraphEditor writes and reads the TIMELINE editor's
+    // one time::Selection (MainDisplayWidget::syncGraphPanelSharedState hands it over),
+    // so a selection change is a change to what this panel draws - which channels'
+    // markers are at full strength, the hull, "N key(s)", and (with Ctrl+A) every marker
+    // of every shown channel - and nothing else announces it. The chip in the dock's
+    // header reads the same set through the same notifier (TimeLineEditorWidget:147).
+    //
+    // ORDERING: Selection::rebuildFocus() is what fires onChanged, and every mutator
+    // calls it AFTER writing mItems (ctrl/time/time_Selection.h: "the two always travel
+    // together: a mutator that changed the set reaches both, one that did not has already
+    // returned false"). So the set the model reads when the repaint happens is the new
+    // one, and a press that selected nothing emits nothing. refresh() is only update(),
+    // so it cannot re-enter the selection: no loop.
+    //
+    // LIFECYCLE: the set belongs to the TIMELINE's editor, not to the driver - the editor
+    // survives a project change - so the slot is re-wired here, where the driver (and
+    // with it the panel's editor) is handed over: disconnected from the old set, connected
+    // to the current one, and disconnected again when no project is open. The destructor
+    // drops the last one before the timeline is destroyed.
+    ctrl::TimeLineEditor* timelineEditor = (aDriver && mTimeLine) ? mTimeLine->editor() : nullptr;
+    ctrl::time::Selection* selection = timelineEditor ? &timelineEditor->selection() : nullptr;
+    if (selection != mSelectionSource) {
+        if (mSelectionSource)
+            mSelectionSource->onChanged.disconnect(mSelectionChangedSlot);
+        mSelectionSource = selection;
+        if (mSelectionSource) {
+            mSelectionChangedSlot = mSelectionSource->onChanged.connect([this] {
+                if (mGraphPanel)
+                    mGraphPanel->refresh();
+            });
+        }
+    }
+
+    // A new editor is a new panel: the view it draws is built from it, so re-read it
+    // now rather than on the next frame that happens to repaint.
+    mGraphPanel->refresh();
+#else
+    // No graph surface in this build: the dock has nothing that reads the driver
+    // (the viewport's overlay and the tool widget have their own setDriver).
+    (void)aDriver;
+#endif
+}
+
+#ifdef AE_ENABLE_IMGUI
+void TargetWidget::onSurfaceChanged(TimeLineHeader::Surface aSurface) {
+    const bool graph = aSurface == TimeLineHeader::Surface::Graph;
+    mSurfaceStack->setCurrentWidget(graph ? static_cast<QWidget*>(mGraphPanel) : static_cast<QWidget*>(mTimeLine));
+    // Becoming visible is the one moment the panel has to re-read the document and
+    // the frame it is shown at: it is not repainted while the timeline tab is up
+    // (Qt lays out and paints only the current page).
+    if (graph)
+        mGraphPanel->refresh();
+
+    // THE TAB THAT BECOMES CURRENT TAKES THE KEYBOARD. Both views own keys the
+    // timeline's own tab strip is the only way to reach - Ctrl+A selects every key
+    // in whichever view is up - and until this line the surface had ClickFocus
+    // only, so switching to a tab and pressing Ctrl+A did nothing until the body
+    // was clicked. The press that switched the tab is a deliberate move to that
+    // view; the keyboard follows it.
+    // THE TIMELINE'S KEY HANDLER LIVES ON THE INNER SURFACE, not on the scroll area
+    // that hosts it: gui::TimeLineWidget is a QAbstractScrollArea and
+    // gui::TimeLineEditorWidget (its viewport child) is the widget whose
+    // keyPressEvent owns Ctrl+A and Escape. Focusing the scroll area would give the
+    // keys to a widget with no handler - the same "nothing happens" the tab switch
+    // was meant to fix - so the lookup is the one the rest of this class uses.
+    QWidget* target = mGraphPanel;
+    if (!graph) {
+        target = mTimeLine;
+        if (auto* surface = mTimeLine->findChild<TimeLineEditorWidget*>())
+            target = surface;
+    }
+    target->setFocus(Qt::TabFocusReason);
+}
+#endif
 
 core::Frame TargetWidget::currentFrame() const { return mTimeLine->currentFrame(); }
 
@@ -194,6 +456,11 @@ void TargetWidget::refreshAnimationSettings() {
     }
     // FPS changes the ruler strings (relative-to-FPS / timecode formats).
     mTimeLine->triggerOnTimeFormatChanged();
+    // The popup edits the project's attributes, not the key selection, so no
+    // selection signal fires: re-read the bar's timeline-derived state here - the
+    // quick easings' availability and active type, and (with the panel) the
+    // channels button's words - so the header cannot lag the change.
+    mHeader->refreshFrame();
 }
 
 } // namespace gui

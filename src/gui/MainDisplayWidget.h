@@ -25,6 +25,9 @@
 #include "ctrl/Painter.h"
 #include "gui/MainViewSetting.h"
 #include "gui/CanvasMover.h"
+// The channel list's rows travel from the panel's model to this widget's menus
+// (showGraphChannelMenu), so the widget's interface names gui::PanelChannelRow.
+#include "gui/GraphPanelModel.h"
 namespace gui {
 class ProjectTabBar;
 }
@@ -33,6 +36,12 @@ class TimeLineWidget;
 }
 namespace gui {
 class ViaPoint;
+}
+namespace gui {
+// The channel list the header's channels button opens (showGraphChannelMenu): one
+// instance per viewport, parented to it, so the widget's interface can name it without
+// pulling the popup's own header into every translation unit that includes this one.
+class GraphChannelPopup;
 }
 
 namespace gui {
@@ -46,24 +55,84 @@ public:
     void setProject(core::Project* aProject);
     void setDriver(ctrl::Driver* aDriver);
     void setProjectTabBar(ProjectTabBar* aTabBar);
-    // The timeline this viewport's animation graph panel is a SECOND VIEW of.
-    // MainWindow wires it once (the timeline widget outlives every project, unlike
-    // the driver), and from then on the panel's frame window is the timeline's
-    // visible one and its selection is the timeline's live set - pushed in as
-    // values, on every timeline view change (see syncGraphPanelSharedState). Null
-    // detaches: the panel goes back to owning both its frame axis and its
-    // selection, which is the state the unit tests drive it in.
+    // The timeline the animation graph panel shares its ONE frame axis with (the
+    // dock's Graph tab draws it; see gui/GraphPanelWidget). MainWindow wires it once
+    // (the timeline widget outlives every project, unlike the driver), and from then on
+    // the panel's frame window is the timeline's visible one and its selection is the
+    // timeline's live set - pushed in as values, on every timeline view change (see
+    // syncGraphPanelSharedState). Null detaches: the panel's editor goes back to owning
+    // both its frame axis and its selection.
     void setTimeLineWidget(TimeLineWidget* aTimeLine);
     // The timeline wired in above, for callers that need the timeline itself (the
-    // panel's right-click reaches the application's easing menu through it; see
+    // panel's right-click reaches the application's key menu through it; see
     // showGraphKeyMenu).
     TimeLineWidget* timeLineWidget() const { return mTimeLine; }
-    // Shows the application's own key EASING MENU for aTargets (the panel's
-    // current selection, in the timeline's currency) at aWidgetPos IN THIS
-    // WIDGET'S COORDINATES - the panel's own space, so a caller that has a press
-    // position needs no mapping. Does nothing when no timeline is wired or the
-    // target list is empty.
-    void showGraphKeyMenu(const core::TimeLineEvent& aTargets, const QPoint& aWidgetPos);
+    // Opens the application's own KEY MENU - the one a right-click in the timeline
+    // builds - for the key aPressedKey names, at aGlobalPos, which is a GLOBAL (screen)
+    // position: the docked panel (gui::GraphPanelWidget) and this widget are SIBLINGS,
+    // so the panel maps its own pointer with its own QWidget::mapToGlobal() and no
+    // coordinate of the panel is ever read as a position in this widget. The menu acts
+    // on the shared key selection, and aPressedKey's relationship to it decides
+    // whether it is lent to the menu (see TimeLineWidget::openKeyMenu - the whole
+    // rule, including the loan's drop, is the timeline's). False when nothing opened
+    // (no timeline wired, or the key is not one the document holds).
+    bool showGraphKeyMenu(const core::TimeLineEvent::Target& aPressedKey, const QPoint& aGlobalPos);
+    // Opens the graph's HANDLE menu at aGlobalPos (screen coordinates): the five handle
+    // types - Free / Aligned / Vector / Auto / Auto Clamped - for the ONE SIDE aTarget
+    // names, with that side's current type checked. The entries are
+    // util::Easing::getHandleModeName's, the same vocabulary the picker's two mode
+    // combos use, and activating one applies it through
+    // ctrl::GraphEditor::setHandleMode: ONE undo step whose name says which side
+    // ("Change the outgoing handle to Free"), never the key menu's actions - copy,
+    // paste, spacing and delete are about KEYS, and a tangent handle is not one.
+    //
+    // aTarget is the panel's own pick (ctrl::GraphEditor::contextTargetAt), so the
+    // side named here is the one under the pointer. False when nothing opened (no
+    // driver, or a target that is not a handle).
+    bool showGraphHandleMenu(const ctrl::GraphEditor::ContextTarget& aTarget, const QPoint& aGlobalPos);
+    // Opens the timeline's BACKGROUND menu - the one a right-click on empty timeline
+    // space builds - at aGlobalPos (screen coordinates), plus the graph's own "Fit
+    // graph" entry. The panel's right-click uses this when its pick
+    // (ctrl::GraphEditor::contextTargetAt) names neither a key nor a handle.
+    //
+    // NOT A SECOND MENU: the items are TimeLineEditorWidget::buildKeyMenu's - the same
+    // paste anchor, the same selection rule and the same labels - and they act on the
+    // SHARED SELECTION (TimeLineEditorWidget::openBackgroundMenu). THE POINT IS NOT
+    // HIT-TESTED AGAINST THE TIMELINE'S LANES: this widget's pixels are the panel's,
+    // and reading them as timeline model space named a key of some other row - which is
+    // how a menu's Edit/Delete could end up editing a key the user was not looking at.
+    //
+    // With NO selection the menu is paste-only (buildKeyMenu's empty-targets shape):
+    // one "Paste" item, enabled when something has been copied. With a selection it
+    // offers Copy, Copy to clipboard, Paste, Select spacing between keys and Delete. "Fit graph" is always last and runs ctrl::GraphEditor::fitAll() - the
+    // panel's explicit fit, which replaced the plot's double-click. False when there is
+    // no timeline wired (or no surface to build the menu on).
+    bool showGraphBackgroundMenu(const QPoint& aGlobalPos);
+    // Shows the application's own CHANNEL LIST - the animation graph panel's ONE
+    // control, which the user's design moved into the DOCK HEADER's channels button -
+    // for the rows the panel's model published. aWidgetPos is the ANCHOR's BOTTOM-RIGHT
+    // CORNER in this widget's coordinates (like showGraphKeyMenu, the docked host maps
+    // its own pixels here first): the list opens just under that point, right-aligned
+    // to it, which is where the header's button sits.
+    //
+    // WHY IT IS HERE. The list is a real popup widget (gui::GraphChannelPopup), the
+    // application's own - keyboard navigable, a native window - exactly like the key
+    // menu above: the panel's host draws no popup and measures none, it hands the rows
+    // over and this class builds and shows the list. One list implementation for the
+    // whole application, and the panel's control is the same kind of control as the
+    // timeline's own menus. (It is NOT a QMenu: the design's 22px rows, its 8px
+    // swatch-to-name gap and its 10px group titles at the swatch's padding are not
+    // reachable through gui::AppStyle's menu metrics.)
+    //
+    // It is a plain list, grouped under each layer: one row per channel, the row's
+    // SWATCH is its colour key (filled while the channel is shown, hollow while it is
+    // hidden) and the row's activation toggles that channel's visibility - the one
+    // action per row the design asks for. The row ALSO focuses its channel when it is
+    // hovered, which is the other thing the list is for (the panel draws the focused
+    // channel's tangent handles and the accessible summary names it). Rows for a
+    // hidden channel are listed like any other: that is how it is turned back on.
+    // Nothing happens with no rows, and no list is shown.
+    void showGraphChannelMenu(const QVector<PanelChannelRow>& aRows, const QPoint& aWidgetPos);
     void updateRender();
     void resetCamera();
     void setViewportBackground(const QColor& aColor);
@@ -108,24 +177,30 @@ private:
     virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const;
     virtual void focusInEvent(QFocusEvent* event);
     virtual void focusOutEvent(QFocusEvent* event);
-    // DevicePixelRatioChange (the overlay rasterizes at the widget's ratio) and the
-    // touch events the overlay translates for ImGui. QWidget has no touchEvent()
-    // virtual in Qt 6, so those arrive here.
-    virtual bool event(QEvent* event);
 
     void updateCursor();
     // Sets ctrl::CanvasMover's drag mode from the state that decides it, so "which
-    // gesture is in flight" and "the graph panel took the left drag" are applied in
-    // one place (see the definition).
+    // gesture is in flight" is applied in one place (see the definition). The
+    // animation graph panel used to hold one of these flags while it was drawn over
+    // this widget; it is the dock's own page now and never sees this camera.
     void applyCanvasMoverDragMode();
-    // Hands the graph panel the timeline's shared state: the live selection it
+    // Hands the panel's editor the timeline's shared state: the live selection it
     // writes (ctrl::TimeLineEditor::selection()) and the frame window it shows
     // (TimeLineWidget::visibleFrameRange()), plus the two delegates that send the
-    // panel's horizontal gestures back to the timeline. Called whenever either end
+    // panel's horizontal gestures back to the timeline. The panel itself is drawn in
+    // the dock (gui::GraphPanelWidget), which pins its own plot width per frame; the
+    // state wired here is the editor's and is shared by whoever draws it. This widget
+    // keeps the wiring because it is the one that has the timeline. Called whenever either end
     // changes - the timeline being wired in, a driver being created for a project,
     // the timeline's view moving - so the panel never holds a stale window or a
     // stale selection. A no-op before either end exists.
     void syncGraphPanelSharedState();
+    // Asks the DOCK's Graph page for a repaint. The panel is a QOpenGLWidget of its
+    // own, so nothing this widget paints shows it: every state this widget pushes into
+    // the panel's editor - the frame window and the shared selection
+    // (syncGraphPanelSharedState) - has to ask the page itself. A no-op in a build
+    // without the panel and in a window without the dock.
+    void refreshGraphPanel();
     QSize deviceSize() const { return this->size() * mDevicePixelRatio; }
 
     ViaPoint& mViaPoint;
@@ -145,10 +220,17 @@ private:
     core::AbstractCursor mAbstractCursor;
     ctrl::Driver* mDriver;
     ProjectTabBar* mProjectTabBar;
+    // The ONE channel list this widget owns (showGraphChannelMenu): created on the
+    // first open, parented here, hidden and re-filled for every open after that.
+    GraphChannelPopup* mChannelPopup;
     // The timeline the panel shares its frame window and its key selection with
     // (see setTimeLineWidget), and the connection to its view-range signal.
     TimeLineWidget* mTimeLine;
     util::SlotId mTimeLineRangeSlot;
+    // The timeline surface's playWindowChanged -> syncGraphPanelSharedState connection
+    // (see setTimeLineWidget). Dropped with the old timeline; auto-dropped when this
+    // widget dies.
+    QMetaObject::Connection mPlayWindowConnection;
     QColor mViewportBackground;
     bool mUsingTablet;
     MainViewSetting mViewSetting;
@@ -156,11 +238,6 @@ private:
     bool mMovingCanvasByTool;
     bool mMovingCanvasByKey;
     bool mMovingCanvasByMiddleMouseButton;
-    // The animation graph panel took the LEFT press that opened the drag in flight
-    // (see graphPanelTakesPress and applyCanvasMoverDragMode): the canvas camera
-    // must not move with a drag the panel is running. Cleared on that button's
-    // release.
-    bool mGraphTookLeftPress;
     double mDevicePixelRatio;
 };
 

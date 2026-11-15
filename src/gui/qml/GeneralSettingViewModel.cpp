@@ -3,6 +3,8 @@
 #include <QCoreApplication>
 #include <QVariantMap>
 
+#include "util/Easing.h"
+
 namespace {
 
 // One {label, value} entry per row, value = the combo index.
@@ -33,17 +35,80 @@ QVariantList GeneralSettingViewModel::languageOptions() const {
 }
 
 QVariantList GeneralSettingViewModel::easingOptions() const {
-    // util::Easing::displayCount() - 1 entries in util/Easing.cpp's
-    // kEasingDisplayOrder, with Type_Custom dropped (a global default carries no
-    // bezier control points). The shell asserts this count against
-    // util::Easing::displayCount() - 1, so the two cannot silently drift apart;
-    // the ORDER here must match kEasingDisplayOrder, which is what
-    // util::Easing::typeAtDisplayIndex() (the shell's save path) reads.
-    static const char* const kLabels[] = {
-        "Floor", "Round", "Linear", "Sine", "Quad", "Cubic", "Quart",
-        "Quint", "Expo", "Circ", "Back", "Elastic", "Bounce",
-    };
-    return makeIndexedOptions("util::EasingName", kLabels, 13);
+    // Built from util::Easing's own display table (util/Easing.cpp's
+    // kEasingDisplayOrder), with Type_Custom dropped - a global default carries no
+    // bezier control points - so the list IS the order the shell's save path reads
+    // (typeAtDisplayIndex) and it can never drift from the timeline's menu or the
+    // picker's tiles. The names are the SAME strings those two show
+    // (Easing::getTypeName, context "EasingName"), which is what makes them
+    // translate: a hand-written label table here was invisible to lupdate (the
+    // literal is an argument to a helper, not to a tr() call) AND asked for a
+    // context no catalog carries ("util::EasingName"), so every language showed
+    // these names in English while the same names were translated in the menu.
+    QVariantList out;
+    const int count = util::Easing::displayCount();
+    for (int i = 0; i < count; ++i) {
+        const util::Easing::Type type = util::Easing::typeAtDisplayIndex(i);
+        if (type == util::Easing::Type_Custom)
+            continue;
+        QVariantMap map;
+        map.insert(QStringLiteral("label"), util::Easing::getTypeName(type));
+        map.insert(QStringLiteral("value"), out.size());
+        out.append(map);
+    }
+    // The MODE pair a default can be, as its own option (see the header).
+    QVariantMap automatic;
+    automatic.insert(
+        QStringLiteral("label"),
+        util::Easing::getHandleModeName(util::Easing::kDefaultAutomaticHandleMode));
+    automatic.insert(QStringLiteral("value"), autoClampedOptionIndex());
+    out.append(automatic);
+    return out;
+}
+
+int GeneralSettingViewModel::autoClampedOptionIndex() {
+    // The non-Custom entries, in display order; the mode option follows them.
+    int count = 0;
+    for (int i = 0; i < util::Easing::displayCount(); ++i) {
+        if (util::Easing::typeAtDisplayIndex(i) != util::Easing::Type_Custom)
+            ++count;
+    }
+    return count;
+}
+
+int GeneralSettingViewModel::optionForSetting(const QVariant& aStored) {
+    const int linear = util::Easing::displayIndexOf(util::Easing::Type_Linear);
+    if (!aStored.isValid())
+        return linear;
+
+    bool isOrdinal = false;
+    const int ordinal = aStored.toInt(&isOrdinal);
+    if (isOrdinal) {
+        if (ordinal == int(util::Easing::Type_TERM))
+            return autoClampedOptionIndex(); // the retired Auto id: the clamped pair
+        const util::Easing::Type type = static_cast<util::Easing::Type>(ordinal);
+        const int index = util::Easing::displayIndexOf(type);
+        return (type == util::Easing::Type_Custom || index < 0 || index >= autoClampedOptionIndex())
+                   ? linear
+                   : index;
+    }
+
+    const QString name = aStored.toString();
+    if (name == QStringLiteral("Auto"))
+        return autoClampedOptionIndex(); // the retired NAME: the clamped pair
+    const util::Easing::Type type = util::Easing::easingToEnum(name);
+    const int index = util::Easing::displayIndexOf(type);
+    return (type == util::Easing::Type_Custom || index < 0 || index >= autoClampedOptionIndex())
+               ? linear
+               : index;
+}
+
+int GeneralSettingViewModel::storedValueForOption(const int aOptionIndex) {
+    if (aOptionIndex == autoClampedOptionIndex())
+        // 14 is Type_TERM, deliberately not reused: defaultParam reads it as
+        // Custom + kDefaultAutomaticHandleMode.
+        return int(util::Easing::Type_TERM);
+    return int(util::Easing::typeAtDisplayIndex(aOptionIndex));
 }
 
 QVariantList GeneralSettingViewModel::rangeOptions() const {

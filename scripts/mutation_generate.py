@@ -83,7 +83,7 @@ GRAPH_CMD = (
 # The wiring files (MainWindow/MainDisplayWidget/ToolWidget/tool_ViewPanel and, by archive
 # semantics, Driver) are compiled only into the AnimeEffects executable - no unit binary
 # links them - so the app-level probe is the only gate that can see a wiring mutant.
-PROBE_CMD = GRAPH_CMD + "; bash scripts/gui/probe_graph_overlay.sh"
+PROBE_CMD = GRAPH_CMD + "; bash scripts/gui/probe_graph_ink.sh"
 
 KEYWORDS = ("if", "for", "while", "switch", "return", "case", "else", "do")
 

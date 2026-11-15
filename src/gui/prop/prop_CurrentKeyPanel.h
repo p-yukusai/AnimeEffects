@@ -27,7 +27,6 @@ namespace prop {
     private:
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         ComboItem* mSpline;
         Vector2DItem* mPosition;
         Vector2DItem* mCentroid;
@@ -47,7 +46,6 @@ namespace prop {
     private:
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         DecimalItem* mRotate;
         bool mKeyExists;
     };
@@ -65,7 +63,6 @@ namespace prop {
     private:
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         Vector2DItem* mScale;
         bool mKeyExists;
     };
@@ -83,7 +80,6 @@ namespace prop {
     private:
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         DecimalItem* mDepth;
         bool mKeyExists;
     };
@@ -101,7 +97,6 @@ namespace prop {
     private:
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         DecimalItem* mOpacity;
         bool mKeyExists;
     };
@@ -126,7 +121,6 @@ namespace prop {
 
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         DecimalItem* mAmount;
         DecimalItem* mBlurX;
         DecimalItem* mBlurY;
@@ -147,7 +141,6 @@ namespace prop {
     private:
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         IntegerItem* mHue;
         IntegerItem* mSaturation;
         IntegerItem* mValue;
@@ -169,7 +162,6 @@ namespace prop {
     private:
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         bool mKeyExists;
     };
 
@@ -186,7 +178,6 @@ namespace prop {
     private:
         KeyAccessor& mAccessor;
         KeyKnocker* mKnocker;
-        EasingItem* mEasing;
         bool mKeyExists;
     };
 

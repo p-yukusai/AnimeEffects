@@ -1,7 +1,10 @@
 #ifndef HSVKEY_H
 #define HSVKEY_H
 
+#include <array>
+#include "XC.h"
 #include "util/Easing.h"
+#include "core/KeyEasing.h"
 #include "core/TimeKey.h"
 #include "util/MathUtil.h"
 
@@ -9,8 +12,11 @@ namespace core {
 
 class HSVKey: public TimeKey {
 public:
+    // One easing per graph channel: 0 hue, 1 saturation, 2 value.
+    static constexpr int kComponents = easingComponentCount(TimeKeyType_HSV);
+
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         int mHue;
         int mSaturation;
         int mValue;
@@ -20,8 +26,14 @@ public:
     public:
         Data();
 
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
 
         void setHue(int aHue) {
             mHue = aHue;

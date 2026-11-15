@@ -1,17 +1,24 @@
 #ifndef CORE_FFDKEY_H
 #define CORE_FFDKEY_H
 
+#include <array>
 #include <QVector>
+#include "XC.h"
 #include "util/Easing.h"
-#include "gl/Vector3.h"
+#include "core/KeyEasing.h"
 #include "core/TimeKey.h"
+#include "gl/Vector3.h"
 
 namespace core {
 
 class FFDKey: public TimeKey {
 public:
+    // FFD is structural: ONE easing shapes the whole key, addressed at index 0,
+    // and it publishes no graph channel (core::easingComponentCount(_FFD) is 0).
+    static constexpr int kComponents = easingStorageCount(TimeKeyType_FFD);
+
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         QVector<gl::Vector3> mBuffer;
         int mVtxCount;
 
@@ -22,8 +29,14 @@ public:
         void allocAndWrite(const gl::Vector3* aSrc, int aVtxCount);
         void clear();
         void swap(QVector<gl::Vector3>& aRhs);
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(aComponent == 0);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(aComponent == 0);
+            return mEasings[aComponent];
+        }
         gl::Vector3* positions();
         const gl::Vector3* positions() const;
         int count() const;

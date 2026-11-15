@@ -132,20 +132,12 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
         if (language.isValid())
             init.languageIndex = languageToIndex(language.toString());
 
-        auto easing = settings.value("generalsettings/easing");
-        if (easing.isValid()) {
-            // Saved as the enum value since the shared-table refactor; older settings
-            // stored the canonical name - accept both.
-            util::Easing::Type type = (easing.metaType().id() == QMetaType::QString)
-                ? util::Easing::easingToEnum(easing.toString())
-                : static_cast<util::Easing::Type>(easing.toInt());
-            int index = util::Easing::displayIndexOf(type);
-            if (type == util::Easing::Type_Custom || index < 0 || index >= util::Easing::displayCount() - 1)
-                index = util::Easing::displayIndexOf(util::Easing::Type_Linear);
-            init.easingIndex = index;
-        } else {
-            init.easingIndex = util::Easing::displayIndexOf(util::Easing::Type_Linear);
-        }
+        // ONE resolver for both stored forms (the enum ordinal of the shared-table
+        // refactor and the older canonical NAME): a stored "Auto" or the retired
+        // ordinal 14 meant the automatic (CLAMPED) handle pair, which the option
+        // list carries as its own entry (GeneralSettingViewModel::optionForSetting).
+        init.easingIndex =
+            GeneralSettingViewModel::optionForSetting(settings.value("generalsettings/easing"));
 
         auto range = settings.value("generalsettings/range");
         if (range.isValid())
@@ -206,12 +198,15 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
         mModel->seed(init);
     }
 
-    // The three option lists the model cannot build itself: the theme ids come from
+    // The two option lists the model cannot build itself: the theme ids come from
     // gui::GUIResources::themeList() (the widget built its buttons from the same
-    // list), the easing names are the shared util::Easing table (the shell asserts
-    // the count against it) and the accent previews are the theme's own hues.
+    // list) and the accent previews are the theme's own hues. The easing names are
+    // the model's own now - it reads them from util::Easing's display table, so the
+    // combo, the timeline's menu and the picker's tiles cannot disagree - and the
+    // assert below is the count that ordering implies: the table's non-Custom
+    // entries plus the Auto Clamped MODE option appended after them.
     // Everything else is model-built.
-    XC_ASSERT(mModel->easingOptions().size() == util::Easing::displayCount() - 1);
+    XC_ASSERT(mModel->easingOptions().size() == GeneralSettingViewModel::autoClampedOptionIndex() + 1);
     {
         const QStringList themeIds = mGUIResources.themeList();
         const QStringList themeLabels{tr("System"), tr("Light"), tr("Dark")};
@@ -367,10 +362,11 @@ void GeneralSettingDialog::saveSettings() {
         settings.setValue("generalsettings/language", indexToLanguage(mModel->languageIndex()));
 
     if (easingHasChanged()) {
-        // Store the enum value (locale-independent, and backward-compatible: older
-        // name strings still load via easingToEnum).
+        // The option's stored value: an easing type's enum ordinal, or the retired
+        // 14 when the option is the automatic pair (util::Easing::defaultParam maps
+        // that back to Custom + kDefaultAutomaticHandleMode).
         settings.setValue(
-            "generalsettings/easing", int(util::Easing::typeAtDisplayIndex(mModel->easingIndex()))
+            "generalsettings/easing", GeneralSettingViewModel::storedValueForOption(mModel->easingIndex())
         );
     }
     if (rangeHasChanged()) {

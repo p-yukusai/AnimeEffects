@@ -3,6 +3,7 @@
 #include "util/MathUtil.h"
 #include "core/TimeKeyExpans.h"
 #include "core/TimeKeyBlender.h"
+#include "core/AutoEasing.h"
 #include "core/LayerMesh.h"
 #include "core/ObjectNodeUtil.h"
 #include "core/DepthKey.h"
@@ -307,17 +308,46 @@ void TimeKeyBlender::clearCaches(ObjectNode* aRootNode) {
 }
 
 template<class tKey>
-float getEasingRateFromTwoKeys(const TimeKeyGatherer& aGatherer) {
+float getEasingRateFromTwoKeys(const TimeKeyGatherer& aGatherer, int aComponent) {
     // blend keys
     auto p0 = aGatherer.point(0);
     auto p1 = aGatherer.point(1);
     XC_ASSERT(p0 && p1);
     const float frame = p1.relativeFrame - p0.relativeFrame;
-    XC_ASSERT(frame != 0.0f);
+    // A frame OUTSIDE the project range can make the loop's two neighbours the
+    // SAME position: the key at the range's end and the key at its start share a
+    // relative frame once the loop span is added. There is no interval to solve;
+    // use the earlier key instead of aborting the whole application (the crash a
+    // drag that leaves keys past the frame range used to cause).
+    if (frame == 0.0f) {
+        return 0.0f;
+    }
 
     const tKey* k0 = static_cast<const tKey*>(p0.key);
+    const tKey* k1 = static_cast<const tKey*>(p1.key);
 
-    const util::Easing::Param& easing = k0->data().easing();
+    // The component's OWN param: dragging one component's handle must not warp
+    // another's curve, so every component reads the rate of its own index.
+    const util::Easing::Param& easing = k0->data().easing(aComponent);
+
+    // A Custom curve's two control points are derived per side: handleOut from
+    // the FROM key's param, handleIn from the TO key's (the arriving handle
+    // belongs to the TO key even though its stored value lives in the FROM
+    // key's param). The neighbours the automatic sides read are the gatherer's
+    // point(-1)/point(2), loop-aware and null at either end of the key list, so
+    // deriving them here needs no new plumbing. Both sides use ONE context, so
+    // playback and the graph draw the same pair.
+    if (easing.type == util::Easing::Type_Custom) {
+        const util::Easing::HandleMode inMode = k1->data().easing(aComponent).handleIn;
+        if (util::Easing::isDerived(easing.handleOut) || util::Easing::isDerived(inMode)) {
+            const auto prev = aGatherer.point(-1);
+            const auto next = aGatherer.point(2);
+            auto ctx = core::autoEasingContext(
+                *k0, *k1, aComponent, prev ? prev.key : nullptr, next ? next.key : nullptr);
+            return util::Easing::calculate(easing, ctx, -p0.relativeFrame, 0.0f, 1.0f, frame);
+        }
+    }
+
     // calculate easing
     return util::Easing::calculate(easing, -p0.relativeFrame, 0.0f, 1.0f, frame);
 }
@@ -357,22 +387,29 @@ void TimeKeyBlender::getMoveExpans(SRTExpans& aExpans, const ObjectNode& aNode, 
         const MoveKey* kn = (const MoveKey*)blend.point(-1).key;
         const MoveKey* k2 = (const MoveKey*)blend.point(2).key;
 
-        // calculate easing
-        const float time = getEasingRateFromTwoKeys<MoveKey>(blend);
+        // calculate easing PER COMPONENT: the spline is one spatial path, but
+        // each axis is warped by its own curve, so x is read at x's rate and y
+        // at y's. The centroid has no graph channel of its own, so it follows
+        // component 0 (the position's x curve), exactly as it followed the one
+        // shared rate before.
+        const float timeX = getEasingRateFromTwoKeys<MoveKey>(blend, 0);
+        const float timeY = getEasingRateFromTwoKeys<MoveKey>(blend, 1);
 
         // use spline cache
         if (aExpans.hasSplineCache(aTime.frame)) {
-            aExpans.setPos(aExpans.spline().getByLinear(time).toVector2D());
+            const auto& spline = aExpans.spline();
+            aExpans.setPos(QVector2D(spline.getByLinear(timeX).x(), spline.getByLinear(timeY).y()));
         } else {
             // linear blending
             auto vels = MoveKey::getCatmullRomVels(kn, k0, k1, k2);
             aExpans.spline().set(k0->pos().toVector3D(), k1->pos().toVector3D(), vels[0].toVector3D(), vels[1].toVector3D());
             aExpans.setSplineCache(util::Range(p0.frame, p1.frame));
 
-            aExpans.setPos(aExpans.spline().getByLinear(time).toVector2D());
+            const auto& spline = aExpans.spline();
+            aExpans.setPos(QVector2D(spline.getByLinear(timeX).x(), spline.getByLinear(timeY).y()));
         }
 
-        aExpans.setCentroid(k0->centroid() * (1.0f - time) + k1->centroid() * time);
+        aExpans.setCentroid(k0->centroid() * (1.0f - timeX) + k1->centroid() * timeX);
     }
 }
 
@@ -392,8 +429,8 @@ void TimeKeyBlender::getRotateExpans(SRTExpans& aExpans, const ObjectNode& aNode
         // Multiple points
         const RotateKey* k0 = (const RotateKey*)blend.point(0).key;
         const RotateKey* k1 = (const RotateKey*)blend.point(1).key;
-        // calculate easing
-        const float time = getEasingRateFromTwoKeys<RotateKey>(blend);
+        // calculate easing (one component: Rotate has no per-component work)
+        const float time = getEasingRateFromTwoKeys<RotateKey>(blend, 0);
         aExpans.setRotate(k0->rotate() * (1.0f - time) + k1->rotate() * time);
     }
 }
@@ -411,9 +448,13 @@ void TimeKeyBlender::getScaleExpans(SRTExpans& aExpans, const ObjectNode& aNode,
     } else {
         const ScaleKey* k0 = (const ScaleKey*)blend.point(0).key;
         const ScaleKey* k1 = (const ScaleKey*)blend.point(1).key;
-        // calculate easing
-        const float time = getEasingRateFromTwoKeys<ScaleKey>(blend);
-        aExpans.setScale(k0->scale() * (1.0f - time) + k1->scale() * time);
+        // calculate easing per component: scale x and y carry their own curves
+        const float timeX = getEasingRateFromTwoKeys<ScaleKey>(blend, 0);
+        const float timeY = getEasingRateFromTwoKeys<ScaleKey>(blend, 1);
+        aExpans.setScale(QVector2D(
+            k0->scale().x() * (1.0f - timeX) + k1->scale().x() * timeX,
+            k0->scale().y() * (1.0f - timeY) + k1->scale().y() * timeY
+        ));
     }
 }
 
@@ -490,7 +531,7 @@ void TimeKeyBlender::blendDepthKey(PositionType aPos, const TimeInfo& aTime) {
         const DepthKey* k0 = (const DepthKey*)blend.point(0).key;
         const DepthKey* k1 = (const DepthKey*)blend.point(1).key;
         // calculate easing
-        const float time = getEasingRateFromTwoKeys<DepthKey>(blend);
+        const float time = getEasingRateFromTwoKeys<DepthKey>(blend, 0);
         // blend
         expans.setDepth(k0->depth() * (1.0f - time) + k1->depth() * time);
     }
@@ -539,26 +580,21 @@ void TimeKeyBlender::blendHSVKey(PositionType aPos, const TimeInfo& aTime) {
         // perfect following
         expans.hsv() = ((const HSVKey*)blend.singlePoint().key)->data();
     } else {
-        // calculate hsv change
-        const float time = getEasingRateFromTwoKeys<HSVKey>(blend);
+        // calculate hsv change, one rate per component (hue, saturation, value)
+        const float timeHue = getEasingRateFromTwoKeys<HSVKey>(blend, 0);
+        const float timeSaturation = getEasingRateFromTwoKeys<HSVKey>(blend, 1);
+        const float timeValue = getEasingRateFromTwoKeys<HSVKey>(blend, 2);
         const HSVKey* k0 = (const HSVKey*)blend.point(0).key;
         const HSVKey* k1 = (const HSVKey*)blend.point(1).key;
-        for (int x = 0; x < 3; x += 1) {
-            // blend
-            switch (x) {
-            case 0:
-                expans.hsv().setHue(k0->hsv().at(0) * (1.0f - time) + k1->hsv().at(0) * time);
-                break;
-            case 1:
-                expans.hsv().setSaturation(k0->hsv().at(1) * (1.0f - time) + k1->hsv().at(1) * time);
-                break;
-            case 2:
-                expans.hsv().setValue(k0->hsv().at(2) * (1.0f - time) + k1->hsv().at(2) * time);
-                break;
-            default:
-                break;
-            }
-        }
+        expans.hsv().setHue(
+            k0->hsv().at(0) * (1.0f - timeHue) + k1->hsv().at(0) * timeHue
+        );
+        expans.hsv().setSaturation(
+            k0->hsv().at(1) * (1.0f - timeSaturation) + k1->hsv().at(1) * timeSaturation
+        );
+        expans.hsv().setValue(
+            k0->hsv().at(2) * (1.0f - timeValue) + k1->hsv().at(2) * timeValue
+        );
     }
 }
 
@@ -598,16 +634,19 @@ void TimeKeyBlender::blendBlurKey(PositionType aPos, const TimeInfo& aTime) {
     } else {
         // calculate easing; the angle interpolates linearly like the rotate key, so a
         // multi-turn spin (e.g. 0 -> 3600) keeps its accumulated turns and the easing
-        // modulates the spin speed instead of taking the shortest arc
-        const float time = getEasingRateFromTwoKeys<BlurKey>(blend);
+        // modulates the spin speed instead of taking the shortest arc. Each of the
+        // three components is warped by its own curve.
+        const float timeX = getEasingRateFromTwoKeys<BlurKey>(blend, 0);
+        const float timeY = getEasingRateFromTwoKeys<BlurKey>(blend, 1);
+        const float timeAngle = getEasingRateFromTwoKeys<BlurKey>(blend, 2);
         const BlurKey* k0 = (const BlurKey*)blend.point(0).key;
         const BlurKey* k1 = (const BlurKey*)blend.point(1).key;
         const auto& d0 = k0->data();
         const auto& d1 = k1->data();
         expans.setBlurEllipse(
-            d0.blurX() * (1.0f - time) + d1.blurX() * time,
-            d0.blurY() * (1.0f - time) + d1.blurY() * time,
-            d0.angleDeg() * (1.0f - time) + d1.angleDeg() * time
+            d0.blurX() * (1.0f - timeX) + d1.blurX() * timeX,
+            d0.blurY() * (1.0f - timeY) + d1.blurY() * timeY,
+            d0.angleDeg() * (1.0f - timeAngle) + d1.angleDeg() * timeAngle
         );
     }
 }
@@ -641,7 +680,7 @@ void TimeKeyBlender::blendOpaKey(PositionType aPos, const TimeInfo& aTime) {
         const OpaKey* k0 = (const OpaKey*)blend.point(0).key;
         const OpaKey* k1 = (const OpaKey*)blend.point(1).key;
         // calculate easing
-        const float time = getEasingRateFromTwoKeys<OpaKey>(blend);
+        const float time = getEasingRateFromTwoKeys<OpaKey>(blend, 0);
         // blend
         expans.opa().setOpacity(k0->opacity() * (1.0f - time) + k1->opacity() * time);
     }
@@ -747,7 +786,7 @@ void TimeKeyBlender::blendPoseKey(PositionType aPos, const TimeInfo& aTime) {
         expans.pose() = key0->data();
 
         // calculate easing
-        const float time = getEasingRateFromTwoKeys<PoseKey>(blend);
+        const float time = getEasingRateFromTwoKeys<PoseKey>(blend, 0);
 
         // blend
         int index = 0;
@@ -851,8 +890,8 @@ void TimeKeyBlender::blendFFDKey(PositionType aPos, const TimeInfo& aTime) {
         expans.ffd().alloc(count);
 
         // calculate easing
-        expans.ffd().easing() = key0->data().easing();
-        const float time = getEasingRateFromTwoKeys<FFDKey>(blend);
+        expans.ffd().easing(0) = key0->data().easing(0);
+        const float time = getEasingRateFromTwoKeys<FFDKey>(blend, 0);
 
         // linear blend
         gl::Vector3* dst = expans.ffd().positions();

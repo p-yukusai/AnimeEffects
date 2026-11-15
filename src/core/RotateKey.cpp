@@ -3,7 +3,7 @@
 
 namespace core {
 //-------------------------------------------------------------------------------------------------
-RotateKey::Data::Data(): mEasing(), mRotate(0.0f) {}
+RotateKey::Data::Data(): mEasings(), mRotate(0.0f) {}
 
 void RotateKey::Data::clamp() { mRotate = xc_clamp(mRotate, Constant::rotateMin(), Constant::rotateMax()); }
 
@@ -17,7 +17,7 @@ TimeKey* RotateKey::createClone() {
 }
 
 bool RotateKey::serialize(Serializer& aOut) const {
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
     aOut.write(mData.rotate());
     return aOut.checkStream();
 }
@@ -26,7 +26,7 @@ bool RotateKey::deserialize(Deserializer& aIn) {
     aIn.pushLogScope("RotateKey");
 
     // easing
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
 

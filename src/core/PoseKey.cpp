@@ -5,10 +5,10 @@
 namespace core {
 
 //-------------------------------------------------------------------------------------------------
-PoseKey::Data::Data(): mEasing(), mTopBones() {}
+PoseKey::Data::Data(): mEasings(), mTopBones() {}
 
 PoseKey::Data::Data(const Data& aRhs) {
-    mEasing = aRhs.easing();
+    mEasings = aRhs.mEasings;
 
     for (const Bone2* bone : aRhs.topBones()) {
         mTopBones.push_back(util::TreeUtil::createClone(bone));
@@ -17,7 +17,7 @@ PoseKey::Data::Data(const Data& aRhs) {
 
 PoseKey::Data& PoseKey::Data::operator=(const Data& aRhs) {
     deleteAll();
-    mEasing = aRhs.easing();
+    mEasings = aRhs.mEasings;
 
     for (const Bone2* bone : aRhs.topBones()) {
         mTopBones.push_back(util::TreeUtil::createClone(bone));
@@ -54,7 +54,7 @@ TimeKey* PoseKey::createClone() {
 
 bool PoseKey::serialize(Serializer& aOut) const {
     // easing
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
 
     // top bone count
     aOut.write(static_cast<int>(mData.topBones().count()));
@@ -97,7 +97,7 @@ bool PoseKey::deserialize(Deserializer& aIn) {
 
     aIn.pushLogScope("PoseKey");
 
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
 

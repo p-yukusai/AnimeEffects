@@ -332,24 +332,40 @@ QMenu::indicator
     subcontrol-position: center left;
 }
 
-QMenu::indicator:non-exclusive:unchecked
+/* A menu's check box is the APPLICATION's check box, not a second glyph set:
+   the same raised field, hairline edge and radius as QCheckBox::indicator, with
+   the same phosphor check/minus. The square checkbox_* border-images this used
+   to carry read as the platform's default box beside the docks' rounded ones. */
+QMenu::indicator:non-exclusive
 {
-    border-image: url(@icondir@/checkbox_unchecked_disabled.svg);
+    background-color: @raised@;
+    border: 0.04em solid @outline@;
+    border-radius: 0.3em;
 }
 
+QMenu::indicator:non-exclusive:selected
+{
+    /* The row's accent hover must not repaint the field. */
+    background-color: @raised@;
+    border: 0.04em solid @outline@;
+}
+
+QMenu::indicator:non-exclusive:unchecked,
 QMenu::indicator:non-exclusive:unchecked:selected
 {
-    border-image: url(@icondir@/checkbox_unchecked_disabled.svg);
+    image: none;
 }
 
-QMenu::indicator:non-exclusive:checked
-{
-    border-image: url(@icondir@/checkbox_checked.svg);
-}
-
+QMenu::indicator:non-exclusive:checked,
 QMenu::indicator:non-exclusive:checked:selected
 {
-    border-image: url(@icondir@/checkbox_checked.svg);
+    image: url(@icondir@/check-bold.svg);
+}
+
+QMenu::indicator:non-exclusive:indeterminate,
+QMenu::indicator:non-exclusive:indeterminate:selected
+{
+    image: url(@icondir@/minus-bold.svg);
 }
 
 QMenu::indicator:exclusive:unchecked

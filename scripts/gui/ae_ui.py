@@ -371,6 +371,33 @@ def cmd_dump():
     return 0
 
 
+def cmd_focus():
+    """Print the widget the accessibility bus reports as FOCUSED.
+
+    The probes drive keys with xdotool, and the two ways a key can vanish look
+    identical from outside: no focus at all, or focus on a widget with no handler
+    for that key. This answers the first half - which node has the keyboard - so a
+    probe can assert that switching a tab moved it where the key handler lives.
+    """
+    app = _app()
+    if app is None:
+        print("no AnimeEffects window on the accessibility bus", file=sys.stderr)
+        return 2
+    hits = 0
+    for _depth, role, name, node in _walk(app):
+        try:
+            states = node.get_state_set()
+            focused = states.contains(Atspi.StateType.FOCUSED)
+        except Exception:
+            continue
+        if focused:
+            hits += 1
+            print(f"{role} | {name[:70]}")
+    if not hits:
+        print("none")
+    return 0
+
+
 def cmd_wait(name):
     node = find(name)
     if node is None:
@@ -731,6 +758,7 @@ def main(argv):
     cmd, rest = argv[1], argv[2:]
     table = {
         "dump": (cmd_dump, 0),
+        "focus": (cmd_focus, 0),
         "wait": (cmd_wait, 1),
         "click": (cmd_click, 1),
         "combo": (cmd_combo, 2),

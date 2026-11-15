@@ -1,3 +1,4 @@
+#include <QSet>
 #include "XC.h"
 #include "cmnd/BasicCommands.h"
 #include "cmnd/Scalable.h"
@@ -33,6 +34,13 @@ namespace core {
 
 //---------------------------------------------------------------------------------------
 QString TimeLine::getTimeKeyName(const TimeKeyType aType) { return {kTimeKeyNames.at(aType)}; }
+
+QString TimeLine::getTimeKeyDisplayName(const TimeKeyType aType) {
+    if (aType == TimeKeyType_Opa) {
+        return QStringLiteral("Opacity");
+    }
+    return getTimeKeyName(aType);
+}
 
 TimeKeyType TimeLine::getTimeKeyType(const QString& aName) {
     for (int i = 0; i < TimeKeyType_TERM; ++i) {
@@ -130,6 +138,50 @@ bool TimeLine::move(TimeKeyType aType, int aFrom, int aTo) {
     map.remove(aFrom);
     map.insert(aTo, key);
     key->setFrame(aTo);
+    return true;
+}
+
+bool TimeLine::moveKeys(TimeKeyType aType, const QVector<QPair<int, int>>& aMoves) {
+    TimeLine::MapType& map = mMap.at(aType);
+
+    // Validate the whole batch before touching the map: a refused batch must
+    // leave every key where it was.
+    QSet<int> sources;
+    QSet<int> destinations;
+    for (const auto& aMove : aMoves) {
+        // every source must exist
+        if (!map.contains(aMove.first)) {
+            return false;
+        }
+        // a source or destination may appear only once
+        if (sources.contains(aMove.first) || destinations.contains(aMove.second)) {
+            return false;
+        }
+        sources.insert(aMove.first);
+        destinations.insert(aMove.second);
+    }
+    for (int destination : destinations) {
+        // a destination is free, or is vacated by this same batch
+        if (map.contains(destination) && !sources.contains(destination)) {
+            return false;
+        }
+    }
+
+    // Detach every source first so frames vacated by this batch are free for
+    // the incoming keys regardless of the order the moves are listed in.
+    QVector<TimeKey*> keys;
+    keys.reserve(aMoves.size());
+    for (const auto& aMove : aMoves) {
+        TimeKey* key = map.take(aMove.first);
+        XC_PTR_ASSERT(key);
+        keys.push_back(key);
+    }
+    for (int i = 0; i < aMoves.size(); ++i) {
+        TimeKey* key = keys.at(i);
+        const int to = aMoves.at(i).second;
+        map.insert(to, key);
+        key->setFrame(to);
+    }
     return true;
 }
 
@@ -278,6 +330,21 @@ bool TimeLine::serializeTimeKey(Serializer& aOut, const TimeKey& aTimeKey) const
         return false;
     }
 
+    // stable id and, when proportional, its bound ids and per-axis weights
+    aOut.write(aTimeKey.id());
+    const TimeKey::Proportional* proportional = aTimeKey.proportionalState();
+    aOut.write(static_cast<bool>(proportional));
+    if (proportional) {
+        aOut.write(proportional->leftId);
+        aOut.write(proportional->rightId);
+        aOut.write(proportional->timeValid);
+        aOut.write(proportional->timeWeight);
+        for (int c = 0; c < TimeKey::kMaxProportionalComponents; ++c) {
+            aOut.write(proportional->valueValid[c]);
+            aOut.write(proportional->valueWeight[c]);
+        }
+    }
+
     // child count
     aOut.write((int)aTimeKey.children().size());
 
@@ -401,6 +468,34 @@ bool TimeLine::deserializeTimeKey(Deserializer& aIn, TimeKeyType aType, int aInd
         delete key;
         return false;
     }
+
+    // stable id and, when proportional, its bound ids and per-axis weights
+    // (0.16; older files carry neither and keep the constructor's fresh id)
+    if (aIn.version().majorVersion() == 0 && aIn.version().minorVersion() >= 16) {
+        int id = 0;
+        aIn.read(id);
+        bool proportional = false;
+        aIn.read(proportional);
+        TimeKey::Proportional proportionalState;
+        if (proportional) {
+            aIn.read(proportionalState.leftId);
+            aIn.read(proportionalState.rightId);
+            aIn.read(proportionalState.timeValid);
+            aIn.read(proportionalState.timeWeight);
+            for (int c = 0; c < TimeKey::kMaxProportionalComponents; ++c) {
+                aIn.read(proportionalState.valueValid[c]);
+                aIn.read(proportionalState.valueWeight[c]);
+            }
+        }
+        if (id > 0) {
+            TimeKey::reserveId(id);
+            key->setId(id);
+        }
+        if (proportional) {
+            key->setProportionalState(proportionalState);
+        }
+    }
+
     if (aIndex == TimeLine::kDefaultKeyIndex) {
         mDefaultKeys[aType].reset(key);
     } else {

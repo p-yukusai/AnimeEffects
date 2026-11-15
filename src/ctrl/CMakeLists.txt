@@ -96,12 +96,14 @@ add_library(${PROJECT_NAME}
     srt/srt_FocusType.h
     srt/srt_IMode.h
     srt/srt_KeyOwner.cpp srt/srt_KeyOwner.h
+    srt/srt_AssignKeyCommand.h
     srt/srt_MoveMode.cpp srt/srt_MoveMode.h
     srt/srt_Symbol.cpp srt/srt_Symbol.h
     time/time_Current.cpp time/time_Current.h
     time/time_Marquee.cpp time/time_Marquee.h
     time/time_Selection.cpp time/time_Selection.h
-    time/time_Renderer.cpp time/time_Renderer.h
+    time/time_Renderer.cpp
+    time/time_BodyModel.cpp time/time_BodyModel.h
     time/time_Scaler.cpp time/time_Scaler.h
     # The animation graph overlay: a widget-free geometry/sampling model
     # (ctrl/graph) with the editor object the Driver draws and drives.
@@ -109,6 +111,9 @@ add_library(${PROJECT_NAME}
     graph/graph_Scaler.cpp graph/graph_Scaler.h
     graph/graph_Geometry.h
     graph/graph_Curve.cpp graph/graph_Curve.h
+    # Proportional keys: the authoring-only fractional positions between
+    # absolute keys (a widget-free solver over core::TimeLine).
+    proportional/prop_Keys.cpp proportional/prop_Keys.h
     GraphEditor.cpp GraphEditor.h
         ExportParams.h
 )

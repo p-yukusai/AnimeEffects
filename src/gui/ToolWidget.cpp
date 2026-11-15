@@ -159,21 +159,14 @@ void ToolWidget::createViewPanel() {
         this->onViewSettingChanged(this->viewSetting());
     });
 
-    // the graph is a HUD over the viewport, so it belongs to the view settings
-    // rather than to a tool panel
-    QPushButton* graphButton = mViewPanel->addButton("ease", true, tr("Show animation graph"), [=](bool aChecked) {
-        this->viewSetting().showGraphEditor = aChecked;
-        this->onViewSettingChanged(this->viewSetting());
-    });
-    // WHY THIS ONE BUTTON GETS AN ACCESSIBLE NAME. The buttons carry only an icon, so
-    // Qt reports no name for them and AT-SPI falls back to the enclosing group box:
-    // `ae dump` lists seven nodes in this panel, every one of them named "View
-    // Settings". A GUI probe could therefore only reach the graph toggle by raw
-    // pixels, which keep passing after a layout change while clicking whatever moved
-    // under them. The accessible name is what scripts/gui/ae_ui.py matches on (and
-    // what a screen reader reads). The other buttons keep the name they have: probes
-    // already drive them by their tooltip, and renaming them would move their target.
-    graphButton->setAccessibleName(tr("Show animation graph"));
+    // THE GRAPH TOGGLE IS GONE. It showed/hid the panel this viewport used to draw
+    // over the artwork (a Dear ImGui overlay); the panel is the TIMELINE DOCK's Graph
+    // tab now (design section 5), and the tab is the control - a second switch for the
+    // same thing would be a state the tab cannot show. ctrl::GraphEditor::setVisible is
+    // therefore never true in the application (the Driver's cursor routing reads it as
+    // "the viewport's overlay is up"), and the docked page draws whether or not it is.
+    // The toggle's accessible name went with it; its coverage is the dock's probe
+    // (scripts/gui/probe_graph_ink.sh).
 }
 
 void ToolWidget::createModePanel() {

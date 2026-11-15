@@ -25,6 +25,7 @@
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickStyle>
+#include <QSettings>
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QUrl>
@@ -34,6 +35,7 @@
 #include "gui/qml/GeneralSettingViewModel.h"
 #include "gui/qml/QmlTheme.h"
 #include "gui/theme/Icons.h"
+#include "util/Easing.h"
 
 static int failures = 0;
 
@@ -89,8 +91,29 @@ int main(int argc, char** argv) {
     // one of these is the widget form's own fallback (GeneralSettingDialog.cpp's read
     // block), so the two forms open identically on a fresh profile.
     check(model.languageIndex() == 0, QStringLiteral("language defaults to 0 (Auto) (%1)").arg(model.languageIndex()));
-    // util::Easing::Type_Linear's display index (Floor, Round, Linear, ...).
-    check(model.easingIndex() == 2, QStringLiteral("easing defaults to Linear (%1)").arg(model.easingIndex()));
+    // The default easing, asserted as the RULE the two forms share, not as a display
+    // position: GeneralSettingViewModel::Init::easingIndex is
+    // util::Easing::displayIndexOf(Type_Linear) and GeneralSettingDialog.cpp's
+    // fresh-profile branch seeds that very expression, so a bare model and the dialog
+    // open on the same easing. It used to read `== 2` ("Linear" only while Linear
+    // happened to sit third; the reorder to Linear, Floor, Round, Auto, ... makes 2
+    // Round), i.e. it re-pinned a display position the table was free to move.
+    check(model.easingIndex() == util::Easing::displayIndexOf(util::Easing::Type_Linear),
+          QStringLiteral("easing defaults to Linear - the display index the dialog seeds (%1)")
+              .arg(model.easingIndex()));
+    // ...and the PARAM behind that default is the pre-refactor one: a linear
+    // curve with two stored (linked) sides. Automatic handles are a preset, never
+    // the shape an unedited key has.
+    {
+        const util::Easing::Param fresh;
+        check(fresh.type == util::Easing::Type_Linear && fresh.range == util::Easing::Range_InOut
+                  && fresh.weight == 1.0f
+                  && fresh.handleIn == util::Easing::HandleMode_Aligned
+                  && fresh.handleOut == util::Easing::HandleMode_Aligned
+                  && !util::Easing::isDerived(fresh.handleIn)
+                  && !util::Easing::isDerived(fresh.handleOut),
+              "a new key's easing is the linear/default bezier with linked sides, not automatic");
+    }
     check(model.rangeIndex() == 2, QStringLiteral("range defaults to 2 (All) (%1)").arg(model.rangeIndex()));
     check(model.timeFormatIndex() == 0, QStringLiteral("timeline format defaults to 0 (Frame number) (%1)").arg(model.timeFormatIndex()));
     check(model.themeKey() == QLatin1String("dark"), QStringLiteral("theme defaults to dark (%1)").arg(model.themeKey()));
@@ -158,8 +181,81 @@ int main(int argc, char** argv) {
 
     // The option lists the scene repeats over and the combos bind.
     check(model.languageOptions().size() == 7, QStringLiteral("seven languages (%1)").arg(model.languageOptions().size()));
-    // util::Easing::displayCount() - 1: the display order minus Type_Custom.
-    check(model.easingOptions().size() == 13, QStringLiteral("thirteen easings (%1)").arg(model.easingOptions().size()));
+    // The model builds this list from util::Easing's own display table and drops
+    // Type_Custom (a global default carries no bezier control points), so BOTH the
+    // count and the ORDER are the table's, and the shell maps a saved value through
+    // the same index. Asserting the whole list against the table is what keeps an
+    // easing (Auto, or a new one) from being published out of order - and it is the
+    // reason this target compiles util/Easing.cpp rather than carrying a copy of
+    // the names.
+    {
+        const QVariantList options = model.easingOptions();
+        // The table's non-Custom entries, PLUS the Auto Clamped MODE option appended
+        // after them: a stored default can be the automatic pair (a migrated 0.14
+        // Auto), which is not a Type and would otherwise be shown as Linear.
+        const int typeOptions = gui::GeneralSettingViewModel::autoClampedOptionIndex();
+        check(options.size() == typeOptions + 1,
+              QStringLiteral("the display order minus Custom, plus Auto Clamped (%1 options)")
+                  .arg(options.size()));
+        bool ordered = !options.isEmpty();
+        for (int i = 0; i < typeOptions; ++i) {
+            const QVariantMap map = options.at(i).toMap();
+            const auto type = util::Easing::typeAtDisplayIndex(i);
+            ordered = ordered && map.value(QStringLiteral("value")).toInt() == i &&
+                map.value(QStringLiteral("label")).toString() == util::Easing::getTypeName(type) &&
+                type != util::Easing::Type_Custom;
+        }
+        check(ordered, "every type entry carries the display index as its value and the table's own name");
+        const QVariantMap automatic = options.last().toMap();
+        check(automatic.value(QStringLiteral("value")).toInt() == typeOptions &&
+                  automatic.value(QStringLiteral("label")).toString() ==
+                      util::Easing::getHandleModeName(util::Easing::kDefaultAutomaticHandleMode),
+              "the last offering is the Auto Clamped default the model means");
+        // The head is the three entries whose shape is not a curve parameter -
+        // the straight line and the two stepped holds. Automatic handles are a
+        // per-side MODE now, not an easing TYPE, so they have no entry here (the
+        // picker's Auto preset writes the modes on a Custom curve; its tile
+        // catalog is checked by tests/picker_probe.cpp #10).
+        const util::Easing::Type kHead[3] = { util::Easing::Type_Linear, util::Easing::Type_Floor,
+                                              util::Easing::Type_Round };
+        bool head = options.size() >= 3;
+        for (int i = 0; head && i < 3; ++i) {
+            const QVariantMap map = options.at(i).toMap();
+            head = map.value(QStringLiteral("value")).toInt() == i &&
+                map.value(QStringLiteral("label")).toString() == util::Easing::getTypeName(kHead[i]) &&
+                util::Easing::typeAtDisplayIndex(i) == kHead[i];
+        }
+        check(head, "the head is Linear, Floor, Round");
+        check(util::Easing::displayIndexOf(util::Easing::Type_Linear) == 0,
+              QStringLiteral("Linear sits at display index 0 (%1)")
+                  .arg(util::Easing::displayIndexOf(util::Easing::Type_Linear)));
+        // ...and the last TYPE entry is the table's last non-Custom one (Bounce),
+        // whose value is its display index - what the save path writes and the read
+        // path maps back through typeAtDisplayIndex.
+        const QVariantMap lastType = options.at(typeOptions - 1).toMap();
+        check(lastType.value(QStringLiteral("value")).toInt() == typeOptions - 1 &&
+                  lastType.value(QStringLiteral("label")).toString() ==
+                      util::Easing::getTypeName(util::Easing::typeAtDisplayIndex(typeOptions - 1)),
+              QStringLiteral("the last type offering is the table's last non-Custom entry (%1)")
+                  .arg(lastType.value(QStringLiteral("label")).toString()));
+
+        // THE STORED FORMS RESOLVE TO THE AUTOMATIC PAIR: a settings file that says
+        // "Auto" (the retired name) or holds the retired ordinal 14 opens on the Auto
+        // Clamped option, not Linear and not a Custom+Aligned default.
+        const int autoOption = gui::GeneralSettingViewModel::autoClampedOptionIndex();
+        check(gui::GeneralSettingViewModel::optionForSetting(QVariant(QStringLiteral("Auto"))) == autoOption,
+              "a stored easing NAME of Auto resolves to the Auto Clamped option");
+        check(gui::GeneralSettingViewModel::optionForSetting(QVariant(int(util::Easing::Type_TERM))) == autoOption,
+              "a stored easing ORDINAL of 14 resolves to the Auto Clamped option");
+        check(gui::GeneralSettingViewModel::storedValueForOption(autoOption) == int(util::Easing::Type_TERM),
+              "saving the Auto Clamped option writes the retired 14 that defaultParam reads");
+        // A normal type still round-trips by its ordinal.
+        check(gui::GeneralSettingViewModel::storedValueForOption(
+                  util::Easing::displayIndexOf(util::Easing::Type_Sine)) == int(util::Easing::Type_Sine)
+                  && gui::GeneralSettingViewModel::optionForSetting(QVariant(int(util::Easing::Type_Sine)))
+                      == util::Easing::displayIndexOf(util::Easing::Type_Sine),
+              "an ordinary easing still round-trips by its ordinal");
+    }
     check(model.rangeOptions().size() == 3, QStringLiteral("three ranges (%1)").arg(model.rangeOptions().size()));
     check(model.timeFormatOptions().size() == 5, QStringLiteral("five timeline formats (%1)").arg(model.timeFormatOptions().size()));
     check(!model.languageOptions().first().toMap().value(QStringLiteral("label")).toString().isEmpty(),
@@ -293,6 +389,45 @@ int main(int argc, char** argv) {
     if (cancel) {
         check(click(cancel), "the Cancel button accepts a click");
         check(cancelled, "and clicking it raises cancelRequested");
+    }
+
+    // ---- What the stored forms actually create: the ONE reader of
+    // "generalsettings/easing" (util::Easing::defaultParam) turns both legacy
+    // spellings of the retired Auto into Custom + AutoClamped, which is the pair
+    // the combo's Auto Clamped option names. Driven through a scratch QSettings
+    // scope, so the user's profile is untouched.
+    {
+        QTemporaryDir settingsDir;
+        check(settingsDir.isValid(), "a scratch dir for the settings scope");
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDir.path());
+        QCoreApplication::setOrganizationName(QStringLiteral("AnimeEffectsTest"));
+        QCoreApplication::setApplicationName(QStringLiteral("GeneralSettingForm"));
+
+        const auto isAutomaticPair = [](const util::Easing::Param& aParam) {
+            return aParam.type == util::Easing::Type_Custom
+                && aParam.handleIn == util::Easing::kDefaultAutomaticHandleMode
+                && aParam.handleOut == util::Easing::kDefaultAutomaticHandleMode;
+        };
+        {
+            QSettings scratch;
+            scratch.setValue(QStringLiteral("generalsettings/easing"), int(util::Easing::Type_TERM));
+            scratch.sync();
+        }
+        check(isAutomaticPair(util::Easing::defaultParam()),
+              "a stored ordinal 14 creates the Auto Clamped pair (not Custom + Aligned)");
+        {
+            QSettings scratch;
+            scratch.setValue(QStringLiteral("generalsettings/easing"), QStringLiteral("Auto"));
+            scratch.sync();
+        }
+        check(isAutomaticPair(util::Easing::defaultParam()),
+              "a stored name Auto creates the same Auto Clamped pair");
+        {
+            QSettings scratch;
+            scratch.remove(QStringLiteral("generalsettings/easing"));
+            scratch.sync();
+        }
     }
 
     if (failures == 0) {

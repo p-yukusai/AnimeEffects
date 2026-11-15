@@ -91,6 +91,22 @@ void Serializer::write(const util::Easing::Param& aValue) {
     mOut.write((float32)aValue.cubicBezier.y1);
     mOut.write((float32)aValue.cubicBezier.x2);
     mOut.write((float32)aValue.cubicBezier.y2);
+    // The key's two handle modes (see util::Easing::Param::handleIn/handleOut).
+    // Appended LAST so every field an older reader consumes keeps its offset.
+    // A file written before 0.15 carries ONE uint32 (the old `aligned` flag) at
+    // this offset; Deserializer reads that as the two modes. A 0.14 file with
+    // the retired Type_Auto id migrates to Custom with both sides AutoClamped.
+    mOut.write((uint32)aValue.handleOut);
+    mOut.write((uint32)aValue.handleIn);
+}
+
+void Serializer::writeEasings(const util::Easing::Param* aValue, int aCount) {
+    // Every key writes its whole array. An older file wrote one param per key,
+    // which the reader broadcasts; a new-file reader needs all of them, so this
+    // loop is what makes the components independent on disk.
+    for (int i = 0; i < aCount; ++i) {
+        write(aValue[i]);
+    }
 }
 
 void Serializer::write(const QPolygonF& aValue) {

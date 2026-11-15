@@ -411,6 +411,14 @@ bool qtFontBakedLoadGlyph(ImFontAtlas* aAtlas, ImFontConfig* aSrc, ImFontBaked* 
     // figures, the request cannot go here: this loader rasterizes a QRawFont, which has
     // no per-feature API, so it would have to be QFont::setFeature(QFont::Tag("tnum"), 1)
     // on the QFont the source's face is resolved from (src->FontSrcInit()).
+    //
+    // The number this function returns is NOT what the atlas ends up carrying: every
+    // source is added with ImFontConfig::PixelSnapH (installQtFontLoader), so ImGui
+    // rounds the advance to a whole pixel (7.1875 -> 7 at 12px) in both the render and
+    // the metrics path, and that rounded value is what CalcTextSize() and RenderText()
+    // use. The reason is in installQtFontLoader(): a fractional advance is what puts
+    // every glyph after the first on a half pixel, i.e. what blurs the panel's text
+    // beside the timeline's.
 
     QPointF advance;
     if (!bakedData->rawFont.advancesForGlyphIndexes(&glyphIndex, &advance, 1))
@@ -625,6 +633,27 @@ int installQtFontLoader(ImFontAtlas& aAtlas, const QFont& aAppFont, float aPixel
     setSourceName(primaryCfg.Name, primaryFamily);
     primaryCfg.FontLoaderFlags = makeSourceLoaderFlags(kSourceKind_FileData, 0);
     primaryCfg.RasterizerDensity = density;
+    // PIXEL-SNAPPED ADVANCES, or every glyph after the first is bilinearly blurred.
+    // ImGui truncates a run's origin ONCE (ImFont::RenderText's "align to be pixel
+    // perfect" IM_TRUNC) and then accumulates each glyph's AdvanceX in floats, so a
+    // fractional advance puts glyph 2..n on fractional columns - and the atlas is
+    // sampled with GL_LINEAR (imgui_impl_opengl3.cpp's texture parameters), which
+    // blends two texels at a fractional position. MEASURED on the panel's own face at
+    // its own size (Geist, 12px): every digit's advance is 7.1875, so "0123456789"
+    // drawn at x=8 placed its glyphs at 8, 16.1875, 22.375, 29.5625, ... and only the
+    // first landed on a whole pixel. In the rendered frame the first digit came out
+    // BYTE-IDENTICAL to Qt's own rasterization of the same glyph (0 differing pixels
+    // over its 8x20 cell, at a one-row alignment offset), while the rest carried 0-7 strong pixels of 34-57 inked
+    // - the smeared text the timeline's ruler numbers never show, because Qt snaps
+    // each glyph's pen to a whole pixel. The whole string: 6.4% of its inked pixels at
+    // full coverage against Qt's 12.7%, and 34 ambiguous columns against 23.
+    //
+    // ImGui applies this flag itself, in ImFontAtlasBakedAddFontGlyph() (the render
+    // path) and ImFontAtlasBakedAddFontGlyphAdvancedX() (the metrics-only path), so
+    // the measured width and the drawn width agree. Its documented caveat ("prevents
+    // fractional font size from working correctly") does not apply here: the atlas is
+    // baked at the integer pixel size panelFontPixelSize() derives and drawn at it.
+    primaryCfg.PixelSnapH = true;
     // GetGlyphRangesDefault() states the primary source's coverage (Basic Latin + Latin
     // Supplement). With the dynamic atlas above it is not used for loading at all; it is
     // the correct answer for the legacy path, which uses it to decide what to preload.
@@ -669,6 +698,10 @@ int installQtFontLoader(ImFontAtlas& aAtlas, const QFont& aAppFont, float aPixel
         cfg.FontLoaderFlags = makeSourceLoaderFlags(kSourceKind_WritingSystem, (unsigned int)fallback.writingSystem);
         cfg.RasterizerDensity = density;
         cfg.SizePixels = aPixelSize; // keeps the merge scale factor at exactly 1
+        // Same reason as the primary source above: a merged face's advance is just as
+        // fractional, and one unsnapped source in the chain is enough to put every
+        // glyph after it on a half pixel.
+        cfg.PixelSnapH = true;
         cfg.FontData = &gUnusedSourceByte;
         cfg.FontDataSize = 1;
         cfg.FontDataOwnedByAtlas = false;

@@ -2,6 +2,7 @@
 
 #include <QObject>
 
+#include "core/KeyEasing.h"
 #include "core/TimeLine.h"
 #include "core/MoveKey.h"
 #include "core/RotateKey.h"
@@ -20,21 +21,11 @@ Channel::Channel(): mType(core::TimeKeyType_Move), mComponent(0) {}
 Channel::Channel(core::TimeKeyType aType, int aComponent): mType(aType), mComponent(aComponent) {}
 
 int Channel::componentCount(core::TimeKeyType aType) {
-    // The count is also the component numbering used by value() and
-    // componentName(): 0..count-1 in the order the concrete Data class exposes
-    // its fields. Bone, pose, mesh and FFD keys are structural (no easing
-    // param), and TERM is not a type, so all of them count 0.
-    switch (aType) {
-    case core::TimeKeyType_Move: return 2;   // pos x, y
-    case core::TimeKeyType_Rotate: return 1; // rotate
-    case core::TimeKeyType_Scale: return 2;  // scale x, y
-    case core::TimeKeyType_Depth: return 1;  // depth
-    case core::TimeKeyType_Opa: return 1;    // opacity
-    case core::TimeKeyType_Blur: return 3;   // blurX, blurY, angleDeg
-    case core::TimeKeyType_HSV: return 3;    // hue, saturation, value
-    case core::TimeKeyType_Image: return 2;  // imageOffset x, y
-    default: return 0;
-    }
+    // The count is core::easingComponentCount: the same number every key Data
+    // sizes its per-component easing array with, so a component cannot exist in
+    // storage but not in the graph (or the reverse). Bone, pose, mesh and FFD
+    // keys are structural and count 0 there.
+    return core::easingComponentCount(aType);
 }
 
 QVector<Channel> Channel::channelsOf(core::TimeKeyType aType) {

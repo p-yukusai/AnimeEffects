@@ -184,8 +184,15 @@ namespace ctrl::srt {
                 mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
             }
 
-            mAssignMoveRef = new AssignMoveCommand(&(mKeyOwner.moveKey->data()), aNewData);
-            stack.push(mAssignMoveRef);
+            // The command owns the KEY and its LINE, not the Data field: a
+            // proportional companion's reflow needs the map the key lives in.
+            // pushOwningMoveKey() guarantees the key here; a null is never a
+            // dereference, whatever happens.
+            mAssignMoveRef = nullptr;
+            if (mKeyOwner.moveKey) {
+                mAssignMoveRef = new AssignMoveCommand(*mKeyOwner.moveKey, timeLine, aNewData);
+                stack.push(mAssignMoveRef);
+            }
         }
     }
 
@@ -215,8 +222,11 @@ namespace ctrl::srt {
                 mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
             }
 
-            mAssignRotateRef = new AssignRotateCommand(&(mKeyOwner.rotateKey->data()), aNewData);
-            stack.push(mAssignRotateRef);
+            mAssignRotateRef = nullptr;
+            if (mKeyOwner.rotateKey) {
+                mAssignRotateRef = new AssignRotateCommand(*mKeyOwner.rotateKey, timeLine, aNewData);
+                stack.push(mAssignRotateRef);
+            }
         }
     }
 
@@ -246,8 +256,11 @@ namespace ctrl::srt {
                 mKeyOwner.pushOwningRotateKey(stack, timeLine, frame);
             }
 
-            mAssignScaleRef = new AssignScaleCommand(&(mKeyOwner.scaleKey->data()), aNewData);
-            stack.push(mAssignScaleRef);
+            mAssignScaleRef = nullptr;
+            if (mKeyOwner.scaleKey) {
+                mAssignScaleRef = new AssignScaleCommand(*mKeyOwner.scaleKey, timeLine, aNewData);
+                stack.push(mAssignScaleRef);
+            }
         }
     }
 

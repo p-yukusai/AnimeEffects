@@ -55,17 +55,20 @@ namespace graph {
 //     7.5px dot across, 2.3x its area - because the pick square was reused as
 //     the picture.)
 //   * HIT - the editor's distance rule with kKeyHitRadius: a press within 10 px
-//     of a key's centre grabs it (GraphEditor's hitTest). keyRect() is that
-//     rule's RECTANGLE form - a square of side 2 * kKeyRadius centred on the
+//     of a key's centre is a key CANDIDATE (GraphEditor's hitTest). keyRect() is
+//     that rule's RECTANGLE form - a square of side 2 * kKeyRadius centred on the
 //     same point - and the model still publishes it as `keys`, because the
 //     editor's marquee and the panel's right-click key menu test a RECT. It is
 //     hit geometry: it is not what gets painted, and the two are deliberately
 //     different sizes.
 //
 // The same split holds for a tangent handle: kHandleRadius (5 px) is the drawn
-// dot at handlePoint(), kHandleHitRadius (12 px) the grab - and the grab is
-// deliberately larger than a key's own, because a handle is the more specific
-// target and the hit-test resolves a handle first.
+// dot at handlePoint(), kHandleHitRadius (12 px) the grab. The two grabs overlap,
+// so the hit-test does not give either kind priority: it compares the pointer's
+// distance to each candidate NORMALIZED by that candidate's own grab radius
+// (distance / radius), takes the smallest, and lets a key win an exact tie. A
+// handle's wider ring therefore cannot steal a press whose key centre is nearer,
+// and a genuinely nearer handle still wins.
 
 // The drawn radius of a key's marker, in pixels: a circle of this radius at
 // keyDot(). == ctrl::keyRadius (src/ctrl/time/time_Renderer.h), the timeline's
@@ -82,15 +85,58 @@ constexpr int kKeyRadius = 5;
 // The grab radius of a key, in pixels. The hit-test compares a press against
 // this with `<=`, so a press EXACTLY this far from a key's centre still hits.
 // Larger than kKeyDotRadius by design: the hit area is generous, the ink is not.
+// A handle's ring (kHandleHitRadius) overlaps this one; the hit-test resolves the
+// overlap by NORMALIZED distance (see the header), and a key wins an exact tie.
 constexpr int kKeyHitRadius = 10;
 
 // The drawn radius of a tangent handle's dot, in pixels.
 constexpr int kHandleRadius = 5;
 
-// The grab radius of a tangent handle, in pixels. Deliberately larger than a
-// key's own kKeyHitRadius, because a handle is the more specific target of the
-// two and the hit-test resolves a handle first.
+// The grab radius of a tangent handle, in pixels. Its ring is wider than a key's
+// own kKeyHitRadius, which is why the hit-test compares the two by distance
+// NORMALIZED by each radius instead of giving either kind priority: a press whose
+// key centre is relatively nearer selects the key, and only a relatively nearer
+// handle is grabbed.
 constexpr int kHandleHitRadius = 12;
+
+// WHICH CLASS OF TARGET A POINT NAMES: the panel's ONE pick rule, shared by every
+// consumer that has to decide between a key and a tangent handle under the pointer.
+//
+// THE PRESS, THE HOVER INK AND THE HOVER REPAINT have to answer the same question -
+// a press nearer a key than a handle selects the key even when it is inside the
+// handle's (wider) ring - and each used to answer it with its own scan: the editor
+// normalized both distances, while the drawing layer and the hover scheduler looked
+// for the nearest handle FIRST and the nearest key afterwards. That made the ink
+// light a handle a press would never grab. They now all ask pickTarget(), so a
+// highlight cannot name a different target from the press at the same point.
+enum class PickKind {
+    None,
+    Key,
+    Handle
+};
+
+// The target a point names, from the distance to the NEAREST candidate of each
+// class (pass a distance greater than that class' radius - infinity is the natural
+// one - when the point has no candidate of that class).
+//
+// A candidate exists only inside its own grab radius (`<=`, the boundary the press
+// tests pin). The two radii differ, so the comparison is the NORMALIZED distance
+// `distance / radius`: "which target is the pointer relatively nearest", not
+// "which kind has the wider ring". A KEY WINS AN EXACT TIE - a handle is not
+// privileged, and a press on a key's centre always selects that key however close a
+// handle sits.
+inline PickKind pickTarget(double aKeyDistance, double aHandleDistance) {
+    const bool hasKey = aKeyDistance <= static_cast<double>(kKeyHitRadius);
+    const bool hasHandle = aHandleDistance <= static_cast<double>(kHandleHitRadius);
+    if (hasKey
+        && (!hasHandle
+            || aKeyDistance / static_cast<double>(kKeyHitRadius)
+                   <= aHandleDistance / static_cast<double>(kHandleHitRadius)))
+        return PickKind::Key;
+    if (hasHandle)
+        return PickKind::Handle;
+    return PickKind::None;
+}
 
 // The pixel centre of the key at (frame, value): the point the marker is drawn
 // about, the point keyRect() is centred on, and the point the hit-test measures
@@ -118,23 +164,31 @@ inline QPointF keyDot(const Scaler& aScale, core::Frame aFrame, float aValue) {
     return QPointF(center.x(), center.y());
 }
 
-// Where a Custom easing's tangent handle lands in panel pixels. x normalizes
-// along the segment's frame span and y across its value span - the space
-// Curve::handle() stores handles in, because it is the space playback consumes -
-// so the pixel is that normalized point pushed through the two axes.
+// Where a NORMALIZED handle point lands in panel pixels. x normalizes along the
+// segment's frame span and y across its value span - the space Curve::handle()
+// stores handles in, because it is the space playback consumes - so the pixel is
+// that normalized point pushed through the two axes.
 //
-// aHandleIndex 0 leaves the segment's `from` key and 1 arrives at its `to` key.
-// The editor's hit-test grabs a handle here (within kHandleHitRadius) and the
-// model publishes its dot here (drawn at radius kHandleRadius), so a grab at the
-// dot is the drag the editor performs.
-inline QPointF handlePoint(const Scaler& aScale, const Curve::Segment& aSegment, int aHandleIndex) {
-    const QPointF normalized = Curve::handle(aSegment, aHandleIndex);
+// This is the one mapping every handle goes through, stored or derived: a Custom
+// pair (Curve::handle), an Auto pair (Curve::ghostHandles), and a drag's own
+// position read back (the editor's handleNormalized is the inverse). A pair's
+// first point leaves the segment's `from` key and its second arrives at its `to`
+// key, which is the order handlePoint() and ghostHandles() both hand out.
+inline QPointF handlePointAt(const Scaler& aScale, const Curve::Segment& aSegment, const QPointF& aNormalized) {
     const double frameSpan = static_cast<double>(aSegment.to->frame() - aSegment.from->frame());
     const double valueSpan = static_cast<double>(aSegment.toValue - aSegment.fromValue);
 
-    const double frame = static_cast<double>(aSegment.from->frame()) + normalized.x() * frameSpan;
-    const float value = aSegment.fromValue + static_cast<float>(normalized.y() * valueSpan);
+    const double frame = static_cast<double>(aSegment.from->frame()) + aNormalized.x() * frameSpan;
+    const float value = aSegment.fromValue + static_cast<float>(aNormalized.y() * valueSpan);
     return QPointF(aScale.pixelXOfFrame(frame), static_cast<double>(aScale.pixelY(value)));
+}
+
+// Where a STORED (Custom) tangent handle lands in panel pixels: the segment's own
+// pair through the mapping above. The editor's hit-test grabs a handle here
+// (within kHandleHitRadius) and the model publishes its dot here (drawn at radius
+// kHandleRadius), so a grab at the dot is the drag the editor performs.
+inline QPointF handlePoint(const Scaler& aScale, const Curve::Segment& aSegment, int aHandleIndex) {
+    return handlePointAt(aScale, aSegment, Curve::handle(aSegment, aHandleIndex));
 }
 
 } // namespace graph

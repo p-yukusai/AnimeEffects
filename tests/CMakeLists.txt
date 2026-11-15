@@ -3,6 +3,14 @@
 # sections can silently not run is a test that reads as coverage.
 ae_enable_warnings()
 
+# The shared edge-autoscroll rule (ctrl/AutoScroll.h) used by the timeline and
+# the graph panel's marquee drags. Pure geometry, no widget and no GL.
+add_executable(autoscroll autoscroll.cpp)
+target_include_directories(autoscroll PRIVATE .. ../src)
+target_compile_definitions(autoscroll PRIVATE
+    AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1 USE_GL_CORE_PROFILE)
+target_link_libraries(autoscroll PRIVATE Qt6::Core Qt6::Gui)
+
 # Regression test for the BoneKey::deserialize use-after-free (dangling
 # &mBindingCaches.back() captured into a deferred IDSolver lambda that runs
 # after the QList reallocates). Self-contained; see bonekey_regression.cpp.
@@ -173,6 +181,42 @@ target_link_libraries(creation_select_keys PRIVATE
     cmnd core ctrl gl img thr util pugixml
 )
 
+# Proportional-key EDIT contract: a frame move, a value edit and a toggle each
+# stay one undo step and restore the selected keys AND the proportional keys
+# between their bounds. Drives the real TimeLineUtil commands; headless.
+add_executable(proportional_edits proportional_edits.cpp
+    ../src/gui/theme/TimeLine.cpp)
+target_include_directories(proportional_edits PRIVATE ..)
+target_compile_definitions(proportional_edits PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(proportional_edits PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# The 0.16 key record on disk: stable id + proportional bound ids/weights survive
+# TimeLine serialize/deserialize. Headless, in-memory stream.
+add_executable(timekey_roundtrip timekey_roundtrip.cpp)
+target_include_directories(timekey_roundtrip PRIVATE ..)
+target_compile_definitions(timekey_roundtrip PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(timekey_roundtrip PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core gl img thr util pugixml
+)
+
 # Headless reproduction of the "Pull bones" (PoseEditMode_Draw -> pose::
 # DrawBoneMode) crash. Loads a real .anie, builds the real ctrl::Driver with the
 # Pose tool, and feeds synthetic left-button press/drag/release frames through
@@ -186,8 +230,20 @@ add_executable(pose_pull_crash pose_pull_crash.cpp
     # and graph_render_pixels compile it). Without this the target links the graph
     # editor's object and fails on theme::Graph::from / keyColor.
     ../src/gui/theme/Graph.cpp
+    # ctrl::TimeLineEditor is one TU that also references gui and theme symbols from code
+    # this tool never calls (the clipboard paste path, the FFD mesh lookup, the timeline
+    # renderer's theme). theme::TimeLine is a leaf and is linked; the rest is dropped by
+    # --gc-sections, which is why the function sections are on for this target only.
+    ../src/gui/theme/TimeLine.cpp
     ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
 target_include_directories(pose_pull_crash PRIVATE ..)
+target_compile_options(pose_pull_crash PRIVATE -ffunction-sections -fdata-sections)
+target_link_options(pose_pull_crash PRIVATE -Wl,--gc-sections)
+# NOT part of the default build: this is the reproduction tool AGENTS.md describes, not a
+# gate, and its link depends on how much of the single ctrl::TimeLineEditor TU the linker
+# keeps - which pulls gui and theme symbols this tool never calls. Build it explicitly
+# (`ninja -C build pose_pull_crash:Debug`) when reproducing the pose-tool crash.
+set_target_properties(pose_pull_crash PROPERTIES EXCLUDE_FROM_ALL TRUE)
 target_compile_definitions(pose_pull_crash PRIVATE
     AE_MAJOR_VERSION=1
     AE_MINOR_VERSION=7
@@ -390,6 +446,12 @@ add_executable(general_setting_form general_setting_form.cpp
     ../src/gui/qml/GeneralSettingViewModel.cpp
     ../src/gui/qml/QmlTheme.cpp
     ../src/gui/theme/Icons.cpp
+    # The model now builds its easing list from util::Easing's own display table (the
+    # one place the names live, so they translate - see GeneralSettingViewModel.cpp).
+    # The two files are header-only in their dependencies, so the light target stays
+    # light; the `util` library would drag the whole Qt/GL stack in for two symbols.
+    ../src/util/Easing.cpp
+    ../src/util/EasingName.cpp
     ../src/gui/MouseSetting.cpp)
 target_include_directories(general_setting_form PRIVATE .. ../src ../src/gui)
 target_compile_definitions(general_setting_form PRIVATE
@@ -956,6 +1018,53 @@ target_link_libraries(graph_curve PRIVATE
     cmnd core ctrl gl img thr util pugixml
 )
 
+# The frame axis' zoom ladder: the two limits it used to have (1 and 16 px/frame) are gone, its
+# inverse rounds to the sparsest rung that fits, and the tick stride the ruler and the panel
+# iterate with never skips a drawn tick. Headless: the scaler and Qt6::Core only.
+add_executable(time_scaler time_scaler.cpp)
+target_include_directories(time_scaler PRIVATE ..)
+target_compile_definitions(time_scaler PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+)
+target_link_libraries(time_scaler PRIVATE
+    Qt6::Core ctrl util
+)
+
+# Proportional keys: stable ids/state and the atomic multi-key batch move at the
+# core::TimeLine layer. Headless QApplication only; no widgets, no GL.
+add_executable(timekey_proportional timekey_proportional.cpp)
+target_include_directories(timekey_proportional PRIVATE ..)
+target_compile_definitions(timekey_proportional PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+)
+target_link_libraries(timekey_proportional PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core gl img thr util pugixml
+)
+
+# Proportional keys: the stored-weight solver (bounds, rebase, drift-free
+# projection) and the value reflow, over a real core::TimeLine. Headless.
+add_executable(proportional_keys proportional_keys.cpp)
+target_include_directories(proportional_keys PRIVATE ..)
+target_compile_definitions(proportional_keys PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(proportional_keys PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
 # ---------------------------------------------------------------------------
 # The overlay's units (the Dear ImGui renderer of the viewport panel). They exist
 # because the pieces a screenshot cannot see need gates of their own: the font
@@ -1017,12 +1126,16 @@ if(AE_ENABLE_IMGUI)
     # precedes the backend.
     add_executable(graph_panel_pixels graph_panel_pixels.cpp
         ../src/gui/ImGuiGLBackend.cpp
-        ../src/gui/ImGuiOverlay.cpp
+        ../src/gui/GraphPanelFrame.cpp
         ../src/gui/GraphPanelModel.cpp
+        ../src/gui/InkImGui.cpp
+        ../src/gui/InkQPainter.cpp
+        ../src/gui/FrameRuler.cpp
         ../src/gui/ImGuiInputBridge.cpp
         ../src/gui/ImGuiA11y.cpp
         ../src/gui/ImGuiQtFontLoader.cpp
-        ../src/gui/theme/Graph.cpp)
+        ../src/gui/theme/Graph.cpp
+        ../src/gui/theme/TimeLine.cpp)
     target_include_directories(graph_panel_pixels PRIVATE .. ../src)
     target_compile_definitions(graph_panel_pixels PRIVATE
         AE_MAJOR_VERSION=1
@@ -1057,6 +1170,53 @@ target_link_libraries(imgui_a11y PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets
 )
 
+# The timeline's pixel contract for the row tint, the key fill/ring, the lane
+# label's ink and the pill's column. Drives the real ctrl::TimeLineEditor::render
+# into an offscreen QImage - no GL, no window - and reads its geometry off the
+# editor's own public mapping, so a change to the scale cannot silently move it.
+# Compiles theme::TimeLine directly because ctrl's renderer names that class and
+# leaves its symbols unresolved (the same reason graph_panel_model compiles
+# theme::Graph). See timeline_visuals.cpp.
+
+# THE FRAME RULER'S CONTRACT: the one model both rulers read (src/gui/FrameRuler.h).
+# It drives the real ctrl::TimeLineEditor through the shared builder and painter into an
+# offscreen QImage, and pins the tick tiers, the boundary/merged labels, the one-frame
+# range publishing none, the playhead's column, the playback window's geometry and the
+# two signed-off rules (clip-never-shift, and the project range as the formatter's
+# basis). No GL, no widget. See frame_ruler.cpp.
+add_executable(frame_ruler frame_ruler.cpp
+    ../src/gui/FrameRuler.cpp
+    ../src/gui/theme/TimeLine.cpp)
+target_include_directories(frame_ruler PRIVATE .. ../src)
+target_compile_definitions(frame_ruler PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(frame_ruler PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+add_executable(timeline_visuals timeline_visuals.cpp
+    ../src/gui/theme/TimeLine.cpp)
+target_include_directories(timeline_visuals PRIVATE .. ../src)
+target_compile_definitions(timeline_visuals PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(timeline_visuals PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
 # The panel model: what the overlay draws, as engine-neutral geometry computed from
 # ctrl::GraphEditor - and, crucially, asserted CONSISTENT with the editor's own
 # panelRect/scale, because a model that computed its own rects would silently
@@ -1064,8 +1224,18 @@ target_link_libraries(imgui_a11y PRIVATE
 # graph_drag does. See graph_panel_model.cpp.
 add_executable(graph_panel_model graph_panel_model.cpp
     ../src/gui/GraphPanelModel.cpp
-    ../src/gui/theme/Graph.cpp)
-target_include_directories(graph_panel_model PRIVATE ..)
+    ../src/gui/FrameRuler.cpp
+    ../src/gui/theme/Graph.cpp
+    # The model now reaches the timeline renderer's theme through the shared easing
+    # rewrite path; theme::TimeLine is a leaf, so it is linked rather than stubbed.
+    ../src/gui/theme/TimeLine.cpp
+    # Section 17 of the test paints the APPLICATION'S scroll bar: gui::AppStyle's
+    # CC_ScrollBar into a transparent QImage, so the pill the style draws is measured
+    # against the same ctrl::graph::scrollBar::pill the panel's lanes draw from.
+    # AppStyle.cpp names theme::iconDir() for the tree branch caret, hence Icons.cpp.
+    ../src/gui/AppStyle.cpp
+    ../src/gui/theme/Icons.cpp)
+target_include_directories(graph_panel_model PRIVATE .. ../src/gui)
 target_compile_definitions(graph_panel_model PRIVATE
     AE_MAJOR_VERSION=1
     AE_MINOR_VERSION=7
@@ -1086,10 +1256,14 @@ target_link_libraries(graph_panel_model PRIVATE
 # than by inspection. Headless: offscreen, no GL, no .anie. Compiles the real
 # theme::Graph because GraphEditor names it and the ctrl library leaves that
 # symbol unresolved - the same reason the timeline tests compile
-# theme/TimeLine.cpp. See graph_drag.cpp.
+# theme/TimeLine.cpp. gui/CanvasMover.cpp is here for the wheel's DIRECTION:
+# the panel's notch must move the same way as the canvas', and comparing against
+# the real mover is the only way that stays true (see graph_drag's section 0b-ii;
+# ../src is on the include path for the gui/ header, which `ctrl` does not export).
 add_executable(graph_drag graph_drag.cpp
-    ../src/gui/theme/Graph.cpp)
-target_include_directories(graph_drag PRIVATE ..)
+    ../src/gui/theme/Graph.cpp
+    ../src/gui/CanvasMover.cpp)
+target_include_directories(graph_drag PRIVATE .. ../src)
 target_compile_definitions(graph_drag PRIVATE
     AE_MAJOR_VERSION=1
     AE_MINOR_VERSION=7
@@ -1204,3 +1378,51 @@ target_link_libraries(asset_remove_layers PRIVATE
     Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
     cmnd core ctrl gl img thr util pugixml
 )
+
+# THE CANVAS PAINTER RULER'S PARITY GATE: one model painted by QPainter and by Canvas
+# Painter, compared pixel by pixel (text coverage is reported separately - two glyph
+# rasterizers never agree). QA: only built when the Qt in use provides the module AND is
+# 6.12+, which the default Fedora 6.11.2 toolchain is not. See frame_ruler_canvas.cpp.
+add_executable(frame_ruler_canvas frame_ruler_canvas.cpp
+    ../src/gui/FrameRuler.cpp
+    ../src/gui/FrameRulerCanvas.cpp
+    ../src/gui/theme/TimeLine.cpp)
+target_include_directories(frame_ruler_canvas PRIVATE .. ../src)
+target_compile_definitions(frame_ruler_canvas PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(frame_ruler_canvas PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    Qt6::CanvasPainter
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# THE CANVAS PAINTER BODY'S PARITY GATE (Qt >= 6.12 + AE_CANVAS_PAINTER only).
+# NOT PASSING YET: 268 of 76,800 px differ in the "geometry" class - see AGENTS.md ("the body's
+# Canvas port is SHORT"). Registered so the remaining gap has a number to close.
+add_executable(time_body_canvas time_body_canvas.cpp
+    ../src/gui/TimeBodyCanvas.cpp
+    ../src/gui/InkCanvas.cpp
+    ../src/gui/theme/TimeLine.cpp)
+target_include_directories(time_body_canvas PRIVATE .. ../src)
+target_compile_definitions(time_body_canvas PRIVATE
+    AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1 USE_GL_CORE_PROFILE
+    AE_CANVAS_PAINTER=1)
+target_link_libraries(time_body_canvas PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia Qt6::CanvasPainter
+    cmnd core ctrl gl img thr util pugixml)
+
+# THE GRAPH PANEL'S BACKEND PARITY (Qt >= 6.12 + AE_CANVAS_PAINTER): the pixel gate above
+# renders the SAME models through InkQPainter (Qt's own rasteriser) and InkCanvas (Canvas
+# Painter) and compares them. It lives inside graph_panel_pixels because that target already
+# carries the whole panel - the ink decisions, the fixtures and the ImGui reference.
+target_sources(graph_panel_pixels PRIVATE
+    ../src/gui/InkCanvas.cpp)
+target_compile_definitions(graph_panel_pixels PRIVATE AE_CANVAS_PAINTER=1)
+target_link_libraries(graph_panel_pixels PRIVATE Qt6::CanvasPainter)

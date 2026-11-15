@@ -10,16 +10,16 @@
 namespace core {
 
 //-------------------------------------------------------------------------------------------------
-ImageKey::Data::Data(): mEasing(), mResHandle(), mBlendMode(img::BlendMode_Normal), mImageOffset(), mGridMesh() {}
+ImageKey::Data::Data(): mEasings(), mResHandle(), mBlendMode(img::BlendMode_Normal), mImageOffset(), mGridMesh() {}
 
 ImageKey::Data::Data(const Data& aRhs):
-    mEasing(aRhs.mEasing), mResHandle(aRhs.mResHandle), mBlendMode(aRhs.mBlendMode), mImageOffset() {
+    mEasings(aRhs.mEasings), mResHandle(aRhs.mResHandle), mBlendMode(aRhs.mBlendMode), mImageOffset() {
     setImageOffset(aRhs.mImageOffset);
     mGridMesh = aRhs.mGridMesh;
 }
 
 ImageKey::Data& ImageKey::Data::operator=(const Data& aRhs) {
-    mEasing = aRhs.mEasing;
+    mEasings = aRhs.mEasings;
     mResHandle = aRhs.mResHandle;
     mBlendMode = aRhs.mBlendMode;
     setImageOffset(aRhs.mImageOffset);
@@ -199,7 +199,7 @@ bool ImageKey::deserializeFromJson(QJsonObject json, util::LifeLink::Pointee<Pro
 
 bool ImageKey::serialize(Serializer& aOut) const {
     // easing
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
     // image id
     aOut.writeID(mData.resource()->serialAddress());
     // blend mode
@@ -220,7 +220,7 @@ bool ImageKey::deserialize(Deserializer& aIn) {
     aIn.pushLogScope("ImageKey");
 
     // easing
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
     // image id
