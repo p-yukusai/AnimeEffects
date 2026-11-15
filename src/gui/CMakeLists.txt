@@ -63,6 +63,8 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     ProjectHook.cpp ProjectHook.h
     ProjectTabBar.cpp ProjectTabBar.h
     PropertyWidget.cpp PropertyWidget.h
+    ViewportInput.cpp ViewportInput.h
+    PointerSmoothing.cpp PointerSmoothing.h
     ResourceDialog.cpp ResourceDialog.h
     ResourceTreeWidget.cpp ResourceTreeWidget.h
     TabCloseButton.cpp TabCloseButton.h
@@ -98,12 +100,6 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     ../ctrl/ExportTargetStrings.h
     ExportFacts.cpp ExportFacts.h
     menu/menu_ProgressReporter.cpp menu/menu_ProgressReporter.h
-    obj/obj_InsertItem.cpp obj/obj_InsertItem.h
-    obj/obj_Item.cpp obj/obj_Item.h
-    obj/obj_MoveItem.cpp obj/obj_MoveItem.h
-    obj/obj_Notifiers.cpp obj/obj_Notifiers.h
-    obj/obj_RemoveItem.cpp obj/obj_RemoveItem.h
-    obj/obj_Util.cpp obj/obj_Util.h
     prop/prop_ItemBase.h
     prop/prop_Items.cpp prop/prop_Items.h
     prop/prop_KeyAccessor.cpp prop/prop_KeyAccessor.h
@@ -116,19 +112,10 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     theme/Graph.cpp theme/Graph.h
     theme/Icons.cpp theme/Icons.h
     theme/TimeLine.cpp theme/TimeLine.h
-    tool/tool_BonePanel.cpp tool/tool_BonePanel.h
-    tool/tool_BrushPanel.cpp tool/tool_BrushPanel.h
-    tool/tool_FFDPanel.cpp tool/tool_FFDPanel.h
-    tool/tool_MaskPanel.cpp tool/tool_MaskPanel.h
-    tool/tool_FlowLayout.cpp tool/tool_FlowLayout.h
-    tool/tool_ItemTable.cpp tool/tool_ItemTable.h
-    tool/tool_Items.cpp tool/tool_Items.h
+    # The audio row's slider. It is the ONE survivor of the widget tools dock: the
+    # dock's own panels are the QML scene below now, but this control's reason for
+    # existing (a QSS QSlider cannot round a handle) is unchanged where it is used.
     tool/ToolSlider.cpp tool/ToolSlider.h
-    tool/tool_MeshPanel.cpp tool/tool_MeshPanel.h
-    tool/tool_ModePanel.cpp tool/tool_ModePanel.h
-    tool/tool_PosePanel.cpp tool/tool_PosePanel.h
-    tool/tool_SRTPanel.cpp tool/tool_SRTPanel.h
-    tool/tool_ViewPanel.cpp tool/tool_ViewPanel.h
     ${app_icon}
     AudioPlaybackWidget.cpp
     AudioPlaybackWidget.h
@@ -141,8 +128,12 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     qml/DestinationPickerModel.cpp qml/DestinationPickerModel.h
     qml/QmlFormAccessibility.cpp qml/QmlFormAccessibility.h
     qml/InspectorViewModel.cpp qml/InspectorViewModel.h
+    qml/ObjectTreeModel.cpp qml/ObjectTreeModel.h
     qml/InspectorRowModel.cpp qml/InspectorRowModel.h
     qml/FilterStackModel.cpp qml/FilterStackModel.h
+    qml/ToolViewModel.cpp qml/ToolViewModel.h
+    qml/FilterNames.h
+    QmlHost.h
     ${CMAKE_SOURCE_DIR}/assets/assets.qrc
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -195,6 +186,21 @@ qt_add_qml_module(${PROJECT_NAME}
         qml/InspectorFilterCard.qml
         qml/InspectorFilterStack.qml
         qml/InspectorMaskCard.qml
+        # The Tools dock. Same split as the Properties dock: the scene owns layout and
+        # ink, gui::ToolViewModel owns every tool decision.
+        qml/ToolsPanel.qml
+        qml/ToolHeading.qml
+        qml/ToolRow.qml
+        qml/ToolIconButton.qml
+        qml/ToolSliderRow.qml
+        qml/ToolCheckRow.qml
+        qml/ToolModeRow.qml
+        qml/ToolBrushSection.qml
+        qml/ToolTextAction.qml
+        # The Animation dock's tree column. The scene owns the rows' ink and the pointer;
+        # gui::ObjectTreeModel owns what a row means (its rows are the timeline's lanes too).
+        qml/ObjectTreePanel.qml
+        qml/TreeRow.qml
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

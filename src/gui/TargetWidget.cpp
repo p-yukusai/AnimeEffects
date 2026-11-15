@@ -17,7 +17,10 @@
 
 namespace gui {
 
-TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidget* aParent, const QSize& aSizeHint):
+TargetWidget::TargetWidget(
+    ViaPoint& aViaPoint, GUIResources& aResources, const LocaleParam& aLocale, QWidget* aParent,
+    const QSize& aSizeHint
+):
     QWidget(aParent),
     mProject(),
     mViaPoint(aViaPoint),
@@ -42,7 +45,15 @@ TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidge
     // timeline, so it clears the tree's edge scrollbar; the hairline stays on
     // the boundary.
     mHorizontalSplitter->setHitBoxOffset(4);
-    mObjTree = new ObjectTreeWidget(aViaPoint, aResources, mHorizontalSplitter);
+    mObjTree = new ObjectTreeWidget(aViaPoint, aResources, mHorizontalSplitter, aLocale);
+    // THE ROWS ARE THE LANES. The tree's model owns the row list (gui/AnimationRow.h) and
+    // announces every change; the timeline draws exactly what it published, so a row's
+    // height and the lane block beside it come from one definition and no view reads the
+    // other's geometry.
+    mObjTree->onRowsUpdated.connect([this]() {
+        if (mTimeLine && mObjTree)
+            mTimeLine->setRows(mObjTree->rows());
+    });
 
     // The dock's body, as ONE pane with the views stacked in it (design section 5):
     // the timeline's own surface and, when the graph panel is part of the build, the
@@ -82,6 +93,9 @@ TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidge
     mFrameSlot = mTimeLine->onFrameUpdated.connect([this]() {
         if (mGraphPanel)
             mGraphPanel->refresh();
+        // a mask chip previews the matte at the CURRENT frame: an animated one changes here
+        if (mObjTree)
+            mObjTree->frameChanged();
     });
 
     // AND THE TREE SELECTS WHAT IT DRAWS. The tree is the splitter's first widget, so it
@@ -243,8 +257,11 @@ void TargetWidget::setProject(core::Project* aProject) {
     if (!aProject && mGraphPanel)
         mGraphPanel->setDriver(nullptr);
 #endif
-    mObjTree->setProject(aProject);
+    // The TIMELINE first, then the tree: the tree's rebuild announces the new row list, and
+    // the timeline must already be on the new project (and its editor) to receive it.
     mTimeLine->setProject(aProject);
+    mObjTree->setProject(aProject);
+    mTimeLine->setRows(mObjTree->rows());
     mPlayBack->aProject = aProject;
     // The bar's timeline-derived state must follow the editor that was just set
     // above (or cleared): refreshFrame() re-reads the quick easings' availability

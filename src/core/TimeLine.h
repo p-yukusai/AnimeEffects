@@ -52,6 +52,13 @@ public:
 
     const MapType& map(TimeKeyType aType) const;
 
+    // Insert a key with no command, because the CALLER is building one and owns the undo
+    // record itself (a node duplicate, a paste into a fresh timeline). Deserialization
+    // inserts the same way. Ownership passes to this timeline on success; on refusal
+    // (null, or the frame is already taken) the caller keeps the key and must delete it,
+    // so a caller bug cannot silently replace a key it does not own.
+    bool adoptKey(TimeKeyType aType, int aFrame, TimeKey* aTimeKey);
+
     // --- the filter stack ---
     //
     // ORDER and ENABLED are stored per timeline; the filter VALUES remain the

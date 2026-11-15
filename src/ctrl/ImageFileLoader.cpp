@@ -71,8 +71,8 @@ QImage decodePsdMask(const img::PSDFormat::Layer& aLayer, const img::PSDFormat::
     return QImage();   // ZIP-compressed masks are not decoded here; the layer still loads
 }
 
-// Attach a decoded matte to a freshly created node, at the node's own content rect and
-// within the field cap (core::MaskKey::kMaxTexels).
+// Attach a decoded matte to a freshly created node, at the node's own content rect. The field is
+// stored as it came: masks are one texel per content pixel (see core/MaskKey.h).
 void attachMask(core::ObjectNode& aNode, const QImage& aField, const QRectF& aContentRect) {
     if (aField.isNull() || !aContentRect.isValid() || aContentRect.isEmpty())
         return;
@@ -181,8 +181,12 @@ img::ResourceNode* createMergedResource(
         return nullptr;
     }
 
-    mem = img::Util::recreateForBiLinearSampling(mem, aCanvasSize);
-    const QRect rect(QPoint(-1, -1), aCanvasSize + QSize(2, 2));
+    mem = img::Util::prepareForSampling(mem, aCanvasSize);
+    // the texture image is the layer's own rect, unpadded, so the artwork sits at the texture's
+    // origin (the mip chain's level grids are anchored to multiples of 2^l in the TEXTURE - see
+    // img::Util::prepareForSampling) and the merged image still lands at (0, 0) of the canvas: the
+    // ring used to be paired with a rect at (-1, -1) that cancelled its (1, 1) inset
+    const QRect rect(QPoint(0, 0), aCanvasSize);
 
     auto resNode = new img::ResourceNode(aName);
     resNode->data().grabImage(mem, rect.size(), img::Format_RGBA8);

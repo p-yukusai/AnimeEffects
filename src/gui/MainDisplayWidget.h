@@ -7,6 +7,7 @@
 #include <QTabBar>
 #include <QReadWriteLock>
 #include <QColor>
+#include <QImage>
 #include <QVariant>
 #include <QtMath>
 #include "util/LinkPointer.h"
@@ -17,6 +18,7 @@
 #include "gl/EasyTextureDrawer.h"
 #include "core/Project.h"
 #include "core/AbstractCursor.h"
+#include "gui/ViewportInput.h"
 #include "core/TimeInfo.h"
 #include "core/ClippingFrame.h"
 #include "core/DestinationTexturizer.h"
@@ -47,9 +49,12 @@ class GraphChannelPopup;
 
 namespace gui {
 
-class MainDisplayWidget: public QOpenGLWidget {
+class MainDisplayWidget: public QOpenGLWidget, public gui::ViewportHost {
     Q_OBJECT
 public:
+    // The HUD reads the ACTIVE brush from here; MainWindow wires it to the tools dock, which owns
+    // the one brush model (ctrl::BrushParam). Without a source the HUD draws nothing.
+    void setBrushSource(std::function<const ctrl::BrushParam*()> aSource) { mBrushSource = std::move(aSource); }
     MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent);
     ~MainDisplayWidget();
 
@@ -165,6 +170,8 @@ public:
     // dominant-axis lock after 4px because the old handler moved both values on a
     // drag aimed at one, and the comment there states why.
     util::Signaler<void(int, int)> onBrushDragAdjusted;
+    // the Alt drag's CONTINUOUS form: fractional steps of the same units the notch keys use
+    util::Signaler<void(double, double)> onBrushNudged;
 
 private:
     class GLContextAccessor: public gl::ContextAccessor {
@@ -177,24 +184,46 @@ private:
     };
 
     // from QOpenGLWidget
-    virtual void initializeGL();
-    virtual void paintGL();
-    virtual void paintEvent(QPaintEvent* event);
-    virtual void resizeGL(int w, int h);
-    virtual void mouseMoveEvent(QMouseEvent* event);
-    virtual void mousePressEvent(QMouseEvent* event);
-    virtual void mouseReleaseEvent(QMouseEvent* event);
-    virtual void mouseDoubleClickEvent(QMouseEvent* event);
-    virtual void wheelEvent(QWheelEvent* event);
-    virtual void tabletEvent(QTabletEvent* event);
-    virtual void keyPressEvent(QKeyEvent* event);
-    virtual void keyReleaseEvent(QKeyEvent* event);
-    virtual void inputMethodEvent(QInputMethodEvent* event);
-    virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const;
-    virtual void focusInEvent(QFocusEvent* event);
-    virtual void focusOutEvent(QFocusEvent* event);
+    void initializeGL() override;
+    void paintGL() override;
+    void paintEvent(QPaintEvent* event) override;
+    void resizeGL(int w, int h) override;
 
-    void updateCursor();
+    // gui::ViewportHost - the services the input router uses. Nothing else routes the pointer.
+    core::RenderInfo& renderInfo() override;
+    core::CameraInfo& camera() override;
+    core::AbstractCursor& cursor() override;
+    ctrl::MaskEditor* maskEditor() override;
+    void forwardModifiers(Qt::KeyboardModifiers aModifiers) override;
+    ctrl::ToolType toolType() const override;
+    const ctrl::BrushParam* activeBrush() const override;
+    void updateCursorNow() override;
+    void requestFrame() override;
+    void sampleMaskValue(float aValue) override;
+    void beginBrushDial(const QPointF& aPos) override;
+    void stepBrushDial(const QPointF& aPos) override;
+    bool brushDialActive() const override;
+    void endBrushDial() override;
+    QPoint mapToGlobal(const QPoint& aPos) override;
+    void setGrabCursor(bool aClosed) override;
+    // one repaint request per 16ms while a stroke is being fed
+    void requestStrokeFrame();
+
+    // the size/hardness dial's readout (see the resize render in the .cpp)
+    void paintBrushHud(QPainter& aPainter, float aSizeSteps, float aHardnessSteps);
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
+    void tabletEvent(QTabletEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+    void inputMethodEvent(QInputMethodEvent* event) override;
+    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
+    void focusInEvent(QFocusEvent* event) override;
+    void focusOutEvent(QFocusEvent* event) override;
+    bool updateCursor();
     // Sets ctrl::CanvasMover's drag mode from the state that decides it, so "which
     // gesture is in flight" is applied in one place (see the definition). The
     // animation graph panel used to hold one of these flags while it was drawn over
@@ -237,7 +266,8 @@ private:
     core::RenderInfo* mRenderInfo;
     core::AbstractCursor mAbstractCursor;
     ctrl::Driver* mDriver;
-    ctrl::ToolType mToolType;
+    // only the pre-driver fallback: with a driver, toolType() asks IT (see the .cpp)
+    ctrl::ToolType mToolType = ctrl::ToolType_Cursor;
     ProjectTabBar* mProjectTabBar;
     // The ONE channel list this widget owns (showGraphChannelMenu): created on the
     // first open, parented here, hidden and re-filled for every open after that.
@@ -250,6 +280,17 @@ private:
     // the slop and the fractional banks all live in the brush model (ctrl/Brush.h),
     // so the gesture is one decision instead of three literals in this event handler
     ctrl::BrushDrag mBrushDrag;
+    // The eyedropper's live sample: down while Alt+left is held and the pointer is being read, so
+    // the panel keeps tracking the field under the pointer instead of one reading at the press.
+    bool mAltSampling = false;
+    // A state-only gesture (SRT, the pan) is fed once per frame; a path gesture (a brush) per event.
+    gui::ViewportInput mInput;
+
+    QTimer mStrokeFrame;
+    // the band this frame must cover, and whether anything invalidated the whole surface
+    // THE ADJUSTMENT HUD'S SOURCE: the active tool's brush, asked fresh on every paint (the values
+    // change during the drag). Null when the current tool has none.
+    std::function<const ctrl::BrushParam*()> mBrushSource;
     // The timeline surface's playWindowChanged -> syncGraphPanelSharedState connection
     // (see setTimeLineWidget). Dropped with the old timeline; auto-dropped when this
     // widget dies.

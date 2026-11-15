@@ -14,7 +14,6 @@ namespace gui {
 class ResourceDialog;
 }
 namespace gui {
-class ObjectTreeWidget;
 }
 namespace gui {
 class MainMenuBar;
@@ -52,8 +51,6 @@ public:
     // The object tree's view. The asset removal path needs it to delete the
     // layers that reference a removed asset in the same undo step; it is the one
     // place a res-namespace action can reach the object tree widget from.
-    void setObjectTreeWidget(ObjectTreeWidget* aTree);
-    ObjectTreeWidget* objectTreeWidget() const { return mObjectTree; }
 
     img::ResourceNode* requireOneResource();
 
@@ -103,7 +100,6 @@ private:
     core::Project* mProject;
     MainMenuBar* mMainMenuBar;
     ResourceDialog* mResDialog;
-    ObjectTreeWidget* mObjectTree;
     CommandLogView* mLogView;
     gl::DeviceInfo mGLDeviceInfo;
     KeyCommandMap* mKeyCommandMap;

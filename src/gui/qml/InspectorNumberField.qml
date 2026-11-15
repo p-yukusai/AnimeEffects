@@ -17,6 +17,13 @@ Item {
     property string prefix: ""
     property string prefixIcon: ""
     property string suffix: ""
+    // The inspector draws a line of X/Y/glyph prefixes, so it reserves one 24px lead-in
+    // for every field and the numbers line up down the panel. A surface whose fields
+    // carry no prefix must NOT reserve it: the number then starts 8px from the edge
+    // instead of 24, which is the difference between a field that is mostly padding and
+    // one that is mostly value (reported from the Tools dock, whose fields have no
+    // prefix at all).
+    property bool reservePrefix: true
     readonly property bool hovered: fieldHover.hovered
     signal valueEdited(real value)
 
@@ -55,7 +62,7 @@ Item {
         step: root.step
         decimals: root.decimals
         trimTrailingZeros: true
-        reservePrefix: true
+        reservePrefix: root.reservePrefix
         textFont: uiFont
         prefix: root.prefix
         prefixIcon: root.prefixIcon

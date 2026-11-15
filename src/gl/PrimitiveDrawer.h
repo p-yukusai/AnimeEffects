@@ -40,6 +40,9 @@ public:
 
     void drawCircle(const QPointF& aCenter, float aRadius);
     void drawEllipse(const QPointF& aCenter, float aRadiusX, float aRadiusY);
+    // THE BRUSH TIP: a disc whose alpha is the brush's own falloff, evaluated per fragment (see
+    // Type_BrushTip). Exact at any radius, because nothing is resampled.
+    void drawBrushTip(const QPointF& aCenter, float aRadius, float aHardness, const QColor& aColor);
 
     void drawPolyline(const QPoint* aPoints, int aCount);
     void drawPolyline(const QPointF* aPoints, int aCount);
@@ -57,9 +60,15 @@ public:
     void drawTexture(const QRectF& aRect, GLuint aTexture, const QSize& aTexSize, const QRectF& aSrcRect);
 
 private:
-    enum Type { Type_Draw, Type_Brush, Type_Pen, Type_Texture, Type_Ability, Type_TERM };
+    enum Type { Type_Draw, Type_Brush, Type_Pen, Type_Texture, Type_BrushTip, Type_Ability, Type_TERM };
 
-    enum ShaderType { ShaderType_Plane, ShaderType_Stipple, ShaderType_Texture, ShaderType_TERM };
+    enum ShaderType {
+        ShaderType_Plane,
+        ShaderType_Stipple,
+        ShaderType_Texture,
+        ShaderType_BrushTip,
+        ShaderType_TERM
+    };
 
     struct Command {
         Type type;
@@ -85,6 +94,17 @@ private:
                 QRgb color;
             } texture;
 
+            // A brush tip: a disc whose ALPHA comes from the falloff function, evaluated per
+            // fragment. No texture, so no resolution and no resampling - the edge is exact at any
+            // radius, which is what a bitmap ramp could not be.
+            struct BrushTip {
+                float centerX;
+                float centerY;
+                float radius;
+                float hardness;
+                QRgb color;
+            } brushTip;
+
             struct Ability {
                 bool hasBrush;
                 bool hasPen;
@@ -106,6 +126,11 @@ private:
         PenStyle penStyle;
         GLuint texture;
         QRgb textureColor;
+        float brushTipCenterX;
+        float brushTipCenterY;
+        float brushTipRadius;
+        float brushTipHardness;
+        QRgb brushTipColor;
         bool hasBrush;
         bool hasPen;
         bool hasMSAA;
@@ -128,6 +153,17 @@ private:
         int locScreenSize;
         int locColor;
         int locWave;
+    };
+
+    struct BrushTipShader {
+        bool init();
+        gl::EasyShaderProgram program;
+        int locPosition;
+        int locViewMtx;
+        int locCenter;
+        int locRadius;
+        int locHardness;
+        int locColor;
     };
 
     struct TextureShader {
@@ -157,6 +193,7 @@ private:
     PlaneShader mPlaneShader;
     StippleShader mStippleShader;
     TextureShader mTextureShader;
+    BrushTipShader mBrushTipShader;
     ShaderType mCurrentShader;
 
     int mVtxCountOfSlot;

@@ -548,7 +548,7 @@ void GraphPanelWidget::wheelEvent(QWheelEvent* aEvent) {
     // THE ZOOM DIRECTION is the dock's own setting. The panel takes the wheel while its
     // tab is current, and it takes the direction of the SURFACE it is drawn on: this page
     // covers the TIMELINE's body, so it zooms the graph the way the timeline's own wheel
-    // zooms it (gui::TimeLineEditorWidget reads invertTimeLineScaling), and one wheel in
+    // zooms it (gui::TimeLineEditorWidget reads MouseSetting::invertZoom), and one wheel in
     // one body cannot turn the frame axis two
     // ways. The setting is read from the application's settings here (the same file
     // gui::GeneralSettingDialog writes and gui::ViaPoint's live copy is kept in step
@@ -557,7 +557,7 @@ void GraphPanelWidget::wheelEvent(QWheelEvent* aEvent) {
     settings.load();
     if (editor->updateWheel(
             panelCamera(), aEvent->position().toPoint(), aEvent->angleDelta().y(), aEvent->modifiers(),
-            settings.invertTimeLineScaling
+            settings.invertZoom
         )) {
         this->update();
     }

@@ -479,17 +479,13 @@ Item {
                     rowSpacing: 8
 
                     AeFieldLabel { }
+                    // ONE switch for the viewport, the timeline and the graph page: a wheel is one
+                    // habit, and three surfaces that disagree is a trap rather than a setting. The
+                    // default (unchecked) is the convention - wheel up zooms in.
                     AeCheckBox {
-                        text: qsTr("Inverse canvas scrolling")
-                        checked: generalSettingModel.invertMainViewScaling
-                        onToggled: generalSettingModel.invertMainViewScaling = checked
-                    }
-
-                    AeFieldLabel { }
-                    AeCheckBox {
-                        text: qsTr("Inverse timeline scrolling")
-                        checked: generalSettingModel.invertTimeLineScaling
-                        onToggled: generalSettingModel.invertTimeLineScaling = checked
+                        text: qsTr("Invert zoom direction")
+                        checked: generalSettingModel.invertZoom
+                        onToggled: generalSettingModel.invertZoom = checked
                     }
 
                     AeFieldLabel { }

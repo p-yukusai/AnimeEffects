@@ -84,6 +84,38 @@ public:
     bool isCompositeLayer(const TimeCacheAccessor& aAccessor) const;
     // this node is the Mask tool's target: it isolates and draws the field preview
     bool isPreviewTarget(const RenderInfo& aInfo) const;
+
+    // THE SKINNING PASS'S CACHE KEY. `prerender` is called for every node on every
+    // painted frame, and `transformShape` used to rebuild the vertex buffers with
+    // MeshTransformer::callGL (a GL transform-feedback pass per layer) even when
+    // nothing it reads had changed - a camera-only pan did exactly that. The result
+    // depends only on these values (the camera is applied at DRAW time), so an
+    // identical key means the buffers still hold that result and the pass is
+    // skipped. `blendRevision` is the missing piece: the blender rewrites the
+    // expansion IN PLACE, so the mesh/positions pointers can stay put while the
+    // values behind them change; the stamp (TimeKeyExpans::revision) is that cache's
+    // own rebuild counter, so a blend of the working cache cannot invalidate a
+    // result derived from the current one.
+    struct TransformKey {
+        Frame frame;
+        quint64 blendRevision;
+        // the mesh whose buffers callGL writes, and the positions it skins FROM
+        const LayerMesh* mesh;
+        const gl::Vector3* positions;
+        int positionsCount;
+        // the flags that choose callGL's path, plus the binding it consults
+        bool nonPosed;
+        bool originMesh;
+        bool useInfluence;
+        const LayerMesh* boneTargetMesh;
+
+        bool operator==(const TransformKey& aRhs) const {
+            return frame == aRhs.frame && blendRevision == aRhs.blendRevision && mesh == aRhs.mesh
+                && positions == aRhs.positions && positionsCount == aRhs.positionsCount
+                && nonPosed == aRhs.nonPosed && originMesh == aRhs.originMesh
+                && useInfluence == aRhs.useInfluence && boneTargetMesh == aRhs.boneTargetMesh;
+        }
+    };
     
     QString mName;
     bool mIsVisible;
@@ -95,6 +127,11 @@ public:
 
     MeshTransformer mMeshTransformer;
     LayerMesh* mCurrentMesh;
+    // inputs of the last successful transformShape pass; see TransformKey above.
+    // mTransformKeyValid is false whenever mCurrentMesh had to be dropped, so a
+    // later pass can never be skipped on the strength of an old key.
+    TransformKey mTransformKey;
+    bool mTransformKeyValid;
     std::vector<Renderer::SortUnit> mClippees; // a cache for performance
 };
 

@@ -20,6 +20,7 @@ namespace ctrl {
 
 MaskEditor::MaskEditor(core::Project& aProject):
     mProject(aProject), mTarget(nullptr), mParam(), mStroke(), mCursorPos(), mPainting(false),
+    mAnnouncing(false),
     mCommand(nullptr) {}
 
 void MaskEditor::setParam(const MaskParam& aParam) {
@@ -31,7 +32,11 @@ void MaskEditor::setParam(const MaskParam& aParam) {
 }
 
 bool MaskEditor::setTarget(core::ObjectNode* aTarget) {
-    if (mPainting)
+    // RE-SETTING THE SAME TARGET MUST NOT CANCEL A STROKE. The viewport and the docks push the
+    // current node in on every refresh, and ending the stroke there made a drag paint exactly one
+    // dab: the second sample arrived with the stroke already closed (measured: `painting=0` on every
+    // sample after the first).
+    if (aTarget != mTarget && mPainting)
         endStroke();
     mTarget = aTarget;
     return contentRect().isValid();
@@ -67,6 +72,14 @@ bool MaskEditor::toContent(const QVector2D& aWorldPos, QVector2D& aContentPos) c
     if (mTarget->type() == core::ObjectType_Layer && expans.bone().isAffectedByBinding())
         world = expans.bone().outerMatrix();
 
+    // A FOLDER'S CONTENT SPACE HAS NO IMAGE OFFSET. The renderer's own mapping
+    // (FolderNode::renderComposite's contentMapping) calls waveContentToScreen with the folder's
+    // world matrix and a ZERO offset - a folder has no image, its content space is its own canvas
+    // box - while LayerNode's call does pass expans.imageOffset(). Applying the layer's offset to a
+    // folder put its paint and its preview in different places, which is what made a folder's mask
+    // area look random (reported).
+    const QVector2D imageOffset = core::maskContentImageOffset(mTarget->type(), expans.imageOffset());
+
     // THE SAME INVERSE THE SHADER SAMPLES WITH. The paint path used to invert the
     // node's SRT alone and subtract the image offset afterwards, which put the same
     // press 89 content pixels away from where the preview drew it (measured on a
@@ -78,7 +91,7 @@ bool MaskEditor::toContent(const QVector2D& aWorldPos, QVector2D& aContentPos) c
 
     bool ok = false;
     const QVector2D content =
-        contentFromScreen(mCamera, size, world, expans.imageOffset(), screenUpDown, &ok);
+        contentFromScreen(mCamera, size, world, imageOffset, screenUpDown, &ok);
     if (!ok)
         return false;
 
@@ -111,6 +124,8 @@ core::FilterMask* MaskEditor::ensureMask() {
 }
 
 QRectF MaskEditor::fieldRect() const { return contentRect(); }
+
+
 
 core::MaskKey* MaskEditor::currentMaskKey() {
     if (!mTarget || mParam.isLayerMask())
@@ -203,24 +218,32 @@ bool MaskEditor::updateCursor(const CameraInfo& aCamera, const AbstractCursor& a
     if (!contentScale())
         return false;
 
+    { QFile f("/tmp/me.log"); if (f.open(QIODevice::Append)) f.write(QString("ev pressed=%1 dragged=%2 released=%3\n").arg(int(aCursor.emitsLeftPressedEvent())).arg(int(aCursor.emitsLeftDraggedEvent())).arg(int(aCursor.emitsLeftReleasedEvent())).toUtf8()); }
     if (aCursor.emitsLeftPressedEvent()) {
         mCommand = nullptr;
         beginStroke();
     } else if (aCursor.emitsLeftDraggedEvent()) {
-        if (mPainting) {
-            // THE STROKE LIVES IN CONTENT SPACE, exactly like its first stamp. Passing
-            // the WORLD position here made every stamp after the first land somewhere
-            // else: on an identity node at 1:1 the two spaces coincide and the stroke
-            // looked right, but on a transformed one the stamps were interpreted as
-            // content coordinates and painted a band nowhere near the cursor (measured
-            // on a folder: a stroke from the field's own ORIGIN).
-            QVector2D content;
-            if (toContent(mCursorPos, content))
-                mStroke.move(content, aCursor.pressure());
-        }
+        paintTo(aCursor.worldPos(), aCursor.pressure());
     } else if (aCursor.emitsLeftReleasedEvent()) {
         endStroke();
     }
+    flushPaint();
+    return true;
+}
+
+bool MaskEditor::paintTo(const QVector2D& aWorldPos, float aPressure) {
+    if (!mPainting)
+        return false;
+    // THE STROKE LIVES IN CONTENT SPACE, exactly like its first stamp. Passing the WORLD position
+    // made every stamp after the first land somewhere else: on an identity node at 1:1 the two
+    // spaces coincide and the stroke looked right, but on a transformed one the stamps were read as
+    // content coordinates and painted a band nowhere near the cursor (measured on a folder: a
+    // stroke from the field's own ORIGIN).
+    QVector2D content;
+    if (!toContent(aWorldPos, content))
+        return false;
+    mStroke.move(content, aPressure);
+    flushPaint();
     return true;
 }
 
@@ -263,6 +286,7 @@ void MaskEditor::beginStroke() {
         return;
 
     mPainting = true;
+    { QFile f("/tmp/me.log"); if (f.open(QIODevice::Append)) f.write("beginStroke\n"); }
     mStrokeKey = field.key;
     mCommand = nullptr;
     if (mStrokeKey)
@@ -273,6 +297,7 @@ void MaskEditor::beginStroke() {
 }
 
 bool MaskEditor::paintStamp(const BrushStamp& aStamp) {
+    { QFile f("/tmp/me2.log"); if (f.open(QIODevice::Append)) f.write(QString("stamp %1,%2 r=%3\n").arg(aStamp.center.x()).arg(aStamp.center.y()).arg(aStamp.radius).toUtf8()); }
     Field field = currentField();
     if (!field.valid())
         return false;
@@ -335,23 +360,49 @@ bool MaskEditor::paintStamp(const BrushStamp& aStamp) {
         }
     }
 
+    // PIXELS ONLY. NOTHING IS ANNOUNCED PER STAMP. A fast drag is dozens of stamps in one pointer
+    // event, and each one used to emit a TimeLine event: the driver re-blended the whole document,
+    // the texture was re-uploaded and every view repainted, per stamp - which is why a fast stroke
+    // collapsed the frame rate, and then Qt's event compression threw motion samples away and the
+    // line came out as straight chords (reported). The damages are accumulated and announced ONCE
+    // by flushPaint() at the end of the pointer event.
     if (field.filter) {
         field.filter->markDirty(clipped);
         if (mCommand)
             mCommand->addAfter(clipped);
-        // the field changed: announce it so the viewport repaints the effect
-        TimeLineEvent event;
-        event.setType(TimeLineEvent::Type_FilterStack);
-        mProject.onTimeLineModified(event, false);
+        mDirtyFilter = true;
     } else if (field.key) {
-        // the painted pixels ARE the change: drop the cached texture so the next frame
-        // uploads them, and repaint every frame of the stroke (the brush is live)
-        field.key->data().markDirty();
-        TimeLineEvent event;
-        event.setType(TimeLineEvent::Type_ChangeKeyValue);
-        mProject.onTimeLineModified(event, false);
+        // the box this stamp wrote, at the field's own grid: the matte's chain is patched there
+        // (level 0's upload plus one box per level), so a stroke never rebuilds the field
+        field.key->data().markDirty(clipped);
+        mDirtyKey = true;
     }
+    mDirty = true;
     return true;
+}
+
+bool MaskEditor::flushPaint() {
+    // THE ANNOUNCEMENT BELONGS TO THE FRAME, NOT TO THE MOUSE EVENT. Emitting here made every
+    // pointer event re-blend the whole document and redraw the canvas, so a fast drag processed
+    // only ~23 events a second and Qt's motion compression threw the rest away - the stroke came
+    // out as 34px straight chords (measured). The damage is RECORDED here and announced by
+    // announcePendingPaint(), which the viewport calls ONCE at the start of a paint.
+    return mDirty;
+}
+
+void MaskEditor::announcePendingPaint() {
+    if (!mDirty)
+        return;
+    mDirty = false;
+    // ONE event per painted frame: the driver re-blends once, the texture uploads once and every
+    // view repaints once, whatever the mouse did in between.
+    TimeLineEvent event;
+    event.setType(mDirtyKey ? TimeLineEvent::Type_ChangeKeyValue : TimeLineEvent::Type_FilterStack);
+    mDirtyKey = false;
+    mDirtyFilter = false;
+    mAnnouncing = true;
+    mProject.onTimeLineModified(event, false);
+    mAnnouncing = false;
 }
 
 const core::FilterMask* MaskEditor::previewMask() const {
@@ -375,6 +426,7 @@ const core::MaskKey* MaskEditor::previewMaskKey() const {
 }
 
 float MaskEditor::sampleValue(const QVector2D& aWorldPos) const {
+    { QFile f("/tmp/me2.log"); if (f.open(QIODevice::Append)) f.write(QString("sample w=%1,%2\n").arg(aWorldPos.x()).arg(aWorldPos.y()).toUtf8()); }
     if (!mTarget || !mTarget->timeLine())
         return -1.0f;
 
@@ -399,6 +451,11 @@ float MaskEditor::sampleValue(const QVector2D& aWorldPos) const {
 }
 
 void MaskEditor::updateEvent(EventType) {
+    // OUR OWN ANNOUNCEMENT IS NOT NEWS. announcePendingPaint() emits the timeline event that carries
+    // this stroke's damage, and the driver routes it straight back here; ending the stroke on it
+    // ended the stroke on its own first frame - the reported "it paints one dab and stops".
+    if (mAnnouncing)
+        return;
     if (mPainting)
         endStroke();
 }

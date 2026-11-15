@@ -46,6 +46,14 @@ quint64 ThumbnailCache::key(const img::Buffer& aImage, int aSize, qreal aDpr) {
     return h;
 }
 
+QSize ThumbnailCache::fittedSize(const img::Buffer& aImage, int aSize) {
+    const QSize size = aImage.pixelSize();
+    if (size.isEmpty())
+        return QSize();
+    const QSize target = size.scaled(QSize(aSize, aSize), Qt::KeepAspectRatio);
+    return QSize(std::max(2, target.width()), std::max(2, target.height()));
+}
+
 QPixmap ThumbnailCache::layerThumbnail(const img::Buffer& aImage, int aSize, qreal aDpr) {
     const qreal dpr = aDpr > 0.0 ? aDpr : 1.0;
     const quint64 k = key(aImage, aSize, dpr);

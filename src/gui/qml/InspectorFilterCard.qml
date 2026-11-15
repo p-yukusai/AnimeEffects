@@ -125,6 +125,14 @@ Item {
         border.color: theme.hairline
     }
 
+    // THE HOVER STATE IS THE WHOLE HEADER, CHILDREN INCLUDED. It used to be
+    // `root.headerHovered`, which is FALSE the moment the pointer is over one of the
+    // header's own controls (the eye, the key dot, the trash) - and, because the summary's
+    // row is laid over the area, over part of the summary too. A HoverHandler on the header
+    // item sees all of it, so the card lights as one control (reported).
+    readonly property bool headerHovered: headerHover.hovered
+    HoverHandler { id: headerHover }
+
     Rectangle {
         id: headerItem
         x: 0
@@ -135,7 +143,7 @@ Item {
         // frame's stroke; a smaller inner radius was what made expanding look
         // like the header shrank into the border.
         radius: root.cardRadius
-        color: filterRow.expanded || headerMouse.containsMouse ? theme.raised : "transparent"
+        color: filterRow.expanded || root.headerHovered ? theme.raised : "transparent"
 
         // Expanded: the header's top corners stay rounded, its bottom edge
         // becomes square so it joins the body as one card. Without this patch
@@ -215,10 +223,11 @@ Item {
                 Layout.preferredWidth: 14
                 Layout.preferredHeight: 14
                 source: theme.iconUrl(filterRow.expanded ? "caret-down" : "caret-right")
-                sourceSize.width: 64
-                sourceSize.height: 64
+                sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                smooth: true
                 fillMode: Image.PreserveAspectFit
-                opacity: headerMouse.containsMouse ? 0.9 : 0.5
+                opacity: root.headerHovered ? 0.9 : 0.5
             }
 
             AeIconButton {
@@ -230,7 +239,7 @@ Item {
                 label: filterRow.enabled ? qsTr("Disable %1").arg(filterRow.name)
                                          : qsTr("Enable %1").arg(filterRow.name)
                 showTip: true
-                opacity: headerMouse.containsMouse || filterRow.expanded ? 1.0 : 0.5
+                opacity: root.headerHovered || filterRow.expanded ? 1.0 : 0.5
                 onClicked: filterRow.toggleEnabled()
             }
 
@@ -279,7 +288,7 @@ Item {
                 showTip: true
                 // Always present so revealing it cannot reflow the header; it
                 // brightens with the pointer and the expanded card.
-                opacity: headerMouse.containsMouse || filterRow.expanded ? 0.9 : 0.45
+                opacity: root.headerHovered || filterRow.expanded ? 0.9 : 0.45
                 onClicked: filterRow.remove()
             }
         }
@@ -611,7 +620,7 @@ Item {
                         iconName: "paint-brush"
                         label: filterRow.paintMaskLabel
                         showTip: true
-                        opacity: headerMouse.containsMouse ? 1.0 : 0.75
+                        opacity: root.headerHovered ? 1.0 : 0.75
                         onClicked: filterRow.paintMask(0)
                     }
                     AeIconButton {
@@ -644,7 +653,7 @@ Item {
                         iconName: "paint-brush"
                         label: filterRow.paintTimeMaskLabel
                         showTip: true
-                        opacity: headerMouse.containsMouse ? 1.0 : 0.75
+                        opacity: root.headerHovered ? 1.0 : 0.75
                         onClicked: filterRow.paintMask(1)
                     }
                     AeIconButton {

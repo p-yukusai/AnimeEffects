@@ -17,7 +17,6 @@
 #include "gui/DockSash.h"
 #include "gui/NewProjectDialog.h"
 #include "gui/ProjectHook.h"
-#include "gui/obj/obj_Item.h"
 #include "gui/menu/menu_ProgressReporter.h"
 #include "util/NetworkUtil.h"
 #include <set>
@@ -215,11 +214,8 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         // the timeline's own ruler-and-lanes budget is exactly those 256: one hint
         // serves both views, with the panel's extra height going to its plot rather
         // than to a taller dock.
-        mTarget = new TargetWidget(mViaPoint, mGUIResources, dockWidget, QSize(256, 296));
+        mTarget = new TargetWidget(mViaPoint, mGUIResources, mLocaleParam, dockWidget, QSize(256, 296));
         dockWidget->setWidget(mTarget);
-        // The asset removal path reaches the object tree through ViaPoint to
-        // delete the layers that reference a removed asset in ONE undo step.
-        mViaPoint.setObjectTreeWidget(&mTarget->objectTreeWidget());
     }
 
     // create property widget
@@ -278,7 +274,7 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
 
         mDockToolWidget = dockWidget;
 
-        mTool = new ToolWidget(mViaPoint, mGUIResources, *mKeyCommandMap, QSize(172, 136), dockWidget);
+        mTool = new ToolWidget(mViaPoint, *mKeyCommandMap, mLocaleParam, QSize(236, 340), dockWidget);
         dockWidget->setWidget(mTool);
     }
 
@@ -316,6 +312,15 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         via.onVisualUpdated.connect(&disp, &MainDisplayWidget::onVisualUpdated);
 
         tool.onToolChanged.connect(&disp, &MainDisplayWidget::onToolChanged);
+        // THE CARD'S PAINT BUTTON IS ARMED, NOT ARMED AGAIN: with the Mask tool already painting
+        // THIS LAYER's matte, pressing Paint would re-arm what is already armed, so the card
+        // disables it. The host is the only place that knows the tool AND its mask target, and
+        // the target can move without the tool moving (a filter card's Paint).
+        const auto updateMaskPaintState = [this, &prop]() {
+            prop.setMaskPaintActive(mTool && mTool->maskPaintingLayerMask());
+        };
+        tool.onToolChanged.connect([updateMaskPaintState](ctrl::ToolType) { updateMaskPaintState(); });
+        tool.onMaskTargetChanged.connect(updateMaskPaintState);
 
         // the temporary eyedropper: the viewport recognises it (it owns the modifiers)
         // and the mask panel takes the value
@@ -331,9 +336,22 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
             if (mTool)
                 mTool->adjustBrush(aSizeSteps, aHardnessSteps);
         });
+        // the drag's continuous form: the fraction of a notch is applied as a fraction
+        disp.onBrushNudged.connect([this](double aSizeSteps, double aHardnessSteps) {
+            if (mTool)
+                mTool->nudgeBrush(aSizeSteps, aHardnessSteps);
+        });
+        // the viewport's adjustment HUD reads the tools dock's ONE brush model
+        disp.setBrushSource([this]() -> const ctrl::BrushParam* {
+            return mTool ? mTool->activeBrush() : nullptr;
+        });
         disp.onMaskValueSampled.connect([this](float aValue) {
             if (mTool)
                 mTool->setMaskValue(aValue);
+        });
+        tool.onInvertMaskRequested.connect([this]() {
+            if (mProperty)
+                mProperty->invertMask();
         });
         tool.onFinalizeTool.connect(&disp, &MainDisplayWidget::onFinalizeTool);
         tool.onViewSettingChanged.connect(&disp, &MainDisplayWidget::onViewSettingChanged);
@@ -346,27 +364,21 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         // carries a representative node (null when the selection is empty or
         // mixed), so collect the whole tree selection here.
         objTree.onSelectionChanged.connect([this](core::ObjectNode*) {
-            QVector<core::ObjectNode*> nodes;
-            for (QTreeWidgetItem* item : mTarget->objectTreeWidget().selectedItems()) {
-                if (auto* objItem = gui::obj::Item::cast(item)) nodes.push_back(&objItem->node());
-            }
-            if (auto* drv = mDriverHolder->driver()) drv->setGraphTargets(nodes);
+            if (auto* drv = mDriverHolder->driver())
+                drv->setGraphTargets(mTarget->objectTreeWidget().selectedNodes());
         });
 
         // A driver that already exists when the connections are made never saw
         // the selection, so hand it the current one (possibly empty).
-        if (auto* drv = mDriverHolder->driver()) {
-            QVector<core::ObjectNode*> nodes;
-            for (QTreeWidgetItem* item : mTarget->objectTreeWidget().selectedItems()) {
-                if (auto* objItem = gui::obj::Item::cast(item)) nodes.push_back(&objItem->node());
-            }
-            drv->setGraphTargets(nodes);
-        }
+        if (auto* drv = mDriverHolder->driver())
+            drv->setGraphTargets(mTarget->objectTreeWidget().selectedNodes());
 
-        objTree.onTreeViewUpdated.connect(&timeLine, &TimeLineWidget::onTreeViewUpdated);
+        // The tree's rows ARE the lanes (gui/AnimationRow.h): one row list, one height rule.
+        // TargetWidget already pushes them on every change; this covers the case where a
+        // restructure happened while this connection was being rewired.
+        objTree.onRowsUpdated.connect([&timeLine, &objTree]() { timeLine.setRows(objTree.rows()); });
         objTree.onScrollUpdated.connect(&timeLine, &TimeLineWidget::onScrollUpdated);
-        timeLine.onVerticalScrollRequested.connect(
-            [&objTree](int aValue) { objTree.verticalScrollBar()->setValue(aValue); });
+        timeLine.onVerticalScrollRequested.connect([&objTree](int aValue) { objTree.setScrollOffset(aValue); });
 
         // The animation graph panel is a SECOND VIEW of this timeline: it shows the
         // timeline's own visible frame window and writes the timeline's own live key
@@ -643,13 +655,8 @@ void MainWindow::resetProjectRefs(core::Project* aProject) {
 
     // The driver is created here (and later destroyed with the project), which
     // is the first moment the tree selection can be handed to the graph.
-    if (auto* drv = mDriverHolder->driver()) {
-        QVector<core::ObjectNode*> nodes;
-        for (QTreeWidgetItem* item : mTarget->objectTreeWidget().selectedItems()) {
-            if (auto* objItem = gui::obj::Item::cast(item)) nodes.push_back(&objItem->node());
-        }
-        drv->setGraphTargets(nodes);
-    }
+    if (auto* drv = mDriverHolder->driver())
+        drv->setGraphTargets(mTarget->objectTreeWidget().selectedNodes());
 
     // The viewport background follows the project that is now in front (its override,
     // or the theme colour when it has none) - a switch must not leave the previous
@@ -707,6 +714,9 @@ void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
     // GUIResources just activated (text and selection survive).
     if (auto* logView = mViaPoint.logView()) logView->refreshTheme();
     mDockToolWidget->setStyleSheet(aTheme.loadStylesheet("toolwidget.ssa"));
+    // The dock's QML scene re-reads the palette and re-loads its tinted glyphs (the icon
+    // URL carries the tint generation), so a theme switch reaches the tools dock too.
+    if (mTool) mTool->refreshTheme();
 
     if (!onStartup && !themeChangeWarned) {
         QMessageBox visualArtifactWarning;

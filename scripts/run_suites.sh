@@ -23,6 +23,15 @@ declare -A SKIP=(
   # while exiting 0.
   [picker_pos_probe]=1
   [media_link_probe]=1
+  # mip_compare is a RESEARCH harness, not a gate: it needs a caller-supplied sample image plus an
+  # output directory, and it writes a PNG per level per policy. With no arguments it only prints
+  # usage and exits 2, which a suite would read as a failure. Run it by hand:
+  # ./build/tests/Debug/mip_compare <image> <outdir>
+  [mip_compare]=1
+  # render_probe is a DEVELOPMENT tool, not a gate: it needs a project file and an output directory,
+  # writes a PNG per frame, and with no arguments only prints usage and exits 2. Run it by hand:
+  # ./build/tests/Debug/render_probe --project <file.anie> --out <dir>
+  [render_probe]=1
 )
 # The pattern must allow leading whitespace: targets registered inside an `if()`
 # block (the overlay's, behind AE_ENABLE_IMGUI) are indented, and the anchored form
@@ -82,7 +91,9 @@ for n in $targets; do
   # and a layer's mesh holder binds GL in its constructor, so it needs a context too -
   # offscreen it aborts before its first check. graph_image_step needs the context only to construct
   # core::ImageKey - the one channel whose step-hold is unobservable without one,
-  # which is why graph_curve (headless, offscreen) reports it as a skip. Both
+  # which is why graph_curve (headless, offscreen) reports it as a skip. verify_mipmap
+  # creates a QOpenGLWidget and draws through the production Texture/ImageKey path, so
+  # without a display it has no context at all and reports the first draw as a GL error. Both
   # ignore the project argument they are handed. The two Canvas gates are here for the
   # plainest reason: a QCanvasPainterWidget is a QRhiWidget, so it needs a GL context to
   # produce a frame at all - an offscreen run reports "no Canvas Painter frame" and fails.
@@ -92,7 +103,9 @@ for n in $targets; do
      [ "$n" = graph_panel_pixels ] || [ "$n" = frame_ruler_canvas ] ||
      [ "$n" = time_body_canvas ] || [ "$n" = wave_pass_pixels ] ||
      [ "$n" = layer_mask_pixels ] ||
-     [ "$n" = filter_card_geometry ]; then
+     [ "$n" = filter_card_geometry ] || [ "$n" = object_tree_model ] ||
+     [ "$n" = brush_tip_pixels ] || [ "$n" = density_meter ] ||
+     [ "$n" = verify_mipmap ] || [ "$n" = object_tree_panel ]; then
     # The end-to-end export harness needs a real GL context and a loaded project, so it
     # runs under Xvfb against the COMMITTED fixture (tests/fixtures/e2e_stage.png) rather
     # than being skipped for want of artwork on the machine. It used to be in the SKIP

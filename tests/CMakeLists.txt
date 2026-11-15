@@ -203,6 +203,43 @@ target_link_libraries(layer_thumbnails PRIVATE
     img util
 )
 
+# See brush_tip_pixels.cpp. The brush tip is a fragment shader (gl::PrimitiveDrawer's
+# Type_BrushTip), so its contract - a flat core, a brushFalloff band, nothing past the rim -
+# is only measurable by reading pixels back from the overlay's own drawing path.
+add_executable(brush_tip_pixels brush_tip_pixels.cpp)
+target_include_directories(brush_tip_pixels PRIVATE .. ../src)
+target_compile_definitions(brush_tip_pixels PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(brush_tip_pixels PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Gui Qt6::Widgets
+    Qt6::OpenGL Qt6::OpenGLWidgets
+    ctrl core gl img util
+)
+
+# See viewport_input.cpp. The viewport's pointer router: hover feeds the tool, a brush stroke is
+# applied per sample, a state-only drag once per frame. Two live defects (the brush ring only moving
+# while a button was held, and a stroke that painted ONE dab) had no gate; this is it.
+add_executable(viewport_input viewport_input.cpp
+    ../src/gui/ViewportInput.cpp
+    ../src/gui/PointerSmoothing.cpp
+    ../src/gui/theme/TimeLine.cpp)
+target_include_directories(viewport_input PRIVATE .. ../src ../src/gui)
+target_compile_definitions(viewport_input PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(viewport_input PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Gui Qt6::Widgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
 add_executable(mask_mapping mask_mapping.cpp)
 target_include_directories(mask_mapping PRIVATE .. ../src)
 target_compile_definitions(mask_mapping PRIVATE
@@ -909,6 +946,105 @@ target_link_libraries(inspector_view_model PRIVATE
     cmnd core ctrl gl img thr util pugixml
 )
 
+# The Tools dock's MODEL: the tool registry, each tool's own parameters, which rows a
+# mode shows, the brush retargeting, the mask targets and the signals the host acts on.
+# Headless and widget-free - the same split as inspector_view_model, on the other side
+# of the dock. See tool_view_model.cpp.
+add_executable(tool_view_model
+    tool_view_model.cpp
+    ../src/gui/qml/ToolViewModel.cpp
+    ../src/ctrl/PoseParam.cpp)
+target_include_directories(tool_view_model PRIVATE .. ../src)
+target_compile_definitions(tool_view_model PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(tool_view_model PRIVATE
+    Qt6::Core Qt6::Gui Qt6::OpenGL
+)
+
+# The Tools dock's SCENE: loads the REAL ToolsPanel.qml and drives its controls through
+# QAccessible, i.e. the same route a screen reader and scripts/gui/ae_ui.py take. Every
+# assertion is a defect the widget dock had (unaddressable icons, the seventh tool
+# wrapped onto its own row, unlabeled mask glyphs, a read-only hardness readout, no
+# scrollbar). See tools_panel.cpp.
+add_executable(tools_panel
+    tools_panel.cpp
+    ../src/gui/qml/ToolViewModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/qml/QmlFormAccessibility.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/ctrl/PoseParam.cpp)
+target_include_directories(tools_panel PRIVATE .. ../src ../src/gui)
+target_compile_definitions(tools_panel PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(tools_panel PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test Qt6::OpenGL
+)
+
+# The Animation dock's TREE, as a model: the rows (height-identical to the lane blocks the
+# timeline draws), the selection's anchor/cursor rules, the keyboard verbs, the drop target a
+# drag computes, and that every action is ONE undo step. Headless apart from the GL a
+# core::LayerNode needs to exist. See object_tree_model.cpp.
+add_executable(object_tree_model
+    object_tree_model.cpp
+    ../src/gui/qml/ObjectTreeModel.cpp
+    ../src/gui/ThumbnailCache.cpp
+    # a core::LayerNode compiles its mesh shader from :/shaders, which only the app's resource
+    # bundle provides (the same reason asset_remove_layers links it)
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(object_tree_model PRIVATE .. ../src ../src/gui)
+target_compile_definitions(object_tree_model PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(object_tree_model PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# The Animation dock's tree SCENE: loads the real ObjectTreePanel.qml over the real model and
+# drives it through QAccessible - the route a screen reader and scripts/gui/ae_ui.py take. The
+# row protocol (marker "aeAccessibleRow", role Cell so AT-SPI still says "table cell") is what
+# makes the tree addressable at all: a Qt Quick item's own accessible object reports itself
+# invisible here. See object_tree_panel.cpp.
+add_executable(object_tree_panel
+    object_tree_panel.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+    ../src/gui/qml/ObjectTreeModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/qml/QmlFormAccessibility.cpp
+    ../src/gui/ThumbnailCache.cpp
+    ../src/gui/theme/Icons.cpp)
+target_include_directories(object_tree_panel PRIVATE .. ../src ../src/gui)
+target_compile_definitions(object_tree_panel PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(object_tree_panel PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets Qt6::Gui Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test Qt6::OpenGL
+    Qt6::OpenGLWidgets Qt6::Svg Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
 # Filter stack command grain: add creates the entry and a key as one undo step,
 # remove drops the entry and its explicit keys together, and reorder/eye are
 # independently undoable. See filter_stack_model.cpp.
@@ -1004,6 +1140,30 @@ target_compile_definitions(wave_pass_pixels PRIVATE
     USE_GL_CORE_PROFILE
 )
 target_link_libraries(wave_pass_pixels PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# See density_meter.cpp. The density pass (core::MeshTransformer::callGL filling
+# gl::FrameStats::dens / dens_max) is a MEASUREMENT, so its gate hands it deformations
+# whose answer is known - undeformed, 2x in x, 4x in both - through the same mesh path an
+# image layer uses (GridMesh::createFromImage), and reads the frame line back. A wrong uv
+# space, a transposed matrix or a readback that never arrives fails there. It needs a real
+# context (transform feedback, a geometry shader, an FBO, a PBO), so it runs under Xvfb.
+# assets.qrc supplies :/shaders/MeshTransformVert.glsl, the pass's own shader.
+add_executable(density_meter density_meter.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+)
+target_include_directories(density_meter PRIVATE .. ../src)
+target_compile_definitions(density_meter PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(density_meter PRIVATE
     Qt6::Core Qt6::Core5Compat Qt6::Widgets
     Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
     Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
@@ -1593,7 +1753,7 @@ target_link_libraries(overlay_engine_primitives PRIVATE
 )
 
 # Regression test for removing an asset that layers still use
-# (core::ObjectTree::findNodesUsingResource, gui::ObjectTreeWidget::pushDeleteObjects,
+# (core::ObjectTree::findNodesUsingResource, ctrl::tree::appendDeleteNodes,
 # gui::res::ResourceUpdater::remove): the removal used to be refused outright when
 # any layer rendered from the asset. It now deletes those layers in the same undo
 # step, so the search must walk the asset's whole subtree, the resource must be
@@ -1601,9 +1761,11 @@ target_link_libraries(overlay_engine_primitives PRIVATE
 # its layers IN ORDER. Builds the real object tree and asset tree and drives the
 # real removal; needs a GL context for core::LayerNode's default ImageKey, so it
 # runs under xvfb (cf. psd_layer_identity). See asset_remove_layers.cpp.
+#
+# It builds no tree VIEW at all any more: the layer deletions are DOCUMENT commands
+# (ctrl/TreeActions.h), and the QML tree derives its rows from the document, so there is
+# no view state to keep in step - which is why the host source is not in this list.
 add_executable(asset_remove_layers asset_remove_layers.cpp
-    ../src/gui/ObjectTreeWidget.cpp
-    ../src/gui/ThumbnailCache.cpp
     ../src/gui/GUIResources.cpp
     ../src/gui/AppStyle.cpp
     ../src/gui/ProjectHook.cpp
@@ -1617,12 +1779,6 @@ add_executable(asset_remove_layers asset_remove_layers.cpp
     ../src/gui/res/res_ResourceUpdater.cpp
     ../src/gui/res/res_Item.cpp
     ../src/gui/res/res_Notifier.cpp
-    ../src/gui/obj/obj_Item.cpp
-    ../src/gui/obj/obj_InsertItem.cpp
-    ../src/gui/obj/obj_MoveItem.cpp
-    ../src/gui/obj/obj_Notifiers.cpp
-    ../src/gui/obj/obj_RemoveItem.cpp
-    ../src/gui/obj/obj_Util.cpp
     ../src/gui/theme/Theme.cpp
     ../src/gui/theme/Icons.cpp
     ../src/gui/theme/TimeLine.cpp
@@ -1698,3 +1854,89 @@ add_executable(command_log command_log.cpp
     ../src/gui/CommandLogView.h)
 target_include_directories(command_log PRIVATE .. ../src)
 target_link_libraries(command_log PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+
+# MIPMAP VERIFICATION GATE (tools/verify_mipmap): the layer texture's mip chain against an analytic
+# CPU reference, and the production render path that consumes it. Four suites: M1 (the chain is the
+# premultiplied box, with the straight chain as the positive control), M2 (the production ImageKey
+# texture is the CONTENT's own size and its levels are the area average of the premultiplied content),
+# M18 (every level, every size, odd sides included, plus the raw driver chain as the mutation control)
+# and M3 (a minified layer renders source*coverage, and a 1-texel checkerboard at 1:1 comes back at
+# full contrast, which is the texel-phase/UV check).
+#
+# It is a registered target rather than a hand-rolled script because tools/verify_blur rotted into not
+# compiling at all when nothing kept building it. Needs a real GL context, so it runs under xvfb (the
+# GL branch in scripts/run_suites.sh) or with QT_QPA_PLATFORM=offscreen; exit code 0 = pass, 1 = test
+# failures, 2 = GL bootstrap failure. assets.qrc is embedded because core::LayerNode compiles its
+# shaders from :/shaders.
+add_executable(verify_mipmap
+    ../tools/verify_mipmap/mip_probe.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+)
+target_include_directories(verify_mipmap PRIVATE ..)
+target_compile_definitions(verify_mipmap PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(verify_mipmap PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# MIPMAP POLICY RESEARCH HARNESS (tools/mip_compare): how far each alternative to the reach-back
+# rule in gl::Texture::mipSourceLevel drifts from the exact area average of the premultiplied
+# content. It is registered here for the same reason verify_mipmap is - a tool nothing compiles
+# rots - but it is NOT a gate: it needs a sample image and an output directory, and it writes a
+# PNG per level per policy. scripts/run_suites.sh therefore SKIPs it; run it by hand:
+#   ./build/tests/Debug/mip_compare art.png /tmp/mip-out
+# No GL context is needed (the reference is CPU arithmetic), so it runs headless as-is.
+add_executable(mip_compare
+    ../tools/mip_compare/mip_compare.cpp
+)
+target_include_directories(mip_compare PRIVATE ..)
+target_compile_definitions(mip_compare PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+)
+# img (PSDReader/PSDUtil for the flattened PSD composite) is the only project library needed; it
+# brings util, pugixml and the rest of its Qt interface along.
+target_link_libraries(mip_compare PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets
+    img util pugixml
+)
+
+# DEVELOPMENT RENDER HARNESS (tools/render_probe): renders selected frames of a real .anie
+# offscreen through the viewport's own path (ctrl::Driver::renderGL plus the production
+# ClippingFrame/FilterFrame/DestinationTexturizer triple) and writes one PNG per frame. It exists
+# because live playback and AE_FRAMEBUFFER_DUMP cannot give a deterministic frame on this project:
+# a software-GL run drops animation frames, so motion artifacts vanish.
+#
+# It is registered here for the same reason verify_mipmap and mip_compare are - a tool nothing
+# compiles rots - but it is NOT a gate: it needs a caller-supplied project and an output directory,
+# and with no arguments it only prints usage and exits 2. scripts/run_suites.sh therefore SKIPs it;
+# run it by hand:
+#   QT_QPA_PLATFORM=offscreen ./build/tests/Debug/render_probe \
+#       --project /tmp/ae-mid.anie --out /tmp/render-probe --size 603x679 --frames 0..0 --metrics
+# assets.qrc is embedded because core::LayerNode compiles its shaders from :/shaders.
+add_executable(render_probe
+    ../tools/render_probe/render_probe.cpp
+    ../src/gui/theme/TimeLine.cpp   # ctrl's renderer links against theme::TimeLine
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+)
+target_include_directories(render_probe PRIVATE ..)
+target_compile_definitions(render_probe PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(render_probe PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)

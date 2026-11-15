@@ -35,6 +35,10 @@ namespace ffd {
 
         // one stamp cost of making the command (the first) or extending it
         bool executeStamp(const BrushStamp& aStamp);
+    bool executeStampNow(const BrushStamp& aStamp);
+    void flushPendingWork();
+    // the frame's stamps: filled by the stroke, drained by flushPendingWork
+    QVector<BrushStamp> mQueuedStamps;
 
         core::Project& mProject;
         Targets& mTargets;

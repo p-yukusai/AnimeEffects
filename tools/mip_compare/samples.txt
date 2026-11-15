@@ -1,0 +1,79 @@
+# Mip-chain comparison sample set: 50 images, one absolute path per line,
+# followed by " # " and a short tag describing content and why it is interesting.
+# Lines beginning with '#' are comments. Every path was verified to exist and to
+# decode (PNG/JPEG/WebP/BMP via PIL, PSD via PIL's PSD composite reader; all PSDs
+# below also report "Adobe Photoshop Image" from file(1)).
+#
+# Selection: 13 PSD, 27 PNG, 7 JPEG, 3 WebP. 18 carry real transparency
+# (12 PNG/WebP + 6 PSD), 4 have a long side under 256 px, 22 have a long side
+# over 2000 px. No two entries share content (checked by MD5 and visually).
+#
+# Two notes for reading the results: every PSD here is 8-bit RGB/RGBA with a Raw or
+# RLE merged composite, except Bmac.psd which is CMYK (PIL decodes it, but
+# mip_compare's RGB-only PSD path reports SKIP for it). mip_compare reduces any base
+# whose long side exceeds 4096 with the same exact area average before chaining, so
+# the poster-sized samples are studied at <=4096 px on the long side.
+
+# --- PSD: layered artwork, alpha cut-outs and flat cel fills ---
+/home/gambot/Downloads/Bmac.psd # psd 200x200 CMYK, flat vector-like cartoon character - tiny base so only ~3 mip levels exist at all
+/home/gambot/Downloads/Base Model Resized Compact.psd # psd 1900x1900 alpha, flat cel-shaded character on transparency - cut-out edge plus large flat fills
+/home/gambot/Downloads/black pearl cookie.psd # psd 1924x2500 alpha, flat cel-shaded anime character, ~80% of the frame fully transparent
+/home/gambot/Downloads/AUTUMN.psd # psd 1938x2531 alpha, cel-shaded character with thin outline strokes on transparency
+/home/gambot/Downloads/ALL FATHER F3 color fixes.psd # psd 3840x1240 RGB, dark banner art: broad glow gradients plus sharp logo lettering
+/home/gambot/Downloads/ANIE/amongus.psd # psd 960x540, flat cartoon over flat background - saturated flat fills, no alpha in the composite
+/home/gambot/Downloads/ANIE/Exile.psd # psd 1920x1080, painted night scene with wide smooth sky gradient and hard silhouettes
+/home/gambot/Downloads/ANIE/v012vg.psd # psd 3500x3500, cel-shaded character on flat grey - hard silhouette plus soft shading
+/home/gambot/Downloads/ANIE/[Eps 8}_Gatotkaca.psd # psd 4501x5625 alpha, flat animation character on transparency, very large base
+/home/gambot/Downloads/ANIE/Contest/AniE Mascot Concept Separate Parts.psd # psd 1280x1280 alpha, flat mascot character on transparency
+/home/gambot/Downloads/ANIE/Mascot/ae.psd # psd 1512x2150 alpha, flat mascot with thin linework on transparency
+/home/gambot/Downloads/kemono_psd_1/000020.psd # psd 1127x2120, painted anime illustration: soft cloud gradient over hair detail
+/home/gambot/Downloads/kemono_psd_1/000022.psd # psd 1500x1440, dense painted illustration - very high-frequency detail everywhere
+
+# --- transparency: cut-outs and thin anti-aliased strokes over alpha ---
+/home/gambot/Downloads/image.png # png 276x365 alpha, watercolour clover on transparency - soft edges, small base
+/home/gambot/Downloads/example-08.png # png 1100x809 alpha, flat vector-like cartoon grid on transparency - hard edges against alpha
+/home/gambot/Downloads/example-07.png # png 879x879 alpha, clusters of ornaments with soft shadows on transparency, many small features
+/home/gambot/Downloads/card-artist.webp # webp 360x850 alpha, illustration cut-out with vignette and thin strokes
+/home/gambot/Downloads/cube-type-type-anything-here.png # png 2048x2048 alpha, 3D type blocks on transparency - hard edges plus gradients
+/home/gambot/Downloads/u1.5_teaser2.webp # webp 4322x10211 alpha, manga cover collage - extreme aspect ratio and very high frequency
+/home/gambot/Downloads/ANIE/ORA testing/data/layer4.png # png 832x896 alpha, pencil line art - thin strokes on a 98% transparent field
+/home/gambot/Downloads/ANIE/ORA testing/data/layer1.png # png 6208x3840 alpha, sparse sketch sheet over transparency, huge base with tiny ink
+/home/gambot/Downloads/ANIE/ORA testing/data/layer3.png # png 6464x3904 alpha, sketch sheet with fine line art, huge base
+/home/gambot/Downloads/format_bold_black_20dp.png # png 20x20 alpha, single bold glyph icon - smallest base here, mip chain exhausted immediately
+/home/gambot/Downloads/ANIE/ease.png # png 64x64 alpha, curve-editor icon with thin anti-aliased strokes
+/home/gambot/Downloads/ANIE/flip.png # png 64x64 alpha, flip icon with thin anti-aliased strokes
+
+# --- photographs: natural texture, sensor noise, smooth skies ---
+/home/gambot/Downloads/AP1GczNm6zlaprDryFrXoIoE7Vz_mj9bmTpFCeZu7oJ842TT4JMlMsC6HcN49Qw958-h719-s-no-gm.png # png 958x719 photograph, natural skin and hair texture, no alpha
+/home/gambot/Downloads/711辣小妹🏪_1_人参赢家板蓝根_from rednote web.jpg # jpeg 1080x1440 photograph, saturated store interior with dense shelves
+/home/gambot/Downloads/真是有意思。_1_winterboken_from rednote web.jpg # jpeg 1080x1440 photograph, garden bokeh (very smooth) against foliage detail
+/home/gambot/Downloads/蓮_3_年崽_from rednote web.jpg # jpeg 1080x1440 photograph, lake shore with broad smooth sky gradient
+/home/gambot/Downloads/rn_image_picker_lib_temp_53777ec2-19a8-491d-a285-8a1caed78070.jpg # jpeg 3024x2268 photograph, indoor portrait, large base
+/home/gambot/Downloads/rn_image_picker_lib_temp_b5064d9a-227c-4331-9b85-8bce93ad9bac.jpg # jpeg 3000x4000 photograph, tiled floor and room detail, large base
+/home/gambot/Downloads/demo.jpg # jpeg 6536x2802 photo collage - very wide, many hard seams between tiles
+
+# --- text and UI: the worst case for area averaging ---
+/home/gambot/Downloads/Desktop - 2.jpg # jpeg 1344x900 dark UI screenshot with 1px rules and small text
+/home/gambot/Downloads/IMG_11fda153d1a19228d92a0f46ff141e3127010a9a_lg.png # png 2133x1200 app UI screenshot, small text over large dark fills
+/home/gambot/Downloads/img-000.png # png 2550x3507 scanned certificate - dense small text, thin strokes on near-white
+/home/gambot/Downloads/Čestné prohlášení.png # png 1086x1584 document page, near-white with thin text strokes
+/home/gambot/Downloads/zadost_o_opakovani_rocniku - Tomáš Brummer.png # png 1191x1684 form, mostly flat white with sparse text
+/home/gambot/Downloads/ChatGPT Image Aug 17, 2026, 01_03_48 PM.png # png 1375x1144 labelled political map - flat colour regions plus small type
+/home/gambot/Downloads/2026082721321326_51078c894df8469245775f1cab28d1af.png # png 12144x6774 UI grid screenshot, repeated flat cards - very wide and tall
+/home/gambot/Downloads/review-board.png # png 555x138 logo strip - extreme aspect ratio, flat colours plus lettering
+
+# --- smooth gradients, painted and hand-drawn ---
+/home/gambot/Downloads/Tegner-768x1263_crop01.webp # webp 768x768 false-colour volume render - long smooth ramp with almost no high frequency
+/home/gambot/Downloads/abortion_eu_correlation.png # png 1575x1050 scatter chart: thin strokes over a soft background wash
+/home/gambot/Downloads/example-44.png # png 1198x1466 engraving-style line art - extreme thin-stroke density with labels
+/home/gambot/Downloads/59130b14-c19c-4e70-ad27-6f80d1e2066e.png # png 1184x1776 digital painting portrait, smooth skin gradients plus hard rim light
+
+# --- near-uniform fields: degenerate input for any mip filter ---
+/home/gambot/Downloads/ANIE/ORA testing/data/background.png # png 6432x3968 alpha, one single flat colour - perfectly uniform input
+/home/gambot/Downloads/0c56d3e3d0cf46f6a7e1c132cf50e54c.png # png 675x1200, ~94% flat black background with a small clover subject - near-uniform
+
+# --- sprite sheets: repeated sharp frames on black ---
+/home/gambot/Downloads/mipmap-review/artwork/seal.png # png 6458x7007 animation sprite sheet, sharp repeated frames on black
+/home/gambot/Downloads/mipmap-review/artwork/the_before.png # png 4346x6115 sprite sheet on black, hard frame edges
+/home/gambot/Downloads/mipmap-review/artwork/000145.png # png 2102x5976 sprite sheet with many near-identical repeated frames
+/home/gambot/Downloads/mipmap-review/artwork/qitqmd.png # png 2254x5421 dark sprite sheet, low contrast repeated frames

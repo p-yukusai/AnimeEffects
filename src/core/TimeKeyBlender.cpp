@@ -260,10 +260,17 @@ void TimeKeyBlender::updateCurrents(ObjectNode* aRootNode, const TimeInfo& aTime
         while (itr.hasNext()) {
             auto pos = itr.next();
             XC_ASSERT(pos);
-            auto expans = mSeeker->data(pos).expans;
-            if (!expans)
+            auto seekData = mSeeker->data(pos);
+            if (!seekData.expans)
                 continue;
-            expans->setMasterCache(aTime.frame);
+            seekData.expans->setMasterCache(aTime.frame);
+            // The blend above rewrote THIS cache IN PLACE - its storage pointers are
+            // stable - so a consumer that caches a derived result (LayerNode's
+            // skinned positions) tells the new contents from the old ones by this
+            // stamp. It is the stamp of the cache that was written, so a blend of
+            // `working` cannot invalidate a result derived from `current`. Bumped
+            // once per node per rebuild, after the walk has finished writing.
+            seekData.expans->bumpRevision();
         }
     }
 }

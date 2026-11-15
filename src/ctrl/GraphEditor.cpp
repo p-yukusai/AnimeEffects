@@ -1546,12 +1546,12 @@ namespace ctrl {
         // without Shift the window still moves through the scroll bars and the
         // middle drag (see the SCROLL BARS note in the header).
         //
-        // DIRECTION: a notch Qt reports as positive zooms OUT at 1.1 of scale, the
-        // canvas mover's and the timeline scaler's own sense (see aInvertScaling for
-        // the user's own). The SCROLL branch is NOT inverted by that setting: the
-        // timeline's Shift scroll does not read it either (TimeLineWidget::
-        // wheelEvent's Shift branch takes the raw angle delta), and one dock's two
-        // panes must scroll the same way whatever the zoom preference is.
+        // DIRECTION: a positive notch (the wheel pushed away from the user) zooms IN at 1.1 of
+        // scale - the convention, and the same sense the canvas mover and the timeline scaler
+        // follow (aInvertScaling is the user's one zoom switch). The SCROLL branch is NOT
+        // inverted by that setting: the timeline's Shift scroll does not read it either
+        // (TimeLineWidget::wheelEvent's Shift branch takes the raw angle delta), and one dock's
+        // two panes must scroll the same way whatever the zoom preference is.
         const int delta = aInvertScaling ? -aWheelDelta : aWheelDelta;
         if (delta == 0)
             // a pixel-only wheel event with no angle delta: no notch to act on
@@ -1603,7 +1603,7 @@ namespace ctrl {
         // stays under it, which is what makes a two-axis notch hold its shape. The
         // negated delta is what turns Qt's notch direction into the canvas's.
         if (zoomValue)
-            mScale.updateValueZoom(static_cast<float>(notchZoomFactor(-delta)), aPos.y());
+            mScale.updateValueZoom(static_cast<float>(notchZoomFactor(delta)), aPos.y());
         if (zoomFrame)
             zoomFrames();
         // Taken even when the axes were already clamped at their floor or

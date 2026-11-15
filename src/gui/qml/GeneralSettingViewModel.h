@@ -72,8 +72,9 @@ class GeneralSettingViewModel : public QObject {
     Q_PROPERTY(int keyDelayMs READ keyDelayMs WRITE setKeyDelayMs NOTIFY keyDelayMsChanged)
 
     // ---- Mouse ------------------------------------------------------------
-    Q_PROPERTY(bool invertMainViewScaling READ invertMainViewScaling WRITE setInvertMainViewScaling NOTIFY invertMainViewScalingChanged)
-    Q_PROPERTY(bool invertTimeLineScaling READ invertTimeLineScaling WRITE setInvertTimeLineScaling NOTIFY invertTimeLineScalingChanged)
+    // ONE switch for every wheel-zoom surface (viewport, timeline, graph page); false is the
+    // convention - wheel up zooms in.
+    Q_PROPERTY(bool invertZoom READ invertZoom WRITE setInvertZoom NOTIFY invertZoomChanged)
     Q_PROPERTY(bool middleMouseMoveCanvas READ middleMouseMoveCanvas WRITE setMiddleMouseMoveCanvas NOTIFY middleMouseMoveCanvasChanged)
 
     // ---- the lists the scene repeats over ---------------------------------
@@ -122,8 +123,7 @@ public:
         bool ignoreWarnings = false;
         bool forceSolverLoad = false;
         int keyDelayMs = 125;
-        bool invertMainViewScaling = false;
-        bool invertTimeLineScaling = false;
+        bool invertZoom = false;
         bool middleMouseMoveCanvas = true;
     };
 
@@ -150,8 +150,7 @@ public:
     bool forceSolverLoad() const { return mForceSolverLoad; }
     int timeFormatIndex() const { return mTimeFormatIndex; }
     int keyDelayMs() const { return mKeyDelayMs; }
-    bool invertMainViewScaling() const { return mInvertMainViewScaling; }
-    bool invertTimeLineScaling() const { return mInvertTimeLineScaling; }
+    bool invertZoom() const { return mInvertZoom; }
     bool middleMouseMoveCanvas() const { return mMiddleMouseMoveCanvas; }
 
     QVariantList languageOptions() const;
@@ -193,8 +192,7 @@ public:
     void setTimeFormatIndex(int aIndex);
     // Clamps to >= 0 (the widget QSpinBox's floor).
     void setKeyDelayMs(int aMs);
-    void setInvertMainViewScaling(bool aInvert);
-    void setInvertTimeLineScaling(bool aInvert);
+    void setInvertZoom(bool aInvert);
     void setMiddleMouseMoveCanvas(bool aMove);
     void setAccentOptions(const QVariantList& aOptions);
     void setThemeOptions(const QVariantList& aOptions);
@@ -243,8 +241,7 @@ signals:
     void forceSolverLoadChanged();
     void timeFormatIndexChanged();
     void keyDelayMsChanged();
-    void invertMainViewScalingChanged();
-    void invertTimeLineScalingChanged();
+    void invertZoomChanged();
     void middleMouseMoveCanvasChanged();
     void accentOptionsChanged();
     void themeOptionsChanged();
@@ -271,8 +268,7 @@ private:
     bool mInitialIgnoreWarnings = false;
     bool mInitialForceSolverLoad = false;
     int mInitialKeyDelayMs = 125;
-    bool mInitialInvertMainViewScaling = false;
-    bool mInitialInvertTimeLineScaling = false;
+    bool mInitialInvertZoom = false;
     bool mInitialMiddleMouseMoveCanvas = true;
 
     // The "now" side, written by the setters (and by seed()).
@@ -291,8 +287,7 @@ private:
     bool mIgnoreWarnings = false;
     bool mForceSolverLoad = false;
     int mKeyDelayMs = 125;
-    bool mInvertMainViewScaling = false;
-    bool mInvertTimeLineScaling = false;
+    bool mInvertZoom = false;
     bool mMiddleMouseMoveCanvas = true;
 
     QVariantList mAccentOptions;

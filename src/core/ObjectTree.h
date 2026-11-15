@@ -62,8 +62,13 @@ public:
     bool serialize(Serializer& aOut) const;
     bool deserialize(Deserializer& aIn);
 
-private:
+    // The node a tree path names, or null when the path is stale. Public because a path is
+    // the ONE thing a command can store (a pointer is not stable across a replay), so any
+    // caller that records positions - a drop, a reorder, a notifier - needs this query; the
+    // mover and the deleters are its own users.
     ObjectNode* findNode(const util::TreePos& aPos);
+
+private:
     ObjectNode* eraseNode(const util::TreePos& aPos);
     void insertNode(const util::TreePos& aPos, ObjectNode* aNode);
     bool serializeNode(Serializer& aOut, const ObjectNode& aNode) const;

@@ -70,7 +70,6 @@
 #include "gui/GUIResources.h"
 #include "gui/KeyCommandInvoker.h"
 #include "gui/MainWindow.h"
-#include "gui/ObjectTreeWidget.h"
 #include "gui/ResourceDialog.h"
 #include "gui/ResourceTreeWidget.h"
 #include "gui/ViaPoint.h"
@@ -300,18 +299,16 @@ public:
         mResources(QStringLiteral(":")),
         mVia(nullptr),
         mProject(QString(), mAnimator, nullptr),
-        mObjTree(mVia, mResources, nullptr),
         mResTree(mVia, false, nullptr) {
         mProject.setFileName(mDir.filePath("project.anie"));
-        // The wiring MainWindow does: the asset removal reaches the object tree
-        // (to delete the layers that reference a removed asset) through ViaPoint.
-        mVia.setObjectTreeWidget(&mObjTree);
+        // The asset removal deletes the layers that reference a removed asset through the
+        // DOCUMENT (ctrl::tree::appendDeleteNodes), which is what the QML tree derives its
+        // rows from: there is no view to keep in step and nothing to hand over.
         mVia.setProject(&mProject);
     }
 
     core::Project& project() { return mProject; }
     gui::ViaPoint& via() { return mVia; }
-    gui::ObjectTreeWidget& objectTree() { return mObjTree; }
     gui::ResourceTreeWidget& resourceTree() { return mResTree; }
     cmnd::Stack& stack() { return mProject.commandStack(); }
 
@@ -346,11 +343,8 @@ public:
         return node;
     }
 
-    // Builds both trees from the project, the way opening it does.
-    void showProject() {
-        mObjTree.setProject(&mProject);
-        mResTree.setProject(&mProject);
-    }
+    // Builds the resource tree from the project, the way opening it does.
+    void showProject() { mResTree.setProject(&mProject); }
 
     int assetCount() const { return (int)mProject.resourceHolder().imageTrees().size(); }
 
@@ -389,7 +383,6 @@ private:
     gui::GUIResources mResources;
     gui::ViaPoint mVia;
     core::Project mProject;
-    gui::ObjectTreeWidget mObjTree;
     gui::ResourceTreeWidget mResTree;
 };
 } // namespace
@@ -527,7 +520,6 @@ static int testRemoveTakesItsLayersInOneUndoStep() {
     CHECK(!a2->isKeeped());
     CHECK(top->children().size() == 3);
     CHECK(fixture.childNames(*top) == QStringList({"X", "Y", "Z"}));
-    CHECK(fixture.objectTree().topLevelItem(0)->childCount() == 3);
     CHECK(fixture.stack().isEdited());
 
     // ONE undo brings back BOTH the asset and its layers, and Order survives.
@@ -537,7 +529,6 @@ static int testRemoveTakesItsLayersInOneUndoStep() {
     CHECK(fixture.resourceTree().topLevelItemCount() == 2);
     CHECK(top->children().size() == 5);
     CHECK(fixture.childNames(*top) == QStringList({"X", "usesA1", "Y", "usesA2", "Z"}));
-    CHECK(fixture.objectTree().topLevelItem(0)->childCount() == 5);
     CHECK(a1->isKeeped());
     CHECK(a2->isKeeped());
     CHECK(fixture.project().objectTree().findNodesUsingResource(*asset).size() == 2);
@@ -546,7 +537,6 @@ static int testRemoveTakesItsLayersInOneUndoStep() {
     fixture.stack().redo();
     CHECK(top->children().size() == 3);
     CHECK(fixture.childNames(*top) == QStringList({"X", "Y", "Z"}));
-    CHECK(fixture.objectTree().topLevelItem(0)->childCount() == 3);
     CHECK(!fixture.holdsAsset(asset));
     CHECK(fixture.resourceTree().topLevelItemCount() == 1);
     return 0;

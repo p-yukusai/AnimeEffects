@@ -294,14 +294,6 @@
 #include "gui/AudioPlaybackWidget.h"
 bool AudioPlaybackWidget::deserialize(const QJsonObject&, std::vector<audioConfig>*) { return false; }
 
-// ctrl's timeline editor references two GUI symbols that only matter on paths
-// this test does not drive. Stub them (same pattern) instead of linking the
-// whole gui library.
-#include "gui/ObjectTreeWidget.h"
-bool gui::obj::Item::isTopNode() const { return false; }
-std::pair<core::TimeKey*, core::LayerMesh*> gui::ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode&, int) {
-    return { nullptr, nullptr };
-}
 
 // Section 23 drives a REAL ctrl::TimeLineEditor (the panel's selection source is
 // the timeline's own live set, so the round trip has to go through the real
@@ -671,16 +663,14 @@ int main(int argc, char** argv) {
     CHECK(beforeFrameSpan > 0);
     CHECK(beforeValueSpan > 0.0f);
 
-    // A NEGATIVE notch (the wheel rotated toward the user) is the zoom IN, and it
-    // is the direction the panel has headroom in: the frame axis' ladder starts at
-    // 2 px/frame, so a zoom-out notch would already be at its floor and prove
-    // nothing.
-    CHECK(editor.updateWheel(camera, kWheelPoint, -120, Qt::NoModifier, false)); // one notch: closer
+    // A POSITIVE notch (the wheel pushed away from the user) is the zoom IN - the convention -
+    // and it is the direction the panel has headroom in: the frame axis' ladder starts at
+    // 2 px/frame, so a zoom-out notch would already be at its floor and prove nothing.
+    CHECK(editor.updateWheel(camera, kWheelPoint, 120, Qt::NoModifier, false)); // one notch: closer
     const int afterFrameSpan = editor.scale().pixelX(core::Frame(24)) - editor.scale().pixelX(core::Frame(0));
     const float afterValueSpan = editor.scale().valueMax() - editor.scale().valueMin();
-    // The application's own wheel direction (ctrl::CanvasMover and
-    // ctrl::TimeLineEditor both zoom OUT on a positive angleDelta, so a negative
-    // one is the zoom IN) on BOTH axes.
+    // The application's own wheel direction (a positive angleDelta zooms IN - the convention,
+    // shared with ctrl::CanvasMover and ctrl::TimeLineEditor) on BOTH axes.
     CHECK(afterFrameSpan > beforeFrameSpan);   // the FRAME axis zoomed in...
     CHECK(afterValueSpan < beforeValueSpan);   // ...and so did the VALUE axis
 
@@ -718,7 +708,7 @@ int main(int argc, char** argv) {
     const int beforeCtrlShiftSpan = editor.scale().pixelX(core::Frame(24)) - editor.scale().pixelX(core::Frame(0));
     const double ctrlShiftAnchorFrame = editor.scale().frameAtPixel(kWheelPoint.x());
     const double ctrlShiftAnchorValue = editor.scale().valueAtPixel(kWheelPoint.y());
-    CHECK(editor.updateWheel(camera, kWheelPoint, -120, Qt::ControlModifier | Qt::ShiftModifier, false));
+    CHECK(editor.updateWheel(camera, kWheelPoint, +120, Qt::ControlModifier | Qt::ShiftModifier, false));
     CHECK(editor.scale().framePpf() > beforeCtrlShiftPpf); // the FRAME axis zoomed...
     CHECK(editor.scale().pixelX(core::Frame(24)) - editor.scale().pixelX(core::Frame(0)) > beforeCtrlShiftSpan);
     CHECK(std::fabs(editor.scale().frameAtPixel(kWheelPoint.x()) - ctrlShiftAnchorFrame) < 1e-9); // ...anchored
@@ -730,7 +720,7 @@ int main(int argc, char** argv) {
     const double beforeCtrlPpf = editor.scale().framePpf();
     const int beforeCtrlSpan = editor.scale().pixelX(core::Frame(24)) - editor.scale().pixelX(core::Frame(0));
     const float beforeCtrlValueSpan = editor.scale().valueMax() - editor.scale().valueMin();
-    CHECK(editor.updateWheel(camera, kWheelPoint, -120, Qt::ControlModifier, false));
+    CHECK(editor.updateWheel(camera, kWheelPoint, +120, Qt::ControlModifier, false));
     CHECK(editor.scale().pixelX(core::Frame(24)) - editor.scale().pixelX(core::Frame(0)) == beforeCtrlSpan);
     CHECK(editor.scale().framePpf() == beforeCtrlPpf); // the frame axis did not move at all...
     CHECK(editor.scale().valueMax() - editor.scale().valueMin() < beforeCtrlValueSpan); // ...and the value axis did
@@ -742,7 +732,7 @@ int main(int argc, char** argv) {
     // asserted as "the span shrank", not as "the same number came back".)
     const int beforeOutFrameSpan = editor.scale().pixelX(core::Frame(24)) - editor.scale().pixelX(core::Frame(0));
     const float beforeOutValueSpan = editor.scale().valueMax() - editor.scale().valueMin();
-    CHECK(editor.updateWheel(camera, kWheelPoint, 120, Qt::NoModifier, false));
+    CHECK(editor.updateWheel(camera, kWheelPoint, -120, Qt::NoModifier, false));
     CHECK(editor.scale().pixelX(core::Frame(24)) - editor.scale().pixelX(core::Frame(0)) < beforeOutFrameSpan);
     CHECK(editor.scale().valueMax() - editor.scale().valueMin() > beforeOutValueSpan);
 
@@ -779,12 +769,11 @@ int main(int argc, char** argv) {
         QPoint(editor.scale().pixelX(core::Frame(0)), editor.scale().pixelY(0.0f))
     ));
 
-    // --- 0b-ii: THE ZOOM DIRECTION IS THE USER'S SETTING, AND IT IS ONE DIRECTION
-    // FOR ALL THREE SURFACES. The panel used to read the raw wheel and no setting
-    // at all, so with "Inverse canvas scrolling" ON - which IS the setting the panel
-    // takes its wheel under: it takes the wheel from the main view, see
-    // MainDisplayWidget::wheelEvent - the canvas and the timeline zoomed IN on a
-    // wheel-away notch while the panel zoomed OUT.
+    // --- 0b-ii: THE ZOOM DIRECTION IS THE USER'S ONE SETTING, AND IT IS ONE DIRECTION
+    // FOR ALL THREE SURFACES. The convention is the default: a wheel-away notch (+120) zooms IN,
+    // and MouseSetting::invertZoom reverses it everywhere at once. The panel used to read the raw
+    // wheel and no setting at all, so the canvas and the timeline could zoom in while it zoomed
+    // out - that is what this pins.
     //
     // The three are pinned AGAINST EACH OTHER here, on the real objects: the mover
     // is gui::CanvasMover and the timeline ctrl::TimeLineEditor, both of which this
@@ -816,7 +805,8 @@ int main(int argc, char** argv) {
             const bool closer = moverCamera.scale() > moverPreScale; // the canvas' own answer
             CHECK((tline.pixelsPerFrame() > tlinePrePpf) == closer); // the timeline agrees with it...
             CHECK((panelSpan < panelPreSpan) == closer);             // ...and the panel agrees with BOTH
-            CHECK(closer == invertScaling);                          // and the setting is what decides
+            CHECK(closer == !invertScaling);                         // the setting decides, and its
+                                                                     // default is the convention
             std::printf(
                 "[W] direction invert=%d: canvas scale %.4f -> %.4f, timeline %.4f -> %.4f px/frame, "
                 "panel value span %.4f -> %.4f (all three %s)\n",
@@ -881,7 +871,7 @@ int main(int argc, char** argv) {
         const float bothMax0 = scale.valueMax();
         const double bothAnchorFrame = scale.frameAtPixel(anchorX);
         const double bothAnchorValue = scale.valueAtPixel(kWheelPoint.y());
-        CHECK(editor.updateWheel(camera, kWheelPoint, -120, Qt::ControlModifier | Qt::ShiftModifier, false));
+        CHECK(editor.updateWheel(camera, kWheelPoint, +120, Qt::ControlModifier | Qt::ShiftModifier, false));
         CHECK(scale.framePpf() > bothPpf0); // the frame axis zoomed
         CHECK(scale.valueMax() - scale.valueMin() < bothMax0 - bothMin0); // and the value axis did too
         CHECK(scale.valueMin() != bothMin0 || scale.valueMax() != bothMax0);
@@ -3927,9 +3917,9 @@ int main(int argc, char** argv) {
         const double anchorFrameAtCtrlShift = editor.scale().frameAtPixel(sharedPlot.center().x());
         const float beforeCtrlShiftSeamMin = editor.scale().valueMin();
         const float beforeCtrlShiftSeamMax = editor.scale().valueMax();
-        CHECK(editor.updateWheel(camera, sharedPlot.center(), -120, Qt::ControlModifier | Qt::ShiftModifier, false));
+        CHECK(editor.updateWheel(camera, sharedPlot.center(), 120, Qt::ControlModifier | Qt::ShiftModifier, false));
         CHECK(zoomCalls == 1);
-        CHECK(zoomedDelta == -120);
+        CHECK(zoomedDelta == 120);
         CHECK(std::fabs(zoomedAnchor - anchorFrameAtCtrlShift) < 1e-9);
         CHECK(scrollCalls == scrollCallsBeforeCtrlShift); // the scroll delegate did not hear it
         CHECK(editor.scale().valueMax() - editor.scale().valueMin() < beforeCtrlShiftSeamMax - beforeCtrlShiftSeamMin);
@@ -3939,15 +3929,15 @@ int main(int argc, char** argv) {
         // timeline, while the VALUE half - the axis the timeline does not show - is the
         // panel's own and really moves.
         const float beforeSeamValueSpan = editor.scale().valueMax() - editor.scale().valueMin();
-        CHECK(editor.updateWheel(camera, sharedPlot.center(), -120, Qt::NoModifier, false));
+        CHECK(editor.updateWheel(camera, sharedPlot.center(), 120, Qt::NoModifier, false));
         CHECK(zoomCalls == 2);
-        CHECK(zoomedDelta == -120);
+        CHECK(zoomedDelta == 120);
         CHECK(scrollCalls == scrollCallsBeforeCtrlShift); // a zoom is not a scroll
         CHECK(editor.scale().valueMax() - editor.scale().valueMin() < beforeSeamValueSpan);
         CHECK(std::abs(leftEdgeFrame() - windowLeftFrame) <= 1.0);
 
         // Ctrl = the value axis alone: neither frame delegate hears it.
-        CHECK(editor.updateWheel(camera, sharedPlot.center(), -120, Qt::ControlModifier, false));
+        CHECK(editor.updateWheel(camera, sharedPlot.center(), 120, Qt::ControlModifier, false));
         CHECK(zoomCalls == 2); // (the count after the plain notch above: Ctrl adds nothing)
         CHECK(scrollCalls == scrollCallsBeforeCtrlShift);
         CHECK(std::abs(leftEdgeFrame() - windowLeftFrame) <= 1.0);
@@ -3978,10 +3968,9 @@ int main(int argc, char** argv) {
         CHECK(zoomCalls == zoomCallsBeforeInvert + 1);
         CHECK(zoomedDelta == 120); // the plain wheel's frame half too
         // The value half moves the way the canvas moves on that same notch with the
-        // setting on: a notch TOWARD the user is the zoom OUT when the wheel is
-        // inverted (gui::CanvasMover scales by 0.9 on it), so the span grows - the
-        // two halves agreeing is the point.
-        CHECK(editor.scale().valueMax() - editor.scale().valueMin() > beforeInvertSpan);
+        // setting on: a notch TOWARD the user, inverted, is the zoom IN (the mover
+        // scales up on it), so the span SHRINKS - the two halves agreeing is the point.
+        CHECK(editor.scale().valueMax() - editor.scale().valueMin() < beforeInvertSpan);
 
         // The MIDDLE drag: its horizontal half becomes a FRAME delta handed to the
         // timeline (dragging right reveals EARLIER frames, so the delta is negative
@@ -4152,7 +4141,7 @@ int main(int argc, char** argv) {
         // anchored frame stays under the cursor, and no delegate hears either half.
         const float ownValueSpanBefore = editor.scale().valueMax() - editor.scale().valueMin();
         const double ownAnchorFrame = editor.scale().frameAtPixel(ownPlot.center().x());
-        CHECK(editor.updateWheel(camera, ownPlot.center(), 120, Qt::ControlModifier | Qt::ShiftModifier, false));
+        CHECK(editor.updateWheel(camera, ownPlot.center(), -120, Qt::ControlModifier | Qt::ShiftModifier, false));
         CHECK(editor.scale().frameScale().pixelsPerFrame() < ownPpfBefore); // the panel's OWN frame axis moved
         CHECK(editor.scale().valueMax() - editor.scale().valueMin() > ownValueSpanBefore); // and its value axis did
         CHECK(std::fabs(editor.scale().frameAtPixel(ownPlot.center().x()) - ownAnchorFrame) < 1e-9);

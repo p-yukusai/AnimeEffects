@@ -4,11 +4,13 @@
 #include <array>
 #include <memory>
 #include <QImage>
+#include <QRect>
 #include <QRectF>
 #include <QSize>
 #include "util/Easing.h"
 #include "core/KeyEasing.h"
 #include "core/TimeKey.h"
+#include "core/FilterMask.h"   // core::MaskMipChain, shared with the filter-lane masks
 #include "gl/Texture.h"
 
 namespace core {
@@ -31,11 +33,28 @@ class MaskKey: public TimeKey {
 public:
     static constexpr int kComponents = easingStorageCount(TimeKeyType_Mask);
 
-    // The texel cap the painted filter masks already use (core/FilterMask.h):
-    // a matte is low frequency, and 1024 texels on the long side is 1 MiB as an
-    // 8-bit field instead of the 225 MiB the same field would cost at the
-    // document's own resolution.
-    static constexpr int kMaxTexels = 1024;
+    // A MASK IS STORED AT THE CONTENT'S OWN RESOLUTION: one 8-bit texel per content pixel, which
+    // is a QUARTER of the layer's RGBA image - the same rule the artwork itself follows, and the
+    // only one that keeps a painted edge sharp at 100% zoom. The old 1024-texel cap was an
+    // unforced optimisation (it turned a 15000 px canvas into a 15 px grid) that nothing shipped
+    // with, so it is gone. This constant is a SANITY BOUND for a corrupt file, not a design limit.
+    static constexpr int kMaxStoredTexels = 32768;
+
+    // THE FIELD IS NOT PADDED, and the texture is exactly the field's size: one content texel is
+    // one texture texel, the same rule the layer path now follows. Padding a texture up to an
+    // alignment so the DRIVER's levels divide buys nothing here, because the mask's levels are
+    // computed from the data (see MaskMipChain) - and it must not be used: every mask shader maps
+    // content pixels with `uv = (q - contentRect().topLeft()) / contentRect().size()`, so a texture
+    // larger than the rect would stretch the field across the padding instead of placing one texel
+    // per pixel.
+    //
+    // THE TEXTURE CARRIES A MIP CHAIN because a matte is sampled minified at every camera scale
+    // below 1 (the fit zoom included) exactly like the layer's own image, and without a chain the
+    // painted edge aliases there. It is kept INCREMENTALLY: the brush reports the box it painted
+    // (markDirty) and each level rebuilds that box, halved and rounded outwards from the level
+    // above, on the GPU - never the whole field. With no padding there is nothing but the field to
+    // fill, so the neutral rule covers the whole chain: every level of a fresh (or cleared) mask is
+    // kNeutral, and adding a mask still costs nothing on screen.
 
     // The value a fresh mask starts at: REVEAL ALL. Unlike a filter mask, whose
     // neutral is per input, a layer mask's neutral is "nothing hidden", so
@@ -43,13 +62,20 @@ public:
     static constexpr uchar kNeutral = 255;
 
     class Data {
-        // The GL side of the field, kept beside the image and keyed on its
-        // cacheKey(). It is SHARED through the copy (a copy of a QImage shares its
-        // pixels, so it shares the texture that holds them) and DETACHED by every
-        // mutator - a blended field is a new image and must never upload over the
-        // key's own texture.
+        // The GL side of the field, kept beside the image. It is SHARED through the copy (a copy
+        // of a QImage shares its pixels, so it shares the texture that holds them) and shed by
+        // every whole-field mutator - a blended field is a new image and must never upload over
+        // the key's own texture.
+        //
+        // `key` is the identity the sharing is checked against: the cacheKey of the image the
+        // chain was built from. Painting patches the chain IN PLACE (the box the brush reports),
+        // which puts the holder one stamp AHEAD of every other handle still pointing at the
+        // pre-paint pixels, so markDirty moves the key forward with the patch: a copy taken
+        // before the stamp (the undo state) then fails its own key check and rebuilds, which is
+        // exactly what restoring a whole field must do.
         struct TextureHolder {
             gl::Texture texture;
+            MaskMipChain mip;
             quint64 key = 0;
             bool uploaded = false;
         };
@@ -90,8 +116,9 @@ public:
         bool isPainted() const { return mPainted; }
 
         // A PAINTED write goes straight into the image's pixels, which QImage's
-        // cacheKey does not see - so the brush says so and the next frame re-uploads.
-        void markDirty();
+        // cacheKey does not see - so the brush says where it wrote and the chain is
+        // patched there, level by level, instead of being rebuilt.
+        void markDirty(const QRect& aTexels);
         const QImage& field() const { return mField; }
         QImage& field() { return mField; }
         QSize texelSize() const { return mField.size(); }

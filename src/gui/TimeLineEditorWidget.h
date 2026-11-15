@@ -5,9 +5,9 @@
 #include <QCanvasPainterWidget>
 class QCanvasPainter;
 #include <QAction>
-#include <QTreeWidgetItem>
 #include <functional>
 #include "core/TimeLineEvent.h"
+#include "gui/AnimationRow.h"
 #include "ctrl/TimeLineEditor.h"
 #include "gui/ViaPoint.h"
 #include "gui/GUIResources.h"
@@ -94,7 +94,9 @@ public:
     void setFrame(core::Frame aFrame);
 
     void updateCamera(const core::CameraInfo& aCamera);
-    void updateLines(QTreeWidgetItem* aTopNode);
+    // The row list, from the dock's ONE row source (gui::ObjectTreeModel). Rows are content
+    // pixels: this widget does not read any other view's geometry.
+    void setRows(const gui::AnimationRows& aRows);
     void updateLineSelection(core::ObjectNode* aRepresent);
     bool updateCursor(const core::AbstractCursor& aCursor, Qt::KeyboardModifiers aModifiers);
     bool updateWheel(QWheelEvent* aEvent, int aMouseX, int& aPixelAfter);
@@ -284,7 +286,6 @@ public:
 private:
     void updateTimeCursorPos();
     void updateSize();
-    void updateLinesRecursive(QTreeWidgetItem* aItem);
 protected:
     void paint(QCanvasPainter* aPainter) override;
 

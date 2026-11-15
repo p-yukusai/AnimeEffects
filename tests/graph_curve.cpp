@@ -92,12 +92,6 @@
 #include "gui/AudioPlaybackWidget.h"
 bool AudioPlaybackWidget::deserialize(const QJsonObject&, std::vector<audioConfig>*) { return false; }
 
-#include "gui/ObjectTreeWidget.h"
-bool gui::obj::Item::isTopNode() const { return false; }
-std::pair<core::TimeKey*, core::LayerMesh*> gui::ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode&, int) {
-    return { nullptr, nullptr };
-}
-
 namespace {
 
 class HarnessAssertHandler: public XCAssertHandler {
@@ -1440,16 +1434,18 @@ int sectionScaler() {
     const int anchorX = plot.left() + 250;
     const double anchorFrame = scaler.frameAtPixel(anchorX);
     const double beforeZoom = scaler.frameScale().pixelsPerFrame();
-    CHECK(scaler.updateFrameZoom(-120, anchorX)); // one notch in
+    // a POSITIVE notch is the wheel pushed away, which zooms IN - the convention the canvas,
+    // the timeline and this panel share (MouseSetting::invertZoom reverses it)
+    CHECK(scaler.updateFrameZoom(120, anchorX)); // one notch in
     CHECK(std::fabs(scaler.frameScale().pixelsPerFrame() / beforeZoom - 1.1) < 1e-6);
     CHECK(std::fabs(scaler.frameAtPixel(anchorX) - anchorFrame) <= 1e-6);
     // Zooming is not bounded inside the ladder's range: many notches in keep scaling by the same
     // factor and the anchor still holds, and the same call the other way keeps going out.
-    CHECK(scaler.updateFrameZoom(-100000, anchorX));
+    CHECK(scaler.updateFrameZoom(100000, anchorX));
     const double zoomedIn = scaler.frameScale().pixelsPerFrame();
     CHECK(zoomedIn > beforeZoom * 10.0);
     CHECK(std::fabs(scaler.frameAtPixel(anchorX) - anchorFrame) <= 1e-6);
-    CHECK(scaler.updateFrameZoom(100000, anchorX));
+    CHECK(scaler.updateFrameZoom(-100000, anchorX));
     CHECK(scaler.frameScale().pixelsPerFrame() < zoomedIn / 10.0);
     CHECK(std::fabs(scaler.frameAtPixel(anchorX) - anchorFrame) <= 1.0);
     // A fit puts the whole span in the plot and lands on a ladder rung (the rate it picks is one the

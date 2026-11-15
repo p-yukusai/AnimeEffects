@@ -12,7 +12,7 @@
 #include "ctrl/CmndName.h"
 #include "gui/res/res_ImageSetter.h"
 #include "gui/res/res_ResourceUpdater.h"
-#include "gui/ObjectTreeWidget.h"
+#include "ctrl/TreeActions.h"
 #include "gui/ResourceTreeWidget.h"
 #include "img/Util.h"
 #include <zip_file.h>
@@ -934,11 +934,13 @@ namespace gui::res {
             }
         }
 
-        // The deletion of the referencing layers rides in this macro, so it needs
-        // the object tree's view. Without it the removals could not be replayed
-        // (their items would be orphaned), so refuse instead of corrupting.
-        ObjectTreeWidget* objTree = mViaPoint.objectTreeWidget();
-        if (!aReferencingObjects.isEmpty() && (!objTree || !objTree->canDeleteObjects(aReferencingObjects))) {
+        // The deletion of the referencing layers rides in this macro as a DOCUMENT edit
+        // (ctrl::tree::appendDeleteNodes). It used to need the object tree's VIEW - its
+        // widget items had to move in the same step or they were orphaned - which is the
+        // coupling the QML tree removed: a row is derived from the document, so a node that
+        // is gone is a row that is gone. A node with no parent (the document itself) is
+        // still refused rather than corrupted.
+        if (!aReferencingObjects.isEmpty() && !ctrl::tree::canDelete(aReferencingObjects)) {
             QMessageBox::warning(
                 nullptr, tr("Operation Error"), tr("Some layers are still referenced by objects.")
             );
@@ -982,7 +984,7 @@ namespace gui::res {
             // forward order, the references are gone by the time the resource
             // tree is taken out of the holder.
             if (!aReferencingObjects.isEmpty()) {
-                objTree->pushDeleteObjects(aReferencingObjects, macro);
+                ctrl::tree::appendDeleteNodes(mProject, aReferencingObjects, macro);
             }
 
             stack.push(new TreeDeleter(holder, index));

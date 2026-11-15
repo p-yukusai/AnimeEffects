@@ -7,7 +7,6 @@
 #include <QJsonObject>
 #include <cmath>
 #include <functional>
-#include "gui/obj/obj_Item.h"
 #include "util/Range.h"
 #include "util/Easing.h"
 #include "util/LinkPointer.h"
@@ -293,7 +292,12 @@ public:
     // is expected to drop the reference first.
     time::Selection& selection() { return mSelection; }
     const time::Selection& selection() const { return mSelection; }
-    static QString pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Pointee<core::Project> project, bool isFolder);
+    // Paste the clipboard's keys onto ONE node. It used to take the tree's VIEW item
+    // (gui::obj::Item), which made this editing class depend on the tree column's widget
+    // class for two facts it can be told: which node, and whether it is a folder.
+    static QString pasteCbKeys(
+        core::ObjectNode& aNode, util::LifeLink::Pointee<core::Project> aProject, bool aIsFolder
+    );
     static QList<core::TimeKey*> getTypesFromCb(util::LifeLink::Pointee<core::Project> project, core::ObjectNode *node);
 
     // ---- THE CLIPBOARD'S EASING PAYLOAD ----

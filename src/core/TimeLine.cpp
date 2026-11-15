@@ -297,6 +297,23 @@ bool TimeLine::overwriteMove(TimeKeyType aType, int aFrom, int aTo) {
     return true;
 }
 
+bool TimeLine::adoptKey(TimeKeyType aType, int aFrame, TimeKey* aTimeKey) {
+    if (!aTimeKey)
+        return false;
+    if (aFrame == kDefaultKeyIndex) {
+        if (mDefaultKeys[aType])
+            return false;
+        aTimeKey->setFrame(aFrame);
+        mDefaultKeys[aType].reset(aTimeKey);
+        return true;
+    }
+    if (mMap[aType].contains(aFrame))
+        return false;
+    aTimeKey->setFrame(aFrame);
+    mMap[aType].insert(aFrame, aTimeKey);
+    return true;
+}
+
 cmnd::Base* TimeLine::createPusher(TimeKeyType aType, int aFrame, TimeKey* aTimeKey) {
     return new cmnd::LambdaScalable([=](cmnd::Vector& aCommands) {
         TimeLine::MapType& map = this->mMap.at(aType);

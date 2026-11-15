@@ -33,6 +33,13 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 APP="$ROOT/build/src/gui/Debug/AnimeEffects"
 SHOTS="${AE_SHOTS:-$ROOT/build/shots}"
 FAILURES=0
+# EXPORTED, and that is a fix rather than tidiness: `check` is exported (below) and the
+# probes call it from INSIDE the `bash -c` body, where an unexported counter makes
+# `check 1 ...` die with "FAILURES: unbound variable" under `set -u` - so a probe that
+# found a real failure reported a shell error in a line of its own instead of the FAIL it
+# had just printed. Measured 2026-10-27 while writing the tools dock's probe: the body
+# stopped at the first failed `ae_activate` and produced no further captures at all.
+export FAILURES
 
 mkdir -p "$SHOTS"
 

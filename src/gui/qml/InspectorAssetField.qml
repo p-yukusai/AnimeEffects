@@ -38,8 +38,9 @@ Rectangle {
             Layout.preferredWidth: 14
             Layout.preferredHeight: 14
             source: theme.iconUrl("file")
-            sourceSize.width: 64
-            sourceSize.height: 64
+            sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+            sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+            smooth: true
             fillMode: Image.PreserveAspectFit
             opacity: root.enabled ? 0.9 : 0.45
         }

@@ -8,6 +8,7 @@
 #include <QVector2D>
 
 #include "core/CameraInfo.h"
+#include "core/ObjectType.h"
 #include "core/TimeInfo.h"
 #include "core/FilterMask.h"
 #include "core/WaveKey.h"
@@ -103,6 +104,15 @@ inline QMatrix4x4 waveContentToScreen(
     ndcToPixels.translate(1.0f, 1.0f, 0.0f);
 
     return ndcToPixels * aCamera.viewMatrix() * world;
+}
+
+// THE CONTENT-SPACE IMAGE OFFSET A NODE'S MASK MAPPING USES, in one place because the RENDERER and
+// the BRUSH must ask the same question: a LAYER's content space is its image, offset by its own
+// `imageOffset`; a FOLDER has no image - its content space is its canvas box - so it has none.
+// Applying the layer's offset to a folder put a painted stroke and its rubylith in different places
+// (a folder's mask area looked random).
+inline QVector2D maskContentImageOffset(ObjectType aType, const QVector2D& aImageOffset) {
+    return aType == ObjectType_Layer ? aImageOffset : QVector2D(0.0f, 0.0f);
 }
 
 // THE INVERSE, and the ONLY one: a screen point (the shader's `vDestCoord`, y UP)

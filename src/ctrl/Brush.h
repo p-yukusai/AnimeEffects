@@ -103,121 +103,109 @@ private:
     int mStampCount = 0;
 };
 
-// THE SIZE/HARDNESS DRAG, decided in one place: the Alt + RIGHT gesture over the
-// viewport (horizontal = size, vertical = hardness), as the notch keys do it one
-// value at a time. It lives here for the same reason the stroke does - every
-// painting context shares one brush, so one gesture must mean one thing - and the
-// widget only calls begin/move/end and forwards the steps it returns.
+// THE SIZE/HARDNESS DRAG, decided in one place: the Alt drag over the viewport
+// (horizontal = size, vertical = hardness). It lives here for the same reason the stroke does -
+// every painting context shares one brush, so one gesture must mean one thing - and the widget
+// only calls begin/move/end and forwards what it returns.
 //
-// THIS LOCK IS AN AnimeEffects DECISION, NOT PHOTOSHOP PARITY. Photoshop's version
-// of the gesture is a 2D PAD: horizontal drives the size and vertical the hardness
-// at the same time, and the "Vary Round Brush Hardness based on HUD vertical
-// movement" preference only turns the hardness half on or off. It has NO
-// dominant-axis snap - there is nothing to copy. The snap is here because of the
-// measured complaint: the old handler banked both axes unconditionally, so one
-// vertical drag with 2px of sideways jitter banked size steps too (AGENTS.md
-// records +7 size / -1 hardness from a single drag), and a value moving when the
-// user did not aim at it is a defect, not a feature.
+// NO LATCH, AND NEVER BOTH AXES IN ONE MOVE. The first version banked both axes on every move, so
+// one vertical drag with 2px of sideways jitter changed the size too (measured: +7 size / -1
+// hardness from a single drag). The second latched the DOMINANT axis for the whole gesture, which
+// is the opposite mistake: a drag that starts horizontal and turns vertical could no longer change
+// the hardness at all (reported). The rule now is per MOVE: the direction the pointer is moving IN
+// THAT EVENT decides, and the other component is ignored - so a vertical stroke changes the
+// hardness and never the size, a horizontal one the reverse, and a change of direction mid-gesture
+// changes which value moves, immediately.
 //
-// THE RULES (the gate in tests/brush_stroke.cpp pins them):
-// - nothing fires until the pointer has left kAxisSlop in EITHER direction, so a
-//   click that wobbles adjusts nothing;
-// - at that threshold the DOMINANT axis latches for the rest of the gesture and
-//   the other bank is zeroed. The run-up travel is discarded, not banked: banking
-//   it would fire the first step the moment the latch engaged, which is the exact
-//   jump the slop exists to prevent;
-// - afterwards only the latched axis' component is banked, in whole steps, and
-//   the remainder is kept, so a slow drag still adds up.
-//
-// THE AXIS IS NOT RE-EVALUATED MID-DRAG. Around 45 degrees the |dx| > |dy| winner
-// flips between samples, and flipping would have to drop the other axis' bank (it
-// is one gesture) and make a value jump. A future "re-evaluate" is a different
-// feel, not a fix: it must reset BOTH banks and re-arm the slop, i.e. begin a new
-// gesture - a decision to make deliberately rather than a tweak.
+// The values are CONTINUOUS: the travel is handed over as a fractional number of steps, not rounded
+// to whole notches, because rounding is what made the hardness snap in 5% jumps (a notch is 5% for
+// the keys, and a drag should not be quantised by a keyboard's step size).
 struct BrushDrag {
-    // 4px: the house slop (InspectorFilterCard begins its reorder drag past the
-    // same number), and the smallest travel that reads as intent rather than hand
-    // tremor.
+    // THE HOUSE SLOP, 4px (the marquee and the filter card's reorder use the same number): the
+    // gesture is a DRAG on its own button (Alt+RIGHT), so a click that wobbles adjusts nothing.
     static constexpr float kAxisSlop = 4.0f;
-    // One step per 8 logical px of the latched axis for the size, per 40 for the
-    // hardness. These are the rates the event handler used to hold as literals,
-    // moved here so the policy has one home instead of one per caller.
+
+    // One step per 8 logical px of travel for the size (a notch is x1.1) and per 40 for the
+    // hardness (a notch is 5%); the DWELL of the gesture is the same as the keys', so a drag and a
+    // key press move the value by the same amount per unit of intent.
     static constexpr float kSizePxPerStep = 8.0f;
     static constexpr float kHardnessPxPerStep = 40.0f;
 
     enum class Axis { None, Size, Hardness };
 
-    // Starts a gesture at the press point: no axis yet, no bank, nothing fired.
+    // has the gesture moved at all? (an un-slid press is still a click: the Alt+left eyedropper
+    // defers its sample until the release for exactly this)
+    bool latched() const { return mMoved; }
+    // where the gesture started (the gate and the caller's own bookkeeping read it)
+    QPointF origin() const { return mOrigin; }
+
     void begin(const QPointF& aPos) {
         mOrigin = aPos;
+        mCursor = aPos;
         mLast = aPos;
         mAxis = Axis::None;
-        mSizeBank = 0.0f;
-        mHardnessBank = 0.0f;
+        mMoved = false;
         mActive = true;
     }
 
-    // Banks the travel since the last call and reports the whole steps each value
-    // earned (either may be 0); true when at least one fired. The latch itself
-    // fires nothing (see the run-up rule above). A drag that has ended ignores
-    // later moves, so a stray event cannot adjust a finished gesture.
-    bool move(const QPointF& aPos, int& aSizeSteps, int& aHardnessSteps) {
-        aSizeSteps = 0;
-        aHardnessSteps = 0;
+    // The travel since the last call, as FRACTIONAL steps of each value (either may be 0). The
+    // dominant direction of THIS move decides which one it is; the other stays 0. True when the
+    // gesture is past its slop and the caller should apply them.
+    bool move(const QPointF& aPos, float& aSizeSteps, float& aHardnessSteps) {
+        aSizeSteps = 0.0f;
+        aHardnessSteps = 0.0f;
         if (!mActive)
             return false;
 
-        if (mAxis == Axis::None) {
-            const QPointF runUp = aPos - mOrigin;
-            const float dx = float(runUp.x());
-            const float dy = float(runUp.y());
-            if (std::max(std::fabs(dx), std::fabs(dy)) <= kAxisSlop) {
+        mCursor = aPos;
+        if (!mMoved) {
+            if (std::max(std::fabs(aPos.x() - mOrigin.x()), std::fabs(aPos.y() - mOrigin.y()))
+                <= kAxisSlop) {
                 mLast = aPos;
                 return false;
             }
-            mAxis = std::fabs(dx) > std::fabs(dy) ? Axis::Size : Axis::Hardness;
-            mSizeBank = 0.0f;
-            mHardnessBank = 0.0f;
-            mLast = aPos; // the run-up is discarded, not banked
+            mMoved = true;
+            mLast = aPos; // the run-up is not applied: it is what the slop measured
             return false;
         }
 
-        const QPointF delta = aPos - mLast;
+        const float dx = float(aPos.x() - mLast.x());
+        const float dy = float(aPos.y() - mLast.y());
         mLast = aPos;
-        if (mAxis == Axis::Size) {
-            mSizeBank += float(delta.x()) / kSizePxPerStep;
-            aSizeSteps = int(mSizeBank);
-            mSizeBank -= float(aSizeSteps);
+        if (dx == 0.0f && dy == 0.0f)
+            return false;
+
+        // THE DIRECTION OF THIS MOVE decides. |dx| == |dy| counts as the size (the horizontal
+        // gesture is the one users reach for first) and the ignored component is dropped, never
+        // banked: banking it would make the size drift during a vertical drag.
+        if (std::fabs(dx) >= std::fabs(dy)) {
+            aSizeSteps = dx / kSizePxPerStep;
+            mAxis = Axis::Size;
         } else {
-            // dragging up raises the hardness: screen y grows downwards, so the
-            // vertical component is subtracted
-            mHardnessBank -= float(delta.y()) / kHardnessPxPerStep;
-            aHardnessSteps = int(mHardnessBank);
-            mHardnessBank -= float(aHardnessSteps);
+            // dragging up raises the hardness: screen y grows downwards
+            aHardnessSteps = -dy / kHardnessPxPerStep;
+            mAxis = Axis::Hardness;
         }
-        return aSizeSteps != 0 || aHardnessSteps != 0;
+        return true;
     }
 
-    // Closes the gesture. The banks go with it: the next begin() starts clean.
     void end() {
         mActive = false;
+        mMoved = false;
         mAxis = Axis::None;
-        mSizeBank = 0.0f;
-        mHardnessBank = 0.0f;
     }
 
     bool isActive() const { return mActive; }
     Axis axis() const { return mAxis; }
-    // the sub-step travel still owed to each value (the gate reads them)
-    float sizeBank() const { return mSizeBank; }
-    float hardnessBank() const { return mHardnessBank; }
+    // where the pointer is now: the preview follows it, not the press point
+    QPointF cursor() const { return mCursor; }
 
 private:
     QPointF mOrigin; // the press point: what the slop is measured from
-    QPointF mLast;   // the previous sample: what the latched axis banks from
+    QPointF mLast;   // the previous sample: the move's own delta comes from here
+    QPointF mCursor; // the latest position
     Axis mAxis = Axis::None;
-    float mSizeBank = 0.0f;
-    float mHardnessBank = 0.0f;
+    bool mMoved = false;
     bool mActive = false;
 };
 

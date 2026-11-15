@@ -153,8 +153,7 @@ void GeneralSettingViewModel::seed(const Init& aInit) {
     mInitialIgnoreWarnings = aInit.ignoreWarnings;
     mInitialForceSolverLoad = aInit.forceSolverLoad;
     mInitialKeyDelayMs = aInit.keyDelayMs;
-    mInitialInvertMainViewScaling = aInit.invertMainViewScaling;
-    mInitialInvertTimeLineScaling = aInit.invertTimeLineScaling;
+    mInitialInvertZoom = aInit.invertZoom;
     mInitialMiddleMouseMoveCanvas = aInit.middleMouseMoveCanvas;
 
     // Through the setters, so the "now" side moves and every listener sees it.
@@ -173,8 +172,7 @@ void GeneralSettingViewModel::seed(const Init& aInit) {
     setIgnoreWarnings(aInit.ignoreWarnings);
     setForceSolverLoad(aInit.forceSolverLoad);
     setKeyDelayMs(aInit.keyDelayMs);
-    setInvertMainViewScaling(aInit.invertMainViewScaling);
-    setInvertTimeLineScaling(aInit.invertTimeLineScaling);
+    setInvertZoom(aInit.invertZoom);
     setMiddleMouseMoveCanvas(aInit.middleMouseMoveCanvas);
 }
 
@@ -295,18 +293,11 @@ void GeneralSettingViewModel::setKeyDelayMs(int aMs) {
     emit keyDelayMsChanged();
 }
 
-void GeneralSettingViewModel::setInvertMainViewScaling(bool aInvert) {
-    if (mInvertMainViewScaling == aInvert)
+void GeneralSettingViewModel::setInvertZoom(bool aInvert) {
+    if (mInvertZoom == aInvert)
         return;
-    mInvertMainViewScaling = aInvert;
-    emit invertMainViewScalingChanged();
-}
-
-void GeneralSettingViewModel::setInvertTimeLineScaling(bool aInvert) {
-    if (mInvertTimeLineScaling == aInvert)
-        return;
-    mInvertTimeLineScaling = aInvert;
-    emit invertTimeLineScalingChanged();
+    mInvertZoom = aInvert;
+    emit invertZoomChanged();
 }
 
 void GeneralSettingViewModel::setMiddleMouseMoveCanvas(bool aMove) {
@@ -358,8 +349,7 @@ bool GeneralSettingViewModel::ignoreWarningsHasChanged() const {
 bool GeneralSettingViewModel::keyDelayHasChanged() const { return mInitialKeyDelayMs != mKeyDelayMs; }
 
 bool GeneralSettingViewModel::mouseHasChanged() const {
-    return mInitialInvertMainViewScaling != mInvertMainViewScaling ||
-        mInitialInvertTimeLineScaling != mInvertTimeLineScaling ||
+    return mInitialInvertZoom != mInvertZoom ||
         mInitialMiddleMouseMoveCanvas != mMiddleMouseMoveCanvas;
 }
 

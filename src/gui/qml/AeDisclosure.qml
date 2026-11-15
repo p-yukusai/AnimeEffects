@@ -84,8 +84,9 @@ ToolButton {
                 width: 14
                 height: 14
                 source: theme.iconUrl(root.open ? "caret-down" : "caret-right")
-                sourceSize.width: 64
-                sourceSize.height: 64
+                sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                smooth: true
                 fillMode: Image.PreserveAspectFit
             }
             Text {

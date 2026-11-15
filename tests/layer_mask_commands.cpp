@@ -17,6 +17,7 @@
 // Headless: no widgets, no GL. The project's canvas is the content space a folder's
 // mask uses (a layer with no rendered texture falls back to it too).
 #include <QApplication>
+#include <QMouseEvent>
 #include <QJsonObject>
 #include <QSize>
 #include <cmath>
@@ -32,6 +33,8 @@
 #include "core/TimeLine.h"
 #include "core/TimeKeyExpans.h"
 #include "core/TimeKeyType.h"
+#include "ctrl/MaskEditor.h"
+#include "ctrl/MaskParam.h"
 #include "ctrl/TimeLineUtil.h"
 
 #include "gui/AudioPlaybackWidget.h"
@@ -118,6 +121,32 @@ public:
     const core::TimeLine* timeLine() const override { return &mTimeLine; }
 };
 
+// A folder: the mask's content space is the project canvas, so a brush has a field to write without
+// a rendered layer texture (a LAYER's rect comes from its areaTexture, which needs GL).
+class TestFolder: public core::ObjectNode {
+    core::TimeLine mTimeLine;
+
+public:
+    core::ObjectType type() const override { return core::ObjectType_Folder; }
+    void setName(const QString&) override {}
+    const QString& name() const override {
+        static const QString s("folder");
+        return s;
+    }
+    float initialDepth() const override { return 0; }
+    void setVisibility(bool) override {}
+    bool isVisible() const override { return true; }
+    void setSlimDown(bool) override {}
+    bool isSlimmedDown() const override { return false; }
+    bool canHoldChild() const override { return true; }
+    void setInitialRect(const QRect&) override {}
+    QRect initialRect() const override { return QRect(); }
+    bool serialize(core::Serializer&) const override { return true; }
+    bool deserialize(core::Deserializer&) override { return true; }
+    core::TimeLine* timeLine() override { return &mTimeLine; }
+    const core::TimeLine* timeLine() const override { return &mTimeLine; }
+};
+
 int countTexels(const QImage& aField, uchar aValue) {
     int count = 0;
     for (int y = 0; y < aField.height(); ++y) {
@@ -158,8 +187,8 @@ int main(int argc, char** argv) {
         check(mask->data().contentRect() == QRectF(0.0, 0.0, 1024.0, 768.0), "the field covers the canvas");
         const QSize texels = mask->data().texelSize();
         std::printf("MEASURED fresh mask: %dx%d texels over 1024x768 content\n", texels.width(), texels.height());
-        check(texels.width() == core::MaskKey::kMaxTexels, "the long side is at the field cap");
-        check(texels.height() < texels.width(), "the aspect is kept");
+        // ONE TEXEL PER CONTENT PIXEL: the artwork's own resolution, not a downscaled grid
+        check(texels == QSize(1024, 768), "the field is the content's own grid (1 texel per pixel)");
         check(
             countTexels(mask->data().field(), core::MaskKey::kNeutral)
                 == texels.width() * texels.height(),
@@ -252,6 +281,86 @@ int main(int argc, char** argv) {
 
         project.commandStack().undo();
         check(defaultMask(*node.timeLine()) != nullptr, "undo restores the default key");
+    }
+
+    // ---- [6] A STROKE ANNOUNCES ONCE PER POINTER EVENT, NOT ONCE PER STAMP -------------
+    // Reported: "when I move the mouse fast with the brush the performance turns to shit and the
+    // line gets simplified". One pointer event can carry hundreds of stamps (a long fast move), and
+    // every stamp used to emit a TimeLine event - the document re-blended per STAMP, so the event
+    // loop saturated and Qt's motion compression threw samples away. The pixels are the stamps'
+    // business; the ANNOUNCEMENT is the event's.
+    {
+        // (the same shapes as the fixture above: no grabTopNode - the node is a local, and the tree
+        // does not own it in this harness)
+        core::Project project(QString(), animator, nullptr);
+        project.attribute().setImageSize(QSize(256, 256));
+        TestFolder node;
+        ctrl::TimeLineUtil::addMask(project, node);
+
+        int announcements = 0;
+        util::SlotId slot = project.onTimeLineModified.connect(
+            [&announcements](core::TimeLineEvent&, bool) { ++announcements; }
+        );
+
+        ctrl::MaskEditor editor(project);
+        ctrl::MaskParam param;
+        param.kind = ctrl::MaskTargetKind_LayerMask;
+        param.brush.radius = 6.0f;   // a small brush: a long move is drawn from many stamps
+        param.brush.spacing = 0.25f;
+        param.value = 0.0f;          // paint toward "hidden"
+        editor.setParam(param);
+        editor.setTarget(&node);
+
+        core::CameraInfo camera;
+        camera.setScreenSize(QSize(256, 256));
+        camera.setCenter(QVector2D(128.0f, 128.0f));
+        camera.setScale(1.0f);
+        camera.setRotate(0.0f);
+
+        const int before = int(countTexels(defaultMask(*node.timeLine())->data().field(), 255));
+        announcements = 0;
+
+        // ONE PRESS AND ONE LONG MOVE INSIDE THE FIELD. The camera's centre is the content origin,
+        // so screen (148,128) is content (20,0) and screen (328,128) is content (200,0): a 180px
+        // stroke across the 256px canvas, which at a 6px brush and a 1.5px stamp step is ~120
+        // stamps from ONE pointer event.
+        core::AbstractCursor cursor;
+        QMouseEvent press(
+            QEvent::MouseButtonPress, QPointF(148, 128), QPointF(148, 128), Qt::LeftButton, Qt::LeftButton,
+            Qt::NoModifier
+        );
+        cursor.setMousePress(&press, camera);
+        editor.updateCursor(camera, cursor);
+        // the viewport announces the accumulated damage once per PAINT, not per pointer event
+        // (MaskEditor::flushPaint's comment); this harness has no viewport, so it takes that step
+        editor.announcePendingPaint();
+        const int afterPress = announcements;
+
+        QMouseEvent move(
+            QEvent::MouseMove, QPointF(328, 128), QPointF(328, 128), Qt::NoButton, Qt::LeftButton,
+            Qt::NoModifier
+        );
+        cursor.setMouseMove(&move, camera);
+        editor.updateCursor(camera, cursor);
+        editor.announcePendingPaint();
+        const int afterMove = announcements - afterPress;
+
+        QMouseEvent release(
+            QEvent::MouseButtonRelease, QPointF(328, 128), QPointF(328, 128), Qt::LeftButton, Qt::NoButton,
+            Qt::NoModifier
+        );
+        cursor.setMouseRelease(&release, camera);
+        editor.updateCursor(camera, cursor);
+
+        const int after = int(countTexels(defaultMask(*node.timeLine())->data().field(), 255));
+        std::printf(
+            "MEASURED stroke: press announced %d, one 180px move announced %d, texels changed %d\n",
+            afterPress, afterMove, before - after
+        );
+        check(afterPress <= 1, "the press announces at most once");
+        check(afterMove == 1, "and one long move - hundreds of stamps - announces exactly once");
+        check(before - after > 200, "while the stamps really did paint (the move is not a no-op)");
+        project.onTimeLineModified.disconnect(slot);
     }
 
     if (failures == 0)

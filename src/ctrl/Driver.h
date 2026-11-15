@@ -32,6 +32,14 @@ public:
     bool updateCursor(const core::AbstractCursor& aCursor, const core::CameraInfo& aCamera);
     void updateFrame();
     void updateKey(core::TimeLineEvent& aEvent, bool aUndo);
+    // Performs the re-blend a key update asked for. updateKey only MARKS: a drag delivers dozens of
+    // updates, and blending in each one starves the event loop until the platform collapses the
+    // pointer's motion (the pan had the same shape and the same fix). The viewport calls this once
+    // at the start of a paint, and a release calls it too, so the document is never left stale.
+    void flushPendingBlend();
+    // drains the editor's deferred brush work (see the .cpp): the viewport calls this EVERY frame,
+    // before flushPendingBlend()
+    void frameTick();
     void updateTree(core::ObjectTreeEvent& aEvent, bool aUndo);
     void updateResource(core::ResourceEvent& aEvent, bool aUndo);
     void updateProjectAttribute();
@@ -52,6 +60,12 @@ public:
     void setGraphModifiers(Qt::KeyboardModifiers aModifiers);
     GraphEditor* graphEditor() { return mGraphEditor.data(); }
     MaskEditor* maskEditor() { return mMaskEditor; }
+    // the editor the current tool routes to (the mask editor among them): the viewport asks it for
+    // the band a stroke changed, so a frame can repaint only that band
+    IEditor* editor() { return mEditor.get(); }
+    // the tool this driver routes to: the ONE source of truth (the viewport used to cache it, and a
+    // cache that only a tool SWITCH updates is uninitialised until the user switches something)
+    ToolType toolType() const { return mToolType; }
 
     void updateParam(const SRTParam& aParam);
     void updateParam(const FFDParam& aParam);
@@ -72,6 +86,9 @@ private:
     UILogger& mUILogger;
     ToolType mToolType;
     core::TimeKeyBlender mBlender;
+    // the merged key update a paint will blend
+    core::TimeLineEvent mPendingEvent;
+    bool mPendingBlend = false;
     QScopedPointer<IEditor> mEditor;
     // Unlike mEditor this is not owned by the tool: the graph is a HUD that
     // outlives every tool switch, so it is created once and never reset.

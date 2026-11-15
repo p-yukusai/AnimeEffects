@@ -363,7 +363,7 @@ public:
     //
     // aInvertScaling is the user's zoom direction, and it inverts every ZOOM branch
     // here - before the frame half is delegated - so one notch cannot move the two
-    // axes against each other. It is gui::MouseSetting::invertTimeLineScaling: the
+    // axes against each other. It is gui::MouseSetting::invertZoom: the
     // graph page covers the timeline's body, so gui::GraphPanelWidget hands over the
     // same setting the timeline's own wheel reads, and one wheel over that body
     // cannot turn it two ways. It does NOT invert the Shift scroll: the timeline's

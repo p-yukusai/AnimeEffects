@@ -7,7 +7,11 @@ TimeLineRow::TimeLineRow():
 
 TimeLineRow::TimeLineRow(core::ObjectNode* aNode, const QRect& aRect, bool aClosedFolder, bool aSelecting):
     node(aNode), rect(aRect), closedFolder(aClosedFolder), selecting(aSelecting),
-    summary(aClosedFolder && aNode && hasDescendantKeys(*aNode)) {}
+    // THE BAND IS NOT A COLLAPSE AFFORDANCE. It used to exist only while the folder was closed,
+    // so expanding one made its row 22px shorter and every lane under it jumped. It is a
+    // property of the FOLDER (it has keyed descendants), which is also what keeps the tree row
+    // and the lane block the same height in both states.
+    summary(aNode && hasDescendantKeys(*aNode)) {}
 
 bool TimeLineRow::hasDescendantKeys(const core::ObjectNode& aNode) {
     for (auto child : aNode.children()) {
@@ -50,6 +54,19 @@ float TimeLineRow::keyHeight(int aIndex, int aValidCount) const {
     } else {
         return lane.top() + 0.5f * kIncrease + aIndex * (float)lane.height() / aValidCount;
     }
+}
+
+int TimeLineRow::displayHeight(const core::ObjectNode& aNode, bool aExpanded) {
+    // `aExpanded` no longer changes the height: the summary band is a permanent part of a folder
+    // that has keyed descendants (see TimeLineRow's constructor), so expanding never shifts the
+    // layout. Kept in the signature because every caller asks the same question and the answer
+    // being expansion-independent is the point.
+    (void)aExpanded;
+    const int base = calculateHeight(aNode);
+    if (!aNode.parent() || !hasDescendantKeys(aNode))
+        return base;
+    const bool hasOwnLanes = aNode.timeLine() && aNode.timeLine()->validTypeCount() > 0;
+    return hasOwnLanes ? base + kFolderSummaryHeight : kFolderSummaryHeight;
 }
 
 int TimeLineRow::calculateHeight(const core::ObjectNode& aNode) {

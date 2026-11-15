@@ -282,6 +282,39 @@ int main(int argc, char** argv) {
     check(rectOf(first, rootItem) == header0,
           QStringLiteral("the header did not move when its card collapsed again"));
 
+    // ---- THE HEADER'S HOVER IS THE WHOLE HEADER, CHILDREN INCLUDED ---------------------
+    // Reported: "when I hover over the summary, it doesn't count as hover on the card". The
+    // hover state used to be a MouseArea's containsMouse, which is false the moment the pointer
+    // is over one of the header's own controls (the eye, the key dot, the trash) or over the
+    // summary's row laid above it. It is a HoverHandler now, which sees all of them - and this is
+    // the structural half of that: a HoverHandler parented to the card itself, not to a child.
+    {
+        // a POINTER HANDLER is a QObject child of an ITEM, not an item: it is found through
+        // findChildren, never through childItems (the first version of this check walked the
+        // item tree and found nothing, which is exactly the trap)
+        int hoverHandlers = 0;
+        QObject* handlerParent = nullptr;
+        for (QObject* object : rootItem->findChildren<QObject*>()) {
+            if (QString::fromLatin1(object->metaObject()->className())
+                    .startsWith(QStringLiteral("QQuickHoverHandler"))) {
+                ++hoverHandlers;
+                handlerParent = object->parent();
+            }
+        }
+        check(hoverHandlers >= 1,
+              QStringLiteral("the header's hover is a HoverHandler (%1 found)").arg(hoverHandlers));
+        // the CARD's own handler (57 exist across the two cards, because every AeIconButton
+        // carries one): it is the one whose parent is the card, i.e. the ROOT item's child
+        bool cardOwnsOne = false;
+        for (QObject* child : (card ? card->children() : QList<QObject*>())) {
+            if (QString::fromLatin1(child->metaObject()->className())
+                    .startsWith(QStringLiteral("QQuickHoverHandler")))
+                cardOwnsOne = true;
+        }
+        check(cardOwnsOne,
+              "and the card itself owns one, outside every child control");
+    }
+
     if (failures) {
         std::printf("FAILED %d check(s)\n", failures);
         return 1;

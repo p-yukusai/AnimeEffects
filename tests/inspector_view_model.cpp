@@ -340,6 +340,40 @@ int run() {
         }
     }
 
+    // ---- ADDING A MATTE GOES STRAIGHT INTO PAINTING -------------------------------
+    // Reported: "adding a mask doesn't immediately go into painting even though presumably if you
+    // create a mask, you want to paint it". The hop lives in the model, not in the card.
+    {
+        int paintRequests = 0;
+        util::SlotId slot = inspector.onLayerMaskPaintRequested.connect([&]() { ++paintRequests; });
+        // a canvas, so the matte HAS a content box to allocate
+        project.attribute().setImageSize(QSize(64, 64));
+        inspector.addMask();
+        if (!inspector.maskPresent()) {
+            std::printf("FAIL: addMask made no matte\n");
+            return 1;
+        }
+        if (paintRequests != 1) {
+            std::printf("FAIL: addMask did not ask for the paint tool (%d)\n", paintRequests);
+            return 1;
+        }
+        // the state is announced without a selection change, and a KEY event re-announces it too
+        int changes = 0;
+        QObject::connect(&inspector, &gui::InspectorViewModel::changed, [&]() { ++changes; });
+        inspector.toggleMaskKey();
+        if (!inspector.maskKeyed() || changes == 0) {
+            std::printf("FAIL: the key toggle did not announce the matte state (%d)\n", changes);
+            return 1;
+        }
+        const int afterToggle = changes;
+        inspector.refreshKeys();
+        if (changes == afterToggle) {
+            std::printf("FAIL: a key event did not re-announce the matte (the reported stale dot)\n");
+            return 1;
+        }
+        inspector.onLayerMaskPaintRequested.disconnect(slot);
+    }
+
     std::printf("OK: inspector view model passes\n");
     return 0;
 }

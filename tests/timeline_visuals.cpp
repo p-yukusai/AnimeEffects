@@ -121,15 +121,6 @@
 #include "gui/AudioPlaybackWidget.h"
 bool AudioPlaybackWidget::deserialize(const QJsonObject&, std::vector<audioConfig>*) { return false; }
 
-// ctrl::TimeLineEditor's clipboard-paste helpers reference two GUI symbols that
-// only matter on the paste path this test never exercises. Stub them (same
-// pattern) instead of linking the whole gui library.
-#include "gui/ObjectTreeWidget.h"
-bool gui::obj::Item::isTopNode() const { return false; }
-std::pair<core::TimeKey*, core::LayerMesh*> gui::ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode&, int) {
-    return { nullptr, nullptr };
-}
-
 namespace {
 
 class HarnessAssertHandler: public XCAssertHandler {
@@ -653,7 +644,8 @@ int main(int argc, char** argv) {
                 // Apply the fit the way the widget does: the ladder moves by whole
                 // notches (the wheel's unit), and the view's left edge lands on the
                 // fit's content pixel.
-                editor.updateWheel((editor.timeScale().index() - fit.scaleIndex) * 120, false);
+                // positive delta zooms IN (the wheel-away convention): the ladder grows with it
+                editor.updateWheel((fit.scaleIndex - editor.timeScale().index()) * 120, false);
                 CHECK(editor.timeScale().index() == fit.scaleIndex);
 
                 const double ppf = editor.pixelsPerFrame();
@@ -899,6 +891,69 @@ int main(int argc, char** argv) {
         CHECK(lines.lanes[1].summary);
         CHECK(lines.lanes[1].rect.top() == row.summaryRect().top());
         CHECK(lines.lanes[1].rect.bottom() == row.summaryRect().bottom());
+
+        // THE OWN-LANE / SUMMARY-LANE DIVIDER IS A TYPE SEPARATOR AND NOTHING ELSE. It is
+        // published on the summary LANE (dashed 4-on/4-off, the 40% separator ink), and the seam
+        // pass must NOT also push it: seams paint LAST, so a seam there covered the dashes with the
+        // solid 70% line and the divider read as a full rule (reported twice before this).
+        {
+            CHECK(!lines.lanes[1].separators.isEmpty());
+            if (!lines.lanes[1].separators.isEmpty()) {
+                const ctrl::time::Separator divider = lines.lanes[1].separators.first();
+                CHECK(std::abs(divider.y - row.summaryRect().top()) < 1.0);
+            }
+            int atDivider = 0;
+            for (const ctrl::time::Seam& seam : lines.seams)
+                if (std::abs(seam.y - row.summaryRect().top()) < 1)
+                    ++atDivider;
+            CHECK(atDivider == 0); // a solid seam here is the defect
+            // the row's OWN top is still a seam (different layers), so the count did not collapse
+            int atRowTop = 0;
+            for (const ctrl::time::Seam& seam : lines.seams)
+                if (seam.y == rowRect.top())
+                    ++atRowTop;
+            CHECK(atRowTop == 1);
+        }
+        // AND THE PIXELS SAY IT: the divider is INTERRUPTED (4-on/4-off) while the row's own top
+        // is one CONTINUOUS rule. This is the half a model assertion cannot make - the reported
+        // defect was a solid line drawn over the dashes by the seam pass.
+        {
+            QImage canvas(camera.size(), QImage::Format_RGB32);
+            canvas.fill(Qt::black);
+            QPainter painter(&canvas);
+            ctrl::time::paintLines(painter, lines);
+            painter.end();
+
+            const Rgb body = pixelAt(canvas, camera.right() - 2, row.summaryRect().center().y());
+            const auto isInk = [&](int aX, int aY) {
+                return chebyshev(pixelAt(canvas, aX, aY), body) > 6;
+            };
+            const auto transitions = [&](int aY) {
+                int count = 0;
+                bool previous = isInk(0, aY);
+                for (int x = 1; x < canvas.width(); ++x) {
+                    const bool now = isInk(x, aY);
+                    if (now != previous)
+                        ++count;
+                    previous = now;
+                }
+                return count;
+            };
+            const int dividerY = row.summaryRect().top();
+            const int rowTopY = rowRect.top();
+            const int divider = transitions(dividerY);
+            const int rowTop = transitions(rowTopY);
+            CHECK(divider >= 8);   // dashed: many on/off runs across the strip
+            CHECK(rowTop <= 2);    // solid: one continuous rule, so at most its two ends
+            CHECK(divider > rowTop * 3);
+            // and the dashes are DRAWN: a run of inked columns exists on the divider row
+            int inked = 0;
+            for (int x = 0; x < canvas.width(); ++x)
+                if (isInk(x, dividerY))
+                    ++inked;
+            CHECK(inked > canvas.width() / 4);
+        }
+
         // The band names what it is; the tree names the folder.
         CHECK(lines.lanes[1].labels.size() == 1);
         CHECK(lines.lanes[1].labels[0].text == QStringLiteral("Children"));
@@ -961,15 +1016,41 @@ int main(int argc, char** argv) {
         CHECK(summaryLines.lanes.size() == 1);
         CHECK(summaryLines.lanes[0].summary);
 
-        // An expanded folder has no summary lane: its children are rows of their own.
+        // A folder with keyed descendants keeps its summary band WHEN IT IS OPEN TOO. It used to
+        // vanish on expand, which made the row 22px shorter and every lane under it jump
+        // (measured, reported). The band is a property of the folder, not of its collapse state.
+        // (this folder has no lanes of its own, so the band IS the row - in either state)
+        CHECK(ctrl::TimeLineRow::displayHeight(folder, true) == ctrl::TimeLineRow::kFolderSummaryHeight);
+        CHECK(ctrl::TimeLineRow::displayHeight(folder, false) == ctrl::TimeLineRow::kFolderSummaryHeight);
         const ctrl::TimeLineRow openRow(
-            &folder, QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1, ctrl::TimeLineRow::kHeight),
+            &folder,
+            QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
+                  ctrl::TimeLineRow::kFolderSummaryHeight),
             false, false);
-        CHECK(!openRow.summary);
+        CHECK(openRow.summary);
         const ctrl::time::Lines openLines =
             ctrl::time::buildLines(QVector<ctrl::TimeLineRow>{ openRow }, camera, camera, inks);
         CHECK(openLines.lanes.size() == 1);
-        CHECK(!openLines.lanes[0].summary);
+        CHECK(openLines.lanes[0].summary);
+
+        // A folder with lanes of its OWN plus keyed children: the band sits UNDER its lanes and
+        // the divider between them is a TYPE separator (the dashed 40% ink), not a row seam -
+        // the band is a lane of this row, and the seam is what separates rows.
+        stack.push(folder.timeLine()->createPusher(core::TimeKeyType_Move, kKeyFrameA, new core::MoveKey()));
+        const ctrl::TimeLineRow mixedRow(
+            &folder,
+            QRect(ctrl::TimeLineEditor::kTimeLineMargin, kRowATop, 1,
+                  ctrl::TimeLineRow::kHeight + ctrl::TimeLineRow::kFolderSummaryHeight),
+            false, false);
+        CHECK(mixedRow.summary);
+        CHECK(mixedRow.ownRect().height() > 0);
+        const ctrl::time::Lines mixedLines =
+            ctrl::time::buildLines(QVector<ctrl::TimeLineRow>{ mixedRow }, camera, camera, inks);
+        CHECK(mixedLines.lanes.size() == 2);
+        CHECK(!mixedLines.lanes[0].summary);
+        CHECK(mixedLines.lanes[1].summary);
+        CHECK(mixedLines.lanes[1].separators.size() == 1);
+        CHECK(std::abs(mixedLines.lanes[1].separators[0].y - double(mixedRow.summaryRect().top())) < 0.5);
     }
 
     std::printf("timeline_visuals: all checks passed\n");

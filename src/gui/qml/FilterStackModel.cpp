@@ -1,5 +1,6 @@
 #include "gui/qml/FilterStackModel.h"
 
+#include "gui/qml/FilterNames.h"
 #include "gui/qml/FuzzyMatch.h"
 
 #include <QColor>
@@ -21,15 +22,6 @@ namespace gui {
 namespace {
 QString trFilter(const char* aText) {
     return QCoreApplication::translate("gui::prop::FilterStackPanel", aText);
-}
-
-QString displayName(core::TimeKeyType aType) {
-    switch (aType) {
-    case core::TimeKeyType_HSV: return trFilter("HSV");
-    case core::TimeKeyType_Blur: return trFilter("Blur");
-    case core::TimeKeyType_Wave: return trFilter("Wave Deform");
-    default: return QString();
-    }
 }
 
 bool isStackFilter(core::TimeKeyType aType) { return core::isFilterType(aType); }
@@ -58,7 +50,7 @@ QString FilterRowModel::kind() const {
     return QString();
 }
 
-QString FilterRowModel::name() const { return displayName(mType); }
+QString FilterRowModel::name() const { return filterDisplayName(mType); }
 
 void FilterRowModel::refresh() {
     core::TimeLine* line = mOwner.timeLine();

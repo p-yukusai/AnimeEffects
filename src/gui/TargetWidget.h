@@ -30,7 +30,10 @@ class GraphPanelWidget;
 
 class TargetWidget: public QWidget, public core::Animator {
 public:
-    TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidget* aParent, const QSize& aSizeHint);
+    TargetWidget(
+        ViaPoint& aViaPoint, GUIResources& aResources, const LocaleParam& aLocale, QWidget* aParent,
+        const QSize& aSizeHint
+    );
     // Drops the frame-move connection into the dock's panel before the children (the
     // timeline that emits it, the panel that receives it) are destroyed.
     ~TargetWidget() override;

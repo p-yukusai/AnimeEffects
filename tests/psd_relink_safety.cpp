@@ -95,7 +95,6 @@
 #include "XCReport.h"
 #include "cmnd/Stack.h"
 #include "gui/MainWindow.h"
-#include "gui/ObjectTreeWidget.h"
 #include "gui/ResourceTreeWidget.h"
 #include "gui/ViaPoint.h"
 #include "gui/res/res_Item.h"
@@ -527,16 +526,6 @@ QFileSystemWatcher* gui::MainWindow::getWatcher() {
     return gTestWatcher;
 }
 void gui::MainWindow::showInfoPopup(const QString&, const QString&, const QString&, const QString&) {}
-
-// The asset-removal path (res_ResourceUpdater::remove) reaches the object tree to
-// delete the layers that reference a removed asset. This test drives only
-// reload/load, never removal, so that one symbol is stubbed rather than dragging
-// the whole object-tree view -- and the GL-bound layers it builds -- into a
-// target that is deliberately headless.
-namespace gui {
-void ObjectTreeWidget::pushDeleteObjects(const QVector<core::ObjectNode*>&, cmnd::ScopedMacro&) {}
-bool ObjectTreeWidget::canDeleteObjects(const QVector<core::ObjectNode*>&) const { return false; }
-} // namespace gui
 
 // ---------------------------------------------------------------------------
 // 1. A relink that refuses applies nothing (LL-07), and a rename onto a name the

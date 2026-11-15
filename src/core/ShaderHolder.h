@@ -2,11 +2,14 @@
 #define CORE_SHADERHOLDER_H
 
 #include <QVector>
+#include <memory>
 #include <QScopedPointer>
 #include "gl/EasyShaderProgram.h"
 #include "img/BlendMode.h"
 
 namespace core {
+
+class MeshTransformerResource;
 
 class ShaderHolder {
 public:
@@ -26,6 +29,13 @@ public:
         img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV, bool aUseLayerMask
     ) const;
 
+    /// The three mesh-transform programs (plain, skinning, dual quaternion), built ONCE per holder
+    /// and shared by every LayerNode that renders the same mesh. They were per LayerNode before,
+    /// and identical in all of them: a 54 MB project measured 8.4 s of a 16.7 s load compiling 344
+    /// x 3 copies of the same program (2026-11-01, llvmpipe, so a real driver is faster but the
+    /// work is the same and just as pointless).
+    MeshTransformerResource& meshTransformerResource();
+
     gl::EasyShaderProgram& reserveGridShader();
     gl::EasyShaderProgram& gridShader();
     const gl::EasyShaderProgram& gridShader() const;
@@ -39,6 +49,7 @@ private:
     QVector<gl::EasyShaderProgram*> mShaders;
     QVector<gl::EasyShaderProgram*> mGridShaders;
     QVector<gl::EasyShaderProgram*> mClipperShaders;
+    std::unique_ptr<MeshTransformerResource> mMeshTransformer;
 };
 
 } // namespace core

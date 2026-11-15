@@ -108,9 +108,12 @@ bool CanvasMover::updateByWheel(const QVector2D& aCursorPos, int aDelta, bool aI
         auto center = mCamera->center();
         auto preScale = std::max(mCamera->scale(), kMinScale);
         auto scale = preScale;
+        // WHEEL UP (a positive delta) ZOOMS IN unless the setting says otherwise: that is the
+        // convention every painting application and every browser shares, and the old formula had
+        // it backwards.
         auto delta = aInvertScaling ? -aDelta : aDelta;
 
-        mScaleIndex = xc_clamp(mScaleIndex - delta, kMinScaleIndex, kMaxScaleIndex);
+        mScaleIndex = xc_clamp(mScaleIndex + delta, kMinScaleIndex, kMaxScaleIndex);
 
         if (mScaleIndex > 0) {
             scale = (float)std::pow(1.1, (double)mScaleIndex / kWheelValue);

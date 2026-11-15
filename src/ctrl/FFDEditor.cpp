@@ -213,6 +213,11 @@ bool FFDEditor::updateCursor(const CameraInfo& aCamera, const AbstractCursor& aC
     return false;
 }
 
+void FFDEditor::flushPendingWork() {
+    if (mCurrent)
+        mCurrent->flushPendingWork();
+}
+
 void FFDEditor::updateEvent(EventType) { resetCurrentTarget(); }
 
 core::LayerMesh* FFDEditor::getCurrentAreaMesh(core::ObjectNode& aNode) const {

@@ -8,6 +8,7 @@
 #include "core/KeyEasing.h"
 #include "core/KeyEasingAccess.h"
 #include "core/TimeKeyExpans.h"
+#include "core/TimeKeyBlender.h"
 #include "ffd/ffd_Target.h"
 #include "qapplication.h"
 #include "qclipboard.h"
@@ -20,7 +21,6 @@
 #include "ctrl/CmndName.h"
 #include "ctrl/time/time_Renderer.h"
 #include "core/FFDKeyUpdater.h"
-#include "gui/ObjectTreeWidget.h"
 
 using namespace core;
 
@@ -851,8 +851,7 @@ QList<TimeKey*> TimeLineEditor::getTypesFromCb(util::LifeLink::Pointee<Project> 
     return keyList;
 }
 
-QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Pointee<Project> project, bool isFolder) {
-    XC_ASSERT(!objItem->isTopNode());
+QString TimeLineEditor::pasteCbKeys(ObjectNode& aNode, util::LifeLink::Pointee<Project> project, bool isFolder) {
     QClipboard* qcb = QGuiApplication::clipboard(); // qDebug() << qcb->text();
     QJsonObject keyJson = QJsonDocument::fromJson(QByteArray::fromStdString(qcb->text().toStdString())).object();
     if (!isKeyJsonValid(keyJson))
@@ -863,7 +862,7 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
     QStringList keyErrored;
     for (QJsonValue key : tlKeys) {
         auto keyObj = key.toObject();
-        TimeKey* pastedKey = getKeyFromObj(keyObj, project, isFolder, &objItem->node());
+        TimeKey* pastedKey = getKeyFromObj(keyObj, project, isFolder, &aNode);
         if (pastedKey != nullptr) {
             pastedKey->setProportional(keyObj["Proportional"].toBool());
             keyList.append(pastedKey);
@@ -899,7 +898,7 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
                 TimeKey* keyframe = keyList[x];
                 int newFrame = keyframe->frame();
                 TimeKeyType type = keyframe->type();
-                TimeLine* timeLine = objItem->node().timeLine();
+                TimeLine* timeLine = aNode.timeLine();
                 // invalid frame
                 if (newFrame < 0) { frameLessThanZero++; }
                 else {
@@ -907,8 +906,9 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
                     else {
                         if (type == TimeKeyType_FFD) {
                             // find area key and mesh
-                            auto [aKey, aMesh] =
-                                gui::ObjectTreeWidget::getAreaMeshImpl(objItem->node(), keyframe->frame());
+                            auto [aKey, aMesh] = core::TimeKeyBlender::getAreaMeshImpl(
+                                aNode, project.address->currentTimeInfo()
+                            );
                             TimeKey* areaKey = aKey;
                             LayerMesh* areaMesh = aMesh;
                             timeLine->current().setFFDMesh(areaMesh);
@@ -920,7 +920,7 @@ QString TimeLineEditor::pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Poi
                         // code named the loop index x, which never matched a key
                         // in the lane map and left follow-up consumers (and the
                         // created-key selection) pointing at nothing.
-                        notifier->event().pushTarget(objItem->node(), TimeKeyPos(*timeLine, type, newFrame));
+                        notifier->event().pushTarget(aNode, TimeKeyPos(*timeLine, type, newFrame));
 
                         QHash<const TimeKey*, TimeKey*> parentHash;
                         struct ChildInfo {

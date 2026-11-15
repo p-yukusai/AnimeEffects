@@ -28,6 +28,11 @@ public:
     static QMatrix4x4 getWorldCSRTMatrix(ObjectNode& aNode, const TimeInfo& aTime);
     static QMatrix4x4 getRelativeMatrix(ObjectNode& aNode, const TimeInfo& aTime, const ObjectNode* aParent);
     static LayerMesh* getAreaMesh(ObjectNode& aNode, const TimeInfo& aTime);
+    // The key that OWNS that mesh (a Mesh key, or the Image key whose grid it is) with the
+    // mesh itself: the pair a caller needs to attach an FFD key to its parent. Public because
+    // the clipboard's paste has to re-attach a key it just made, and the tree used to own a
+    // second copy of this query in the GUI.
+    static std::pair<TimeKey*, LayerMesh*> getAreaMeshImpl(ObjectNode& aNode, const TimeInfo& aTime);
     static BoneKey* getAreaBone(ObjectNode& aNode, const TimeInfo& aTime);
     static BoneKey* getNearestInfluencerBone(ObjectNode& aNode, const TimeInfo& aTime);
     static QVector2D getImageOffset(ObjectNode& aNode, const TimeInfo& aTime);
@@ -43,7 +48,6 @@ public:
     void clearCaches(TimeLineEvent& aEvent);
 
 private:
-    static std::pair<TimeKey*, LayerMesh*> getAreaMeshImpl(ObjectNode& aNode, const TimeInfo& aTime);
     static MeshKey* getMeshKey(const ObjectNode& aNode, const TimeInfo& aTime);
     static ImageKey* getImageKey(const ObjectNode& aNode, const TimeInfo& aTime);
 

@@ -100,7 +100,8 @@ namespace time {
 
     bool Scaler::update(int aWheelDelta) {
         const int previous = mWheel;
-        mWheel = std::max(kMinScaleRaw, std::min(kMaxScaleRaw, mWheel - aWheelDelta));
+        // a positive wheel delta (wheel up) zooms IN: the index grows, the frames get wider apart
+        mWheel = std::max(kMinScaleRaw, std::min(kMaxScaleRaw, mWheel + aWheelDelta));
         mIndex = mWheel / kWheelValue;
         return mWheel != previous;
     }

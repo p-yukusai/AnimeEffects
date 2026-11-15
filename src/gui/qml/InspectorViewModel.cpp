@@ -189,6 +189,13 @@ void InspectorViewModel::setPlaybackActive(bool aActive) {
     emit changed();
 }
 
+void InspectorViewModel::setMaskPaintActive(bool aActive) {
+    if (mMaskPaintActive == aActive)
+        return;
+    mMaskPaintActive = aActive;
+    emit maskPaintActiveChanged();
+}
+
 
 // ---- the node's MATTE -------------------------------------------------------
 //
@@ -257,6 +264,11 @@ void InspectorViewModel::addMask() {
         return;
     ctrl::TimeLineUtil::addMask(*mProject, *mTarget);
     refresh();
+    // CREATING A MATTE IS ASKING TO PAINT IT: switch to the Mask tool with this node targeted, so
+    // the next stroke lands on the matte you just made (reported: "adding a mask doesn't
+    // immediately go into painting even though presumably if you create a mask, you want to paint
+    // it").
+    onLayerMaskPaintRequested();
 }
 
 void InspectorViewModel::removeMask() {
@@ -330,12 +342,26 @@ void InspectorViewModel::refreshKeys() {
     for (InspectorRowModel* row : {mMove, mRotate, mScale, mDepth, mOpacity, mImage, mPose, mFFD})
         row->refresh();
     mFilters->refresh();
+    // THE MATTE'S STATE IS A LANE FACT, not a value the rows hold: `maskPresent`/`maskKeyed`/
+    // `maskHasKeyAtFrame` (and the thumbnail's revision) are read by the card and must be
+    // re-announced when a key anywhere in the node lands. They used to ride `refresh()` only, which
+    // a key event does not call - so the dot, the thumbnail and the actions stayed as they were
+    // until the SELECTION changed (reported). One call covers every mutation path.
+    notifyMaskState();
+}
+
+void InspectorViewModel::notifyMaskState() {
+    ++mMaskRevision;
+    emit changed();
 }
 
 void InspectorViewModel::refreshFrame() {
     for (InspectorRowModel* row : {mMove, mRotate, mScale, mDepth, mOpacity, mImage, mPose, mFFD})
         row->refresh();
     mFilters->refresh();
+    // a matte can be ANIMATED: the frame decides which field the card shows and whether it can be
+    // painted, so a frame step re-announces it too
+    notifyMaskState();
 }
 
 void InspectorViewModel::refreshTheme() {

@@ -38,6 +38,10 @@ Button {
     // A tinted glyph name from theme.iconUrl() ("plus-bold", "trash"); empty
     // for a text-only button. See QmlTheme::iconUrl.
     property string iconName: ""
+    // Dialog controls keep 12px; a dock passes the application's own face (the
+    // properties inspector's fields and AeCheckBox/AeComboBox take the same property
+    // for the same reason, so one panel never mixes two sizes).
+    property font textFont: Qt.font({ pixelSize: 12 })
     // NO `property bool enabled`, NO `property string text`, NO `signal clicked`:
     // Button has all three. Redeclaring `enabled` shadows the base property
     // (qmllint: [property-override]), which leaves the base state "enabled" and a
@@ -105,8 +109,9 @@ Button {
                 height: 14
                 anchors.verticalCenter: parent.verticalCenter
                 source: root.iconName === "" ? "" : theme.iconUrl(root.iconName)
-                sourceSize.width: 64
-                sourceSize.height: 64
+                sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                smooth: true
                 fillMode: Image.PreserveAspectFit
                 opacity: root.enabled ? 1.0 : 0.5
             }
@@ -115,9 +120,12 @@ Button {
                 text: root.text
                 color: {
                     if (!root.enabled) return theme.textDisabled;
-                    return root.kind === "primary" ? theme.accentText : theme.text;
+                    // the primary fill is `accent`; its ink is the surface ink (see
+                    // AeCheckBox's tick for the measurement: accentText is the
+                    // accentBRIGHT ink and dies on the light theme's pale accent)
+                    return theme.text;
                 }
-                font.pixelSize: 12
+                font: root.textFont
             }
         }
     }

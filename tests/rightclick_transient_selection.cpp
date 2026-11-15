@@ -59,15 +59,6 @@
 // succeeds -- same as bonekey_regression.
 bool AudioPlaybackWidget::deserialize(const QJsonObject&, std::vector<audioConfig>*) { return false; }
 
-// ctrl::TimeLineEditor's clipboard-paste helpers reference two GUI symbols
-// that only matter on the paste path this test never exercises. Stub them
-// (same pattern) instead of linking the whole gui library.
-#include "gui/ObjectTreeWidget.h"
-bool gui::obj::Item::isTopNode() const { return false; }
-std::pair<core::TimeKey*, core::LayerMesh*> gui::ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode&, int) {
-    return { nullptr, nullptr };
-}
-
 namespace {
 
 class NullAnimator : public core::Animator {

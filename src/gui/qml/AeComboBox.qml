@@ -171,8 +171,9 @@ ComboBox {
             width: 12
             height: 12
             source: theme.iconUrl("caret-down")
-            sourceSize.width: 64
-            sourceSize.height: 64
+            sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+            sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+            smooth: true
             fillMode: Image.PreserveAspectFit
             opacity: root.enabled ? 0.85 : 0.4
         }
@@ -374,8 +375,9 @@ ComboBox {
                             height: 12
                             visible: rowItem.index === root.index
                             source: theme.iconUrl("check-bold")
-                            sourceSize.width: 64
-                            sourceSize.height: 64
+                            sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                            sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                            smooth: true
                             fillMode: Image.PreserveAspectFit
                         }
                         MouseArea {

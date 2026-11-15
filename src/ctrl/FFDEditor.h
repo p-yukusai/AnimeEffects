@@ -23,13 +23,14 @@ public:
     FFDEditor(core::Project& aProject, DriverResources& aDriverResources, UILogger& aUILogger);
     ~FFDEditor();
 
-    virtual bool setTarget(core::ObjectNode* aTarget);
+    bool setTarget(core::ObjectNode* aTarget) override;
 
     void updateParam(const FFDParam& aParam);
-    virtual bool updateCursor(const core::CameraInfo& aCamera, const core::AbstractCursor& aCursor);
-    virtual void updateEvent(EventType);
+    bool updateCursor(const core::CameraInfo& aCamera, const core::AbstractCursor& aCursor) override;
+    void updateEvent(EventType) override;
 
-    virtual void renderQt(const core::RenderInfo& aInfo, QPainter& aPainter);
+    void renderQt(const core::RenderInfo& aInfo, QPainter& aPainter) override;
+    void flushPendingWork() override;
 
 private:
     core::LayerMesh* getCurrentAreaMesh(core::ObjectNode& aNode) const;

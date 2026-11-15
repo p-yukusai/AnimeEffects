@@ -3,8 +3,8 @@
 
 namespace {
 gl::Global::Functions* gGLGlobalFunctions = nullptr;
-// QOpenGLContext* gGLGlobalContext = nullptr;
-// QSurface* gGlobalSurface = nullptr;
+QOpenGLContext* gGLGlobalContext = nullptr;
+QSurface* gGLGlobalSurface = nullptr;
 QOpenGLWidget* gGLGlobalWidget = nullptr;
 } // namespace
 
@@ -22,44 +22,36 @@ Global::Functions& Global::functions() {
     return *gGLGlobalFunctions;
 }
 
-#if 0
-void Global::setContext(QOpenGLContext& aContext, QSurface& aSurface)
-{
-    XC_ASSERT(!gGLGlobalContext);
+void Global::setContext(QOpenGLContext& aContext, QSurface& aSurface) {
+    XC_ASSERT(!gGLGlobalContext && !gGLGlobalWidget);
     gGLGlobalContext = &aContext;
-    gGlobalSurface = &aSurface;
+    gGLGlobalSurface = &aSurface;
 }
 
-void Global::clearContext()
-{
-    gGLGlobalContext = nullptr;
-}
-
-void Global::makeCurrent()
-{
-    XC_PTR_ASSERT(gGLGlobalContext);
-    gGLGlobalContext->makeCurrent(gGlobalSurface);
-}
-
-void Global::doneCurrent()
-{
-    XC_PTR_ASSERT(gGLGlobalContext);
-    gGLGlobalContext->doneCurrent();
-}
-#else
 void Global::setContext(QOpenGLWidget& aWidget) {
     XC_ASSERT(!gGLGlobalWidget);
     gGLGlobalWidget = &aWidget;
 }
 
-void Global::clearContext() { gGLGlobalWidget = nullptr; }
+void Global::clearContext() {
+    gGLGlobalContext = nullptr;
+    gGLGlobalSurface = nullptr;
+    gGLGlobalWidget = nullptr;
+}
 
 void Global::makeCurrent() {
+    if (gGLGlobalContext) {
+        XC_PTR_ASSERT(gGLGlobalSurface);
+        gGLGlobalContext->makeCurrent(gGLGlobalSurface);
+        return;
+    }
     XC_PTR_ASSERT(gGLGlobalWidget);
     gGLGlobalWidget->makeCurrent();
 }
 
 bool Global::makeCurrentIfReady() {
+    if (gGLGlobalContext)
+        return true; // an offscreen context is always ready
     if (!gGLGlobalWidget || !gGLGlobalWidget->isVisible())
         return false;
     gGLGlobalWidget->makeCurrent();
@@ -67,10 +59,13 @@ bool Global::makeCurrentIfReady() {
 }
 
 void Global::doneCurrent() {
+    if (gGLGlobalContext) {
+        gGLGlobalContext->doneCurrent();
+        return;
+    }
     XC_PTR_ASSERT(gGLGlobalWidget);
     gGLGlobalWidget->doneCurrent();
 }
-#endif
 
 } // namespace gl
 

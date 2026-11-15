@@ -175,7 +175,8 @@ void FolderNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccesso
     const auto contentMapping = [&]() -> const QMatrix4x4& {
         if (!haveMapping) {
             const QMatrix4x4 toScreen = waveContentToScreen(
-                aInfo.camera, QSizeF(frame.size()), expans.srt().worldCSRTMatrix(), QVector2D(0.0f, 0.0f)
+                aInfo.camera, QSizeF(frame.size()), expans.srt().worldCSRTMatrix(),
+                maskContentImageOffset(ObjectType_Folder, expans.imageOffset())
             );
             bool invertible = false;
             screenToLayer = toScreen.inverted(&invertible);

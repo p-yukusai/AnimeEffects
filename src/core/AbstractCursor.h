@@ -64,9 +64,14 @@ public:
     QTimer *doubleClickTimer = nullptr;
 
 private:
-    bool setMousePressImpl(Qt::MouseButton aButton, QPoint aPos, const CameraInfo& aCameraInfo);
-    bool setMouseMoveImpl(Qt::MouseButton aButton, QPoint aPos, const CameraInfo& aCameraInfo);
-    bool setMouseReleaseImpl(Qt::MouseButton aButton, QPoint aPos, const CameraInfo& aCameraInfo);
+    // A POINTER POSITION IS SUB-PIXEL, EVEN THOUGH screenPoint() IS NOT: the event's QPointF is kept
+    // as-is in screenPos()/worldPos(), and screenPoint() rounds only for the callers that ask for a
+    // whole pixel. Rounding here instead snapped every sample to the device grid before the tools
+    // saw it: a stroke drawn at 0.5 zoom landed on a 2-content-pixel grid and looked quantized, and
+    // the path smoother's fractional output was thrown away at this line (measured, 2026-10-31).
+    bool setMousePressImpl(Qt::MouseButton aButton, QPointF aPos, const CameraInfo& aCameraInfo);
+    bool setMouseMoveImpl(Qt::MouseButton aButton, QPointF aPos, const CameraInfo& aCameraInfo);
+    bool setMouseReleaseImpl(Qt::MouseButton aButton, QPointF aPos, const CameraInfo& aCameraInfo);
 
     Event mEventType;
     Button mEventButton;

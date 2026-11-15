@@ -2,12 +2,16 @@
 #include <QInputMethodEvent>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QFile>
+#include <QFileInfo>
+#include <QDir>
 #include <QPainter>
 #include <QOpenGLFunctions>
 #include <QGuiApplication>
 #include "XC.h"
 #include "util/Finally.h"
 #include "gl/Util.h"
+#include "gl/FrameStats.h"
 #include "gl/Framebuffer.h"
 #include "gl/Texture.h"
 #include "core/ClippingFrame.h"
@@ -76,6 +80,7 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
     mTimeLine(),
     mTimeLineRangeSlot(),
     mBrushDrag(),
+    mInput(*this),
     mPlayWindowConnection(),
     mViewportBackground(),
     mUsingTablet(false),
@@ -87,6 +92,10 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
     mDevicePixelRatio(1.0) {
     this->setObjectName(QStringLiteral("MainDisplayWidget"));
     this->setMouseTracking(true);
+    mStrokeFrame.setSingleShot(true);
+    mStrokeFrame.setInterval(16);
+    connect(&mStrokeFrame, &QTimer::timeout, this, [this] { updateRender(); });
+
     this->setAutoFillBackground(false); // avoid autofill on QPainter::begin()
 
     // THE VIEWPORT TAKES THE KEYBOARD BACK ON A PRESS.
@@ -148,7 +157,7 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
 
                 key->addListener([=]() {
                     mCanvasMover.rotate(qDegreesToRadians(15.0f));
-                    updateRender();
+                    requestFrame();
                 });
             }
         }
@@ -160,7 +169,7 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
 
                 key->addListener([=]() {
                     mCanvasMover.rotate(qDegreesToRadians(-15.0f));
-                    updateRender();
+                    requestFrame();
                 });
             }
         }
@@ -207,7 +216,7 @@ void MainDisplayWidget::setProject(core::Project* aProject) {
         mCanvasMover.setCamera(&(mRenderInfo->camera));
     }
 
-    updateRender();
+    requestFrame();
 }
 
 void MainDisplayWidget::setDriver(ctrl::Driver* aDriver) {
@@ -340,7 +349,8 @@ void MainDisplayWidget::syncGraphPanelSharedState() {
     // buttons honest: they drive the timeline's view transform (TimeLineWidget::
     // zoomFramesAbout/scrollFramesBy), the new window comes back through
     // onViewRangeChanged -> HERE, and the page is asked for its frame.
-    this->updateRender();
+    // the timeline's view changed under the panel: the viewport's own frame is not affected, so the
+    // pan frame axis moving does not invalidate the canvas - only the docked page is repainted
     this->refreshGraphPanel();
 }
 
@@ -400,7 +410,7 @@ bool MainDisplayWidget::showGraphHandleMenu(
         // when the page had no other reason to redraw.
         action->connect(action, &QAction::triggered, this, [this, editor, aTarget, mode]() {
             editor->setHandleMode(aTarget, mode);
-            this->updateRender();
+            requestFrame();
             this->refreshGraphPanel();
         });
     }
@@ -434,7 +444,7 @@ bool MainDisplayWidget::showGraphBackgroundMenu(const QPoint& aGlobalPos) {
         aGlobalPos, tr("Fit graph"), [this]() {
             if (ctrl::GraphEditor* editor = graphEditorOrNull(mDriver)) {
                 editor->fitAll();
-                this->updateRender();
+                requestFrame();
                 this->refreshGraphPanel();
             }
         }
@@ -474,7 +484,7 @@ void MainDisplayWidget::showGraphChannelMenu(const QVector<PanelChannelRow>& aRo
             if (!channelRowNodeAlive(editor, aRow.node))
                 return false; // the node is not one the live editor holds any more
             editor->setChannelVisible(*aRow.node, aRow.channel, aRow.visible);
-            this->updateRender();
+            requestFrame();
             this->refreshGraphPanel();
             return true;
         };
@@ -524,7 +534,7 @@ void MainDisplayWidget::setProjectTabBar(ProjectTabBar* aTabBar) { mProjectTabBa
 void MainDisplayWidget::setViewportBackground(const QColor& aColor) {
     if (mViewportBackground != aColor) {
         mViewportBackground = aColor;
-        this->updateRender();
+        requestFrame();
     }
 }
 
@@ -631,7 +641,72 @@ void MainDisplayWidget::initializeGL() {
     GL_CHECK_ERROR();
 }
 
+void MainDisplayWidget::paintEvent(QPaintEvent* aEvent) {
+    // try lock rendering!!
+    if (!mRenderingLock.tryLockForRead())
+        return;
+    util::Finally unlocker([=]() { this->mRenderingLock.unlock(); });
+
+
+    // THE FRAME'S DUTIES, IN ORDER: feed the held pointer sample to the gesture that owns it, let the
+    // editor run the work it deferred to this frame, announce the mask's damage, then blend ONCE.
+    // An input handler never blends, never renders and never forces a paint.
+    if (mDriver) {
+        mInput.frameTick();
+        // the brush's queued work lands here, EVERY frame, whether or not a blend is pending
+        mDriver->frameTick();
+        if (ctrl::MaskEditor* editor = mDriver->maskEditor())
+            editor->announcePendingPaint();
+        mDriver->flushPendingBlend();
+    }
+
+    QOpenGLWidget::paintEvent(aEvent);
+
+    QPainter* painter = mPainterHandle->begin(*this);
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    // THE RESIZE PREVIEW: THE BRUSH'S OWN FALLOFF, at the point the gesture began - a resize is a
+    // dial, so the disc grows in place. Its coverage IS the brush's alpha (the ink is opaque), which
+    // is what makes a soft brush show a soft rim, and the numbers say how much.
+    if (mBrushDrag.isActive() && mBrushSource && mRenderInfo) {
+        if (const ctrl::BrushParam* brush = mBrushSource()) {
+            const float radius = mRenderInfo->camera.toScreenLength(brush->radius);
+            ctrl::paintBrushTip(
+                *painter, mBrushDrag.origin(), radius, brush->hardness, QColor(232, 62, 62)
+            );
+            const QString text = QStringLiteral("Size %1   Hardness %2")
+                                     .arg(int(std::lround(brush->radius)))
+                                     .arg(int(std::lround(brush->hardness * 100.0f)));
+            const QFontMetrics metrics(painter->font());
+            const QPointF at = mBrushDrag.cursor() + QPointF(16.0, 6.0);
+            const QRectF box(at, QSizeF(metrics.horizontalAdvance(text) + 12.0,
+                                        metrics.height() + 6.0));
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(23, 23, 23, 216));
+            painter->drawRect(box);
+            painter->setPen(QColor(245, 245, 245));
+            painter->setBrush(QColor(245, 245, 245));
+            painter->drawText(box.adjusted(6.0, 0.0, -6.0, 0.0), Qt::AlignCenter, text);
+        }
+    }
+
+    if (mDriver) {
+        XC_PTR_ASSERT(mRenderInfo);
+        mDriver->renderQt(*mRenderInfo, *painter);
+        GL_CHECK_ERROR();
+    }
+    // we must call end function
+    mPainterHandle->end();
+}
+
 void MainDisplayWidget::paintGL() {
+    // AE_FRAME_STATS: one line per painted frame, opened before any layer draws and
+    // closed on the way out - a frame that draws nothing still writes its line. The
+    // size is the framebuffer's DEVICE-pixel grid, the one the draws count in.
+    const QSize frameSize = deviceSize();
+    gl::FrameStats& frameStats = gl::FrameStats::instance();
+    frameStats.beginFrame();
+
     gl::Global::Functions& ggl = gl::Global::functions();
 
     // clear clipping
@@ -651,6 +726,9 @@ void MainDisplayWidget::paintGL() {
 
     // setup
     gl::Util::setViewportAsActualPixels(deviceSize());
+    // THE FLOOR IS CLEARED EVERYWHERE, EVEN IN A BANDED FRAME: a layer's composite BLENDS onto the
+    // floor, so a band that cleared only itself composited the new content over the PREVIOUS frame's
+    // ink at the band's boundary (measured as two brighter 1px columns at the field's edges).
     gl::Util::clearColorBuffer(mViewportBackground.redF(), mViewportBackground.greenF(), mViewportBackground.blueF(), 1.0f);
     gl::Util::resetRenderState();
     GL_CHECK_ERROR();
@@ -705,6 +783,24 @@ void MainDisplayWidget::paintGL() {
         GL_CHECK_ERROR();
     }
 
+    // AE_FRAMEBUFFER_DUMP=<prefix>: the SCENE surface, read while it is bound and just rendered. A
+    // timer callback cannot do this (no current context -> black) and grabFramebuffer() comes back
+    // sheared on a fractional DPR, so this is the only reliable point.
+    if (qEnvironmentVariableIsSet("AE_FRAMEBUFFER_DUMP")) {
+        static const QString prefix = qEnvironmentVariable("AE_FRAMEBUFFER_DUMP");
+        static bool prepared = false;
+        if (!prepared) {
+            QDir().mkpath(QFileInfo(prefix).absolutePath());
+            prepared = true;
+        }
+        static int frame = 0;
+        const int index = frame++;
+        if (index < 6 || index % 15 == 0) {
+            const QImage image = mFramebuffer->toImage();
+            image.save(QStringLiteral("%1-%2.png").arg(prefix).arg(index % 24));
+        }
+    }
+
     if (!mFramebuffer->release()) {
         XC_FATAL_ERROR("OpenGL Error", "Failed to unbind framebuffer.", "");
     }
@@ -723,37 +819,105 @@ void MainDisplayWidget::paintGL() {
         mTextureDrawer->draw(mFramebuffer->texture());
     }
 
+
     ggl.glFlush();
     GL_CHECK_ERROR();
+
+    frameStats.endFrame(frameSize.width(), frameSize.height());
 }
 
-void MainDisplayWidget::paintEvent(QPaintEvent* aEvent) {
-    // try lock rendering!!
-    if (!mRenderingLock.tryLockForRead())
+// ---------------------------------------------------------------- gui::ViewportHost
+//
+// The input router's whole surface. Every method is one of the things the handlers used to do
+// inline: the routing decisions live in gui::ViewportInput, the viewport only supplies services.
+
+core::RenderInfo& MainDisplayWidget::renderInfo() { return *mRenderInfo; }
+core::CameraInfo& MainDisplayWidget::camera() { return mRenderInfo->camera; }
+core::AbstractCursor& MainDisplayWidget::cursor() { return mAbstractCursor; }
+ctrl::MaskEditor* MainDisplayWidget::maskEditor() { return mDriver ? mDriver->maskEditor() : nullptr; }
+
+void MainDisplayWidget::forwardModifiers(Qt::KeyboardModifiers aModifiers) {
+    if (mDriver)
+        mDriver->setGraphModifiers(aModifiers);
+}
+
+ctrl::ToolType MainDisplayWidget::toolType() const {
+    // THE DRIVER IS THE TRUTH. A cached copy left the viewport reading an uninitialised value until
+    // the first tool switch (measured: the band path saw tool=3473454).
+    if (mDriver)
+        return mDriver->toolType();
+    return mToolType;
+}
+
+const ctrl::BrushParam* MainDisplayWidget::activeBrush() const {
+    return (mBrushSource && brushToolActive()) ? mBrushSource() : nullptr;
+}
+
+void MainDisplayWidget::updateCursorNow() {
+    updateCursor();
+    if (!mDriver)
         return;
-    util::Finally unlocker([=]() { this->mRenderingLock.unlock(); });
 
-    QOpenGLWidget::paintEvent(aEvent);
+    // the changed view is a frame: no scissoring, no published band (that path was measured not to
+    // change the stroke's sample rate at all, see AGENTS.md)
+    requestFrame();
 
-    QPainter* painter = mPainterHandle->begin(*this);
-    painter->setRenderHint(QPainter::Antialiasing);
-
-    if (mDriver) {
-        XC_PTR_ASSERT(mRenderInfo);
-        mDriver->renderQt(*mRenderInfo, *painter);
-        GL_CHECK_ERROR();
+    // the canvas pan rides on the same cursor: the camera only ever cares about the END state, so
+    // one move per frame is exact for it as well
+    if (mCanvasMover.updateByMove(
+            mAbstractCursor.screenPos(),
+            mAbstractCursor.screenVel(),
+            mAbstractCursor.isPressedLeft(),
+            mAbstractCursor.isPressedMiddle(),
+            mAbstractCursor.isPressedRight()
+        )) {
+        // the CAMERA moved: every pixel is stale, so the frame is the whole surface
+        requestFrame();
     }
-    // we must call end function
-    mPainterHandle->end();
-
-    // NOTHING ELSE IS PAINTED HERE. The animation graph panel used to be drawn into
-    // this widget's framebuffer right here (a Dear ImGui overlay over the artwork, with
-    // the contrast-outline composite). It is drawn in the TIMELINE DOCK now
-    // (gui::GraphPanelWidget, the Graph tab's page, design section 5), on a floor of its
-    // own, and it pins the editor's frame window to ITS plot size in its own paint - so
-    // this paint leaves the editor's scale alone (the old call here re-derived the shared
-    // frame window for this widget's geometry, which no longer draws the panel).
 }
+
+void MainDisplayWidget::requestFrame() { requestStrokeFrame(); }
+
+
+
+void MainDisplayWidget::sampleMaskValue(float aValue) { onMaskValueSampled(aValue); }
+void MainDisplayWidget::beginBrushDial(const QPointF& aPos) { mBrushDrag.begin(aPos); }
+
+void MainDisplayWidget::stepBrushDial(const QPointF& aPos) {
+    float sizeSteps = 0.0f;
+    float hardnessSteps = 0.0f;
+    if (mBrushDrag.move(aPos, sizeSteps, hardnessSteps))
+        onBrushNudged(sizeSteps, hardnessSteps);
+}
+
+bool MainDisplayWidget::brushDialActive() const { return mBrushDrag.isActive(); }
+void MainDisplayWidget::endBrushDial() { mBrushDrag.end(); }
+
+QPoint MainDisplayWidget::mapToGlobal(const QPoint& aPos) { return QWidget::mapToGlobal(aPos); }
+
+void MainDisplayWidget::setGrabCursor(bool aClosed) {
+    if (mAbstractCursor.isPressedMiddle() != mMovingCanvasByMiddleMouseButton) {
+        mMovingCanvasByMiddleMouseButton = mAbstractCursor.isPressedMiddle();
+        applyCanvasMoverDragMode();
+    }
+    if (aClosed)
+        this->setCursor(Qt::ClosedHandCursor);
+    else if (mMovingCanvasByTool)
+        this->setCursor(Qt::OpenHandCursor);
+    else
+        this->setCursor(Qt::ArrowCursor);
+}
+
+void MainDisplayWidget::requestStrokeFrame() {
+    // A DRAG ASKS FOR A FRAME; it does not paint. One request per 16ms keeps the loop free between
+    // frames, which is the whole point: a handler that repaints per sample is what starves the queue.
+    if (mStrokeFrame.isActive())
+        return;
+    mStrokeFrame.start();
+}
+
+
+
 
 void MainDisplayWidget::resizeGL(int w, int h) {
     // currrent device pixel ratio (Attention that it is variable.)
@@ -796,187 +960,110 @@ void MainDisplayWidget::applyCanvasMoverDragMode() {
 }
 
 void MainDisplayWidget::mouseMoveEvent(QMouseEvent* aEvent) {
-    if (mBrushDrag.isActive()) {
-        // The decision - the 4px slop, the dominant-axis latch, the px-per-step
-        // rates and the remainder - is ctrl::BrushDrag's (ctrl/Brush.h); this only
-        // forwards the whole steps. The old handler banked both axes on every move,
-        // which is why a vertical drag with a couple of pixels of jitter changed the
-        // size as well.
-        int sizeSteps = 0;
-        int hardnessSteps = 0;
-        if (mBrushDrag.move(aEvent->position(), sizeSteps, hardnessSteps)) {
-            onBrushDragAdjusted(sizeSteps, hardnessSteps);
-        }
-        // THE RING FOLLOWS THE POINTER, position only. The press and every move above
-        // return before setMousePress/setMouseMove reach the tools, so without this
-        // the two-ring cursor would sit frozen at the press point while the values
-        // change. A move event marks no button as pressed (AbstractCursor tracks that
-        // in setMousePress/setMouseRelease, neither of which this gesture calls), so
-        // the tools' updateCursor only re-reads the position: no stroke begins and no
-        // tool state moves. The release needs no matching call for the same reason.
-        if (mRenderInfo) {
-            if (mDriver) {
-                mDriver->setGraphModifiers(aEvent->modifiers());
-            }
-            if (mAbstractCursor.setMouseMove(aEvent, mRenderInfo->camera)) {
-                updateCursor();
-            }
-        }
-        aEvent->accept();
+    // A sample the router may HOLD (move/pan/resize only need the latest: the frame feeds it) or
+    // APPLY at once (a brush stroke - every sample is part of the artwork).
+    if (!mRenderInfo || !mDriver) {
+        QOpenGLWidget::mouseMoveEvent(aEvent);
         return;
     }
-
-    if (mRenderInfo) {
-        // The panel's own gestures read the modifier state from here: neither
-        // core::AbstractCursor nor the editor's updateCursor carries modifiers, so
-        // the widget hands them over before it routes the event (see
-        // ctrl::Driver::setGraphModifiers). Every move re-reads them, which is what
-        // lets Shift constrain a key drag that is already in flight.
-        if (mDriver) {
-            mDriver->setGraphModifiers(aEvent->modifiers());
-        }
-        if (mAbstractCursor.setMouseMove(aEvent, mRenderInfo->camera)) {
-            updateCursor();
-            // if (!mUsingTablet) qDebug() << "move" << aEvent->pos();
-        }
-
-        if (mCanvasMover.updateByMove(
-                mAbstractCursor.screenPos(),
-                mAbstractCursor.screenVel(),
-                mAbstractCursor.isPressedLeft(),
-                mAbstractCursor.isPressedMiddle(),
-                mAbstractCursor.isPressedRight()
-            )) {
-            updateRender();
-        }
-    }
+    gui::PointerSample sample;
+    sample.pos = aEvent->position();
+    sample.button = aEvent->button();
+    sample.buttons = aEvent->buttons();
+    sample.modifiers = aEvent->modifiers();
+    if (mInput.move(sample))
+        aEvent->accept();
+    else
+        QOpenGLWidget::mouseMoveEvent(aEvent);
 }
+
 
 void MainDisplayWidget::mousePressEvent(QMouseEvent* aEvent) {
-    // THE TEMPORARY EYEDROPPER, before anything else can claim the press: Alt + left
-    // click samples the field the mask tool paints and consumes the event, so no
-    // stroke begins. A CLICK, not a drag: the compositor owns Alt+drag (measured, see
-    // AGENTS.md), which is exactly why the eyedropper is the click.
-    if (mRenderInfo && mDriver && mDriver->maskEditor() && aEvent->button() == Qt::MouseButton::LeftButton
-        && (aEvent->modifiers() & Qt::AltModifier)) {
-        ctrl::MaskEditor* editor = mDriver->maskEditor();
-        const QVector2D world = mRenderInfo->camera.toWorldPos(
-            QVector2D(float(aEvent->position().x()), float(aEvent->position().y()))
-        );
-        const float sampled = editor->sampleValue(world);
-        if (0.0f <= sampled)
-            onMaskValueSampled(sampled);
-        aEvent->accept();
+    // THE ROUTER'S JOB: gui::ViewportInput owns the "who has the pointer" decision and the "every
+    // sample or only the latest" decision (see its header). Nothing here branches on the gesture.
+    if (!mRenderInfo || !mDriver) {
+        QOpenGLWidget::mousePressEvent(aEvent);
         return;
     }
-
-    // THE BRUSH SIZE/HARDNESS DRAG claims the press before the tools see it: it is a
-    // viewport gesture over any brush tool, not a tool gesture. The press only starts
-    // the gesture - nothing fires until the pointer has left the slop and latched an
-    // axis (ctrl::BrushDrag).
-    if (mRenderInfo && mDriver && aEvent->button() == Qt::MouseButton::RightButton
-        && (aEvent->modifiers() & Qt::AltModifier) && brushToolActive()) {
-        mBrushDrag.begin(aEvent->position());
+    gui::PointerSample sample;
+    sample.pos = aEvent->position();
+    sample.button = aEvent->button();
+    sample.buttons = aEvent->buttons();
+    sample.modifiers = aEvent->modifiers();
+    if (mInput.press(sample))
         aEvent->accept();
-        return;
-    }
-
-    if (mRenderInfo) {
-        if (mDriver) {
-            mDriver->setGraphModifiers(aEvent->modifiers());
-        }
-        if (mAbstractCursor.setMousePress(aEvent, mRenderInfo->camera)) {
-            updateCursor();
-            // if (!mUsingTablet) qDebug() << "press";
-
-            // The MIDDLE button pans the canvas (the graph panel used to own this
-            // drag while it was up over this widget; it is in the dock now and owns
-            // the cursor inside its own page).
-            if (mViaPoint.mouseSetting().middleMouseMoveCanvas &&
-                aEvent->button() == Qt::MouseButton::MiddleButton) {
-                mMovingCanvasByMiddleMouseButton = true;
-                applyCanvasMoverDragMode();
-            }
-
-            // A canvas grab shows the closed hand; the resting pan cursor
-            // (open hand) only shows before the button goes down.
-            if ((mMovingCanvasByTool || mMovingCanvasByKey || mMovingCanvasByMiddleMouseButton) &&
-                (aEvent->button() == Qt::MouseButton::LeftButton ||
-                 aEvent->button() == Qt::MouseButton::MiddleButton)) {
-                this->setCursor(Qt::ClosedHandCursor);
-            }
-        }
-    }
+    else
+        QOpenGLWidget::mousePressEvent(aEvent);
 }
+
 
 void MainDisplayWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
-    if (mBrushDrag.isActive()) {
-        // The right button, or Alt coming up first, ends the gesture: the latch and
-        // the banks go with it, so the next drag starts from the press point again.
-        if (aEvent->button() == Qt::MouseButton::RightButton || !(aEvent->modifiers() & Qt::AltModifier))
-            mBrushDrag.end();
-        aEvent->accept();
+    if (!mRenderInfo || !mDriver) {
+        QOpenGLWidget::mouseReleaseEvent(aEvent);
         return;
     }
-
-    if (mRenderInfo) {
-        if (mDriver) {
-            mDriver->setGraphModifiers(aEvent->modifiers());
-        }
-        if (mAbstractCursor.setMouseRelease(aEvent, mRenderInfo->camera)) {
-            updateCursor();
-            // if (!mUsingTablet) qDebug() << "release";
-
-            if (aEvent->button() == Qt::MouseButton::MiddleButton) {
-                // A canvas middle pan this widget began ends here.
-                mMovingCanvasByMiddleMouseButton = false;
-                applyCanvasMoverDragMode();
-            }
-
-            // back to the resting cursor once every button is up (a
-            // right-button release mid-drag must not clear the closed hand)
-            if (aEvent->buttons() == Qt::NoButton) {
-                this->setCursor(mMovingCanvasByTool ? Qt::OpenHandCursor : Qt::ArrowCursor);
-            }
-        }
-    }
+    gui::PointerSample sample;
+    sample.pos = aEvent->position();
+    sample.button = aEvent->button();
+    sample.buttons = aEvent->buttons();
+    sample.modifiers = aEvent->modifiers();
+    if (mInput.release(sample))
+        aEvent->accept();
+    else
+        QOpenGLWidget::mouseReleaseEvent(aEvent);
 }
+
 
 void MainDisplayWidget::wheelEvent(QWheelEvent* aEvent) {
     if (mCanvasMover.updateByWheel(
-            QVector2D(aEvent->position()), aEvent->angleDelta().y(), mViaPoint.mouseSetting().invertMainViewScaling
+            QVector2D(aEvent->position()), aEvent->angleDelta().y(), mViaPoint.mouseSetting().invertZoom
         )) {
-        updateRender();
+        requestFrame();
     }
 }
 
 void MainDisplayWidget::tabletEvent(QTabletEvent* aEvent) {
-    if (mRenderInfo) {
-        if (mDriver) {
-            mDriver->setGraphModifiers(aEvent->modifiers());
-        }
-        if (mAbstractCursor.setTabletEvent(aEvent, mRenderInfo->camera)) {
-            updateCursor();
-        }
-        if (mAbstractCursor.shouldResetCanvas) {
-            mCanvasMover.resetRotation();
-            updateRender();
-        }
+    // THE PEN GOES THROUGH THE SAME ROUTER AS THE MOUSE. It used to have its own copy of the cursor
+    // feed, the repaint and the canvas mover - a second input path, and the pen is exactly the case
+    // whose path must never be compressed. Its pressure and tilt travel in the sample, and the router
+    // applies a pen sample in the call that carried it (see gui::PointerSample).
+    if (!mRenderInfo || !mDriver) {
+        aEvent->accept();
+        return;
+    }
+    gui::PointerSample sample;
+    sample.pos = aEvent->position();
+    sample.button = aEvent->button();
+    sample.buttons = aEvent->buttons();
+    sample.modifiers = aEvent->modifiers();
+    sample.tablet = aEvent;
+    sample.precise = true;
+
+    switch (aEvent->type()) {
+    case QEvent::TabletPress:
+        if (!mInput.press(sample))
+            mAbstractCursor.setTabletEvent(aEvent, mRenderInfo->camera);
+        break;
+    case QEvent::TabletRelease:
+        if (!mInput.release(sample))
+            mAbstractCursor.setTabletEvent(aEvent, mRenderInfo->camera);
+        break;
+    default:
+        if (!mInput.move(sample))
+            mAbstractCursor.setTabletEvent(aEvent, mRenderInfo->camera);
+        break;
     }
 
+    // the camera gestures a pen can carry (barrel-free rotate/scroll) are still the mover's, and
+    // they invalidate the whole surface
+    if (mAbstractCursor.shouldResetCanvas) {
+        mCanvasMover.resetRotation();
+        requestFrame();
+    }
     if (aEvent->modifiers().testFlag(Qt::ShiftModifier)) {
         mCanvasMover.rotate(qDegreesToRadians(1.0 * mAbstractCursor.screenVel().x()));
         mCanvasMover.updateByWheel(mAbstractCursor.screenPos(), 2.0 * mAbstractCursor.screenVel().y(), false);
-        updateRender();
-    }
-    else if (mCanvasMover.updateByMove(
-            mAbstractCursor.screenPos(),
-            mAbstractCursor.screenVel(),
-            mAbstractCursor.isPressedLeft(),
-            mAbstractCursor.isPressedMiddle(),
-            mAbstractCursor.isPressedRight()
-        )) {
-        updateRender();
+        requestFrame();
     }
     aEvent->accept();
 }
@@ -1011,9 +1098,16 @@ void MainDisplayWidget::focusInEvent(QFocusEvent* aEvent) { QOpenGLWidget::focus
 
 void MainDisplayWidget::focusOutEvent(QFocusEvent* aEvent) { QOpenGLWidget::focusOutEvent(aEvent); }
 
-void MainDisplayWidget::onVisualUpdated() { updateRender(); }
+void MainDisplayWidget::onVisualUpdated() {
+    // A TOOL'S "the view changed" is its GIZMO, and gizmos are drawn in the overlay pass on top of
+    // whatever the frame covered - so this needs a paint, not a whole-surface one. It used to force a
+    // full frame, which made every brush sample a full frame and defeated the band entirely
+    // (measured: the band path never engaged during an FFD stroke).
+    requestStrokeFrame();
+}
 
 void MainDisplayWidget::onToolChanged(ctrl::ToolType aType) {
+    requestFrame();
     // which tool owns the viewport decides whether the brush SIZE/HARDNESS drag
     // claims a right press (see brushToolActive)
     mToolType = aType;
@@ -1044,7 +1138,7 @@ void MainDisplayWidget::onViewSettingChanged(const MainViewSetting& aSetting) {
         mCanvasMover.rotate(qDegreesToRadians(15.0f));
     }
 
-    updateRender();
+    requestFrame();
 }
 
 void MainDisplayWidget::onProjectAttributeUpdated() {
@@ -1056,23 +1150,20 @@ void MainDisplayWidget::onProjectAttributeUpdated() {
     }
 }
 
-void MainDisplayWidget::updateCursor() {
-    if (mDriver) {
-        XC_PTR_ASSERT(mRenderInfo);
-        if (mDriver->updateCursor(mAbstractCursor, mRenderInfo->camera)) {
-            // The panel changed something: its selection, its focus, its window,
-            // or the document under a drag. The TIMELINE draws the same selection
-            // (they share one set) and reads the same document, and nothing else
-            // would ask it to paint while the pointer is over the viewport - so a
-            // key selected here would keep an unhighlighted square there, and a
-            // key the panel drags would be drawn at its old frame. One repaint
-            // request, coalesced by Qt with any other.
-            if (mTimeLine) {
-                mTimeLine->update();
-            }
-            updateRender();
-        }
-    }
+bool MainDisplayWidget::updateCursor() {
+    if (!mDriver)
+        return false;
+    XC_PTR_ASSERT(mRenderInfo);
+    if (!mDriver->updateCursor(mAbstractCursor, mRenderInfo->camera))
+        return false;
+    // THE TIMELINE DRAWS THE SAME SELECTION (they share one set) and reads the same document; a key
+    // selected here would otherwise keep an unhighlighted square there. It is asked directly, and
+    // for the VIEWPORT the frame is requested through the router's one scheduler - this is not a
+    // second scheduling path (see gui::ViewportInput::requestFrame).
+    if (mTimeLine)
+        mTimeLine->update();
+    requestFrame();
+    return true;
 }
 
 } // namespace gui

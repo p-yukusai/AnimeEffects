@@ -192,6 +192,15 @@ Lines buildLines(
             lane.rect = bandOver(summary);
             lane.selected = row.selecting;
             lane.summary = true;
+            // THE DIVIDER IS A TYPE SEPARATOR, not a row seam: the summary band is a LANE of this
+            // row, and the dashed 40% ink is what the timeline uses BETWEEN BANDS inside one
+            // lane, while the solid 70% seam separates one ROW from the next. It used to be a
+            // seam, which read as "this band is a special case" - it is not.
+            if (row.ownRect().height() > 0) {
+                lane.separators.append(
+                    {aCameraRect.left(), aCameraRect.right(), double(summary.top())}
+                );
+            }
             // The band names WHAT it is: the keys of the folder's CHILDREN. It is
             // an ordinary lane label, in the same centred column and at the same
             // size as a channel name. Paint order puts the key passes AFTER the
@@ -215,10 +224,11 @@ Lines buildLines(
         if (row.rect.bottom() < aCullRect.top() || aCullRect.bottom() < row.rect.top())
             continue;
         lines.seams.append({aCameraRect.left(), aCameraRect.right(), row.rect.top()});
-        // The own-lane / summary-lane divider. A summary-only row's top IS this seam,
-        // so it must not be pushed twice.
-        if (row.summaryHeight() > 0 && row.ownRect().height() > 0)
-            lines.seams.append({aCameraRect.left(), aCameraRect.right(), row.summaryRect().top()});
+        // NO SEAM FOR THE OWN-LANE / SUMMARY-LANE DIVIDER. That divider is a TYPE separator and is
+        // published on the summary LANE (see above) - a seam here painted the SOLID 70% line right
+        // over the dashed one, because this pass runs LAST. A seam separates one ROW from the next
+        // (different layers); the summary band is a band of this row, so it takes the grid of a
+        // band. (Measured: with both, the divider read as a full line at every zoom.)
     }
     if (!aRows.isEmpty()) {
         const ctrl::TimeLineRow& last = aRows.back();
@@ -490,7 +500,7 @@ BodyScene buildBodyScene(
         const QColor laneInk = opaqueOver(
             row.selecting ? aInks.bodySelected : aInks.body, theme::Colors::current().base
         );
-        if (row.closedFolder && row.summaryHeight() > 0)
+        if (row.summaryHeight() > 0)
             scene.keyPasses.append(
                 buildChildKeys(row.node, row.summaryRect(), aMargin, aScale, aRange)
             );

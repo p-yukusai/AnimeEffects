@@ -22,6 +22,7 @@
 
 #include "XC.h"
 #include "core/CameraInfo.h"
+#include "core/ObjectNode.h"
 #include "core/WavePass.h"
 
 namespace {
@@ -126,6 +127,33 @@ int main(int argc, char** argv) {
         }
         std::printf("MEASURED paint vs shader: %d points, worst %.4f content px\n", compared, apart);
         check(apart <= 1.0e-4f, "the painter and the preview sample the same content");
+    }
+
+    // ---- the FOLDER's content space has no image offset -------------------------------------
+    // Reported: "a mask on a folder, and the mask area in the viewport was random at best". The
+    // renderer maps a folder with a zero offset (FolderNode::contentMapping) and a layer with its
+    // image offset (LayerNode's); the painter applied the layer's to both.
+    {
+        const QVector2D offset(-41.5f, 23.25f);
+        check(core::maskContentImageOffset(core::ObjectType_Layer, offset) == offset,
+              "a layer's mapping keeps its image offset");
+        check(core::maskContentImageOffset(core::ObjectType_Folder, offset)
+                  == QVector2D(0.0f, 0.0f),
+              "a folder's mapping does not");
+
+        // and the consequence, in pixels: with the folder's rule the same screen point resolves to
+        // a DIFFERENT content point than the layer's rule would - so the rule is observable
+        const QVector2D screen = (core::waveContentToScreen(camera, composite, world, offset)
+                                      .map(QVector3D(QVector2D(303.0f, 265.0f))))
+                                     .toVector2D();
+        bool ok = false;
+        const QVector2D asFolder =
+            core::contentFromScreen(camera, composite, world, QVector2D(0.0f, 0.0f), screen, &ok);
+        const QVector2D asLayer = core::contentFromScreen(camera, composite, world, offset, screen, &ok);
+        std::printf("MEASURED folder vs layer content: %.1f,%.1f vs %.1f,%.1f content px\n",
+                    asFolder.x(), asFolder.y(), asLayer.x(), asLayer.y());
+        check((asFolder - asLayer).length() > 10.0f,
+              "the two rules land the same screen point far apart (the defect's size)");
     }
 
     if (failures == 0)

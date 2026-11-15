@@ -20,7 +20,6 @@
 #include "gui/TimeBodyCanvas.h"
 #include "gui/MouseSetting.h"
 #include "gui/PillInk.h"
-#include "gui/obj/obj_Item.h"
 #include "gui/prop/prop_Items.h"
 #include "gui/prop/prop_KeyAccessor.h"
 #include "qapplication.h"
@@ -288,45 +287,24 @@ void TimeLineEditorWidget::keyPressEvent(QKeyEvent* aEvent) {
     QWidget::keyPressEvent(aEvent);
 }
 
-void TimeLineEditorWidget::updateLines(QTreeWidgetItem* aTopNode) {
-    // A collapse/expand rebuilds the rows, not the document. Clear the ROWS only,
-    // then drop just the selection entries whose layer the rebuilt rows no longer
-    // show (a closed folder's summary still represents its descendants).
+void TimeLineEditorWidget::setRows(const gui::AnimationRows& aRows) {
+    // A collapse/expand/reorder rebuilds the rows, not the document. Clear the ROWS only,
+    // then drop just the selection entries whose layer the rebuilt rows no longer show (a
+    // closed folder's summary still represents its descendants).
     mEditor->resetRows();
 
-    if (aTopNode && aTopNode->isExpanded()) {
-        for (int i = 0; i < aTopNode->childCount(); ++i) {
-            updateLinesRecursive(aTopNode->child(i));
-        }
+    for (const gui::AnimationRow& row : aRows) {
+        // the document row is the tree's own header: a document is not a layer, so it has
+        // no lane and pushes nothing (its height is still part of the content axis, which
+        // is why `top` is the model's cumulative pixel offset and not a row index)
+        if (!row.node || row.isDocument)
+            continue;
+        mEditor->pushRow(row.node, util::Range(row.top, row.bottom()), row.closedFolder);
     }
+
     mEditor->retainSelectionInRows();
     updateSize();
     this->update();
-}
-
-void TimeLineEditorWidget::updateLinesRecursive(QTreeWidgetItem* aItem) {
-    if (!aItem)
-        return;
-
-    const bool isClosedFolder = !aItem->isExpanded() && aItem->childCount() > 0;
-    obj::Item* objItem = obj::Item::cast(aItem);
-    if (objItem && !objItem->isTopNode()) {
-        int screenTop = mCamera ? static_cast<int>(-mCamera->leftTopPos().y()) : 0;
-
-        const QRect vrect = objItem->visualRect();
-        const int t = vrect.top() + screenTop;
-        const int b = vrect.bottom() + screenTop;
-
-        mEditor->pushRow(&objItem->node(), util::Range(t, b), isClosedFolder);
-    }
-
-    if (!aItem->isExpanded())
-        return;
-
-    for (int i = 0; i < aItem->childCount(); ++i) {
-        updateLinesRecursive(aItem->child(i));
-    }
-    updateSize();
 }
 
 void TimeLineEditorWidget::updateLineSelection(core::ObjectNode* aRepresent) {
@@ -357,7 +335,7 @@ bool TimeLineEditorWidget::updateCursor(const core::AbstractCursor& aCursor, Qt:
 bool TimeLineEditorWidget::updateWheel(QWheelEvent* aEvent, int aMouseX, int& aPixelAfter) {
     const double oldSpacing = mEditor->pixelsPerFrame();
     const bool changed =
-        mEditor->updateWheel(aEvent->angleDelta().y(), mViaPoint.mouseSetting().invertTimeLineScaling);
+        mEditor->updateWheel(aEvent->angleDelta().y(), mViaPoint.mouseSetting().invertZoom);
     if (changed) {
         // Pixel-exact zoom anchor: the content point under the mouse stays put,
         // regardless of whether it lies inside the frame range.

@@ -3,6 +3,7 @@
 #include <QStyle>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QStyleOptionSlider>
 #include <QSettings>
 #include <QDateTime>
 #include <cmath>
@@ -518,7 +519,9 @@ void TimeLineWidget::updateCursor(const core::AbstractCursor& aCursor, Qt::Keybo
 }
 
 //-------------------------------------------------------------------------------------------------
-void TimeLineWidget::onTreeViewUpdated(QTreeWidgetItem* aTopNode) { mInner->updateLines(aTopNode); }
+void TimeLineWidget::setRows(const gui::AnimationRows& aRows) { mInner->setRows(aRows); }
+
+void TimeLineWidget::onTreeViewUpdated() {}
 
 void TimeLineWidget::onScrollUpdated(int aValue) {
     mVerticalScrollValue = aValue;

@@ -50,6 +50,12 @@ public:
     // drawn at has.
     static quint64 key(const img::Buffer& aImage, int aSize, qreal aDpr = 1.0);
 
+    // The LOGICAL size of the cell this cache would make: the artwork's own aspect fitted
+    // inside aSize, at least 2px on each side. A view needs it to place the cell exactly
+    // where the pixmap's baked device-pixel geometry expects, without first making the
+    // pixmap (the QML tree reads it while building its rows).
+    static QSize fittedSize(const img::Buffer& aImage, int aSize);
+
     void clear() { mCache.clear(); }
 
 private:

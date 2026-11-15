@@ -69,6 +69,11 @@ PrimitiveDrawer::State::State():
     penStyle(PenStyle_Solid),
     texture(0),
     textureColor(QColor(255, 255, 255, 255).rgba()),
+    brushTipCenterX(0.0f),
+    brushTipCenterY(0.0f),
+    brushTipRadius(0.0f),
+    brushTipHardness(1.0f),
+    brushTipColor(QColor(255, 255, 255, 255).rgba()),
     hasBrush(true),
     hasPen(true),
     hasMSAA(false) {}
@@ -76,7 +81,10 @@ PrimitiveDrawer::State::State():
 bool PrimitiveDrawer::State::operator==(const State& aRhs) const {
     return brushColor == aRhs.brushColor && penColor == aRhs.penColor && penWidth == aRhs.penWidth &&
         penStyle == aRhs.penStyle && texture == aRhs.texture && textureColor == aRhs.textureColor &&
-        hasBrush == aRhs.hasBrush && hasPen == aRhs.hasPen && hasMSAA == aRhs.hasMSAA;
+        brushTipCenterX == aRhs.brushTipCenterX && brushTipCenterY == aRhs.brushTipCenterY &&
+        brushTipRadius == aRhs.brushTipRadius && brushTipHardness == aRhs.brushTipHardness &&
+        brushTipColor == aRhs.brushTipColor && hasBrush == aRhs.hasBrush && hasPen == aRhs.hasPen &&
+        hasMSAA == aRhs.hasMSAA;
 }
 
 bool PrimitiveDrawer::State::operator!=(const State& aRhs) const { return !(*this == aRhs); }
@@ -94,6 +102,13 @@ void PrimitiveDrawer::State::set(const Command& aCommand) {
     case Type_Texture:
         texture = aCommand.attr.texture.id;
         textureColor = aCommand.attr.texture.color;
+        break;
+    case Type_BrushTip:
+        brushTipCenterX = aCommand.attr.brushTip.centerX;
+        brushTipCenterY = aCommand.attr.brushTip.centerY;
+        brushTipRadius = aCommand.attr.brushTip.radius;
+        brushTipHardness = aCommand.attr.brushTip.hardness;
+        brushTipColor = aCommand.attr.brushTip.color;
         break;
     case Type_Ability:
         hasBrush = aCommand.attr.ability.hasBrush;
@@ -114,6 +129,12 @@ bool PrimitiveDrawer::State::hasDifferentValueWith(const Command& aCommand) cons
             penStyle != aCommand.attr.pen.style;
     case Type_Texture:
         return texture != aCommand.attr.texture.id || textureColor != aCommand.attr.texture.color;
+    case Type_BrushTip:
+        return brushTipCenterX != aCommand.attr.brushTip.centerX
+            || brushTipCenterY != aCommand.attr.brushTip.centerY
+            || brushTipRadius != aCommand.attr.brushTip.radius
+            || brushTipHardness != aCommand.attr.brushTip.hardness
+            || brushTipColor != aCommand.attr.brushTip.color;
     case Type_Ability:
         return hasBrush != aCommand.attr.ability.hasBrush || hasPen != aCommand.attr.ability.hasPen ||
             hasMSAA != aCommand.attr.ability.hasMSAA;
@@ -192,6 +213,64 @@ bool PrimitiveDrawer::StippleShader::init() {
 }
 
 //-------------------------------------------------------------------------------------------------
+// THE BRUSH TIP, AS A SHADER. The alpha is ctrl::brushFalloff evaluated per FRAGMENT from the
+// distance to the tip's centre, so there is no texture to run out of resolution and no seam at any
+// radius - a bitmap ramp stretched to 800px is what "the overlay breaks at a certain size" was.
+// The geometry is one square around the tip: the shader clips it to the disc, which is exact (a
+// polygon approximation of the rim would show facets long before a radial discard would).
+bool PrimitiveDrawer::BrushTipShader::init() {
+    static const char* kVertexShaderText =
+        "#version 140 \n"
+        "in vec2 inPosition;"
+        "out vec2 vScreen;"
+        "uniform mat4 uViewMtx;"
+        "void main(void){"
+        "  gl_Position = uViewMtx * vec4(inPosition, 0.0, 1.0);"
+        "  vScreen = inPosition;"
+        "}";
+    // brushFalloff, verbatim from ctrl/Brush.h: a flat core of radius*hardness, then smoothstep to
+    // the rim, and nothing past it. Premultiplied output, like the rest of this pass.
+    static const char* kFragmentShaderText =
+        "#version 140 \n"
+        "in vec2 vScreen;"
+        "uniform vec2 uCenter;"
+        "uniform float uRadius;"
+        "uniform float uHardness;"
+        "uniform vec4 uColor;"
+        "out vec4 oFragColor;"
+        "void main(void){"
+        "  float d = length(vScreen - uCenter);"
+        "  if (d >= uRadius) discard;"
+        "  float core = uRadius * clamp(uHardness, 0.0, 1.0);"
+        "  float coverage = 1.0;"
+        "  if (d > core) {"
+        "    float t = (uRadius - d) / max(1.0e-5, uRadius - core);"
+        "    coverage = t * t * (3.0 - 2.0 * t);"
+        "  }"
+        // STRAIGHT alpha, like every other primitive in this pass: the drawer blends with
+        // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), so a PREMULTIPLIED output is
+        // multiplied by its own alpha a second time - the falloff came out a square of what it
+        // should be, which reads as a flat disc with a slightly darker rim (reported as "that is
+        // not the actual alpha"). Measured before this: 0.142 where brushFalloff says 0.377.
+        "  float a = uColor.a * coverage;"
+        "  oFragColor = vec4(uColor.rgb, a);"
+        "}";
+
+    if (!fBuildShader(program, kVertexShaderText, kFragmentShaderText)) {
+        return false;
+    }
+
+    locPosition = program.attributeLocation("inPosition");
+    locViewMtx = program.uniformLocation("uViewMtx");
+    locCenter = program.uniformLocation("uCenter");
+    locRadius = program.uniformLocation("uRadius");
+    locHardness = program.uniformLocation("uHardness");
+    locColor = program.uniformLocation("uColor");
+
+    GL_CHECK_ERROR();
+    return true;
+}
+
 bool PrimitiveDrawer::TextureShader::init() {
     static const char* kVertexShaderText =
         "#version 140 \n"
@@ -252,6 +331,7 @@ PrimitiveDrawer::PrimitiveDrawer(int aVtxCountOfSlot, int aSlotCount):
     mPlaneShader.init();
     mStippleShader.init();
     mTextureShader.init();
+    mBrushTipShader.init();
 
     // create buffer
     {
@@ -289,7 +369,13 @@ void PrimitiveDrawer::begin() {
 
     Global::Functions& ggl = Global::functions();
     ggl.glEnable(GL_BLEND);
-    ggl.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // THE DESTINATION ALPHA IS NOT THE OVERLAY'S TO LOWER. This pass draws TOOL INK over the
+    // artwork: the canvas below is opaque, and the widget is composited with that alpha, so a
+    // translucent stroke that also wrote alpha punched a hole through the window - you could see
+    // whatever was behind it (reported as "it bleeds the colors from the window behind it"). The
+    // separate alpha function keeps the destination OPAQUE: a = src + dst*(1 - src) is 1 wherever
+    // the canvas was 1, whatever the brush ink's alpha is.
+    ggl.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     // ggl.glEnable(GL_CULL_FACE);
     // ggl.glCullFace(GL_BACK);
@@ -594,6 +680,69 @@ void PrimitiveDrawer::drawTexture(const QRectF& aRect, GLuint aTexture) {
     drawTexture(aRect, aTexture, QSize(1, 1), QRectF(0.0f, 0.0f, 1.0f, 1.0f));
 }
 
+void PrimitiveDrawer::drawBrushTip(const QPointF& aCenter, float aRadius, float aHardness, const QColor& aColor) {
+    if (aRadius <= 0.0f)
+        return;
+
+    // A DRAW COMMAND IS DROPPED UNLESS A BRUSH IS ENABLED AND SET: `pushDrawCommand` returns early
+    // for a usePen = false draw while `mScheduledState.hasBrush` is false, and the shader reads its
+    // ink from the brush state. So the tip brings both with it and needs nothing from the painter -
+    // the two versions that drew nothing at all were this gate, once for a texture and once here.
+    setBrushEnable(true);
+    {
+        Command command;
+        command.type = Type_Brush;
+        command.attr.brush.color = aColor.rgba();
+        pushStateCommand(command);
+    }
+    {
+        Command command;
+        command.type = Type_BrushTip;
+        command.attr.brushTip.centerX = float(aCenter.x());
+        command.attr.brushTip.centerY = float(aCenter.y());
+        command.attr.brushTip.radius = aRadius;
+        command.attr.brushTip.hardness = aHardness;
+        command.attr.brushTip.color = aColor.rgba();
+        pushStateCommand(command);
+    }
+
+    {
+        // ONE SQUARE AROUND THE TIP: the fragment shader discards everything past the radius, so
+        // the silhouette is the circle itself, not the quad and not a facet approximation of it.
+        Command command;
+        command.type = Type_Draw;
+        command.attr.draw.prim = GL_TRIANGLE_STRIP;
+        command.attr.draw.count = 4;
+        command.attr.draw.usePen = false;
+        const float left = float(aCenter.x()) - aRadius;
+        const float right = float(aCenter.x()) + aRadius;
+        const float top = float(aCenter.y()) - aRadius;
+        const float bottom = float(aCenter.y()) + aRadius;
+        gl::Vector2 positions[4] = {
+            gl::Vector2::make(left, top),
+            gl::Vector2::make(left, bottom),
+            gl::Vector2::make(right, top),
+            gl::Vector2::make(right, bottom)};
+        pushDrawCommand(command, positions);
+    }
+
+    // AND THE TIP STATE ENDS WITH ITS OWN DRAW. The drawer's state is a stream: leaving a radius
+    // behind made EVERY later draw in the same pass bind the tip shader - the tool's own two circles
+    // were then rasterised as tip quads and simply disappeared behind the preview (measured as
+    // `blue ring px = 0` during a resize). A radius of 0 means "no tip", so the next draw binds its
+    // own shader again.
+    {
+        Command command;
+        command.type = Type_BrushTip;
+        command.attr.brushTip.centerX = 0.0f;
+        command.attr.brushTip.centerY = 0.0f;
+        command.attr.brushTip.radius = 0.0f;
+        command.attr.brushTip.hardness = 1.0f;
+        command.attr.brushTip.color = 0;
+        pushStateCommand(command);
+    }
+}
+
 void PrimitiveDrawer::drawTexture(const QRectF& aRect, GLuint aTexture, const QSize& aTexSize, const QRectF& aSrcRect) {
     {
         Command command;
@@ -746,6 +895,9 @@ void PrimitiveDrawer::flushCommands() {
         case Type_Texture:
             mAppliedState.set(command);
             break;
+        case Type_BrushTip:
+            mAppliedState.set(command);
+            break;
         case Type_Ability:
             if (mAppliedState.hasMSAA != command.attr.ability.hasMSAA) {
                 unbindCurrentShader();
@@ -771,7 +923,9 @@ void PrimitiveDrawer::bindAppositeShader(int aSlotIndex) {
     // auto prevType = mCurrentShader;
     auto nextType = ShaderType_Plane;
 
-    if (mAppliedState.texture != 0) {
+    if (mAppliedState.brushTipRadius > 0.0f) {
+        nextType = ShaderType_BrushTip;
+    } else if (mAppliedState.texture != 0) {
         nextType = ShaderType_Texture;
     } else if (mAppliedState.penStyle != PenStyle_Solid) {
         nextType = ShaderType_Stipple;
@@ -794,6 +948,12 @@ void PrimitiveDrawer::bindAppositeShader(int aSlotIndex) {
         mTextureShader.program.setUniformValue(mTextureShader.locViewMtx, mViewMtx);
         mTextureShader.program.setUniformValue(mTextureShader.locTexture, 0);
         mCurrentShader = ShaderType_Texture;
+    } else if (nextType == ShaderType_BrushTip) {
+        mBrushTipShader.program.bind();
+        ggl.glBindBuffer(GL_ARRAY_BUFFER, mPosSlotIds[aSlotIndex]);
+        mBrushTipShader.program.setAttributeBuffer(mBrushTipShader.locPosition, GL_FLOAT, 2);
+        mBrushTipShader.program.setUniformValue(mBrushTipShader.locViewMtx, mViewMtx);
+        mCurrentShader = ShaderType_BrushTip;
     } else if (nextType == ShaderType_Stipple) {
         const QVector2D scrHalfSize(mScreenSize.width() / 2, mScreenSize.height() / 2);
         mStippleShader.program.bind();
@@ -825,6 +985,16 @@ void PrimitiveDrawer::setColorToCurrentShader(bool aUsePen) {
         mPlaneShader.program.setUniformValue(mPlaneShader.locColor, colorVec);
     } else if (mCurrentShader == ShaderType_Stipple) {
         mStippleShader.program.setUniformValue(mStippleShader.locColor, colorVec);
+    } else if (mCurrentShader == ShaderType_BrushTip) {
+        auto ink = QColor::fromRgba(mAppliedState.brushTipColor);
+        const QVector4D inkVec(ink.redF(), ink.greenF(), ink.blueF(), ink.alphaF());
+        mBrushTipShader.program.setUniformValue(
+            mBrushTipShader.locCenter,
+            QVector2D(mAppliedState.brushTipCenterX, mAppliedState.brushTipCenterY)
+        );
+        mBrushTipShader.program.setUniformValue(mBrushTipShader.locRadius, mAppliedState.brushTipRadius);
+        mBrushTipShader.program.setUniformValue(mBrushTipShader.locHardness, mAppliedState.brushTipHardness);
+        mBrushTipShader.program.setUniformValue(mBrushTipShader.locColor, inkVec);
     } else if (mCurrentShader == ShaderType_Texture) {
         auto texColor = QColor::fromRgba(mAppliedState.textureColor);
         const QVector4D texColorVec(texColor.redF(), texColor.greenF(), texColor.blueF(), texColor.alphaF());
@@ -837,6 +1007,8 @@ void PrimitiveDrawer::unbindCurrentShader() {
         mPlaneShader.program.release();
     } else if (mCurrentShader == ShaderType_Stipple) {
         mStippleShader.program.release();
+    } else if (mCurrentShader == ShaderType_BrushTip) {
+        mBrushTipShader.program.release();
     } else if (mCurrentShader == ShaderType_Texture) {
         mTextureShader.program.release();
         Global::Functions& ggl = Global::functions();

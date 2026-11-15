@@ -191,8 +191,7 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
 
         MouseSetting mouse;
         mouse.load();
-        init.invertMainViewScaling = mouse.invertMainViewScaling;
-        init.invertTimeLineScaling = mouse.invertTimeLineScaling;
+        init.invertZoom = mouse.invertZoom;
         init.middleMouseMoveCanvas = mouse.middleMouseMoveCanvas;
 
         mModel->seed(init);
@@ -409,8 +408,7 @@ void GeneralSettingDialog::saveSettings() {
     }
     if (mouseHasChanged()) {
         MouseSetting newValues;
-        newValues.invertMainViewScaling = mModel->invertMainViewScaling();
-        newValues.invertTimeLineScaling = mModel->invertTimeLineScaling();
+        newValues.invertZoom = mModel->invertZoom();
         newValues.middleMouseMoveCanvas = mModel->middleMouseMoveCanvas();
         newValues.save();
         mViaPoint.mouseSetting() = newValues;

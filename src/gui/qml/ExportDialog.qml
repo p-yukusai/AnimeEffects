@@ -229,8 +229,9 @@ Item {
                     visible: exportModel.destinationIconName !== ""
                     source: exportModel.destinationIconName === ""
                             ? "" : theme.iconUrl(exportModel.destinationIconName)
-                    sourceSize.width: 64
-                    sourceSize.height: 64
+                    sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                    sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                    smooth: true
                     fillMode: Image.PreserveAspectFit
                 }
                 Text {

@@ -38,10 +38,10 @@ AbstractCursor::AbstractCursor():
 }
 
 bool AbstractCursor::setMousePress(QMouseEvent* aEvent, const CameraInfo& aCameraInfo) {
-    return setMousePressImpl(aEvent->button(), aEvent->pos(), aCameraInfo);
+    return setMousePressImpl(aEvent->button(), aEvent->position(), aCameraInfo);
 }
 
-bool AbstractCursor::setMousePressImpl(Qt::MouseButton aButton, QPoint aPos, const CameraInfo& aCameraInfo) {
+bool AbstractCursor::setMousePressImpl(Qt::MouseButton aButton, QPointF aPos, const CameraInfo& aCameraInfo) {
     // qDebug() << "press" << aButton;
     mEventType = Event_Press;
     mEventButton = getEventButtonFrom(aButton);
@@ -57,8 +57,8 @@ bool AbstractCursor::setMousePressImpl(Qt::MouseButton aButton, QPoint aPos, con
         mIsPressed[mEventButton] = true;
     }
 
-    mScreenPoint = aPos;
-    mScreenPos = QVector2D(mScreenPoint);
+    mScreenPoint = aPos.toPoint();
+    mScreenPos = QVector2D(aPos);
     mScreenVel = QVector2D(0.0f, 0.0f);
     mWorldPos = aCameraInfo.toWorldPos(mScreenPos);
     mWorldVel = QVector2D(0.0f, 0.0f);
@@ -67,18 +67,18 @@ bool AbstractCursor::setMousePressImpl(Qt::MouseButton aButton, QPoint aPos, con
 }
 
 bool AbstractCursor::setMouseMove(QMouseEvent* aEvent, const CameraInfo& aCameraInfo) {
-    return setMouseMoveImpl(aEvent->button(), aEvent->pos(), aCameraInfo);
+    return setMouseMoveImpl(aEvent->button(), aEvent->position(), aCameraInfo);
 }
 
-bool AbstractCursor::setMouseMoveImpl(Qt::MouseButton, QPoint aPos, const CameraInfo& aCameraInfo) {
+bool AbstractCursor::setMouseMoveImpl(Qt::MouseButton, QPointF aPos, const CameraInfo& aCameraInfo) {
     QVector2D prevScreenPos = mScreenPos;
     QVector2D prevWorldPos = mWorldPos;
 
     mEventType = Event_Move;
     mEventButton = Button_TERM;
 
-    mScreenPoint = aPos;
-    mScreenPos = QVector2D(mScreenPoint);
+    mScreenPoint = aPos.toPoint();
+    mScreenPos = QVector2D(aPos);
     mScreenVel = mScreenPos - prevScreenPos;
     mWorldPos = aCameraInfo.toWorldPos(mScreenPos);
     mWorldVel = mWorldPos - prevWorldPos;
@@ -87,10 +87,10 @@ bool AbstractCursor::setMouseMoveImpl(Qt::MouseButton, QPoint aPos, const Camera
 }
 
 bool AbstractCursor::setMouseRelease(QMouseEvent* aEvent, const CameraInfo& aCameraInfo) {
-    return setMouseReleaseImpl(aEvent->button(), aEvent->pos(), aCameraInfo);
+    return setMouseReleaseImpl(aEvent->button(), aEvent->position(), aCameraInfo);
 }
 
-bool AbstractCursor::setMouseReleaseImpl(Qt::MouseButton aButton, QPoint aPos, const CameraInfo& aCameraInfo) {
+bool AbstractCursor::setMouseReleaseImpl(Qt::MouseButton aButton, QPointF aPos, const CameraInfo& aCameraInfo) {
     // qDebug() << "release" << aButton;
     QVector2D prevScreenPos = mScreenPos;
     QVector2D prevWorldPos = mWorldPos;
@@ -109,8 +109,8 @@ bool AbstractCursor::setMouseReleaseImpl(Qt::MouseButton aButton, QPoint aPos, c
         mIsDouble[mEventButton] = false;
     }
 
-    mScreenPoint = aPos;
-    mScreenPos = QVector2D(mScreenPoint);
+    mScreenPoint = aPos.toPoint();
+    mScreenPos = QVector2D(aPos);
     mScreenVel = mScreenPos - prevScreenPos;
     mWorldPos = aCameraInfo.toWorldPos(mScreenPos);
     mWorldVel = mWorldPos - prevWorldPos;
@@ -167,16 +167,16 @@ bool AbstractCursor::setTabletEvent(QTabletEvent* aEvent, const CameraInfo& aCam
         else{
             shouldDoubleClick = true;
         }
-        shouldUpdate = setMousePressImpl(aEvent->button(), aEvent->position().toPoint(), aCameraInfo);
+        shouldUpdate = setMousePressImpl(aEvent->button(), aEvent->position(), aCameraInfo);
         mIsPressedTablet = true;
         mPressure = pressure;
     } else if (type == QEvent::TabletMove) {
-        shouldUpdate = setMouseMoveImpl(aEvent->button(), aEvent->position().toPoint(), aCameraInfo);
+        shouldUpdate = setMouseMoveImpl(aEvent->button(), aEvent->position(), aCameraInfo);
         if (mIsPressedTablet) {
             mPressure = 0.5f * mPressure + 0.5f * pressure;
         }
     } else if (type == QEvent::TabletRelease) {
-        shouldUpdate = setMouseReleaseImpl(aEvent->button(), aEvent->position().toPoint(), aCameraInfo);
+        shouldUpdate = setMouseReleaseImpl(aEvent->button(), aEvent->position(), aCameraInfo);
         mIsPressedTablet = false;
         mPressure = 1.0f;
     }

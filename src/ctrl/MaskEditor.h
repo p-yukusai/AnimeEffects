@@ -42,6 +42,11 @@ public:
     // from IEditor
     virtual bool setTarget(core::ObjectNode* aTarget) override;
     virtual bool updateCursor(const core::CameraInfo& aCamera, const core::AbstractCursor& aCursor) override;
+    // Records the stroke's accumulated damage (called at the end of updateCursor) and, separately,
+    // ANNOUNCES it once per painted frame: the viewport calls announcePendingPaint() at the start of
+    // a paint, so a mouse event never re-blends the document (see flushPaint).
+    bool flushPaint();
+    void announcePendingPaint();
     virtual void updateEvent(EventType aType) override;
     virtual void renderQt(const core::RenderInfo& aInfo, QPainter& aPainter) override;
 
@@ -53,6 +58,13 @@ public:
     QRectF fieldRect() const;
     // clears the field being edited, as one undo step
     void clearMask();
+    // EXTENDS THE STROKE FROM A POINTER POSITION THAT IS NOT A MOUSE EVENT. The viewport polls the
+    // pointer while a stroke is down (see MainDisplayWidget::pollStrokePointer) because a platform
+    // hands over one motion per frame while the view paints, so the events alone lose most of the
+    // path. Returns false when no stroke is being painted.
+    bool paintTo(const QVector2D& aWorldPos, float aPressure);
+    bool isPainting() const { return mPainting; }
+
     // THE TEMPORARY EYEDROPPER: the field's value under a world position, or a
     // negative number when there is no field there. The caller (the viewport, which
     // owns the modifier state) puts it back into the panel.
@@ -99,6 +111,12 @@ private:
     // it is the same one the shader is drawn with
     core::CameraInfo mCamera;
     bool mPainting;
+    // true while the editor is emitting its own damage: updateEvent must not react to it
+    bool mAnnouncing;
+    // stamps accumulate their damage here; flushPaint announces it once
+    bool mDirty = false;
+    bool mDirtyKey = false;
+    bool mDirtyFilter = false;
     AssignPixels* mCommand;
     // the layer-mask stroke: the key it writes and its field before the first stamp
     core::MaskKey* mStrokeKey = nullptr;

@@ -127,8 +127,9 @@ int main(int argc, char** argv) {
     check(!model.ignoreWarnings(), "export warnings are shown by default");
     check(!model.forceSolverLoad(), "projects are not force-loaded by default");
     check(model.keyDelayMs() == 125, QStringLiteral("the keybind delay is 125 ms (%1)").arg(model.keyDelayMs()));
-    check(!model.invertMainViewScaling(), "canvas scrolling is not inverted by default");
-    check(!model.invertTimeLineScaling(), "timeline scrolling is not inverted by default");
+    // ONE zoom switch for every wheel surface, and its default is the CONVENTION (wheel up zooms
+    // in): an inverted default is what the report was about.
+    check(!model.invertZoom(), "the zoom direction is the convention by default");
     check(model.middleMouseMoveCanvas(), "the middle mouse moves the canvas by default");
     check(model.currentTab() == 0, "the form opens on the General tab");
 
@@ -172,12 +173,12 @@ int main(int argc, char** argv) {
     model.setKeyDelayMs(200);
     check(model.keyDelayHasChanged(), "keyDelayHasChanged() follows keyDelayMs");
     model.setMiddleMouseMoveCanvas(false);
-    check(model.mouseHasChanged(), "mouseHasChanged() follows the three mouse flags");
-    // ...and a mouse flag set back to its seeded value still reads changed, because
-    // the other two differ - the predicate is the whole triple, exactly as the
-    // widget's MouseSetting comparison was.
-    model.setInvertMainViewScaling(true);
-    check(model.mouseHasChanged(), "mouseHasChanged() is true while any one flag differs");
+    check(model.mouseHasChanged(), "mouseHasChanged() follows the mouse flags");
+    // ...and a flag set back to its seeded value still reads changed, because the
+    // other one differs - the predicate is the whole pair, exactly as the widget's
+    // MouseSetting comparison was.
+    model.setInvertZoom(true);
+    check(model.mouseHasChanged(), "mouseHasChanged() is true while any flag differs");
 
     // The option lists the scene repeats over and the combos bind.
     check(model.languageOptions().size() == 7, QStringLiteral("seven languages (%1)").arg(model.languageOptions().size()));

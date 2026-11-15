@@ -109,6 +109,21 @@ KeyCommandMap::KeyCommandMap(QWidget& aParent):
         ctrl::KeyBinding(Qt::Key_BracketLeft, Qt::ShiftModifier)
     );
 
+    // The painter's value swap. Photoshop, Clip Studio Paint, Krita and GIMP all paint a
+    // mask with two inks - black hides, white reveals - and swap them with X; this brush
+    // has one value it paints toward, so X swaps that value between its two ends (0 % and
+    // 100 %), which is the same gesture with one fewer concept. Only the Mask tool listens.
+    addNewKey("SwapMaskValue", tools, tr("Swap the mask paint value"), ctrl::KeyBinding(Qt::Key_X));
+
+    // INVERT THE MATTE IS A COMMAND, NOT A BUTTON. Photoshop inverts a mask with Ctrl+I and no
+    // control anywhere on its panel; here it was a row in the matte's card, which (a) is not a
+    // property (it rewrites the frame's field pixels), and (b) put an image operation in the
+    // painting section. As a rebindable command it sits where this application keeps every verb a
+    // user might want on a key, and the Mask tool is the only listener.
+    addNewKey(
+        "InvertMask", tools, tr("Invert the layer mask"), ctrl::KeyBinding(Qt::Key_I, Qt::ControlModifier)
+    );
+
     addNewKey("MoveFrameLeft", timeline, tr("Move one frame to the left"), ctrl::KeyBinding(Qt::Key_1, Qt::AltModifier));
 
     addNewKey("MoveFrameRight", timeline, tr("Move one frame to the right"), ctrl::KeyBinding(Qt::Key_3, Qt::AltModifier));

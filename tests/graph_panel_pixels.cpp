@@ -1,14 +1,5 @@
 // The animation graph panel's PIXEL CONTRACT.
 
-// The test-link stubs the sibling graph tests use (see tests/graph_curve.cpp): libctrl's
-// single `ctrl::TimeLineEditor` translation unit references these gui entry points from
-// code no headless test calls, and pulling the whole gui library for them would drag the
-// application in with it.
-#include "gui/ObjectTreeWidget.h"
-bool gui::obj::Item::isTopNode() const { return false; }
-std::pair<core::TimeKey*, core::LayerMesh*> gui::ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode&, int) {
-    return { nullptr, nullptr };
-}
 //
 // This is the pixel gate of the ImGui panel (gui::drawPanel, src/gui/GraphPanelFrame.cpp)
 // and the successor of tests/graph_render_pixels.cpp, which pinned the RASTER

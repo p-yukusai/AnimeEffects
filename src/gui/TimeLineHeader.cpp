@@ -285,7 +285,10 @@ public:
         this->setFocusPolicy(Qt::TabFocus);
         this->setFixedSize(kButtonSize, kButtonSize);
         this->setCheckable(true); // the checked state is exposed to assistive technology
-        this->setAccessibleName(tr("Proportional keys"));
+        // THE BAR'S CONTEXT, not this file-local class's: a context is a catalog KEY, and
+        // lupdate mints one per CLASS - `gui::ProportionalButton` was a context no class in a
+        // header could ask for, which scripts/i18n/check_tr_contexts.py (rightly) rejects.
+        this->setAccessibleName(TimeLineHeader::tr("Proportional keys"));
     }
 
     State proportionalState() const { return mState; }

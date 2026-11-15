@@ -150,24 +150,23 @@ void Util::expandAlpha1Pixel(uint8* aImage, const QSize& aSize) {
     }
 }
 
-XCMemBlock Util::recreateForBiLinearSampling(XCMemBlock& aGrabbedImage, const QSize& aSize) {
+XCMemBlock Util::prepareForSampling(XCMemBlock& aGrabbedImage, const QSize& aSize) {
     XC_PTR_ASSERT(aGrabbedImage.data);
     XC_ASSERT(aSize.width() > 0);
     XC_ASSERT(aSize.height() > 0);
 
-    const int w = aSize.width() + 2;
-    const int h = aSize.height() + 2;
-    const size_t dstSize = w * h * 4;
+    const int w = aSize.width();
+    const int h = aSize.height();
+    const size_t dstSize = (size_t)w * h * 4;
     uint8* dstData = new uint8[dstSize];
 
-    // copy original to dest
-    copyImage(dstData, QSize(w, h), QPoint(1, 1), aGrabbedImage.data, aSize);
+    // copy original to dest, size for size: the artwork has to keep the texture's origin, or the
+    // level-l texel grids (anchored to multiples of 2^l in the texture) straddle its own 2^l blocks
+    // from level 1 up (see the header)
+    copyImage(dstData, aSize, QPoint(0, 0), aGrabbedImage.data, aSize);
 
     // kill original
     delete[] aGrabbedImage.data;
-
-    // clear edge
-    setEdgeColor(dstData, QSize(w, h), QColor(0, 0, 0, 0));
 
     // set zero alpha color
     {
@@ -223,21 +222,34 @@ XCMemBlock Util::recreateForBiLinearSampling(XCMemBlock& aGrabbedImage, const QS
     return XCMemBlock(dstData, dstSize);
 }
 
-void Util::setEdgeColor(uint8* aImage, const QSize& aSize, const QColor& aColor) {
-    ColorRGBA* color = (ColorRGBA*)aImage;
-    const int w = aSize.width();
-    const int h = aSize.height();
+std::vector<uint8> Util::makeTextureUpload(const uint8* aData, const QSize& aSize) {
+    XC_ASSERT(aData);
+    XC_ASSERT(aSize.width() > 0 && aSize.height() > 0);
 
-    // top, bottom
-    for (int x = 0; x < w; ++x) {
-        color[x].set(aColor);
-        color[x + w * (h - 1)].set(aColor);
+    // the content's own size, texel for texel: a padding ring would cost up to +98% of the layer's
+    // memory and buy nothing, because gl::Texture::create rebuilds every level that does not halve
+    // exactly (see the header)
+    std::vector<uint8> upload((size_t)aSize.width() * aSize.height() * 4);
+    std::memcpy(upload.data(), aData, upload.size());
+
+    // glGenerateMipmap box-filters every channel independently, so averaging STRAIGHT color mixes
+    // the RGB of transparent texels into the edge texels of each level: artwork routinely carries
+    // black (or meaningless) RGB under alpha 0, so that average darkens the silhouette - the classic
+    // mipmap dark halo, worst exactly where the layer is minified. Premultiplying makes color and
+    // coverage average together; the layer shader divides the coverage back out (PREMULTIPLIED_INPUT
+    // in LayerDrawingFrag), so the blend math still sees straight color. Alpha is left untouched, so
+    // consumers that use only alpha - the clipper writing pass (ClipperWritingFrag) - are unaffected.
+    for (size_t i = 0; i < upload.size(); i += 4) {
+        uint8* p = upload.data() + i;
+        const uint32 a = p[3];
+        if (a == 255)
+            continue;
+        // round-to-nearest, so an opaque-adjacent texel does not drift darker
+        p[0] = (uint8)((p[0] * a + 127) / 255);
+        p[1] = (uint8)((p[1] * a + 127) / 255);
+        p[2] = (uint8)((p[2] * a + 127) / 255);
     }
-    // left, right
-    for (int y = 1; y < h - 1; ++y) {
-        color[y * w].set(aColor);
-        color[(y + 1) * w - 1].set(aColor);
-    }
+    return upload;
 }
 
 std::pair<XCMemBlock, QRect>
@@ -260,9 +272,11 @@ Util::createTextureImage(const PSDFormat::Header& aHeader, const PSDFormat::Laye
     QRect rect(aLayer.rect.left(), aLayer.rect.top(), aLayer.rect.width(), aLayer.rect.height());
 
     // modulate color bit
-    image = recreateForBiLinearSampling(image, rect.size());
-    rect.moveTopLeft(rect.topLeft() + QPoint(-1, -1));
-    rect.setSize(rect.size() + QSize(2, 2));
+    // the image is the layer's own rect, texel for texel: the ring used to move the artwork to
+    // (1, 1) and grow the rect by 2, which put it off the mip chain's level grids. The rect is left
+    // alone, so the content lands at exactly the document coordinates the PSD gives - the ring was
+    // never part of it (see prepareForSampling)
+    image = prepareForSampling(image, rect.size());
 
     return std::pair<XCMemBlock, QRect>(image, rect);
 }
@@ -285,8 +299,10 @@ std::pair<XCMemBlock, QRect> Util::createTextureImage(const QImage& aImage) {
     memcpy(workImage.data, aImage.bits(), length);
 
     // modulate color bit
-    auto image = recreateForBiLinearSampling(workImage, aImage.size());
-    const QRect rect(QPoint(-1, -1), aImage.size() + QSize(2, 2));
+    // the content's own rect, unpadded, so the artwork sits at the texture's origin and the same
+    // document position it had with the ring (-1, -1 shifted by the ring's 1-texel inset)
+    auto image = prepareForSampling(workImage, aImage.size());
+    const QRect rect(QPoint(0, 0), aImage.size());
 
     return std::pair<XCMemBlock, QRect>(image, rect);
 }

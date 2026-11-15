@@ -13,6 +13,7 @@ add_library(${PROJECT_NAME}
     EasyTextureDrawer.cpp EasyTextureDrawer.h
     ExtendShader.cpp ExtendShader.h
     FontDrawer.cpp FontDrawer.h
+    FrameStats.cpp FrameStats.h
     Framebuffer.cpp Framebuffer.h
     Global.cpp Global.h
     PrimitiveDrawer.cpp PrimitiveDrawer.h

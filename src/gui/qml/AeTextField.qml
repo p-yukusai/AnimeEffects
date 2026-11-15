@@ -108,8 +108,9 @@ TextField {
         width: 14
         height: 14
         source: root.leadingIcon === "" ? "" : theme.iconUrl(root.leadingIcon)
-        sourceSize.width: 64
-        sourceSize.height: 64
+        sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+        sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+        smooth: true
         fillMode: Image.PreserveAspectFit
         opacity: 0.8
     }

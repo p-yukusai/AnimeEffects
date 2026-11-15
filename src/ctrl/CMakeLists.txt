@@ -42,6 +42,7 @@ add_library(${PROJECT_NAME}
     TimeLineEditor.cpp TimeLineEditor.h
     TimeLineRow.cpp TimeLineRow.h
     TimeLineUtil.cpp TimeLineUtil.h
+    TreeActions.cpp TreeActions.h
     ToolType.h
     UILog.h
     UILogType.h

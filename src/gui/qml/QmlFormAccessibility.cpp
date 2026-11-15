@@ -27,8 +27,15 @@ constexpr auto kOptionMarker = "aeAccessibleOption";
 // of its own - so without this marker a card could not be expanded by anything but a
 // mouse, and no probe could expand one either.
 constexpr auto kDisclosureMarker = "aeAccessibleDisclosure";
+// A TREE ROW: the animation dock's object tree is a Qt Quick ListView, and a Qt Quick item's
+// own accessible object reports itself INVISIBLE in this application (the reason the inspector
+// needed this factory at all), which would hide every layer from a screen reader and from the
+// probe suite. The row publishes role Cell - AT-SPI's "table cell", the role the widget tree
+// published - with the states a layer list has (selected, checkable/checked for visibility,
+// expandable/expanded) and Press.
+constexpr auto kRowMarker = "aeAccessibleRow";
 
-enum class Kind { Value, Combo, Option, Disclosure };
+enum class Kind { Value, Combo, Option, Disclosure, Row };
 
 class FormAccessible : public QAccessibleObject,
                        public QAccessibleValueInterface,
@@ -46,6 +53,7 @@ public:
         case Kind::Combo: return QAccessible::ComboBox;
         case Kind::Option: return QAccessible::ListItem;
         case Kind::Disclosure: return QAccessible::Button;
+        case Kind::Row: return QAccessible::Cell;
         }
         return QAccessible::NoRole;
     }
@@ -76,6 +84,20 @@ public:
         // The state bits are the NEGATIVE senses, as QAccessible defines them.
         s.invisible = !item()->isVisible();
         s.disabled = !item()->isEnabled();
+        if (mKind == Kind::Row) {
+            // A row's own facts, from the QML properties the delegate binds to its model:
+            // the ListView is the keyboard holder, so the row is selectable but never the
+            // focused object.
+            s.focused = false;
+            // a row is selectable unless the SCENE says otherwise: the tree's document row is
+            // the document, not a layer, and selecting it emptied the inspector
+            s.selectable = item()->property("accessibleSelectable").toBool();
+            s.selected = item()->property("accessibleSelected").toBool();
+            s.expandable = item()->property("accessibleHasChildren").toBool();
+            s.expanded = s.expandable && item()->property("accessibleExpanded").toBool();
+            s.checkable = item()->property("accessibleCheckable").toBool();
+            s.checked = s.checkable && item()->property("accessibleChecked").toBool();
+        }
         return s;
     }
 
@@ -150,6 +172,9 @@ public:
         case Kind::Disclosure:
             QMetaObject::invokeMethod(item(), "accessiblePress");
             break;
+        case Kind::Row:
+            QMetaObject::invokeMethod(item(), "accessiblePress");
+            break;
         }
     }
     QStringList keyBindingsForAction(const QString&) const override {
@@ -169,6 +194,7 @@ QAccessibleInterface* formFactory(const QString&, QObject* aObject) {
     if (name == QLatin1String(kOptionMarker)) return new FormAccessible(item, Kind::Option);
     if (name == QLatin1String(kDisclosureMarker))
         return new FormAccessible(item, Kind::Disclosure);
+    if (name == QLatin1String(kRowMarker)) return new FormAccessible(item, Kind::Row);
     return nullptr;
 }
 

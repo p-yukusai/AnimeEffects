@@ -2,7 +2,6 @@
 #define GUI_TIMELINEWIDGET_H
 
 #include <QWidget>
-#include <QTreeWidgetItem>
 #include <QTimer>
 #include <QTime>
 #include <QScopedPointer>
@@ -14,6 +13,7 @@
 #include "core/TimeLineEvent.h"
 #include "ctrl/AutoScroll.h"
 #include "gui/TimeLineEditorWidget.h"
+#include "gui/AnimationRow.h"
 #include "gui/ViaPoint.h"
 #include "gui/GUIResources.h"
 #include "gui/AudioPlaybackWidget.h"
@@ -39,7 +39,10 @@ public:
     TimeLineWidget(GUIResources& aResources, ViaPoint& aViaPoint, core::Animator& aAnimator, QWidget* aParent);
 
     void setProject(core::Project* aProject);
-    void updateLines(QTreeWidgetItem* aTopNode);
+    // The dock's row list (gui::ObjectTreeModel). The lanes ARE these rows: the model owns
+    // the height rule (ctrl::TimeLineRow::displayHeight) and the content-space offsets, so
+    // the tree and the lanes cannot disagree about where a row starts.
+    void setRows(const gui::AnimationRows& aRows);
     void setPlayBackActivity(bool aIsActive, std::vector<audioConfig>* pConf, mediaState* mediaPlayer);
     void setPlayBackLoop(bool aDoesLoop);
     void setFrame(core::Frame aFrame);
@@ -65,7 +68,7 @@ public:
     util::Signaler<void()> onViewRangeChanged;
 
 public:
-    void onTreeViewUpdated(QTreeWidgetItem* aTopNode);
+    void onTreeViewUpdated();
     void onScrollUpdated(int aValue);
     void onSelectionChanged(core::ObjectNode* aRepresent);
     void onProjectAttributeUpdated();

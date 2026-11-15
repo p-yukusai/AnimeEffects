@@ -4,6 +4,7 @@
 #include "ctrl/TimeLineUtil.h"
 #include "ctrl/CmndName.h"
 #include "ctrl/ffd/ffd_BrushMode.h"
+#include "core/FFDKey.h"
 
 using namespace core;
 
@@ -87,7 +88,27 @@ namespace ffd {
         }
     }
 
+    void BrushMode::flushPendingWork() {
+        // THE BATCH: every stamp the frame's samples produced is executed here, in one pass over the
+        // queue, after the pointer has been drained. Per-stamp execution inside the event handler
+        // meant one transform-feedback pass (and one command rewrite) per sample, which is what made
+        // a fast warping stroke collapse - the loop was busy in the GPU task, not reading the pointer.
+        if (mQueuedStamps.isEmpty())
+            return;
+        QVector<BrushStamp> stamps = std::move(mQueuedStamps);
+        mQueuedStamps.clear();
+        for (const BrushStamp& stamp : stamps)
+            executeStampNow(stamp);
+    }
+
+
     bool BrushMode::executeStamp(const BrushStamp& aStamp) {
+        mQueuedStamps.push_back(aStamp);
+        return true;
+    }
+
+
+    bool BrushMode::executeStampNow(const BrushStamp& aStamp) {
         static const size_t kCopySize = 1024;
 
         // setup input buffers

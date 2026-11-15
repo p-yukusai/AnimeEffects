@@ -72,8 +72,12 @@ Rectangle {
                 height: 14
                 source: theme.closeIcon
                 fillMode: Image.PreserveAspectFit
-                sourceSize.width: 256
-                sourceSize.height: 256
+                // 14px glyph: the raster is its physical footprint, not 256 (a 256px
+                // source is nearest-neighbour downscaled when Image.smooth is off, which
+                // is the same jagged edge the docks had - see ScrubSpinBox's note).
+                sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                smooth: true
             }
             HoverHandler { id: closeHov }
             TapHandler { onTapped: model.reject() }
@@ -120,7 +124,7 @@ Rectangle {
                     onPaint: {
                         const c = getContext("2d");
                         c.reset();
-                        c.strokeStyle = theme.accentText;
+                        c.strokeStyle = theme.text; // see AeCheckBox: the accent fill's ink
                         c.lineWidth = 2;
                         c.lineCap = "round";
                         c.lineJoin = "round";

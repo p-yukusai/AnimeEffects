@@ -4,11 +4,10 @@
 
 namespace gui {
 
-MouseSetting::MouseSetting(): invertMainViewScaling(), invertTimeLineScaling(), middleMouseMoveCanvas() {}
+MouseSetting::MouseSetting(): invertZoom(), middleMouseMoveCanvas() {}
 
 bool MouseSetting::operator==(const MouseSetting& aRhs) const {
-    return invertMainViewScaling == aRhs.invertMainViewScaling && invertTimeLineScaling == aRhs.invertTimeLineScaling &&
-        middleMouseMoveCanvas == aRhs.middleMouseMoveCanvas;
+    return invertZoom == aRhs.invertZoom && middleMouseMoveCanvas == aRhs.middleMouseMoveCanvas;
 }
 
 void MouseSetting::load() {
@@ -17,12 +16,19 @@ void MouseSetting::load() {
     );
     settings.beginGroup("mousesettings");
 
+    auto invZoom = settings.value("InvertZoom");
     auto invMVScale = settings.value("InvertMainViewScaling");
-    auto invTLScale = settings.value("InvertTimeLineScaling");
     auto mmMoveCanvas = settings.value("MiddleMouseMovesCanvas");
 
-    invertMainViewScaling = invMVScale.isValid() ? invMVScale.toBool() : false;
-    invertTimeLineScaling = invTLScale.isValid() ? invTLScale.toBool() : false;
+    // MIGRATION, ONCE: the wheel's meaning flipped. `false` is now the convention (wheel up zooms
+    // in), which is what the old `InvertMainViewScaling = true` produced - so the old value maps to
+    // its NEGATION and a hand-tuned file keeps the feel it had.
+    if (invZoom.isValid())
+        invertZoom = invZoom.toBool();
+    else if (invMVScale.isValid())
+        invertZoom = !invMVScale.toBool();
+    else
+        invertZoom = false;
     middleMouseMoveCanvas = mmMoveCanvas.isValid() ? mmMoveCanvas.toBool() : true;
 }
 
@@ -32,8 +38,10 @@ void MouseSetting::save() {
     );
     settings.beginGroup("mousesettings");
 
-    settings.setValue("InvertMainViewScaling", invertMainViewScaling);
-    settings.setValue("InvertTimeLineScaling", invertTimeLineScaling);
+    settings.setValue("InvertZoom", invertZoom);
+    // the superseded pair is removed, or a later load would migrate it again
+    settings.remove("InvertMainViewScaling");
+    settings.remove("InvertTimeLineScaling");
     settings.setValue("MiddleMouseMovesCanvas", middleMouseMoveCanvas);
 }
 

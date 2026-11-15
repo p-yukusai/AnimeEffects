@@ -3,12 +3,17 @@
 #include "gui/theme/Icons.h"
 #include <QColor>
 #include <QUrl>
+#include <QUrlQuery>
 
 namespace gui {
 
 QmlTheme::QmlTheme(QObject* aParent) : QObject(aParent) {}
 
 void QmlTheme::refresh() {
+    // A new generation of tinted icon files: see iconUrl() for why the URL has to say
+    // so. The counter is also what a REUSED scene needs - a dialog opened after an
+    // appearance change must not keep the glyphs it loaded the first time.
+    ++mIconRevision;
     emit themeChanged();
 }
 
@@ -48,10 +53,17 @@ QColor QmlTheme::danger() const { return theme::Colors::current().danger; }
 
 QColor QmlTheme::warning() const { return theme::Colors::current().warning; }
 
-QUrl QmlTheme::closeIcon() const { return QUrl::fromLocalFile(theme::iconDir() + "/x.svg"); }
+QUrl QmlTheme::closeIcon() const { return iconUrl(QStringLiteral("x")); }
 
 QUrl QmlTheme::iconUrl(const QString& aName) const {
-    return QUrl::fromLocalFile(theme::iconDir() + "/" + aName + ".svg");
+    QUrl url = QUrl::fromLocalFile(theme::iconDir() + "/" + aName + ".svg");
+    if (mIconRevision > 0) {
+        QUrlQuery query;
+        query.addQueryItem(QStringLiteral("v"), QString::number(mIconRevision));
+        url.setQuery(query);
+    }
+    return url;
 }
+
 
 } // namespace gui

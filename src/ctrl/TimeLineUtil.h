@@ -335,6 +335,18 @@ namespace TimeLineUtil {
     ///@}
 
     //-------------------------------------------------------------------------------------------------
+    // Append one key's creation commands to a macro the CALLER owns - no macro, no
+    // notifier. pushNewKey() is this plus one macro and one PushKey event, and the tree's
+    // "Add default keys" uses it directly so a layer's whole set of default channels is a
+    // single undo step and a single event.
+    void appendNewKey(
+        core::Project& aProject,
+        core::ObjectNode& aTarget,
+        int aFrame,
+        core::TimeKey* aKey,
+        core::TimeKey* aParentKey = nullptr
+    );
+
     void pushNewMoveKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::MoveKey* aKey);
 
     void pushNewRotateKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::RotateKey* aKey);

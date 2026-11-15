@@ -1,380 +1,292 @@
 #include "gui/ToolWidget.h"
+
 #include "gui/KeyCommandMap.h"
+#include "gui/QmlHost.h"
+#include "gui/qml/QmlTheme.h"
+#include "gui/qml/ToolViewModel.h"
+#include "gui/theme/Colors.h"
+
+#include <QQuickWidget>
+#include <QQmlContext>
+#include <QSettings>
+#include <QUrl>
+#include <QVBoxLayout>
 
 namespace gui {
 
-ToolWidget::ToolWidget(
-    ViaPoint& aViaPoint,
-    GUIResources& aResources,
-    KeyCommandMap& aKeyCommandMap,
-    const QSize& aSizeHint,
-    QWidget* aParent
-):
+namespace {
+// 236 fits the toolbox's seven 26px buttons on ONE row (7*26 + 6*2 = 194 of the 212 the
+// 12px margins leave), where the widget dock's 172 wrapped the seventh onto a line of its
+// own - the measured "mask brush sits alone at (22,156)". The scene adapts to any width it
+// is given; the hint is what the dock opens at, and the minimum is where the row grid
+// still holds (76px label + a slider + a 58px field).
+const int kToolDockMinWidth = 200;
+} // namespace
+
+ToolWidget::ToolWidget(ViaPoint& aViaPoint,
+                       KeyCommandMap& aKeyCommandMap,
+                       const LocaleParam& aLocale,
+                       const QSize& aSizeHint,
+                       QWidget* aParent):
     QWidget(aParent),
     mViaPoint(aViaPoint),
-    mResources(aResources),
-    mKeyCommandMap(aKeyCommandMap),
     mSizeHint(aSizeHint),
-    mViewPanel(),
-    mModePanel(),
     mDriver(),
-    mToolType(ctrl::ToolType_TERM),
-    mSRTPanel(),
-    mFFDPanel(),
-    mBonePanel(),
-    mPosePanel(),
-    mMeshPanel(),
-    mMaskPanel() {
-    setObjectName("toolWidget"); // QSS id for the dock surface
-    createViewPanel();
+    mDriverTool(ctrl::ToolType_TERM),
+    meshFromFunction(false),
+    mModel(),
+    mTheme(),
+    mQuick() {
+    setFocusPolicy(Qt::NoFocus);
+    setObjectName("toolWidget"); // the dock surface's QSS id
+    setMinimumWidth(kToolDockMinWidth);
+    setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
-    createModePanel();
-    setPanelActivity(false);
+    mModel = new ToolViewModel(this);
+    mModel->setViewSetting(&mViaPoint.mainViewSetting());
+    // Ctrl+I with the Mask tool in hand asks for the matte's edit; the properties dock owns it
+    mModel->onInvertMaskRequested.connect([this]() { onInvertMaskRequested(); });
+    mTheme = new QmlTheme(this);
 
-    // the dock width is the default and the max: narrower would cramp the
-    // buttons, wider adds no value (the sizeHint width is the panel's design
-    // width, divisible by 4)
-    setMaximumWidth(mSizeHint.width());
+    // The dock SPEAKS the user's bindings: the view strip's rotation tooltips and the
+    // hint under the brush rows name the keys that are actually bound, and every one of
+    // them is rebindable.
+    ToolKeyHints hints;
+    const auto text = [&aKeyCommandMap](const char* aName) {
+        auto* key = aKeyCommandMap.get(QString::fromLatin1(aName));
+        return key ? key->binding.text() : QString();
+    };
+    hints.rotateCounterClockwise = text("RotateCanvas15AntiClockwise");
+    hints.resetRotation = text("ResetCanvasAngle");
+    hints.rotateClockwise = text("RotateCanvas15Clockwise");
+    hints.brushSizeDecrease = text("BrushSizeDecrease");
+    hints.brushSizeIncrease = text("BrushSizeIncrease");
+    hints.brushHardnessDecrease = text("BrushHardnessDecrease");
+    hints.brushHardnessIncrease = text("BrushHardnessIncrease");
+    hints.swapMaskValue = text("SwapMaskValue");
+    mModel->setKeyHints(hints);
 
-    mSRTPanel = new tool::SRTPanel(this, mResources);
-    mSRTPanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
-    mSRTPanel->hide();
+    // ---- the scene -----------------------------------------------------------
+    mQuick = new KeyForwardingQuickWidget(this);
+    mQuick->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    mQuick->rootContext()->setContextProperty(QStringLiteral("toolModel"), mModel);
+    mQuick->rootContext()->setContextProperty(QStringLiteral("theme"), mTheme);
+    // QML's Qt.application.font is the PROCESS font; the dock's face comes from
+    // LocaleParam and is applied to widgets through standard.ssa, so the scene needs it
+    // explicitly to match 8pt Geist (or the locale override).
+    mQuick->rootContext()->setContextProperty(QStringLiteral("uiFont"), qmlUiFont(aLocale));
+    mQuick->setClearColor(theme::Colors::current().base);
+    mQuick->setSource(QUrl(QStringLiteral("qrc:/AnimeEffects/Dialogs/qml/ToolsPanel.qml")));
+    connect(mQuick, &QQuickWidget::statusChanged, this, [this](QQuickWidget::Status aStatus) {
+        if (aStatus == QQuickWidget::Error) {
+            for (const QQmlError& error : mQuick->errors())
+                qWarning().noquote() << error.toString();
+        }
+    });
 
-    mFFDPanel = new tool::FFDPanel(this, mResources);
-    mFFDPanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
-    mFFDPanel->hide();
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    layout->addWidget(mQuick);
 
-    mBonePanel = new tool::BonePanel(this, mResources);
-    mBonePanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
-    mBonePanel->hide();
-
-    mPosePanel = new tool::PosePanel(this, mResources);
-    mPosePanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
-    mPosePanel->hide();
-
-    mMeshPanel = new tool::MeshPanel(this, mResources);
-    mMeshPanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
-    mMeshPanel->hide();
-
-    mMaskPanel = new tool::MaskPanel(this, mResources);
-    mMaskPanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
-    mMaskPanel->onClearRequested.connect([this]() {
+    // ---- the model's two-way wiring -----------------------------------------
+    connect(mModel, &ToolViewModel::toolChanged, this, &ToolWidget::onModelToolChanged);
+    // the mask editor's TARGET can move without the tool moving (a filter card's Paint switches a
+    // Mask tool that is already up), so the "already painting this matte" state has its own signal
+    connect(mModel, &ToolViewModel::maskChanged, this, [this]() { onMaskTargetChanged(); });
+    connect(mModel, &ToolViewModel::changed, this, &ToolWidget::onParamUpdated);
+    connect(mModel, &ToolViewModel::viewSettingsChanged, this, [this]() { onViewSettingChanged(viewSetting()); });
+    connect(mModel, &ToolViewModel::clearMaskRequested, this, [this]() {
         if (mDriver)
             mDriver->clearMask();
     });
-    mMaskPanel->hide();
 
-    updateGeometry();
-
-    // key binding
-    if (mViaPoint.keyCommandMap()) {
-        {
-            auto key = mViaPoint.keyCommandMap()->get("SelectCursor");
-            if (key)
-                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Cursor); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("SelectSRT");
-            if (key)
-                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_SRT); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("SelectBone");
-            if (key)
-                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Bone); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("SelectPose");
-            if (key)
-                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Pose); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("SelectMesh");
-            if (key)
-                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Mesh); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("BrushSizeIncrease");
-            if (key)
-                key->addListener([=]() { this->adjustBrush(+1, 0); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("BrushSizeDecrease");
-            if (key)
-                key->addListener([=]() { this->adjustBrush(-1, 0); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("BrushHardnessIncrease");
-            if (key)
-                key->addListener([=]() { this->adjustBrush(0, +1); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("BrushHardnessDecrease");
-            if (key)
-                key->addListener([=]() { this->adjustBrush(0, -1); });
-        }
-        {
-            auto key = mViaPoint.keyCommandMap()->get("SelectFFD");
-            if (key)
-                key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_FFD); });
-        }
+    // ---- key bindings -------------------------------------------------------
+    // The tool-selection bindings press the toolbox's own buttons through the model, so
+    // a bound key and a click take exactly the same route.
+    struct Selection {
+        const char* command;
+        ctrl::ToolType type;
+    };
+    static const Selection kSelections[] = {
+        {"SelectCursor", ctrl::ToolType_Cursor}, {"SelectSRT", ctrl::ToolType_SRT},
+        {"SelectBone", ctrl::ToolType_Bone},     {"SelectPose", ctrl::ToolType_Pose},
+        {"SelectMesh", ctrl::ToolType_Mesh},     {"SelectFFD", ctrl::ToolType_FFD},
+    };
+    for (const Selection& selection : kSelections) {
+        auto* key = aKeyCommandMap.get(QString::fromLatin1(selection.command));
+        if (!key)
+            continue;
+        const ctrl::ToolType type = selection.type;
+        key->addListener([this, type]() { mModel->activate(int(type)); });
     }
+    {
+        const auto notch = [this, &aKeyCommandMap](const char* aCommand, int aSizeSteps, int aHardnessSteps) {
+            auto* key = aKeyCommandMap.get(QString::fromLatin1(aCommand));
+            if (!key)
+                return;
+            key->addListener([this, aSizeSteps, aHardnessSteps]() { adjustBrush(aSizeSteps, aHardnessSteps); });
+        };
+        notch("BrushSizeIncrease", +1, 0);
+        notch("BrushSizeDecrease", -1, 0);
+        notch("BrushHardnessIncrease", 0, +1);
+        notch("BrushHardnessDecrease", 0, -1);
+    }
+    if (auto* key = aKeyCommandMap.get(QStringLiteral("InvertMask"))) {
+        // GUARDED ON THE TOOL, like the value swap: Ctrl+I is the image editor's invert and means
+        // nothing without a matte in hand.
+        key->addListener([this]() {
+            if (ctrl::ToolType(mModel->tool()) == ctrl::ToolType_Mask)
+                mModel->invertMask();
+        });
+    }
+    if (auto* key = aKeyCommandMap.get(QStringLiteral("SwapMaskValue"))) {
+        // GUARDED ON THE TOOL: the mask's value swap is only meaningful while the mask
+        // brush is in hand, so X stays free for every other tool (and for anything bound
+        // to it later). This is the painter's X - the one key that swaps the two inks.
+        key->addListener([this]() {
+            if (ctrl::ToolType(mModel->tool()) == ctrl::ToolType_Mask)
+                mModel->swapMaskValue();
+        });
+    }
+}
+
+ToolWidget::~ToolWidget() {
+    // The scene binds to the model and theme context objects. Tear it down first, as
+    // every dialog shell here does, so teardown never re-reads a destroyed context
+    // property.
+    delete mQuick;
+    mQuick = nullptr;
 }
 
 void ToolWidget::setDriver(ctrl::Driver* aDriver) {
     mDriver = aDriver;
+    mDriverTool = ctrl::ToolType_TERM;
+    mModel->setDriverActive(aDriver != nullptr);
 
     if (mDriver) {
-        mDriver->setTool(mToolType);
-        setPanelActivity(true);
-    } else {
-        setPanelActivity(false);
+        // The tool the model remembers (the dock keeps it across projects, which is what
+        // the widget did) is what the new driver starts on.
+        mDriverTool = ctrl::ToolType(mModel->tool());
+        mDriver->setTool(mDriverTool);
+        pushParam();
     }
 }
 
-void ToolWidget::createViewPanel() {
-    if (mViewPanel)
-        delete mViewPanel;
-    mViewPanel = new tool::ViewPanel(this, mResources, tr("View Settings"));
+void ToolWidget::onModelToolChanged(int aOldType, int aNewType) {
+    if (!mDriver)
+        return;
 
-    mViewPanel->addButton("cube", true, tr("Show mesh"), [=](bool aChecked) {
-        this->viewSetting().showLayerMesh = aChecked;
-        this->onViewSettingChanged(this->viewSetting());
-    });
-    mViewPanel->addButton("image", true, tr("Do not draw outside the frame"), [=](bool aChecked) {
-        this->viewSetting().cutImagesByTheFrame = aChecked;
-        this->onViewSettingChanged(this->viewSetting());
-    });
+    const ctrl::ToolType oldType = ctrl::ToolType(aOldType);
+    const ctrl::ToolType newType = ctrl::ToolType(aNewType);
+    // FINALIZE FIRST: that is what commits a gesture still in flight, and setTool
+    // destroys the editor that holds it.
+    if (oldType != ctrl::ToolType_TERM)
+        onFinalizeTool(oldType);
 
-    QString _rotateViewAntiClockwiseKeyBindingText =
-        this->mKeyCommandMap.get("RotateCanvas15AntiClockwise")->binding.text();
-    mViewPanel->addButton(
-        "arrow-counter-clockwise",
-        false,
-        tr("Rotate the canvas counterclockwise (%1)").arg(_rotateViewAntiClockwiseKeyBindingText),
-        [=](bool) {
-            this->viewSetting().rotateViewACW = true;
-            this->onViewSettingChanged(this->viewSetting());
-            this->viewSetting().rotateViewACW = false;
-        }
-    );
+    mDriver->setTool(newType);
+    mDriverTool = newType;
+    onToolChanged(newType);
 
-    QString _rotateResetKeyBindingText = this->mKeyCommandMap.get("ResetCanvasAngle")->binding.text();
-    mViewPanel->addButton(
-        "dot-outline",
-        false,
-        tr("Reset rotation of the canvas (%1)").arg(_rotateResetKeyBindingText),
-        [=](bool) {
-            this->viewSetting().resetRotateView = true;
-            this->onViewSettingChanged(this->viewSetting());
-            this->viewSetting().resetRotateView = false;
-        }
-    );
-
-    QString _rotateViewClockwiseKeyBindingText = this->mKeyCommandMap.get("RotateCanvas15Clockwise")->binding.text();
-    mViewPanel->addButton(
-        "arrow-clockwise",
-        false,
-        tr("Rotate the canvas clockwise (%1)").arg(_rotateViewClockwiseKeyBindingText),
-        [=](bool) {
-            this->viewSetting().rotateViewCW = true;
-            this->onViewSettingChanged(this->viewSetting());
-            this->viewSetting().rotateViewCW = false;
-        }
-    );
-
-    mViewPanel->addButton("flip-horizontal", true, tr("Flip canvas"), [=](bool aChecked) {
-        this->viewSetting().flipCanvas = aChecked;
-        this->onViewSettingChanged(this->viewSetting());
-    });
-
-    // THE GRAPH TOGGLE IS GONE. It showed/hid the panel this viewport used to draw
-    // over the artwork (a Dear ImGui overlay); the panel is the TIMELINE DOCK's Graph
-    // tab now (design section 5), and the tab is the control - a second switch for the
-    // same thing would be a state the tab cannot show. ctrl::GraphEditor::setVisible is
-    // therefore never true in the application (the Driver's cursor routing reads it as
-    // "the viewport's overlay is up"), and the docked page draws whether or not it is.
-    // The toggle's accessible name went with it; its coverage is the dock's probe
-    // (scripts/gui/probe_graph_ink.sh).
-}
-
-void ToolWidget::createModePanel() {
-    if (mModePanel)
-        delete mModePanel;
-    mModePanel = new tool::ModePanel(this, mResources, [=](ctrl::ToolType aType, bool aChecked) {
-        this->onModePanelPushed(aType, aChecked);
-    });
-}
-
-void ToolWidget::setPanelActivity(bool aIsActive) {
-    if (mModePanel) {
-        for (int i = 0; i < ctrl::ToolType_TERM; ++i) {
-            setButtonActivity((ctrl::ToolType)i, aIsActive);
-        }
-    }
-}
-
-void ToolWidget::setButtonActivity(ctrl::ToolType aType, bool aIsActive) {
-    if (mModePanel) {
-        if (aIsActive) {
-            mModePanel->button(aType)->setEnabled(true);
+    QSettings settings;
+    const auto autoshowmesh = settings.value("generalsettings/tools/autoshowmesh");
+    if (autoshowmesh.isValid() && autoshowmesh.toBool()) {
+        if (newType != ctrl::ToolType_FFD) {
+            if (meshFromFunction) {
+                meshFromFunction = false;
+                showHideMesh(false);
+            }
         } else {
-            if (mModePanel->button(aType)->isChecked()) {
-                mModePanel->button(aType)->setChecked(false);
-            }
-            mModePanel->button(aType)->setEnabled(false);
+            showHideMesh(true);
         }
     }
+
+    // The editor is brand new, so the panel's param has to reach it: this is the same
+    // "push it again after the switch" rule the widget version needed for the mask
+    // editor, and it applies to every tool for the same reason.
+    pushParam();
+    onVisualUpdated();
 }
 
-void ToolWidget::onModePanelPushed(ctrl::ToolType aType, bool aChecked) {
-    if (mDriver && mToolType != ctrl::ToolType_TERM) {
-        onFinalizeTool(mToolType);
-    }
-
-    mToolType = aChecked ? aType : ctrl::ToolType_TERM;
-
-    if (mDriver) {
-        mDriver->setTool(mToolType);
-
-        onToolChanged(mToolType);
-
-        mSRTPanel->hide();
-        mFFDPanel->hide();
-        mBonePanel->hide();
-        mPosePanel->hide();
-        mMeshPanel->hide();
-        mMaskPanel->hide();
-
-        QSettings settings;
-        auto autoshowmesh = settings.value("generalsettings/tools/autoshowmesh");
-        if (autoshowmesh.isValid() && autoshowmesh.toBool()) {
-            if (mToolType != ctrl::ToolType_FFD) {
-                if (meshFromFunction) {
-                    meshFromFunction = false;
-                    showHideMesh(false);
-                }
-            }
-        }
-
-        if (mToolType == ctrl::ToolType_SRT) {
-            mSRTPanel->show();
-        } else if (mToolType == ctrl::ToolType_Bone) {
-            mBonePanel->show();
-        } else if (mToolType == ctrl::ToolType_Pose) {
-            mPosePanel->show();
-        } else if (mToolType == ctrl::ToolType_FFD) {
-            if (autoshowmesh.isValid() && autoshowmesh.toBool()) {
-                showHideMesh(true);
-            }
-            mFFDPanel->show();
-        } else if (mToolType == ctrl::ToolType_Mesh) {
-            mMeshPanel->show();
-        } else if (mToolType == ctrl::ToolType_Mask) {
-            mMaskPanel->show();
-        }
-        onParamUpdated(false);
-
-        onVisualUpdated();
-    }
+void ToolWidget::showHideMesh(bool aShow) {
+    if (viewSetting().showLayerMesh && aShow && !meshFromFunction)
+        return;
+    if (aShow)
+        meshFromFunction = true;
+    mModel->setShowMesh(aShow);
 }
 
 void ToolWidget::beginMaskPaint(core::TimeKeyType aLane, core::FilterMaskChannel aChannel) {
-    if (!mMaskPanel)
-        return;
-    // the panel is the authority for lane and channel; select them, then press the
-    // tool button so the whole switch goes through the normal route
-    mMaskPanel->setLaneAndChannel(aLane, aChannel);
-    mModePanel->pushButton(ctrl::ToolType_Mask);
-    // ...and PUSH THE PARAM AGAIN: onParamUpdated only forwards while the Mask tool is
-    // already current, so a panel filled in BEFORE the switch leaves the freshly created
-    // editor on the default parameter - measured as a stroke that painted nothing at all
-    // (the editor still thought it was writing the Wave filter's mask, which this layer
-    // does not have).
-    onParamUpdated(false);
+    // the model is the authority for the target: select it, then press the tool so the
+    // whole switch goes through the normal route
+    mModel->beginFilterMaskPaint(aLane, aChannel);
+    // ...and PUSH THE PARAM whether or not the tool changed: the editor is created by
+    // the switch, so a panel filled in BEFORE it would otherwise leave the freshly
+    // created editor on the default parameter - measured once as a stroke that painted
+    // nothing at all (the editor still thought it was writing another lane's mask).
+    // updateParam is idempotent, so the second push after a switch costs nothing.
+    onParamUpdated();
+}
+
+bool ToolWidget::maskPaintingLayerMask() const {
+    return mModel ? mModel->maskPaintingLayerMask() : false;
 }
 
 void ToolWidget::beginLayerMaskPaint() {
-    if (!mMaskPanel)
-        return;
-    mMaskPanel->setLayerMask();
-    mModePanel->pushButton(ctrl::ToolType_Mask);
-    onParamUpdated(false);   // see beginMaskPaint: the editor is created by the switch
+    mModel->beginLayerMaskPaint();
+    onParamUpdated(); // see beginMaskPaint: the editor is created by the switch
+}
+
+void ToolWidget::nudgeBrush(double aSizeSteps, double aHardnessSteps) {
+    mModel->nudgeBrush(aSizeSteps, aHardnessSteps);
 }
 
 void ToolWidget::adjustBrush(int aSizeSteps, int aHardnessSteps) {
-    // the ACTIVE tool's brush: the same rows are shared, but each panel owns its own
-    // BrushParam, so the adjustment has to go to the one on screen
-    tool::BrushPanel* brush = nullptr;
-    if (mToolType == ctrl::ToolType_FFD)
-        brush = mFFDPanel->brushPanel();
-    else if (mToolType == ctrl::ToolType_Bone)
-        brush = mBonePanel->brushPanel();
-    else if (mToolType == ctrl::ToolType_Pose)
-        brush = mPosePanel->brushPanel();
-    else if (mToolType == ctrl::ToolType_Mask)
-        brush = mMaskPanel->brushPanel();
-    if (!brush)
-        return;
+    // the ACTIVE tool's brush: the rows are shared, but each tool owns its own
+    // BrushParam, so the step goes to the one on screen (the model decides which)
+    mModel->adjustBrush(aSizeSteps, aHardnessSteps);
+}
 
-    brush->adjustSize(aSizeSteps);
-    brush->adjustHardness(aHardnessSteps);
-    onParamUpdated(false);
+const ctrl::BrushParam* ToolWidget::activeBrush() const {
+    return mModel ? mModel->activeBrush() : nullptr;
 }
 
 void ToolWidget::setMaskValue(float aValue) {
-    if (!mMaskPanel || mToolType != ctrl::ToolType_Mask)
+    if (ctrl::ToolType(mModel->tool()) != ctrl::ToolType_Mask)
         return;
-    mMaskPanel->setValue(aValue);
+    mModel->sampleMaskValue(double(aValue));
 }
 
-void ToolWidget::onParamUpdated(bool aLayoutChanged) {
-    if (mDriver) {
-        if (aLayoutChanged) {
-            updateGeometry();
-        }
+void ToolWidget::onParamUpdated() {
+    pushParam();
+    onVisualUpdated();
+}
 
-        if (mToolType == ctrl::ToolType_SRT) {
-            mDriver->updateParam(mSRTPanel->param());
-            onVisualUpdated();
-        } else if (mToolType == ctrl::ToolType_Bone) {
-            mDriver->updateParam(mBonePanel->param());
-            onVisualUpdated();
-        } else if (mToolType == ctrl::ToolType_Pose) {
-            mDriver->updateParam(mPosePanel->param());
-            onVisualUpdated();
-        } else if (mToolType == ctrl::ToolType_FFD) {
-            mDriver->updateParam(mFFDPanel->param());
-            onVisualUpdated();
-        } else if (mToolType == ctrl::ToolType_Mesh) {
-            mDriver->updateParam(mMeshPanel->param());
-            onVisualUpdated();
-        } else if (mToolType == ctrl::ToolType_Mask) {
-            mDriver->updateParam(mMaskPanel->param());
-            onVisualUpdated();
-        }
+void ToolWidget::pushParam() {
+    if (!mDriver)
+        return;
+    // Driver::updateParam ASSERTS that its editor matches its own tool, so a push is
+    // only ever made for the tool the driver was last given. They agree by construction
+    // (onModelToolChanged switches before anything can be pushed), and this guard is
+    // what keeps a future reordering a no-op instead of a crash.
+    if (mDriverTool != ctrl::ToolType(mModel->tool()))
+        return;
+
+    switch (mDriverTool) {
+    case ctrl::ToolType_SRT: mDriver->updateParam(mModel->srtParam()); break;
+    case ctrl::ToolType_Bone: mDriver->updateParam(mModel->boneParam()); break;
+    case ctrl::ToolType_Pose: mDriver->updateParam(mModel->poseParam()); break;
+    case ctrl::ToolType_FFD: mDriver->updateParam(mModel->ffdParam()); break;
+    case ctrl::ToolType_Mesh: mDriver->updateParam(mModel->meshParam()); break;
+    case ctrl::ToolType_Mask: mDriver->updateParam(mModel->maskParam()); break;
+    default: break;
     }
 }
 
-void ToolWidget::resizeEvent(QResizeEvent* aEvent) {
-    QWidget::resizeEvent(aEvent);
-    updateGeometry();
-}
-
-void ToolWidget::updateGeometry() {
-    const int width = this->size().width();
-    int height = 0;
-
-    height = mViewPanel->updateGeometry(QPoint(3, height), width);
-
-    height = mModePanel->updateGeometry(QPoint(3, height), width);
-
-    mSRTPanel->updateGeometry(QPoint(3, height), width);
-    mBonePanel->updateGeometry(QPoint(3, height), width);
-    mPosePanel->updateGeometry(QPoint(3, height), width);
-    mFFDPanel->updateGeometry(QPoint(3, height), width);
-    mMeshPanel->updateGeometry(QPoint(3, height), width);
-    mMaskPanel->updateGeometry(QPoint(3, height), width);
+void ToolWidget::refreshTheme() {
+    mTheme->refresh();
+    if (mQuick)
+        mQuick->setClearColor(theme::Colors::current().base);
 }
 
 } // namespace gui

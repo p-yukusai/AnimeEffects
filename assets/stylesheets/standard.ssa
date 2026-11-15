@@ -470,6 +470,21 @@ QPlainTextEdit
     border: 0.04em solid transparent;
 }
 
+/*  The Properties panel's command log (gui::CommandLogView). It is a QTextEdit
+ *  because its entries carry a per-block left margin (the badge chips hang in a
+ *  gutter), but it is a READ-ONLY RECORD, not a field: it keeps the sunken floor
+ *  the plain-text pane above gives every log, and the QTextEdit rule's `raised`
+ *  (an editable field's surface) does not apply to it. The ID selector is what
+ *  keeps the two apart; the hover/focus border rules below still match it.
+ */
+QTextEdit#commandLog
+{
+    background-color: @recessed@;
+    color: @text@;
+    border-radius: 0.25em;
+    border: 0.04em solid transparent;
+}
+
 
 
 QMenu::separator
@@ -1532,13 +1547,10 @@ QListView:!selected
 }
 
 
-QGroupBox::indicator:unchecked {
-    image: url(@icondir@/caret-right.svg);
-}
-
-QGroupBox::indicator:checked {
-    image: url(@icondir@/caret-down.svg);
-}
+/* The QGroupBox indicator rules are GONE with the last QGroupBox in the tree: the Tools
+   dock's titled panels were the only users, and they are a Qt Quick scene now
+   (qml/ToolsPanel.qml). A stylesheet rule for a class nothing instantiates is dead
+   weight, not decoration. */
 
 QTreeView#objectTree::indicator:unchecked {
     image: url(@icondir@/eye-close.svg);

@@ -36,6 +36,15 @@ public:
 
     void clearCaches();
 
+    // How many times THIS cache has been rebuilt by the blender. The blender writes
+    // in place - the storage pointers a consumer reads are stable while the values
+    // behind them change - so a consumer that caches a derived result (LayerNode's
+    // skinned positions) tells the new contents from the old ones by this stamp. It
+    // belongs to ONE cache: rebuilding `working` must not invalidate a result derived
+    // from `current`. Monotonic; never reset.
+    quint64 revision() const { return mRevision; }
+    void bumpRevision() { ++mRevision; }
+
     SRTExpans& srt() { return mSRT; }
     const SRTExpans& srt() const { return mSRT; }
 
@@ -109,6 +118,8 @@ private:
     // sentinel. Negative frames are cached like any other.
     Frame mMasterCache;
     bool mMasterCached;
+    // see revision(); bumped only by TimeKeyBlender::updateCurrents
+    quint64 mRevision;
     std::array<Frame, TimeKeyType_TERM> mKeyCaches;
     std::array<bool, TimeKeyType_TERM> mKeyCached;
     SRTExpans mSRT;

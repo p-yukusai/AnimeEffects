@@ -1,6 +1,5 @@
 #include "gui/MSVCMemoryLeakDebugger.h" // first of all
 #include <QDir>
-#include <QFile>
 #include <QFontDatabase>
 #include <QMessageBox>
 #include <QStandardPaths>
@@ -116,8 +115,24 @@ int main(const int argc, char* argv[]) {
 
 int entryPoint(int argc, char* argv[]) {
     int result = 0;
+
+    // QT COMBINES MOUSE MOTION BY DEFAULT, and that is documented behaviour rather than a bug: on X11
+    // and on Wayland the default of Qt::AA_CompressHighFrequencyEvents is TRUE, and QEvent::MouseMove
+    // is "combined whenever they occur more frequently than the application handles them, so that they
+    // don't accumulate and overwhelm the application later" (Qt 6, qt.html, the attribute's own entry).
+    // A painting brush loses its path exactly there - measured: 40 pointer positions delivered as 6
+    // samples while a stroke painted. This is the platform's own switch, and it must be set before the
+    // application exists.
     // create qt application
     QApplication app(argc, argv);
+
+    // AND IT IS SET AFTER THE PLATFORM PLUGIN TOO: the plugin (xcb/Wayland) sets this attribute during
+    // the application's construction, so a value set BEFORE it is overwritten - measured:
+    // `testAttribute` read 1 with the call placed before QApplication, 0 with it here. The compression
+    // is consulted per event, so setting it now is what actually takes effect.
+    QCoreApplication::setAttribute(Qt::AA_CompressHighFrequencyEvents, false);
+    if (QCoreApplication::testAttribute(Qt::AA_CompressHighFrequencyEvents))
+        qWarning("QEasing: AA_CompressHighFrequencyEvents did not take - a brush stroke will lose samples");
     #ifdef DISABLE_DEBUG_OUTPUT
     QLoggingCategory::defaultCategory()->setEnabled(QtInfoMsg, false);
     QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, false);

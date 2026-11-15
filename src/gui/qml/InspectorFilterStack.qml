@@ -195,8 +195,9 @@ Item {
             width: 14
             height: 14
             source: theme.iconUrl(root.collapsed ? "caret-right" : "caret-down")
-            sourceSize.width: 64
-            sourceSize.height: 64
+            sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+            sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+            smooth: true
             fillMode: Image.PreserveAspectFit
             opacity: headerMouse.containsMouse ? 0.9 : 0.55
         }

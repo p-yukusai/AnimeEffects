@@ -855,14 +855,25 @@ namespace TimeLineUtil {
             notifier->event().pushTarget(aTarget, tType, aFrame);
             macro.grabListener(notifier);
 
-            // create commands
-            auto& stack = aProject.commandStack();
-            stack.push(new cmnd::GrabNewObject<tKey>(aKey));
-            stack.push(aTarget.timeLine()->createPusher(tType, aFrame, aKey));
+            appendNewKey(aProject, aTarget, aFrame, aKey, aParentKey);
+        }
+    }
 
-            if (aParentKey) {
-                stack.push(new cmnd::PushBackTree<TimeKey>(&aParentKey->children(), aKey));
-            }
+    // The COMMAND half of pushNewKey, with no macro and no notifier: the caller owns
+    // both, so it decides how many keys are one undo step and which event names them.
+    // "Add default keys" on a layer with six animated channels is one step, not six -
+    // which is what the tree's own action had to be, and the per-key macro could not
+    // express. The key's own type() is the map it lands in.
+    void appendNewKey(
+        Project& aProject, ObjectNode& aTarget, int aFrame, TimeKey* aKey, TimeKey* aParentKey
+    ) {
+        XC_PTR_ASSERT(aKey);
+        XC_ASSERT(aTarget.timeLine());
+        auto& stack = aProject.commandStack();
+        stack.push(new cmnd::GrabNewObject<TimeKey>(aKey));
+        stack.push(aTarget.timeLine()->createPusher(aKey->type(), aFrame, aKey));
+        if (aParentKey) {
+            stack.push(new cmnd::PushBackTree<TimeKey>(&aParentKey->children(), aKey));
         }
     }
 
@@ -971,16 +982,15 @@ namespace TimeLineUtil {
             return QRectF(QPointF(0.0, 0.0), QSizeF(canvas));
         }
 
-        // A fresh field's grid: the content box scaled down to the field cap, keeping
-        // the aspect. Computed once per authored key, never per frame.
+        // A fresh field's grid is the CONTENT BOX ITSELF: one texel per content pixel, so a
+        // painted matte has the artwork's own resolution (a quarter of its RGBA image). Computed
+        // once per authored key, never per frame.
         QSize maskTexelSize(const QRectF& aRect) {
-            const double longest = std::max(aRect.width(), aRect.height());
-            if (longest <= 0.0)
+            if (aRect.isEmpty())
                 return QSize(1, 1);
-            const double scale = std::min(1.0, double(MaskKey::kMaxTexels) / longest);
             return QSize(
-                std::max(1, int(std::lround(aRect.width() * scale))),
-                std::max(1, int(std::lround(aRect.height() * scale)))
+                std::max(1, int(std::lround(aRect.width()))),
+                std::max(1, int(std::lround(aRect.height())))
             );
         }
 

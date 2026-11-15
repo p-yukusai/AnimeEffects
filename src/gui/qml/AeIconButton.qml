@@ -67,8 +67,9 @@ Item {
         width: root.iconSize
         height: root.iconSize
         source: root.iconName === "" ? "" : theme.iconUrl(root.iconName)
-        sourceSize.width: 64
-        sourceSize.height: 64
+        sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+        sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+        smooth: true
         fillMode: Image.PreserveAspectFit
         opacity: root.enabled ? 1.0 : 0.45
     }

@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <QPainter>
+#include <QRadialGradient>
 #include <QPaintEngine>
 #include <QPaintDevice>
 #include <QOpenGLTexture>
@@ -96,6 +97,14 @@ public:
 
     void setViewMatrix(const QMatrix4x4& aMtx) { mDrawer.setViewMatrix(aMtx); }
 
+    // THE BRUSH TIP: a disc whose alpha is ctrl::brushFalloff, evaluated per fragment by the
+    // overlay's own shader. Not a QPainter primitive (no gradient, no path), and not a bitmap either
+    // - a texture run out of resolution at 800px, which is what "the overlay breaks at a certain
+    // size" was. Call it through ctrl::paintBrushTip, which also serves the raster path.
+    void drawBrushTip(const QPointF& aCenter, float aRadius, float aHardness, const QColor& aInk) {
+        mDrawer.drawBrushTip(aCenter, aRadius, aHardness, aInk);
+    }
+
     virtual QPaintEngine::Type type() const { return QPaintEngine::OpenGL2; }
 
     virtual bool begin(QPaintDevice* aDevPtr);
@@ -160,6 +169,33 @@ private:
 };
 
 //-------------------------------------------------------------------------------------------------
+// ONE CALL FOR THE BRUSH TIP, WHATEVER THE RASTERISER IS UNDER THE PAINTER. The application paints
+// the viewport through GLCorePaintEngine (a bounded quad and a falloff fragment shader); a raster
+// QPainter (a test, a screenshot, a build without the GL overlay) gets the same picture from a radial
+// gradient. The falloff is ctrl::brushFalloff in both cases, so the two cannot disagree about what
+// hardness means.
+inline void paintBrushTip(
+    QPainter& aPainter, const QPointF& aCenter, float aRadius, float aHardness, const QColor& aInk
+) {
+    if (aRadius <= 0.5f)
+        return;
+    if (auto* engine = dynamic_cast<GLCorePaintEngine*>(aPainter.paintEngine())) {
+        engine->drawBrushTip(aCenter, aRadius, aHardness, aInk);
+        return;
+    }
+    // the raster path: the same profile as a gradient (Qt cannot express brushFalloff's flat core in
+    // a QRadialGradient, so the core is a stop at radius*hardness and the band is the smoothstep's)
+    QRadialGradient gradient(aCenter, aRadius);
+    const float hardness = std::min(std::max(aHardness, 0.0f), 1.0f);
+    gradient.setColorAt(0.0, aInk);
+    gradient.setColorAt(hardness, aInk);
+    gradient.setColorAt((hardness + 1.0f) * 0.5f, QColor(aInk.red(), aInk.green(), aInk.blue(), aInk.alpha() / 2));
+    gradient.setColorAt(1.0, QColor(aInk.red(), aInk.green(), aInk.blue(), 0));
+    aPainter.setPen(Qt::NoPen);
+    aPainter.setBrush(gradient);
+    aPainter.drawEllipse(aCenter, aRadius, aRadius);
+}
+
 class PainterHandle {
 public:
     PainterHandle();

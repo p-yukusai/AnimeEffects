@@ -114,9 +114,20 @@ void Driver::updateKey(core::TimeLineEvent& aEvent, bool aUndo) {
 #endif
     (void)aUndo;
 
-    // reset blending
-    mBlender.clearCaches(aEvent);
-    mBlender.updateCurrents(mProject.objectTree().topNode(), mProject.currentTimeInfo());
+    // MARK DIRTY, DO NOT RE-BLEND. Re-blending here means once per mouse sample, and a drag
+    // delivers dozens: the loop is then busy in the blend instead of draining the pointer, and the
+    // platform collapses the motion it could not deliver (measured: 40 of 40 moves with no drag in
+    // flight, 8-10 of 40 during one, handler 0.4ms). The pan had the same shape and was fixed the
+    // same way - mark, and do the work once per painted frame (flushPendingBlend).
+    if (mPendingBlend) {
+        for (core::TimeLineEvent::Target& target : aEvent.targets())
+            mPendingEvent.targets().append(target);
+        if (mPendingEvent.type() < aEvent.type())
+            mPendingEvent.setType(aEvent.type());
+    } else {
+        mPendingEvent = aEvent;
+        mPendingBlend = true;
+    }
 
     if (mOnUpdating > 0)
         return;
@@ -124,6 +135,27 @@ void Driver::updateKey(core::TimeLineEvent& aEvent, bool aUndo) {
     if (mEditor) {
         mEditor->updateEvent(IEditor::EventType_TimeKey);
     }
+}
+
+void Driver::frameTick() {
+    // THE EDITOR'S DEFERRED WORK IS DRAINED HERE, INDEPENDENT OF THE BLEND. Measured on an FFD stroke:
+    // 22 drag updates reached `ffd::BrushMode` in State_Draw with a valid target and queued their
+    // stamps, while `flushPendingWork` never ran (26 calls of flushPendingBlend all had pending=0 and
+    // returned first) - so every stamp stayed in the queue and the brush did nothing. The frame drains
+    // it unconditionally; blending is a separate duty that still only happens when something changed.
+    if (mEditor)
+        mEditor->flushPendingWork();
+}
+
+void Driver::flushPendingBlend() {
+    if (!mPendingBlend)
+        return;
+    mPendingBlend = false;
+    // ONE reset for the union of everything the frame asked for: clearCaches walks targets, so a
+    // merged list is the same answer as the sum of the parts.
+    mBlender.clearCaches(mPendingEvent);
+    mPendingEvent = core::TimeLineEvent();
+    mBlender.updateCurrents(mProject.objectTree().topNode(), mProject.currentTimeInfo());
 }
 
 void Driver::updateTree(core::ObjectTreeEvent& aEvent, bool aUndo) {

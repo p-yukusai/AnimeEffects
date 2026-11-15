@@ -35,12 +35,18 @@ void check(bool aOk, const char* aWhat) {
     }
 }
 
-// One wheel notch is kWheelValue (120) of raw delta, and a notch OUT of the content is a positive
-// angle delta - the application's own sense (ctrl::CanvasMover and TimeLineEditor both zoom out on
-// a positive delta).
-void notchOut(ctrl::time::Scaler& aScale, int aCount = 1) {
+// One wheel notch is kWheelValue (120) of raw delta. A POSITIVE angle delta is the wheel pushed
+// away from the user, and that zooms IN - the convention ctrl::CanvasMover, TimeLineEditor and the
+// graph page all follow (MouseSetting::invertZoom reverses it).
+void notchIn(ctrl::time::Scaler& aScale, int aCount = 1) {
     for (int i = 0; i < aCount; ++i)
         aScale.update(120);
+}
+
+// the wheel toward the user: zoom OUT
+void notchOut(ctrl::time::Scaler& aScale, int aCount = 1) {
+    for (int i = 0; i < aCount; ++i)
+        aScale.update(-120);
 }
 
 } // namespace
@@ -82,8 +88,8 @@ int main() {
         out.setIndex(-120);
         const double deep = out.pixelsPerFrame();
         check(deep > 0.0 && deep < 1e-4, "the deepest rung is below 1/10000 px/frame");
-        check(out.update(-120), "a notch IN from there still moves");
-        check(out.pixelsPerFrame() > deep, "and changes the rate upwards");
+        check(out.update(120), "a wheel-up notch from there still moves");
+        check(out.pixelsPerFrame() > deep, "and changes the rate upwards (it zooms IN)");
 
         ctrl::time::Scaler in;
         in.setFps(24);
@@ -91,8 +97,8 @@ int main() {
         in.setIndex(120);
         const double high = in.pixelsPerFrame();
         check(high > 10000.0, "the highest rung is past 10000 px/frame");
-        check(in.update(120), "a notch OUT from there still moves the other way");
-        check(in.pixelsPerFrame() < high, "and changes the rate downwards");
+        check(in.update(-120), "a wheel-down notch from there still moves");
+        check(in.pixelsPerFrame() < high, "and changes the rate downwards (it zooms OUT)");
         std::printf("[L] bounds: %.9f .. %.1f px/frame\n", deep, high);
     }
 
@@ -231,7 +237,7 @@ int main() {
         double frame = startFrame;
         for (int i = 0; i < kNotches; ++i) {
             const double oldSpacing = scale.pixelsPerFrame();
-            scale.update(-120); // notch IN: x1.1 per step
+            scale.update(120); // notch IN: x1.1 per step
             offset += ctrl::TimeLineEditor::zoomAnchorDelta(frame, oldSpacing, scale.pixelsPerFrame(), remainder);
             // The window the panel maps is (visibleFrameWindow): a content pixel is
             // frame (x - margin) / rate, re-anchored from the fixed cursor column.
@@ -254,7 +260,7 @@ int main() {
         double roundedFrame = startFrame;
         for (int i = 0; i < kNotches; ++i) {
             const double oldSpacing = roundedScale.pixelsPerFrame();
-            roundedScale.update(-120);
+            roundedScale.update(120);
             const double newSpacing = roundedScale.pixelsPerFrame();
             // frameStartPixel() for the [0, 600] range is margin + round(rate * 0) = margin;
             // the anchor itself stays fractional until this rounding.
@@ -274,7 +280,7 @@ int main() {
             ctrl::time::Scaler one;
             one.setIndex(1);
             const double oldSpacing = one.pixelsPerFrame();
-            one.update(-120);
+            one.update(120);
             const double newSpacing = one.pixelsPerFrame();
             double oneRemainder = 0.0;
             const int exactDelta = ctrl::TimeLineEditor::zoomAnchorDelta(20.0, oldSpacing, newSpacing, oneRemainder);

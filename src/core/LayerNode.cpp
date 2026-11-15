@@ -2,6 +2,7 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLContext>
 #include <cmath>
+#include "gl/FrameStats.h"
 #include "gl/Global.h"
 #include "gl/Util.h"
 #include "img/BlendMode.h"
@@ -30,8 +31,10 @@ LayerNode::LayerNode(const QString& aName, ShaderHolder& aShaderHolder):
     mTimeLine(),
     mShaderHolder(aShaderHolder),
     mIsClipped(),
-    mMeshTransformer(":/shaders/MeshTransformVert.glsl"),
+    mMeshTransformer(aShaderHolder.meshTransformerResource()),
     mCurrentMesh(),
+    mTransformKey(),
+    mTransformKeyValid(),
     mClippees() {}
 
 void LayerNode::setDefaultImage(const img::ResourceHandle& aHandle) {
@@ -93,18 +96,151 @@ void LayerNode::setBlendMode(img::BlendMode aMode) {
 }
 
 void LayerNode::prerender(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor) {
-    mCurrentMesh = nullptr;
-
-    if (!mIsVisible)
+    // HIDDEN nodes draw nothing (renderLayer/renderComposite guard on !mCurrentMesh),
+    // and the cache may not survive a later show: it would be skipped for inputs that
+    // did not pass through a transformShape run.
+    if (!mIsVisible) {
+        mCurrentMesh = nullptr;
+        mTransformKeyValid = false;
         return;
+    }
 
-    // transform shape by current keys
+    // transform shape by current keys (transformShape skips the GL pass when the
+    // key says its output buffers already hold this exact result)
     transformShape(aInfo, aAccessor);
 }
 
 
+namespace {
+// does this node's blended state deform its geometry at all? (mesh/FFD keys, or a bone binding)
+bool layersDeformationActive(TimeKeyExpans& aExpans) {
+    // A BONE BINDING deforms the draw, and so does an FFD/mesh KEY - the mesh the layer draws with
+    // is `ffdMesh()` and its DEFORMATION is `ffd()`'s positions, so a mesh that merely exists (the
+    // base grid) is not a deformation.
+    if (aExpans.bone().isAffectedByBinding())
+        return true;
+    return aExpans.ffd().count() > 0;
+}
+
+// ONE half-plane clip of a convex polygon (Sutherland-Hodgman): keep the points on the
+// `aKeepGreater` side of the axis-aligned line (`aAxis` 0 = x, 1 = y) `aBound`.
+std::vector<QVector2D> clipToHalfPlane(
+    const std::vector<QVector2D>& aPolygon, int aAxis, float aBound, bool aKeepGreater
+) {
+    std::vector<QVector2D> out;
+    const int count = int(aPolygon.size());
+    for (int i = 0; i < count; ++i) {
+        const QVector2D& current = aPolygon[i];
+        const QVector2D& previous = aPolygon[(i + count - 1) % count];
+        const auto coordinate = [aAxis](const QVector2D& aPoint) {
+            return aAxis == 0 ? aPoint.x() : aPoint.y();
+        };
+        const float currentValue = coordinate(current);
+        const float previousValue = coordinate(previous);
+        const bool currentInside = aKeepGreater ? currentValue >= aBound : currentValue <= aBound;
+        const bool previousInside = aKeepGreater ? previousValue >= aBound : previousValue <= aBound;
+        // the edge crosses the line: keep its intersection on the inside
+        if (currentInside != previousInside) {
+            const float delta = currentValue - previousValue;
+            const float t = delta != 0.0f ? (aBound - previousValue) / delta : 0.0f;
+            out.push_back(previous + (current - previous) * t);
+        }
+        if (currentInside)
+            out.push_back(current);
+    }
+    return out;
+}
+
+double polygonAreaPx(const std::vector<QVector2D>& aPolygon) {
+    const int count = int(aPolygon.size());
+    double twiceArea = 0.0;
+    for (int i = 0; i < count; ++i) {
+        const QVector2D& a = aPolygon[i];
+        const QVector2D& b = aPolygon[(i + 1) % count];
+        twiceArea += double(a.x()) * double(b.y()) - double(b.x()) * double(a.y());
+    }
+    return std::abs(twiceArea) * 0.5;
+}
+
+// THE FILL ONE LAYER ASKS FOR, in screen pixels: the node's content rectangle (the
+// image's pixel box, the space the mesh texcoords span) mapped by EXACTLY the matrices
+// the layer draw maps it with (`contentMappingFor` inverts the same forward mapping),
+// then clipped to the viewport. Only reached with the counter enabled.
+double screenAreaPx(const RenderInfo& aInfo, const TimeKeyExpans& aExpans, const QSize& aContentSize) {
+    if (aContentSize.isEmpty())
+        return 0.0;
+    const QSize viewSize = aInfo.camera.screenSize();
+    if (viewSize.width() <= 0 || viewSize.height() <= 0)
+        return 0.0;
+
+    QMatrix4x4 world = aExpans.srt().worldCSRTMatrix();
+    if (!aInfo.nonPosed && aExpans.bone().isAffectedByBinding())
+        world = aExpans.bone().outerMatrix();
+    const QMatrix4x4 contentToScreen =
+        waveContentToScreen(aInfo.camera, QSizeF(viewSize), world, aExpans.imageOffset());
+
+    const float width = float(aContentSize.width());
+    const float height = float(aContentSize.height());
+    std::vector<QVector2D> quad{
+        contentToScreen.map(QVector3D(0.0f, 0.0f, 0.0f)).toVector2D(),
+        contentToScreen.map(QVector3D(width, 0.0f, 0.0f)).toVector2D(),
+        contentToScreen.map(QVector3D(width, height, 0.0f)).toVector2D(),
+        contentToScreen.map(QVector3D(0.0f, height, 0.0f)).toVector2D()
+    };
+
+    // the viewport rect (0, 0, camera.screenSize()): four half planes, in order
+    const float maxX = float(viewSize.width());
+    const float maxY = float(viewSize.height());
+    quad = clipToHalfPlane(quad, 0, 0.0f, true);
+    quad = clipToHalfPlane(quad, 0, maxX, false);
+    quad = clipToHalfPlane(quad, 1, 0.0f, true);
+    quad = clipToHalfPlane(quad, 1, maxY, false);
+    return polygonAreaPx(quad);
+}
+} // namespace
+
 void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor) {
-    if (!mIsVisible || aAccessor.get(mTimeLine).opa().isZero()) return;
+    // AE_FRAME_STATS: ONE `considered` per layer, no matter how often this function is
+    // entered for it. The mask-preview recursion below re-enters with `originMesh` for
+    // the SAME node, and the grid pass draws the node a second time - neither is
+    // another layer, so neither counts again. With the counter off this is one branch.
+    gl::FrameStats& frameStats = gl::FrameStats::instance();
+    const bool frameStatsOn = frameStats.enabled();
+    bool countsLayer = false;
+    if (frameStatsOn) {
+        const bool previewRecursion = aInfo.originMesh && aInfo.maskPreviewTarget == this
+            && aInfo.maskPreviewKey != nullptr;
+        countsLayer = !aInfo.isGrid && !previewRecursion;
+        if (countsLayer)
+            frameStats.layerConsidered();
+    }
+
+    if (!mIsVisible || aAccessor.get(mTimeLine).opa().isZero()) {
+        if (countsLayer)
+            frameStats.layerCulled();
+        return;
+    }
+
+    // THE MASK TOOL PAINTS AN UNDISTORTED LAYER, and that is a RULE, not a shortcut. A matte
+    // lives in the layer's CONTENT space, and the mask pass samples it through the node's SRT -
+    // a matrix. A mesh/FFD/bone deformation is NOT a matrix, so with it in the draw the pixels on
+    // screen come from content points the matte pass cannot name, and the stroke, its rubylith
+    // and the masked result end up in three different places (reported: "mask painting paints on
+    // the untransformed mesh ... what you see is not what you get"). Drawing the node's ORIGINAL
+    // mesh while its matte is painted (originMesh: the grid without its deformation) makes the
+    // three one mapping. The alternatives are a per-pixel mesh INVERSE in both the paint path and
+    // the mask pass, or limiting a mask to the deformed silhouette - the first is a pipeline
+    // change, the second takes away exactly what a matte is for.
+    // ...and `!aInfo.originMesh` is what makes it happen ONCE: the recursive call below still
+    // carries the preview target, so testing only that recursed forever (a crash on the first
+    // stroke of a matte on a deformed layer).
+    if (!aInfo.originMesh && aInfo.maskPreviewTarget == this && aInfo.maskPreviewKey != nullptr
+        && layersDeformationActive(const_cast<TimeKeyExpans&>(aAccessor.get(mTimeLine)))) {
+        RenderInfo undistorted(aInfo);
+        undistorted.originMesh = true;
+        render(undistorted, aAccessor);
+        return;
+    }
 
     // The direct path's HSV comes from the BLENDED value, like every other filter
     // decision: an HSV edited on its default key must bake into the layer shader
@@ -113,9 +249,24 @@ void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccess
         && filterValueIsActive(TimeKeyType_HSV, aAccessor.get(mTimeLine));
     const QList<int> hsvData = useHSV ? aAccessor.get(mTimeLine).hsv().hsv() : QList<int>{};
 
+    // AE_FRAME_STATS: the node ISSUES its draw here, on one of the two paths below. A
+    // path that will bail (no mesh, no image texture) draws nothing and is not counted;
+    // the grid pass is left out like it already is for `countsLayer`.
+    const auto countDrawnLayer = [&]() {
+        if (!frameStatsOn || aInfo.isGrid || !mCurrentMesh)
+            return;
+        const TimeKeyExpans& expans = aAccessor.get(mTimeLine);
+        const gl::Texture* texture = expans.areaTexture();
+        if (!texture)
+            return;
+        frameStats.layerDrawn(screenAreaPx(aInfo, expans, texture->size()));
+    };
+
     if (!aInfo.isGrid && (isCompositeLayer(aAccessor) || isPreviewTarget(aInfo))) {
+        countDrawnLayer();
         renderComposite(aInfo, aAccessor);
     } else {
+        countDrawnLayer();
         renderLayer(aInfo, aAccessor, useHSV, hsvData);
     }
 
@@ -276,7 +427,10 @@ void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor
             if (!aInfo.nonPosed && expans.bone().isAffectedByBinding())
                 world = expans.bone().outerMatrix();
             const QMatrix4x4 toScreen =
-                waveContentToScreen(aInfo.camera, QSizeF(frame.size()), world, expans.imageOffset());
+                waveContentToScreen(
+                    aInfo.camera, QSizeF(frame.size()), world,
+                    maskContentImageOffset(ObjectType_Layer, expans.imageOffset())
+                );
             bool invertible = false;
             screenToLayer = toScreen.inverted(&invertible);
             haveMapping = true;
@@ -500,8 +654,13 @@ void LayerNode::transformShape(const RenderInfo& aInfo, const TimeCacheAccessor&
 
     // current mesh
     LayerMesh* mesh = expans.ffdMesh();
-    if (!mesh || mesh->vertexCount() <= 0)
+    if (!mesh || mesh->vertexCount() <= 0) {
+        // no source geometry: nothing may be drawn from a previous frame, and no old
+        // key may make a later valid pass look cached
+        mCurrentMesh = nullptr;
+        mTransformKeyValid = false;
         return;
+    }
 
     // positions
     util::ArrayBlock<const gl::Vector3> positions;
@@ -512,8 +671,11 @@ void LayerNode::transformShape(const RenderInfo& aInfo, const TimeCacheAccessor&
         useInfluence = false;
         if (expans.areaImageKey()) {
             mesh = &(expans.areaImageKey()->data().gridMesh());
-            if (!mesh || mesh->vertexCount() <= 0)
+            if (!mesh || mesh->vertexCount() <= 0) {
+                mCurrentMesh = nullptr;
+                mTransformKeyValid = false;
                 return;
+            }
         }
         positions = util::ArrayBlock<const gl::Vector3>(mesh->positions(), mesh->vertexCount());
     }
@@ -526,12 +688,31 @@ void LayerNode::transformShape(const RenderInfo& aInfo, const TimeCacheAccessor&
     }
     XC_ASSERT(positions);
 
+    TransformKey key = {};
+    key.frame = aInfo.time.frame;
+    key.blendRevision = expans.revision();
+    key.mesh = mesh;
+    key.positions = positions.array();
+    key.positionsCount = positions.count();
+    key.nonPosed = aInfo.nonPosed;
+    key.originMesh = aInfo.originMesh;
+    key.useInfluence = useInfluence;
+    key.boneTargetMesh = expans.bone().targetMesh();
+
+    // IDENTICAL inputs: the buffers callGL wrote last time are still mounted and still
+    // hold this result, and the draw reads them (it applies the camera itself). No GL
+    // state is touched here, so the transformer stays bound exactly as it was left.
+    if (mTransformKeyValid && mCurrentMesh && mTransformKey == key)
+        return;
+
     // transform
     mMeshTransformer.callGL(
         expans, mesh->getMeshBuffer(), mesh->originOffset(), positions, aInfo.nonPosed, useInfluence
     );
 
     mCurrentMesh = mesh;
+    mTransformKey = key;
+    mTransformKeyValid = true;
 }
 
 // The inverse of the matrices this layer is drawn with: screen pixels -> the
@@ -625,6 +806,23 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
         shader.setUniformValue("uColor", color);
         shader.setUniformValue("uTexture", 0);
         shader.setUniformValue("uDestTexture", 1);
+
+        // THE LAYER SAMPLE's footprint and level, for LayerDrawingFrag.glsl's reconstructing read.
+        // From the TRANSFORM, not from derivatives: a derivative is per 2x2 quad and shifts with the
+        // sub-pixel phase, which would modulate the sharpness the reconstruction exists to keep
+        // constant. The bias is applied HERE, so the texture's own GL_TEXTURE_LOD_BIAS must stay 0
+        // (ImageKey sets it to 0 for this reason).
+        {
+            const QVector2D meshScale = expans.srt().scale();
+            const float screenScale = aInfo.camera.scale()
+                * std::max(std::fabs(meshScale.x()), std::fabs(meshScale.y()));
+            const float footprint = 1.0f / std::max(screenScale, 1e-4f);
+            shader.setUniformValue("uLayerFootprint", QVector2D(footprint, footprint));
+            shader.setUniformValue("uLayerLodBias", ImageKey::layerLodBias());
+            shader.setUniformValue(
+                "uLayerMaxLod", float(std::max(0, expans.areaTexture()->mipmapLevels() - 1))
+            );
+        }
 
         if (isClippee) {
             shader.setUniformValue("uClippingId", (int)aInfo.clippingId);

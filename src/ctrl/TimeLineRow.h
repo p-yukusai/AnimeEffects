@@ -33,6 +33,16 @@ public:
 
     float keyHeight(int aIndex, int aValidCount) const;
     static int calculateHeight(const core::ObjectNode& aNode);
+
+    // THE ROW'S HEIGHT IN BOTH COLUMNS: the node's own lane bands, plus a COLLAPSED
+    // folder's summary band when keys live below it, and a summary-only folder (no own
+    // lanes) uses the band's height alone -- an empty lane above it would be dead height.
+    //
+    // One definition, because the tree's row and the lane block beside it must be the same
+    // height: the widget used to compute this in its own anonymous namespace and the
+    // timeline read its items' geometry back, which is exactly the coupling the row model
+    // removes.
+    static int displayHeight(const core::ObjectNode& aNode, bool aExpanded);
     // Any key in any descendant timeline (the folder's own keys do not count:
     // its row already draws them).
     static bool hasDescendantKeys(const core::ObjectNode& aNode);

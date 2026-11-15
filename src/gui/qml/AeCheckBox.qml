@@ -106,13 +106,19 @@ CheckBox {
                     : root.checked ? theme.accent : theme.outline
 
         Canvas {
+            id: tick
             anchors.fill: parent
             visible: root.checked
             opacity: root.enabled ? 1.0 : 0.45
             onPaint: {
                 const c = getContext("2d");
                 c.reset();
-                c.strokeStyle = theme.accentText;
+                // `text`, not `accentText`: accentText is defined as the ink for the
+                // SATURATED accentBright (the playhead pill), and on the light theme's
+                // pale accent fill it measured 1.35:1 - the tick was invisible. `text`
+                // contrasts with both fills (dark: near-white on the deep accent, light:
+                // near-black on the pale one).
+                c.strokeStyle = theme.text;
                 c.lineWidth = 2;
                 c.lineCap = "round";
                 c.lineJoin = "round";
@@ -123,6 +129,17 @@ CheckBox {
                 c.stroke();
             }
         }
+    }
+
+    // A Canvas paints when it is created and when someone asks it to, so a theme switch
+    // left the OLD tick ink on the NEW fill: measured in the light theme, a checked box's
+    // tick stayed #f5f5f5 on #ddd6fe (1.35:1) although the fill had already followed the
+    // tokens. The same class of defect AGENTS.md records for a panel state change that is
+    // not a canvas change: an ink the canvas reads from the palette needs an explicit
+    // repaint.
+    Connections {
+        target: theme
+        function onThemeChanged() { tick.requestPaint() }
     }
 
     contentItem: Text {

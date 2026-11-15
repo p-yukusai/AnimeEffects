@@ -48,16 +48,11 @@
 #include "gui/theme/Colors.h"
 #include "gui/theme/TimeLine.h"
 
-// Project.cpp (in the core library) references the GUI's AudioPlaybackWidget and
-// ctrl::TimeLineEditor's paste path references ObjectTreeWidget; neither is reached
-// here. Stub them, the pattern the other timeline tests use.
+// Project.cpp (in the core library) references the GUI's AudioPlaybackWidget, which this
+// test never reaches. Stub it, the pattern the other timeline tests use. (ctrl's paste path
+// used to reference the tree widget too; it takes a node now, so that stub is gone.)
 #include "gui/AudioPlaybackWidget.h"
 bool AudioPlaybackWidget::deserialize(const QJsonObject&, std::vector<audioConfig>*) { return false; }
-#include "gui/ObjectTreeWidget.h"
-bool gui::obj::Item::isTopNode() const { return false; }
-std::pair<core::TimeKey*, core::LayerMesh*> gui::ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode&, int) {
-    return {nullptr, nullptr};
-}
 
 namespace {
 class HarnessAssertHandler: public XCAssertHandler {

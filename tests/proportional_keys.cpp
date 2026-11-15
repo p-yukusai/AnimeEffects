@@ -53,12 +53,6 @@
 #include "gui/AudioPlaybackWidget.h"
 bool AudioPlaybackWidget::deserialize(const QJsonObject&, std::vector<audioConfig>*) { return false; }
 
-#include "gui/ObjectTreeWidget.h"
-bool gui::obj::Item::isTopNode() const { return false; }
-std::pair<core::TimeKey*, core::LayerMesh*> gui::ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode&, int) {
-    return { nullptr, nullptr };
-}
-
 // The timeline's XC_ASSERT macros go through these two sink pointers; the
 // library leaves them undefined, so a test that drives core::TimeLine has to
 // provide them (the same definition graph_curve uses, aborting the run).

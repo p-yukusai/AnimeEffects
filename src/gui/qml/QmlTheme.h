@@ -101,10 +101,23 @@ public:
     // "arrow-clockwise"). The tint is part of the generated file, which is why
     // QML must not tint the Image itself: a ColorOverlay would fight the
     // multi-colour message glyphs the same directory also holds.
+    //
+    // THE URL CARRIES THE TINT GENERATION. tintIcons() rewrites the files IN PLACE on
+    // appearance change, and a QQuickImage is cached by URL: re-assigning the same
+    // source is a documented no-op, so a dock full of glyphs would keep the previous
+    // theme's ink until the window was rebuilt. The query is dropped when the file is
+    // opened (QUrl::toLocalFile) and kept as the cache key, which is what makes a
+    // refresh re-load.
     Q_INVOKABLE QUrl iconUrl(const QString& aName) const;
+    // Bumped by refresh(), so every generated-icon URL changes when the tint does.
+    Q_PROPERTY(int iconRevision READ iconRevision NOTIFY themeChanged)
+    int iconRevision() const { return mIconRevision; }
 
 signals:
     void themeChanged();
+
+private:
+    int mIconRevision = 0;
 };
 
 } // namespace gui

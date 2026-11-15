@@ -264,8 +264,9 @@ Item {
                         width: 12
                         height: 12
                         source: theme.iconUrl(model.expanded ? "caret-down" : "caret-right")
-                        sourceSize.width: 64
-                        sourceSize.height: 64
+                        sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                        sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                        smooth: true
                         fillMode: Image.PreserveAspectFit
                     }
                     // A platform's badge is its destinations' badge, so the closed
@@ -277,8 +278,9 @@ Item {
                         width: 18
                         height: 18
                         source: model.iconName === "" ? "" : theme.iconUrl(model.iconName)
-                        sourceSize.width: 64
-                        sourceSize.height: 64
+                        sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                        sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                        smooth: true
                         fillMode: Image.PreserveAspectFit
                     }
                     Text {

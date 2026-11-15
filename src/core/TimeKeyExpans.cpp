@@ -5,6 +5,7 @@ namespace core {
 TimeKeyExpans::TimeKeyExpans():
     mMasterCache(),
     mMasterCached(false),
+    mRevision(0),
     mKeyCaches(),
     mKeyCached(),
     mSRT(),

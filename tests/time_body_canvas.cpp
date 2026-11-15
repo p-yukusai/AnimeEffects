@@ -28,13 +28,8 @@
 #include "gui/theme/Colors.h"
 #include "gui/theme/TimeLine.h"
 #include "gui/AudioPlaybackWidget.h"
-#include "gui/ObjectTreeWidget.h"
 
 bool AudioPlaybackWidget::deserialize(const QJsonObject&, std::vector<audioConfig>*) { return false; }
-bool gui::obj::Item::isTopNode() const { return false; }
-std::pair<core::TimeKey*, core::LayerMesh*> gui::ObjectTreeWidget::getAreaMeshImpl(core::ObjectNode&, int) {
-    return {nullptr, nullptr};
-}
 namespace {
 
 QColor withAlphaLocal(QColor aColor, int aAlpha) {
