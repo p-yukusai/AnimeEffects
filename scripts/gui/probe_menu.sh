@@ -49,7 +49,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   #    shortcut, and the picker is the screen that has to answer.
   ae_press "Quickly export as..." "the quick export entry is pressed"
   require_export_flow
-  ae_report /tmp/menu_picker.txt "Search destinations" "Use this destination" "Cancel"
+  ae_report /tmp/menu_picker.txt "Search destinations" "Continue" "Cancel"
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/menu_02_quick_picker.png
 
@@ -61,7 +61,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   # "File" is asked about as well: it is on screen either way, and a report answers as
   # soon as ANY name it was asked about is up, so naming a present anchor is what keeps
   # the three absences below from costing the full report timeout each.
-  ae_report /tmp/menu_after.txt "Search destinations" "Use this destination" "Destination" "File"
+  ae_report /tmp/menu_after.txt "Search destinations" "Continue" "Destination" "File"
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/menu_03_dismissed.png
   kill $app 2>/dev/null; wait $app 2>/dev/null
@@ -71,10 +71,10 @@ assert_showing /tmp/menu_file.txt "Export project as" "the File menu carries Exp
 assert_showing /tmp/menu_file.txt "Quickly export as..." "and Quickly export as... beside it"
 assert_showing /tmp/menu_file.txt "Export again" "and the repeat entry, which a completed export enables"
 assert_showing /tmp/menu_picker.txt "Search destinations" "the quick export opens the destination picker"
-assert_showing /tmp/menu_picker.txt "Use this destination" "with the picker's own answer button"
+assert_showing /tmp/menu_picker.txt "Continue" "with the picker's own answer button"
 assert_showing /tmp/menu_picker.txt "Cancel" "and its own way out"
 assert_absent /tmp/menu_after.txt "Search destinations" "dismissing the picker closes it"
-assert_absent /tmp/menu_after.txt "Use this destination" "both of the picker's own buttons gone with it"
+assert_absent /tmp/menu_after.txt "Continue" "both of the picker's own buttons gone with it"
 assert_absent /tmp/menu_after.txt "Destination" "and the quick action never opened the parameter form"
 assert_rendered "$SHOTS/menu_01_file.png" "the File menu"
 assert_rendered "$SHOTS/menu_02_quick_picker.png" "the picker the quick export opened"

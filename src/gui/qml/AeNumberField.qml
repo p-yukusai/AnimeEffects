@@ -27,15 +27,13 @@ Item {
     // The icon-only reset: hidden when the words are empty.
     property string resetLabel: ""
     property bool resetVisible: true
-    // Shown in place of the number when the value IS the sentinel, which is how the
-    // still writer's "let QImage decide" (-1) and the codec's own sentinel (one below
-    // its span: 18 for libx264's 19..34) read as a word rather than as a number
-    // nobody chose. The sentinel is NOT always negative, so it is stated, not
-    // guessed from the sign.
+    // The word this row reads when its value is NOT a number at all ("Auto" for the
+    // codec's own knob and for the size cap). It is a STATE the owner sets, never a
+    // comparison against a magic value: the old form compared the value to a sentinel
+    // through Math.round, so a 0.25 MB cap - a real cap, 256 KiB - painted the word
+    // "Auto" over itself (measured 2026-10-08).
     property string placeholder: ""
-    property real placeholderValue: -1
-    readonly property bool atPlaceholder: root.placeholder !== ""
-                                          && Math.round(root.value) === Math.round(root.placeholderValue)
+    property bool auto: false
 
     signal valueEdited(real value)
     signal resetRequested()
@@ -105,7 +103,7 @@ Item {
         decimals: root.decimals
         enabled: root.enabled
         // The word replaces the number: see the placeholder Text below.
-        showValue: !root.atPlaceholder
+        showValue: !root.auto
         // ScrubSpinBox writes `value` on a drag (which drops the caller's
         // binding), so the caller re-syncs it; changed() is what carries the value
         // back out.
@@ -125,12 +123,14 @@ Item {
         showTip: root.resetLabel !== ""
         onClicked: root.resetRequested()
     }
-    // The word for the sentinel, on top of the field's own "-1".
+    // The word, over a hidden number: the field still carries a real value behind it
+    // (where the next edit starts) but draws only the state's own name.
     Text {
+        objectName: "aeAutoWord"
         anchors.left: parent.left
         anchors.leftMargin: 8
         anchors.verticalCenter: parent.verticalCenter
-        visible: root.atPlaceholder
+        visible: root.auto
         text: root.placeholder
         color: theme.textMuted
         font.pixelSize: 11

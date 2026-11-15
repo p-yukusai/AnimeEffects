@@ -2,6 +2,7 @@
 #define CTRL_POSE_DRAWBONEMODE_H
 
 #include <QMatrix4x4>
+#include "cmnd/Gesture.h"
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/BoneKey.h"
@@ -31,7 +32,7 @@ namespace pose {
         QMatrix4x4 mTargetInvMtx;
         KeyOwner& mKeyOwner;
         bone::Focuser mFocuser;
-        RotateBones* mCommandRef;
+        cmnd::Gesture<RotateBones> mGesture;
         QVector2D mPullPos;
         QVector2D mPullOffset;
         float mPullPosRate;

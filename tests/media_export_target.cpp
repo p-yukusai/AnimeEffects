@@ -169,6 +169,30 @@ static int gifFrameCount(const QString& aPath) {
     return frames;
 }
 
+// The frame rate a file was WRITTEN at, as its container recorded it — the
+// file's own answer, not a recomputation of what it should be. 0 when the
+// stream does not say (the caller complains rather than assume).
+//
+// This is the number the duration turn on: a fitted file has the frames the
+// stride left and the rate the stride reduced the plan's fps to, and
+// frames/rate is the running time the PLAYER will give it.
+static double fileVideoRate(const QString& aPath) {
+    AVFormatContext* fmt = nullptr;
+    if (::avformat_open_input(&fmt, aPath.toUtf8().constData(), nullptr, nullptr) < 0) return 0.0;
+    ::avformat_find_stream_info(fmt, nullptr);
+    const int vs = ::av_find_best_stream(fmt, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+    double rate = 0.0;
+    if (vs >= 0) {
+        const AVStream* st = fmt->streams[vs];
+        if (st->avg_frame_rate.num > 0 && st->avg_frame_rate.den > 0)
+            rate = double(st->avg_frame_rate.num) / double(st->avg_frame_rate.den);
+        else if (st->r_frame_rate.num > 0 && st->r_frame_rate.den > 0)
+            rate = double(st->r_frame_rate.num) / double(st->r_frame_rate.den);
+    }
+    ::avformat_close_input(&fmt);
+    return rate;
+}
+
 // Everything we can learn about a produced file that a destination actually
 // cares about: dimensions, frame count, the container's stream codec tag, how
 // many audio streams exist, and whether the decoded alpha channel varies.
@@ -525,7 +549,21 @@ TEST_SECTION("load + validate every row", run_load_and_validate) {
     check(dictatedRows >= 8,
           QStringLiteral("dictated-codec rows present (%1)").arg(dictatedRows));
     check(multiRows >= 3, QStringLiteral("multi-acceptance rows present (%1)").arg(multiRows));
-    check(policyRows >= 3, QStringLiteral("policy-default rows present (%1)").arg(policyRows));
+    // The floor counts VIDEO rows where the class POLICY, not the row, picks the
+    // codec: more than one accepted codec and no declared default. It moved from 4
+    // to 2 because the destination SET changed, not because a row lost the property
+    // (no surviving row's `codecs`/`default` moved). The two removed rows that
+    // carried it are website.video and generic.file - both `codecs="h264 hevc av1"`
+    // with no `default` - and both were folded into generic.video, which now
+    // declares default="h264" instead of leaving the policy to decide. The third
+    // removed row, chat.generic.video, did NOT carry it (`codecs="h264"`
+    // default="h264", a single codec), so its removal is not part of the drop. The
+    // two rows that still carry it are youtube.video and archive.master.
+    check(policyRows >= 2,
+          QStringLiteral("policy-default rows present (%1): video rows with >1 accepted codec and "
+                         "no declared default (youtube.video, archive.master); website.video and "
+                         "generic.file moved this count, removed and folded into generic.video, "
+                         "which now declares default=\"h264\"").arg(policyRows));
 
     // provenance: every row is dated, and unverified rows are flagged as such
     int dated = 0, unverified = 0;
@@ -1017,8 +1055,11 @@ TEST_SECTION("frame selection (several non-contiguous ranges)", run_frame_select
     const QList<ctrl::ExportTarget> all =
         ctrl::ExportTargets::load(QStringLiteral(AE_EXPORT_TARGETS_PATH));
     if (all.isEmpty()) return;
+    // "Just a file (not sure yet)" (generic.file) was folded into the surviving
+    // generic.video row, which carries exactly its declarations (mp4, h264/hevc/av1,
+    // no caps), so every expectation below holds unchanged.
     const ctrl::ExportTarget generic =
-        ctrl::ExportTargets::find(all, QStringLiteral("generic.file")); // no caps
+        ctrl::ExportTargets::find(all, QStringLiteral("generic.video")); // no caps
     const ctrl::ExportTarget line =
         ctrl::ExportTargets::find(all, QStringLiteral("line.sticker")); // 5-20 frames
 
@@ -1335,11 +1376,14 @@ TEST_SECTION("I44: accepted lists, defaults and the codec row", run_codec_lists)
     check(reelsDefault.format == QLatin1String("h264"),
           "the declared default beats the efficiency policy (Best would otherwise take H.265)");
 
-    const ctrl::ExportTarget website = row("website.video");
+    // The "Website" row (website.video) was folded into the surviving generic.video
+    // row, which carries the same list-constrained declarations (mp4, h264/hevc/av1),
+    // so H.264 still resolves at every bucket.
+    const ctrl::ExportTarget genericVideo = row("generic.video");
     for (const ctrl::QualityBucket bucket :
          {ctrl::QualityBucket::Smaller, ctrl::QualityBucket::Balanced, ctrl::QualityBucket::Best,
           ctrl::QualityBucket::Lossless}) {
-        const ctrl::CodecChoice def = ctrl::resolveDefaultCodec(website, bucket, false);
+        const ctrl::CodecChoice def = ctrl::resolveDefaultCodec(genericVideo, bucket, false);
         check(def.format == QLatin1String("h264"),
               QStringLiteral("direct playback stays H.264 at every bucket, list-constrained (%1)")
                   .arg(def.format));
@@ -1459,6 +1503,139 @@ TEST_SECTION("I44: accepted lists, defaults and the codec row", run_codec_lists)
         }
     }
 
+    // ---- H42's core half: the capability answers the CALLER -----------------
+    //
+    // The three user-controllable capability classes differ only in what the
+    // checkbox STARTS at, so the plan must resolve them to the answer the request
+    // carries. resolveCapability hardcoded them (DefaultOn -> true, DefaultOff /
+    // Choice -> false), which is why the dialog's box lied: the user cleared it
+    // and the plan still reported alpha ON, so the export still wrote it.
+    //
+    // Both directions on a `Choice` row — the class that IS the user's call — and
+    // a `DefaultOn` row, which is the one the user is expected to clear.
+    {
+        const ctrl::ExportTarget twitch = row("twitch.emote");
+        check(twitch.alpha == ctrl::Capability::Choice && twitch.artifact == ctrl::ArtifactKind::Video,
+              "twitch.emote's transparency is the user's call (Choice)");
+
+        ctrl::ExportRequest onReq = req;
+        onReq.allowTransparency = true;
+        const ctrl::ExportPlan on = ctrl::planExport(twitch, onReq, ctrl::QualityBucket::Balanced);
+        check(on.ok() && on.alphaEnabled,
+              "a Choice destination plans alpha ON when the request answers on");
+
+        ctrl::ExportRequest offReq = req;
+        offReq.allowTransparency = false;
+        const ctrl::ExportPlan off =
+            ctrl::planExport(twitch, offReq, ctrl::QualityBucket::Balanced);
+        check(off.ok() && !off.alphaEnabled,
+              "and OFF when the request answers off — the checkbox cannot be lied to");
+
+        // DefaultOn is the pre-checked class: it must FOLLOW the user, which is
+        // exactly the case the hardcoded answer got wrong.
+        ctrl::ExportRequest defaultOff = req;
+        defaultOff.allowTransparency = false;
+        const ctrl::ExportPlan cleared =
+            ctrl::planExport(archive, defaultOff, ctrl::QualityBucket::Balanced);
+        check(cleared.ok() && !cleared.alphaEnabled,
+              "a DefaultOn destination follows the user clearing the box (alpha OFF)");
+        const ctrl::ExportPlan kept =
+            ctrl::planExport(archive, onReq, ctrl::QualityBucket::Balanced);
+        check(kept.ok() && kept.alphaEnabled,
+              "and keeps alpha when the user leaves it on");
+
+        // Required and Forbidden stay the DESTINATION's decision, whatever the
+        // request says: the capability is not a control there.
+        const ctrl::ExportTarget discordSticker = row("discord.sticker");
+        check(discordSticker.alpha == ctrl::Capability::Required,
+              "discord.sticker requires transparency (the destination's decision)");
+        const ctrl::ExportPlan requiredPlan =
+            ctrl::planExport(discordSticker, offReq, ctrl::QualityBucket::Balanced);
+        check(requiredPlan.ok(), QStringLiteral("discord.sticker: the plan builds (%1)")
+                                     .arg(requiredPlan.error));
+        check(requiredPlan.alphaEnabled,
+              "a Required capability answers ON even when the request answers off");
+        const ctrl::ExportTarget whatsappVideo = row("chat.whatsapp.video");
+        check(whatsappVideo.alpha == ctrl::Capability::Forbidden,
+              "chat.whatsapp.video forbids transparency (the destination's decision)");
+        const ctrl::ExportPlan forbiddenPlan =
+            ctrl::planExport(whatsappVideo, onReq, ctrl::QualityBucket::Balanced);
+        check(!forbiddenPlan.alphaEnabled,
+              "a Forbidden capability answers OFF even when the request answers on");
+
+        // And the video row the plan really resolved must not contradict the
+        // alpha state it reports: the ladder's VP9/AV1 branch is the SAME answer.
+        ctrl::ExportRequest noAlpha = req;
+        noAlpha.allowTransparency = false;
+        const ctrl::ExportPlan noAlphaPlan =
+            ctrl::planExport(archive, noAlpha, ctrl::QualityBucket::Balanced);
+        if (!noAlphaPlan.alphaEnabled && av1Runs) {
+            check(ctrl::formatKeyForEncoder(noAlphaPlan.config.codec) != QLatin1String("vp9"),
+                  "the ladder and the capability agree: alpha OFF is not the VP9 codec");
+        }
+    }
+
+    // ---- the family's declared order IS the preference order -----------------
+    //
+    // `prepend` put each usable hardware encoder ahead of the ones already
+    // ordered, which REVERSED the hardware subsequence: the last-declared one won
+    // (amf > vaapi > qsv > nvenc) and an Intel+NVIDIA laptop took QSV over NVENC,
+    // the opposite of the order familyEncoders() declares.
+    //
+    // Only observable on a build with TWO usable hardware encoders of a family
+    // (with one, or with none, the group has a single member and the order cannot
+    // show). The plan path is exercised here; the knob mapping that makes the
+    // hardware pick carry the user's quality intent is pinned in
+    // run_bucket_quality.
+    {
+        auto isHardware = [](const QString& aEncoder) {
+            return aEncoder.contains(QLatin1String("nvenc")) || aEncoder.contains(QLatin1String("qsv"))
+                   || aEncoder.contains(QLatin1String("vaapi")) || aEncoder.contains(QLatin1String("amf"))
+                   || aEncoder.contains(QLatin1String("videotoolbox"));
+        };
+        // The family's declared order (mirrors familyEncoders, which is TU-local).
+        const QStringList h264Declared = {QStringLiteral("libx264"), QStringLiteral("h264_nvenc"),
+                                          QStringLiteral("h264_qsv"), QStringLiteral("h264_vaapi"),
+                                          QStringLiteral("h264_amf")};
+        QStringList runningHardware, runningSoftware;
+        for (const QString& e : h264Declared) {
+            if (!media::ffmpeg::encoderUsable(e.toUtf8().constData())) continue;
+            (isHardware(e) ? runningHardware : runningSoftware).append(e);
+        }
+        // A row that accepts ONLY H.264, so the family the policy resolves inside
+        // is the one whose order is written out above.
+        const ctrl::ExportTarget x = row("post.x.video");
+        const QString expected =
+            runningHardware.isEmpty()
+                ? (runningSoftware.isEmpty() ? QString() : runningSoftware.first())
+                : runningHardware.first();
+        if (!expected.isEmpty()) {
+            const ctrl::CodecChoice balanced =
+                ctrl::resolveDefaultCodec(x, ctrl::QualityBucket::Balanced, false);
+            check(balanced.encoder == expected,
+                  QStringLiteral("the first DECLARED usable hardware encoder of the family wins "
+                                 "(%1, not the reverse of %2)")
+                      .arg(expected, runningHardware.join(QLatin1String(", "))));
+        } else {
+            QTextStream(stdout) << "      (no usable H.264 encoder here; order untested)\n";
+        }
+
+        // fastFirst is only the buckets that trade time for quality. Lossless and
+        // Best keep the DECLARED order, which is the software encoder — the
+        // fidelity buckets are what the better rate control is for.
+        if (!runningSoftware.isEmpty()) {
+            const ctrl::CodecChoice lossless =
+                ctrl::resolveDefaultCodec(x, ctrl::QualityBucket::Lossless, false);
+            check(lossless.encoder == runningSoftware.first(),
+                  QStringLiteral("Lossless keeps the declared software encoder (%1, not "
+                                 "hardware first)").arg(runningSoftware.first()));
+            const ctrl::CodecChoice best =
+                ctrl::resolveDefaultCodec(x, ctrl::QualityBucket::Best, false);
+            check(best.encoder == runningSoftware.first(),
+                  QStringLiteral("Best keeps the declared software encoder (%1)").arg(best.encoder));
+        }
+    }
+
     const QList<ctrl::CodecChoice> offered = ctrl::offeredCodecs(discord);
     if (offered.size() > 1) {
         req.codec = offered.at(1).encoder;
@@ -1491,9 +1668,10 @@ TEST_SECTION("I44: accepted lists, defaults and the codec row", run_codec_lists)
     // ---- hvc1 is gated on the RESOLVED family (ruling 2026-10-03) ----------
     // Every ISO row that offers HEVC must ASK for the hvc1 tag, and must say so
     // with the qualifier rather than by offering HEVC over the other families.
+    // website.video and generic.file were both folded into generic.video, so the
+    // surviving list names that row once rather than twice.
     for (const char* id : {"chat.discord.file", "post.instagram.reels",
-                           "post.pinterest.video", "youtube.video", "website.video",
-                           "generic.file"}) {
+                           "post.pinterest.video", "youtube.video", "generic.video"}) {
         const ctrl::ExportTarget t = row(id);
         check(t.container == QLatin1String("mp4") && t.codecs.contains(QLatin1String("hevc")),
               QStringLiteral("%1: mp4 offering HEVC, so hvc1 is meaningful there")
@@ -2146,8 +2324,9 @@ TEST_SECTION("quality intent reaches the encoder", run_bucket_quality) {
     // compare the output — the whole point of this session's fixes is that a
     // setting which does not reach the output is worse than no setting.
     {
+        // generic.file's declarations moved onto generic.video one for one.
         const ctrl::ExportTarget generic =
-            ctrl::ExportTargets::find(targets, QStringLiteral("generic.file"));
+            ctrl::ExportTargets::find(targets, QStringLiteral("generic.video"));
         const QString smallPath = aeTestTempPath(QStringLiteral("ae_bucket_small.mp4"));
         const QString bestPath = aeTestTempPath(QStringLiteral("ae_bucket_best.mp4"));
         auto encodeAt = [&](ctrl::QualityBucket aBucket, const QString& aPath) -> qint64 {
@@ -2167,7 +2346,7 @@ TEST_SECTION("quality intent reaches the encoder", run_bucket_quality) {
         };
         const qint64 smallBytes = encodeAt(ctrl::QualityBucket::Smaller, smallPath);
         const qint64 bestBytes = encodeAt(ctrl::QualityBucket::Best, bestPath);
-        QTextStream(stdout) << "    generic.file: smaller=" << smallBytes
+        QTextStream(stdout) << "    generic.video: smaller=" << smallBytes
                             << " bytes, best=" << bestBytes << " bytes\n";
         check(smallBytes > 0 && bestBytes > 0, "both buckets encode");
         check(bestBytes > smallBytes,
@@ -2191,6 +2370,86 @@ TEST_SECTION("quality intent reaches the encoder", run_bucket_quality) {
     check(!ws.isEmpty() && !wb.isEmpty(), "the WebP rows get their quality knob too");
     check(ws.toInt() < wb.toInt(),
           QStringLiteral("a higher-is-better knob moves the other way (%1 < %2)").arg(ws, wb));
+
+    // ---- a HARDWARE-resolved codec keeps the quality knob -------------------
+    //
+    // <quality_control> names SOFTWARE encoders, and the plan resolves the
+    // ENCODER. On a machine with a usable hardware encoder — the case the ladder
+    // now prefers at Smaller/Balanced — the resolved codec is h264_nvenc /
+    // hevc_vaapi / av1_qsv ... which has no entry of its own, so the lookup missed
+    // the table and returned false with NO note: the Quality selector was inert
+    // there, silently, on exactly the exports the ladder sends to the GPU.
+    //
+    // Asserted through the plan-composing helpers rather than by resolving a plan,
+    // because a hardware encoder that runs here is a property of the machine, not
+    // of the build — this part is a fact about the mapping and must hold on every
+    // machine, whether or not one is present.
+    //
+    // The option written is the FAMILY's name from the table ("crf"). MEASURED
+    // against the linked libavcodec, the hardware encoders spell their quality
+    // option differently (cq on NVENC, qp on VAAPI, none on QSV/AMF), so a
+    // hardware-resolved encoder may refuse the name; Exporter's family step-down
+    // answers that, and per-backend names are a data decision, not this
+    // mapping's.
+    for (const QString& hw : {"h264_nvenc", "h264_qsv", "h264_vaapi", "h264_amf", "hevc_nvenc",
+                              "av1_nvenc", "vp9_vaapi"}) {
+        check(ctrl::qualityKnobFor(hw) == QLatin1String("crf"),
+              QStringLiteral("%1 trades quality with its family's knob (crf)").arg(hw));
+        QMap<QString, QString> hwOpts;
+        const bool applied =
+            ctrl::applyQualityIntent(hw, ctrl::QualityBucket::Smaller, hwOpts, nullptr);
+        check(applied && !hwOpts.value(QStringLiteral("crf")).isEmpty(),
+              QStringLiteral("Smaller applies a crf through the hardware encoder's option "
+                             "(%1:%2, was: nothing at all)")
+                  .arg(hw, hwOpts.value(QStringLiteral("crf"), QStringLiteral("<absent>"))));
+    }
+    // The VALUE still has to move with the intent, which is the whole claim: a
+    // knob that is present but identical for Smaller and Best is still inert.
+    {
+        QMap<QString, QString> small, best;
+        ctrl::applyQualityIntent("h264_nvenc", ctrl::QualityBucket::Smaller, small, nullptr);
+        ctrl::applyQualityIntent("h264_nvenc", ctrl::QualityBucket::Best, best, nullptr);
+        QTextStream(stdout) << "    h264_nvenc crf: smaller="
+                            << small.value(QStringLiteral("crf")) << " best="
+                            << best.value(QStringLiteral("crf")) << "\n";
+        check(small.value(QStringLiteral("crf")) != best.value(QStringLiteral("crf")),
+              QStringLiteral("Smaller and Best differ for a hardware-resolved codec (%1 vs %2)")
+                  .arg(small.value(QStringLiteral("crf")),
+                       best.value(QStringLiteral("crf"))));
+        // And through the span the family's table declares, not a number invented
+        // for the hardware encoder.
+        const ctrl::QualityControl h264 = qc.value(QStringLiteral("libx264"));
+        for (const QString& v : {small.value(QStringLiteral("crf")),
+                                 best.value(QStringLiteral("crf"))}) {
+            check(v.toInt() >= h264.best && v.toInt() <= h264.worst,
+                  QStringLiteral("h264_nvenc's crf %1 stays inside libx264's [%2, %3]")
+                      .arg(v).arg(h264.best).arg(h264.worst));
+        }
+    }
+
+    // Where a usable H.264 hardware encoder actually runs here, the PLAN itself
+    // must carry the knob — the end of the chain the app exports through.
+    const ctrl::ExportTarget yt = ctrl::ExportTargets::find(targets, QStringLiteral("youtube.video"));
+    for (const QString& hw : {"h264_nvenc", "h264_qsv", "h264_vaapi", "h264_amf"}) {
+        if (!media::ffmpeg::encoderUsable(hw.toUtf8().constData())) continue;
+        ctrl::ExportRequest hwReq = req;
+        hwReq.codec = hw;
+        const ctrl::ExportPlan hwSmall = ctrl::planExport(yt, hwReq, ctrl::QualityBucket::Smaller);
+        const ctrl::ExportPlan hwBest = ctrl::planExport(yt, hwReq, ctrl::QualityBucket::Best);
+        const QString smallCrf = hwSmall.config.encOptions.value(QStringLiteral("crf"),
+                                                                QStringLiteral("<absent>"));
+        const QString bestCrf = hwBest.config.encOptions.value(QStringLiteral("crf"),
+                                                              QStringLiteral("<absent>"));
+        QTextStream(stdout) << "    resolved " << hw << " crf: smaller=" << smallCrf
+                            << " best=" << bestCrf << "\n";
+        check(hwSmall.config.codec == hw, QStringLiteral("the plan resolved to %1").arg(hw));
+        check(smallCrf != QStringLiteral("<absent>"),
+              QStringLiteral("the hardware-resolved plan carries crf (%1)").arg(smallCrf));
+        check(smallCrf != bestCrf,
+              QStringLiteral("and Smaller and Best are different instructions (%1 vs %2)")
+                  .arg(smallCrf, bestCrf));
+        break;
+    }
 }
 
 TEST_SECTION("still and sequence destinations (image artifacts)", run_image_artifacts) {
@@ -2283,8 +2542,18 @@ TEST_SECTION("still and sequence destinations (image artifacts)", run_image_arti
             check(writable, QStringLiteral("%1: .%2 is a writable image format")
                                 .arg(t.id, suffix));
         }
-        check(imageRows == 8,
-              QStringLiteral("every image destination is covered here (found %1)").arg(imageRows));
+        // The count is over rows whose artifact is not Video: the still and sequence
+        // destinations Qt's own writers produce. It moved from 8 to 9 because the
+        // destination SET changed: the `general` group's new generic.sequence
+        // ("Image sequence", artifact="sequence", png) is the ninth. The other new
+        // general row, generic.animation ("Animated image", webp), is a VIDEO
+        // artifact in this model - WebP animation goes through the encoder, not a Qt
+        // image writer - so it is not in this walk (the WebP rows are covered by the
+        // container checks instead). The remaining eight predate the `general` group.
+        check(imageRows == 9,
+              QStringLiteral("every image destination is covered here (found %1 of the %2 "
+                             "still/sequence rows): the eight that predate the `general` group plus "
+                             "the new generic.sequence").arg(imageRows).arg(9));
     }
 }
 
@@ -2348,6 +2617,135 @@ TEST_SECTION("post-encode fit-to-cap", run_fit_to_cap) {
     check(!r2.ok && !r2.error.isEmpty(),
           "an impossible cap is reported, not silently accepted");
     QTextStream(stdout) << "      " << r2.error << "\n";
+
+    // The frames phase is the one knob that changes the animation itself: it
+    // keeps every stride-th frame. Written at the plan's rate those frames play
+    // SHORTER — 12 frames at 10 fps is 1.2 s, and the 3 that survive stride 4
+    // at 10 fps is 0.3 s. Nothing asserted a fitted file's duration, so the
+    // shortening survived a review that documented it as "the most destructive
+    // knob". The survivors now go out at fps/stride, and the numbers below are
+    // read back off the file the fit actually wrote.
+    {
+        ctrl::ExportTarget framesOnly = base;
+        framesOnly.degradeOrder = QStringList{QStringLiteral("frames")};
+
+        const int frameCount = 12;
+        const int frameRate = 10; // 1.2 s of animation, as the plan describes it
+        QList<QImage> noisy;
+        for (int i = 0; i < frameCount; ++i)
+            noisy.append(makeNoiseFrame(640, 480, i));
+
+        ctrl::ExportRequest sreq;
+        sreq.outputPath = aeTestTempPath("ae_fit_stride.webm");
+        sreq.sourceSize = QSize(640, 480);
+        sreq.fps = frameRate;
+        sreq.selection = ctrl::FrameSelection::fromCount(frameCount);
+
+        const ctrl::ExportPlan splan =
+            ctrl::planExport(framesOnly, sreq, ctrl::QualityBucket::Balanced);
+        check(splan.ok(), QStringLiteral("the plan builds (%1)").arg(splan.error));
+
+        // One encode with no cap, measured, so the cap below is a fraction of
+        // what the full frame set really costs here — if the first attempt
+        // already fit there would be no fit to observe.
+        ctrl::ExportTarget uncapped = framesOnly;
+        uncapped.caps.maxBytes = 0;
+        const ctrl::FitResult bestFit =
+            ctrl::exportWithFit(uncapped, sreq, ctrl::QualityBucket::Balanced, noisy);
+        check(bestFit.ok, QStringLiteral("the uncapped encode succeeded (%1)").arg(bestFit.error));
+        ctrl::ExportTarget capped = framesOnly;
+        capped.caps.maxBytes = std::max<qint64>(1024, bestFit.bytes / 3);
+
+        const ctrl::FitResult fr =
+            ctrl::exportWithFit(capped, sreq, ctrl::QualityBucket::Balanced, noisy);
+        for (const QString& step : fr.steps) QTextStream(stdout) << "      " << step << "\n";
+        QTextStream(stdout) << "      plan " << splan.frames() << " frames @ " << splan.fps
+                            << " fps, best " << (qlonglong)bestFit.bytes << " bytes, cap "
+                            << (qlonglong)capped.caps.maxBytes << " -> fitted "
+                            << (qlonglong)fr.bytes << " bytes\n";
+        check(fr.ok, QStringLiteral("the frames-only fit fitted (%1)").arg(fr.error));
+        check(fr.attempts > 1,
+              QStringLiteral("the frames phase ran (%1 attempts)").arg(fr.attempts));
+        if (fr.ok && bestFit.ok) {
+            check(fr.bytes <= capped.caps.maxBytes,
+                  QStringLiteral("fitted under the cap: %1 <= %2 bytes")
+                      .arg((qlonglong)fr.bytes)
+                      .arg((qlonglong)capped.caps.maxBytes));
+            // The frame count is the only dimension this phase trades, so the
+            // size the plan resolved must reach the file untouched.
+            check(fr.finalSize == splan.size,
+                  QStringLiteral("dropping frames must not change the size (%1x%2, expected %3x%4)")
+                      .arg(fr.finalSize.width())
+                      .arg(fr.finalSize.height())
+                      .arg(splan.size.width())
+                      .arg(splan.size.height()));
+            // The winning stride comes from the loop's own log; the file has to
+            // agree with it, at the rate the stride implies.
+            int stride = 1;
+            for (const QString& step : fr.steps) {
+                const int at = step.indexOf(QLatin1String("stride="));
+                if (at >= 0) {
+                    const QString tail = step.mid(at + 7);
+                    bool okNum = false;
+                    const int v = tail.section(QLatin1Char(' '), 0, 0).toInt(&okNum);
+                    if (okNum && v > 0) stride = v;
+                }
+            }
+            check(stride > 1,
+                  QStringLiteral("the fit dropped frames to fit (stride %1)").arg(stride));
+            const int expected = (frameCount + stride - 1) / stride;
+            int w = 0, h = 0;
+            const int written = decodeInfo(fr.path, &w, &h);
+            check(written == expected,
+                  QStringLiteral("the file has the frames the stride says: %1 written, %2 "
+                                 "expected (stride %3 of %4)")
+                      .arg(written)
+                      .arg(expected)
+                      .arg(stride)
+                      .arg(frameCount));
+            // The duration, from the file's own numbers: the frames it really
+            // holds and the rate its container really recorded. The plan's
+            // duration is frames/fps; the fitted file must still be that long.
+            const double rate = fileVideoRate(fr.path);
+            const double planSeconds = double(splan.frames()) / double(splan.fps);
+            const double fileSeconds = double(written) / rate;
+            QTextStream(stdout) << "      fitted file: " << written << " frames @ " << rate
+                                << " fps = " << fileSeconds << " s, plan " << planSeconds
+                                << " s (" << splan.frames() << " frames @ " << splan.fps << ")\n";
+            check(rate > 0, QStringLiteral("the file records a frame rate (%1)").arg(rate));
+            check(rate < splan.fps,
+                  QStringLiteral("the survivors were written SLOWER than the plan's %1 fps, "
+                                 "not faster (%2)").arg(splan.fps).arg(rate));
+            // One frame of the DELIVERED animation is the honest tolerance: the
+            // rate is an integer the encoders round to, so the file's own frame
+            // period is the smallest unit it can be right about.
+            check(fileSeconds > 0 && std::abs(fileSeconds - planSeconds) <= 1.0 / rate,
+                  QStringLiteral("the fitted file plays for the same time as the plan: "
+                                 "%1 s vs %2 s (stride %3, %4 frames @ %5 fps)")
+                      .arg(fileSeconds, 0, 'f', 3)
+                      .arg(planSeconds, 0, 'f', 3)
+                      .arg(stride)
+                      .arg(written)
+                      .arg(rate));
+            // ...and the user is TOLD what the drop cost in time. "fewer frames"
+            // on its own would let a reader assume the animation got shorter,
+            // which is exactly what this phase used to do. The prefix is built
+            // with the SAME format string the source appends, so the wording
+            // cannot drift between the two files.
+            const QString notePrefix = QStringLiteral("fit kept every %1 frames:").arg(stride);
+            const QStringList fitNotes = fr.steps.filter(notePrefix);
+            check(fitNotes.size() == 1,
+                  QStringLiteral("the fit states what dropping frames did to the animation "
+                                 "(%1 lines)").arg(fitNotes.size()));
+            if (!fitNotes.isEmpty()) {
+                // fps/stride is at least 1 here, so the rate was not clamped and
+                // the playing time really is the plan's.
+                check(fitNotes.first().contains(QLatin1String("same playing time")),
+                      QStringLiteral("and it says the playing time is the same: %1")
+                          .arg(fitNotes.first()));
+            }
+        }
+    }
 }
 
 TEST_SECTION("a capped GIF destination is fitted, not just told about", run_gif_fit) {
@@ -2577,7 +2975,7 @@ TEST_SECTION("a capped GIF destination is fitted, not just told about", run_gif_
 //
 //   row                  codec      blind bisection   interpolated search
 //   telegram.sticker     libvpx-vp9        10                 5
-//   chat.generic.video   libx264           10                 5
+//   chat.discord.file    libx264           10                 5
 //   discord.emoji        libwebp           11                10
 //   wechat.sticker       gif                9                 9
 //   total                                  40                29
@@ -2642,7 +3040,10 @@ TEST_SECTION("a byte cap costs a bounded number of encodes", run_fit_cost) {
     };
     const Case cases[] = {
         {"telegram.sticker", ctrl::QualityBucket::Balanced, QSize(512, 512), 6, 15}, // VP9, crf
-        {"chat.generic.video", ctrl::QualityBucket::Balanced, QSize(320, 240), 6, 15}, // H.264, crf
+        // chat.generic.video's closest surviving twin: the same mp4/H.264 default, the
+        // same <size mode="max" w="1280" h="720"/> ceiling and the same 20 MB cap, so the
+        // codec the search walks is libx264 here too.
+        {"chat.discord.file", ctrl::QualityBucket::Balanced, QSize(320, 240), 6, 15}, // H.264, crf
         {"discord.emoji", ctrl::QualityBucket::Balanced, QSize(320, 320), 6, 12},     // WebP, quality
         {"wechat.sticker", ctrl::QualityBucket::Balanced, QSize(320, 240), 6, 12},    // GIF, palette
     };
@@ -2753,7 +3154,10 @@ TEST_SECTION("a byte cap costs a bounded number of encodes", run_fit_cost) {
             int capDivisor; // cap = best-quality size / this
         };
         const Small smalls[] = {
-            {"chat.generic.video", QSize(96, 64), "49 settings behind 76 percents", 2},
+            // chat.generic.video's twin (same mp4/H.264 default and 1280x720 ceiling):
+            // a 96x64 plan is the same small canvas, so the settings-behind-percents
+            // figure the case exists to cover is unchanged.
+            {"chat.discord.file", QSize(96, 64), "49 settings behind 76 percents", 2},
             {"discord.emoji", QSize(128, 96), "61 settings behind 76 percents", 2},
             {"wechat.sticker", QSize(128, 96), "61 settings, exact size required", 2},
             // A REQUIRED size under a cap tight enough that the scale axis has to be
@@ -2911,6 +3315,183 @@ TEST_SECTION("a byte cap costs a bounded number of encodes", run_fit_cost) {
                       QStringLiteral("signal.sticker: fitted inside the cap (%1 <= %2)")
                           .arg((qlonglong)e.bytes)
                           .arg((qlonglong)ecapped.caps.maxBytes));
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // A MaxMinSide row's size is a FLOOR as well as a ceiling, so it is required
+    // too. line.sticker declares 320x270 with a 270 px minimum side, which
+    // applySizeRule already grew the OUTPUT to (a 1000x800 source becomes
+    // 320x256, whose long side is the 270 the rule asks for). requiredSize's
+    // predicate named only Exact and MaxExactSide, so the scale phase of a capped
+    // fit shrank that output below the row's own rule — the cap was met by
+    // breaking the other published requirement.
+    {
+        const ctrl::ExportTarget row =
+            ctrl::ExportTargets::find(all, QStringLiteral("line.sticker"));
+        check(!row.id.isEmpty() && row.size.mode == ctrl::SizeMode::MaxMinSide
+                  && row.size.side == 270,
+              QStringLiteral("line.sticker declares a %1 px minimum side (cap %2 bytes)")
+                  .arg(row.size.side)
+                  .arg((qlonglong)row.caps.maxBytes));
+
+        ctrl::ExportRequest lreq;
+        lreq.outputPath = aeTestTempPath(QStringLiteral("ae_minside.apng"));
+        lreq.sourceSize = QSize(1000, 800);
+        lreq.fps = 12;
+        lreq.selection = ctrl::FrameSelection::fromCount(6);
+        const ctrl::ExportPlan lplan = ctrl::planExport(row, lreq, ctrl::QualityBucket::Balanced);
+        check(lplan.ok(), QStringLiteral("line.sticker: the plan builds (%1)").arg(lplan.error));
+        if (lplan.ok()) {
+            check(std::max(lplan.size.width(), lplan.size.height()) >= 270,
+                  QStringLiteral("the planned output honours the 270 px floor (%1x%2)")
+                      .arg(lplan.size.width())
+                      .arg(lplan.size.height()));
+            QList<QImage> mnFrames;
+            for (int i = 0; i < lplan.frames(); ++i)
+                mnFrames.append(makeNoiseFrame(lplan.renderSize.width(), lplan.renderSize.height(), i));
+
+            ctrl::ExportTarget uncapped = row;
+            uncapped.caps.maxBytes = 0;
+            const ctrl::FitResult best =
+                ctrl::exportWithFit(uncapped, lreq, ctrl::QualityBucket::Balanced, mnFrames);
+            check(best.ok, QStringLiteral("line.sticker: uncapped encode (%1)").arg(best.error));
+            ctrl::ExportTarget capped = row;
+            capped.caps.maxBytes = std::max<qint64>(512, best.bytes / 3);
+            const ctrl::FitResult r =
+                ctrl::exportWithFit(capped, lreq, ctrl::QualityBucket::Balanced, mnFrames);
+            QTextStream(stdout) << "      line.sticker: best " << (qlonglong)best.bytes
+                                << " bytes, cap " << (qlonglong)capped.caps.maxBytes << " -> fitted "
+                                << (qlonglong)r.bytes << " at " << r.finalSize.width() << "x"
+                                << r.finalSize.height() << "\n";
+            for (const QString& step : r.steps) QTextStream(stdout) << "        " << step << "\n";
+
+            // Every attempt the loop recorded must have written the required
+            // output: "<what>: crf=<n> <w>x<h> stride=<m> -> <bytes> bytes". The
+            // scale phase may reduce the ART it draws, which the step names after
+            // the output size, and that is the trade the loop is allowed to make.
+            const QRegularExpression stepSize(QStringLiteral("crf=-?\\d+ (\\d+)x(\\d+)"));
+            bool allRequired = r.attempts > 0;
+            for (const QString& step : r.steps) {
+                const auto m = stepSize.match(step);
+                if (!m.hasMatch()) continue;
+                const QSize out(m.captured(1).toInt(), m.captured(2).toInt());
+                if (out != lplan.size) allRequired = false;
+            }
+            check(r.attempts > 1, "the cap actually bound, so the scale phase ran");
+            check(allRequired,
+                  QStringLiteral("the fit never scales below the row's required size (%1x%2)")
+                      .arg(lplan.size.width())
+                      .arg(lplan.size.height()));
+            check(r.finalSize == lplan.size,
+                  QStringLiteral("the fitted file is the required size (%1x%2, not %3x%4)")
+                      .arg(lplan.size.width())
+                      .arg(lplan.size.height())
+                      .arg(r.finalSize.width())
+                      .arg(r.finalSize.height()));
+            if (r.ok) {
+                int lw = 0, lh = 0;
+                const int ln = decodeInfo(r.path, &lw, &lh);
+                check(lw == lplan.size.width() && lh == lplan.size.height(),
+                      QStringLiteral("the decoded file is the required size too (%1x%2)")
+                          .arg(lw)
+                          .arg(lh));
+                check(ln > 0, QStringLiteral("the fitted sticker decodes (%1 frames)").arg(ln));
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // A hardware-resolved capped row must still FIT.
+    //
+    // The ladder now prefers a hardware encoder at Balanced, and the quality knob
+    // is written under the family's TABLE name — which the hardware encoders of
+    // that family spell differently (measured against the linked libavcodec: cq
+    // on NVENC, qp on VAAPI, and none at all on QSV/AMF), so avcodec_open2
+    // refuses it and the fit loop used to abort with "unknown encoder option".
+    // Exporter::execute steps down to the family's software encoder in that
+    // case; the fit loop has the same one-step fallback now, or the one capped
+    // row whose codec the POLICY picks could never be exported on a machine with
+    // a usable hardware encoder. post.x.video is exactly that row: codecs="h264"
+    // with no pin and no declared default, so the class policy decides inside
+    // the h264 family, under a byte cap that binds.
+    {
+        QString hardwareH264;
+        for (const QString& hw : {"h264_nvenc", "h264_qsv", "h264_vaapi", "h264_amf"}) {
+            if (media::ffmpeg::encoderUsable(hw.toUtf8().constData())) {
+                hardwareH264 = hw;
+                break;
+            }
+        }
+        if (hardwareH264.isEmpty()) {
+            QTextStream(stdout) << "      (no usable H.264 hardware encoder here; the fit's "
+                                   "family fallback is untested)\n";
+        } else {
+            const ctrl::ExportTarget x =
+                ctrl::ExportTargets::find(all, QStringLiteral("post.x.video"));
+            check(!x.id.isEmpty() && x.codec.isEmpty() && x.defaultCodec.isEmpty()
+                      && x.codecs == QStringList{QStringLiteral("h264")} && x.caps.maxBytes > 0,
+                  QStringLiteral("post.x.video is a capped row whose H.264 the POLICY picks "
+                                 "(no pin, no declared default, cap %1 bytes)")
+                      .arg((qlonglong)x.caps.maxBytes));
+
+            ctrl::ExportRequest xreq;
+            xreq.outputPath = aeTestTempPath(QStringLiteral("ae_hw_fit.mp4"));
+            xreq.sourceSize = QSize(320, 240);
+            xreq.fps = 12;
+            xreq.selection = ctrl::FrameSelection::fromCount(6);
+            const ctrl::ExportPlan xplan =
+                ctrl::planExport(x, xreq, ctrl::QualityBucket::Balanced);
+            check(xplan.ok() && xplan.config.codec == hardwareH264,
+                  QStringLiteral("the ladder resolves it to %1 at Balanced").arg(hardwareH264));
+            QList<QImage> xframes;
+            for (int i = 0; i < xplan.frames(); ++i)
+                xframes.append(makeNoiseFrame(xplan.renderSize.width(), xplan.renderSize.height(), i));
+
+            ctrl::ExportTarget uncapped = x;
+            uncapped.caps.maxBytes = 0;
+            const ctrl::FitResult best =
+                ctrl::exportWithFit(uncapped, xreq, ctrl::QualityBucket::Balanced, xframes);
+            check(best.ok, QStringLiteral("post.x.video: uncapped encode (%1)").arg(best.error));
+            ctrl::ExportTarget capped = x;
+            capped.caps.maxBytes = std::max<qint64>(512, best.bytes / 3);
+            const ctrl::FitResult r =
+                ctrl::exportWithFit(capped, xreq, ctrl::QualityBucket::Balanced, xframes);
+            for (const QString& step : r.steps) QTextStream(stdout) << "        " << step << "\n";
+            QTextStream(stdout) << "      post.x.video: best " << (qlonglong)best.bytes
+                                << " bytes, cap " << (qlonglong)capped.caps.maxBytes << " -> fitted "
+                                << (qlonglong)r.bytes << " in " << r.attempts << " encodes\n";
+
+            // Pre-fix this row failed the whole fit: the hardware encoder cannot
+            // take the family's option name, and the loop had no fallback.
+            check(r.ok && !r.error.contains(QStringLiteral("unknown encoder option"),
+                                            Qt::CaseInsensitive),
+                  QStringLiteral("the capped fit on a hardware-resolved codec succeeds (%1)")
+                      .arg(r.error));
+            check(r.attempts > 1, "and it iterates rather than stopping at the first attempt");
+
+            // When the step-down did happen, it must be to the SAME family's
+            // software encoder, and the steps must say so: a file written by a
+            // library other than the one the plan resolved is a fact about the
+            // export, not a detail to lose in the log.
+            QString steppedTo;
+            for (const QString& step : r.steps) {
+                const int at = step.indexOf(QStringLiteral("written with "));
+                if (at < 0) continue;
+                steppedTo = step.mid(at + 13);
+                if (steppedTo.endsWith(QLatin1Char(')'))) steppedTo.chop(1); // the suffix's own bracket
+            }
+            if (steppedTo.isEmpty()) {
+                QTextStream(stdout) << "      (the hardware encoder took the family's option "
+                                       "name here; no step-down was needed)\n";
+            } else {
+                check(steppedTo == QLatin1String("libx264"),
+                      QStringLiteral("the fallback is the family's software encoder (%1)").arg(steppedTo));
+                check(r.bytes <= capped.caps.maxBytes,
+                      QStringLiteral("and the fitted file is inside the cap (%1 <= %2)")
+                          .arg((qlonglong)r.bytes)
+                          .arg((qlonglong)capped.caps.maxBytes));
             }
         }
     }

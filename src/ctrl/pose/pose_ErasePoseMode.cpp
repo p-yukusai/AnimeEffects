@@ -18,7 +18,7 @@ namespace pose {
         mTargetMtx(aTarget.mtx),
         mTargetInvMtx(aTarget.invMtx),
         mKeyOwner(aKey),
-        mCommandRef(),
+        mGesture(mProject.commandStack()),
         mBrush(),
         mBrushPressure(),
         mIsBrushDrawing() {
@@ -35,13 +35,13 @@ namespace pose {
 
         if (aCursor.emitsLeftPressedEvent()) {
             mIsBrushDrawing = true;
-            mCommandRef = nullptr;
+            mGesture.end();
             updatePaint();
         } else if (aCursor.emitsLeftDraggedEvent()) {
             updatePaint();
         } else if (aCursor.emitsLeftReleasedEvent()) {
             mIsBrushDrawing = false;
-            mCommandRef = nullptr;
+            mGesture.end();
         }
 
         return true;
@@ -72,8 +72,8 @@ namespace pose {
         }
 
         // modify
-        if (mCommandRef && stack.isModifiable(mCommandRef)) {
-            mCommandRef->modifyValue(nextRots);
+        if (mGesture.continues()) {
+            mGesture.command()->modifyValue(nextRots);
 
             // notify
             TimeLineEvent event;
@@ -81,25 +81,24 @@ namespace pose {
             event.pushTarget(mTarget, TimeKeyType_Pose, frame);
             mProject.onTimeLineModified(event, false);
         } else {
-            cmnd::ScopedMacro macro(stack, CmndName::tr("erase a pose"));
+            mGesture.begin(CmndName::tr("erase a pose"), [&](cmnd::ScopedMacro& macro) {
+                // set notifier
+                {
+                    auto notifier = new TimeLineUtil::Notifier(mProject);
+                    notifier->event().setType(
+                        mKeyOwner.owns() ? TimeLineEvent::Type_PushKey : TimeLineEvent::Type_ChangeKeyValue
+                    );
+                    notifier->event().pushTarget(mTarget, TimeKeyType_Pose, frame);
+                    macro.grabListener(notifier);
+                }
+                // push key command
+                if (mKeyOwner.owns()) {
+                    mKeyOwner.pushOwnsKey(stack, timeLine, frame);
+                }
 
-            // set notifier
-            {
-                auto notifier = new TimeLineUtil::Notifier(mProject);
-                notifier->event().setType(
-                    mKeyOwner.owns() ? TimeLineEvent::Type_PushKey : TimeLineEvent::Type_ChangeKeyValue
-                );
-                notifier->event().pushTarget(mTarget, TimeKeyType_Pose, frame);
-                macro.grabListener(notifier);
-            }
-            // push key command
-            if (mKeyOwner.owns()) {
-                mKeyOwner.pushOwnsKey(stack, timeLine, frame);
-            }
-
-            // push command
-            mCommandRef = new RotateAllBones(topBones, nextRots);
-            stack.push(mCommandRef);
+                // push command
+                return new RotateAllBones(topBones, nextRots);
+            });
         }
     }
 

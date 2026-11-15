@@ -158,6 +158,22 @@ void ToolWidget::createViewPanel() {
         this->viewSetting().flipCanvas = aChecked;
         this->onViewSettingChanged(this->viewSetting());
     });
+
+    // the graph is a HUD over the viewport, so it belongs to the view settings
+    // rather than to a tool panel
+    QPushButton* graphButton = mViewPanel->addButton("ease", true, tr("Show animation graph"), [=](bool aChecked) {
+        this->viewSetting().showGraphEditor = aChecked;
+        this->onViewSettingChanged(this->viewSetting());
+    });
+    // WHY THIS ONE BUTTON GETS AN ACCESSIBLE NAME. The buttons carry only an icon, so
+    // Qt reports no name for them and AT-SPI falls back to the enclosing group box:
+    // `ae dump` lists seven nodes in this panel, every one of them named "View
+    // Settings". A GUI probe could therefore only reach the graph toggle by raw
+    // pixels, which keep passing after a layout change while clicking whatever moved
+    // under them. The accessible name is what scripts/gui/ae_ui.py matches on (and
+    // what a screen reader reads). The other buttons keep the name they have: probes
+    // already drive them by their tooltip, and renaming them would move their target.
+    graphButton->setAccessibleName(tr("Show animation graph"));
 }
 
 void ToolWidget::createModePanel() {

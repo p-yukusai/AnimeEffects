@@ -341,8 +341,15 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
         for (int i = 0; i < 4; ++i) {
             // line length
             const size_t linelen = (size_t)mIn.readUInt32();
+            // One line of w pixels can not be described by more encoded bytes
+            // than the whole line's worth the buffer holds; without this a
+            // damaged length writes past `src`.
+            if (srcSize < linelen)
+                return false;
             // compressed bytes
             mIn.readBuf(src.get(), linelen);
+            if (mIn.isFailed())
+                return false;
 
             // decode
             if (!decoder.decode(XCMemBlock(src.get(), linelen), wrkBlock)) {

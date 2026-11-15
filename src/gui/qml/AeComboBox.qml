@@ -201,15 +201,24 @@ ComboBox {
     }
 
     // ---- the popup ---------------------------------------------------------
-    // modal + dim:false reproduce the old scrim exactly: while the list is open
-    // a press outside CLOSES it and does not reach the control beneath
-    // (measured: stock's default non-modal overlay passed that press through —
-    // outsideClicks 0→1 — and only modal restored the old swallow, 0→0, with
-    // the popup still closing). dim stays off: the old scrim was transparent.
-    // closePolicy is stock's default and matches the old backstop: Escape, and
-    // a press anywhere outside the list.
+    // NON-modal on purpose: the swallow the modal overlay used to give was a
+    // DEFECT, not a feature. With `modal: true` the overlay consumed every press
+    // that landed outside the list — and a combo's own field is outside its list —
+    // so pressing the field (or its arrow) did not close the open list, and
+    // pressing a SECOND combo only closed the first without opening it (reported
+    // 2026-10-11; both symptoms are that one swallow). With `modal: false` Qt's
+    // own control does the right thing on both: a press on the field toggles the
+    // list, and a press on another combo closes this one and opens that one.
+    // dim stays off: the old scrim was transparent.
+    //
+    // What is NOT a defect, and looks like one when two combos are stacked 36px
+    // apart (the settings dialog): an OPEN LIST COVERS THE FIELDS BELOW IT, so a
+    // press there lands on a list row and chooses it. That is what a dropdown
+    // does; the row at the top of the list is usually the current value, which is
+    // why it reads as "the list just closed". The pass-through is only visible
+    // where the list does not cover the target.
     popup: Popup {
-        modal: true
+        modal: false
         dim: false
         // Below the field, with the old control's 2px gap: this is the same `y`
         // binding the Basic style ships for its own popup (`y: control.height`),

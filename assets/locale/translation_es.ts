@@ -10,16 +10,22 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="107"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="255"/>
         <source>Loop animation</source>
         <translation>Reproducir en bucle</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="138"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="200"/>
         <source>Frame range</source>
         <translation>Rango de fotogramas</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="174"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="221"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="227"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="261"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="267"/>
         <source>Frames per second</source>
         <translation>Fotogramas por segundo</translation>
     </message>
@@ -29,142 +35,146 @@
         <translation>Seleccionar ruta de paleta</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="198"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="218"/>
         <source>Destination</source>
         <translation>Destino</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="233"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="253"/>
         <source>Change</source>
         <translation>Cambiar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="282"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="302"/>
         <source>Details</source>
         <translation>Detalles</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="322"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="343"/>
         <source>Output</source>
         <translation>Salida</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="334"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="619"/>
         <source>Frames</source>
         <translation>Fotogramas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="370"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="655"/>
         <source>Add range</source>
         <translation>Añadir rango</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="380"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="361"/>
         <source>Resolution</source>
         <translation>Resolución</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="387"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="368"/>
         <source>Width</source>
         <translation>Anchura</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="406"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="387"/>
         <source>Height</source>
         <translation>Altura</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="419"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="447"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="400"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="428"/>
         <source>Reset to native</source>
         <translation>Restablecer al original</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="429"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="410"/>
         <source>Keep aspect ratio</source>
         <translation>Mantener la relación de aspecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="436"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="443"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="417"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="424"/>
         <source>Frame rate</source>
         <translation>Velocidad de fotogramas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="462"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="443"/>
         <source>Encoding</source>
         <translation>Codificación</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="475"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="477"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="456"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="458"/>
         <source>Format</source>
         <translation>Formato</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="496"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="500"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="638"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="642"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="477"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="481"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="718"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="722"/>
         <source>Codec</source>
         <translation>Códec</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="516"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="518"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="497"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="499"/>
         <source>Quality</source>
         <translation>Calidad</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="538"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="545"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="535"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="543"/>
         <source>Image quality</source>
         <translation>Calidad de la imagen</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="549"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="696"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="732"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="548"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="786"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="826"/>
         <source>Auto</source>
         <translation>Auto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="550"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="673"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="706"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="734"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="549"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="757"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="796"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="827"/>
         <source>Reset to auto</source>
         <translation>Restablecer a automático</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="566"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="592"/>
         <source>Advanced</source>
         <translation>Avanzado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="667"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="749"/>
         <source>Quality override</source>
         <translation>Anulación de calidad</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="687"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="697"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="771"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="787"/>
         <source>Bitrate</source>
         <translation>Tasa de bits</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="719"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="726"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="811"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="819"/>
         <source>Size cap (MB)</source>
         <translation>Límite de tamaño (MB)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="799"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="892"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="363"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="397"/>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="292"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="559"/>
         <source>Cancel</source>
         <translation>Cancelar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="804"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="897"/>
         <source>Export</source>
         <translation>Exportar</translation>
     </message>
@@ -189,7 +199,7 @@
         <translation>Desmarcado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/AeFrameRangeRow.qml" line="71"/>
+        <location filename="../../src/gui/qml/AeFrameRangeRow.qml" line="81"/>
         <source>Remove range %1</source>
         <translation>Eliminar rango %1</translation>
     </message>
@@ -212,6 +222,259 @@
         <location filename="../../src/gui/qml/AeTextField.qml" line="123"/>
         <source>Clear</source>
         <translation>Limpiar</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="146"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="157"/>
+        <source>Initial asset</source>
+        <translation>Activo inicial</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="156"/>
+        <source>Select an asset file</source>
+        <translation>Seleccionar un archivo de activo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="160"/>
+        <source>Browse…</source>
+        <translation>Examinar…</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="203"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="209"/>
+        <source>Frame count</source>
+        <translation>Número de fotogramas</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="247"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="143"/>
+        <source>Canvas size</source>
+        <translation>Tamaño del lienzo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="249"/>
+        <source>Specify canvas size</source>
+        <translation>Especifique el tamaño del lienzo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="269"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="152"/>
+        <source>Canvas width</source>
+        <translation>Ancho del lienzo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="291"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="179"/>
+        <source>Canvas height</source>
+        <translation>Altura del lienzo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="182"/>
+        <source>Live link</source>
+        <translation>Vínculo en vivo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="188"/>
+        <source>Reload when the asset file changes on disk</source>
+        <translation>Recargar cuando el archivo de activo cambie en el disco</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="368"/>
+        <source>Create</source>
+        <translation>Crear</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="172"/>
+        <source>by</source>
+        <translation>por</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="209"/>
+        <source>Frame start</source>
+        <translation>Fotograma inicial</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="228"/>
+        <source>to</source>
+        <translation>a</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="235"/>
+        <source>Frame end</source>
+        <translation>Fotograma final</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="295"/>
+        <source>Viewport background</source>
+        <translation>Fondo de la vista</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="321"/>
+        <source>Choose…</source>
+        <translation>Elegir…</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="326"/>
+        <source>Use theme background</source>
+        <translation>Usar el fondo del tema</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="402"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="564"/>
+        <source>OK</source>
+        <translation>Aceptar</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="111"/>
+        <source>Reset keybinds</source>
+        <translation>Restablecer combinaciones de teclas</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="188"/>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="197"/>
+        <source>Not set</source>
+        <translation>Sin asignar</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="228"/>
+        <source>Conflicts with %1</source>
+        <translation>Entra en conflicto con %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="297"/>
+        <source>Ok</source>
+        <translation>Aceptar</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="126"/>
+        <source>General</source>
+        <translation>General</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="127"/>
+        <source>QoL</source>
+        <translation>Calidad de vida</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="128"/>
+        <source>Keyboard</source>
+        <translation>Teclado</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="129"/>
+        <source>Mouse</source>
+        <translation>Ratón</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="221"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="223"/>
+        <source>Language (needs restart)</source>
+        <translation>Idioma (necesita reiniciar)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="232"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="234"/>
+        <source>Default keyframe easing</source>
+        <translation>Aceleración de fotogramas clave por defecto</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="243"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="245"/>
+        <source>Default keyframe range</source>
+        <translation>Rango de fotogramas clave por defecto</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="259"/>
+        <source>Theme</source>
+        <translation>Tema</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="290"/>
+        <source>Accent color</source>
+        <translation>Color de acento</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="306"/>
+        <source>Accent color %1</source>
+        <translation>Color de acento %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="327"/>
+        <source>Allow donation menu</source>
+        <translation>Permitir menú de donaciones</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="339"/>
+        <source>Reset recent files list</source>
+        <translation>Restablecer lista de archivos recientes</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="344"/>
+        <source>Deletes all project entries from your recents</source>
+        <translation>Elimina todas las entradas de proyecto de tus Recientes</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="362"/>
+        <source>Automatically save your project</source>
+        <translation>Guarda automáticamente tu proyecto</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="367"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="373"/>
+        <source>Time (in minutes) between autosaves</source>
+        <translation>Tiempo (en minutos) entre autoguardados</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
+        <source>Show mesh when selecting FFD</source>
+        <translation>Mostrar malla al seleccionar FFD</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="401"/>
+        <source>On copy send keys to the clipboard</source>
+        <translation>Al copiar envía las claves al portapapeles</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="408"/>
+        <source>Enforce ID check on asset download</source>
+        <translation>Comprobar ID en descarga de activos</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="415"/>
+        <source>Ignore export warnings</source>
+        <translation>Ignorar advertencias de exportación</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="422"/>
+        <source>Force project to load</source>
+        <translation>Forzar la carga del proyecto</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="427"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="429"/>
+        <source>Timeline format</source>
+        <translation>Formato de línea de tiempo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="449"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="455"/>
+        <source>Global keybind delay (ms)</source>
+        <translation>Retraso global de combinación de teclas (ms)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="482"/>
+        <source>Inverse canvas scrolling</source>
+        <translation>Desplazamiento del lienzo inverso</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="489"/>
+        <source>Inverse timeline scrolling</source>
+        <translation>Desplazamiento de la línea de tiempo inversa</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="496"/>
+        <source>Middle mouse moves canvas</source>
+        <translation>El botón central del ratón mueve el lienzo</translation>
     </message>
 </context>
 <context>
@@ -265,7 +528,7 @@
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="160"/>
         <source>Overlay</source>
-        <translation>Overlay</translation>
+        <translation>Superponer</translation>
     </message>
     <message>
         <location filename="../../src/img/BlendMode.cpp" line="162"/>
@@ -472,7 +735,7 @@
         <translation type="vanished">Mover clave</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="354"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="360"/>
         <source>Move keys</source>
         <translation>Mover claves</translation>
     </message>
@@ -481,17 +744,17 @@
         <translation type="vanished">Pegar clave del portapapeles</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="669"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="675"/>
         <source>Paste clipboard keys</source>
         <translation>Pegar claves del portapapeles</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="843"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="849"/>
         <source>Paste keys</source>
         <translation>Pegar claves</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="908"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="914"/>
         <source>Delete keys</source>
         <translation>Eliminar claves</translation>
     </message>
@@ -666,7 +929,7 @@
         <translation>Añadir nueva clave de imagen</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="671"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="576"/>
         <source>Change the canvas size</source>
         <translation>Cambiar el tamaño del lienzo</translation>
     </message>
@@ -675,52 +938,57 @@
         <translation type="vanished">Cambiar el fotograma máximo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="692"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="597"/>
         <source>Change the frame range</source>
         <translation>Cambiar el rango de fotogramas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="713"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="618"/>
         <source>Change loop settings</source>
         <translation>Cambiar ajustes de bucle</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="735"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="640"/>
         <source>Change the FPS</source>
         <translation>Cambiar el FPS</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="399"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="668"/>
+        <source>Change the viewport background</source>
+        <translation>Cambiar el fondo de la vista</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="492"/>
         <source>Rename object</source>
         <translation>Renombrar objeto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1056"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1149"/>
         <source>Create a layer</source>
         <translation>Crear una capa</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1180"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1273"/>
         <source>Duplicate base folder</source>
         <translation>Duplicar carpeta base</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1315"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1408"/>
         <source>Duplicate layer</source>
         <translation>Duplicar capa</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1494"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1587"/>
         <source>create a folder object</source>
         <translation>crear una carpeta de objeto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1544"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1637"/>
         <source>Delete object</source>
         <translation>Eliminar objeto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1678"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1771"/>
         <source>Move object</source>
         <translation>Mover objeto</translation>
     </message>
@@ -739,27 +1007,27 @@
         <translation type="vanished">actualizar un indicador de recorte</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="257"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="259"/>
         <source>Add new asset</source>
         <translation>Añadir nuevo activo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="635"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="864"/>
         <source>Reload images</source>
         <translation>Recargar imágenes</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="703"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="951"/>
         <source>Delete images</source>
         <translation>Eliminar imágenes</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="225"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="223"/>
         <source>Update asset file path</source>
         <translation>Actualizar ruta del archivo de activo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="279"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="277"/>
         <source>Rename asset</source>
         <translation>Renombrar activo</translation>
     </message>
@@ -767,6 +1035,21 @@
         <location filename="../../src/gui/TargetWidget.cpp" line="168"/>
         <source>Change animation settings</source>
         <translation>Cambiar configuración de animación</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1077"/>
+        <source>move a key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1162"/>
+        <source>change a key easing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1299"/>
+        <source>remove a key</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1091,26 +1374,64 @@
     </message>
     <message>
         <location filename="../../src/ctrl/ExportTargetStrings.h" line="69"/>
+        <source>WhatsApp (video)</source>
+        <translation>WhatsApp (vídeo)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="73"/>
+        <source>Telegram (video)</source>
+        <translation>Telegram (vídeo)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="77"/>
+        <source>Discord (video)</source>
+        <translation>Discord (vídeo)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="81"/>
+        <source>Signal (video)</source>
+        <translation>Signal (vídeo)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="85"/>
+        <source>Messenger (video)</source>
+        <translation>Messenger (vídeo)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="109"/>
+        <source>Bluesky (video)</source>
+        <translation>Bluesky (vídeo)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="114"/>
+        <source>Reddit (video)</source>
+        <translation>Reddit (vídeo)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="134"/>
+        <source>Tumblr (video)</source>
+        <translation>Tumblr (vídeo)</translation>
+    </message>
+    <message>
         <source>A video for a chat app</source>
-        <translation>Un vídeo para una app de chat</translation>
+        <translation type="vanished">Un vídeo para una app de chat</translation>
+    </message>
+    <message>
+        <source>The one to pick when the app is not in this list. MP4/H.264 with AAC at 720p and under 20 MB is accepted by every chat app here, and is what the restrictive ones accept.</source>
+        <translation type="vanished">La opción que hay que elegir cuando la app no está en esta lista. MP4/H.264 con AAC a 720p y menos de 20 MB lo acepta cualquier app de chat de esta lista, y es lo que aceptan las más restrictivas.</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/ExportTargetStrings.h" line="70"/>
-        <source>The one to pick when the app is not in this list. MP4/H.264 with AAC at 720p and under 20 MB is accepted by every chat app here, and is what the restrictive ones accept.</source>
-        <translation>La opción que hay que elegir cuando la app no está en esta lista. MP4/H.264 con AAC a 720p y menos de 20 MB lo acepta cualquier app de chat de esta lista, y es lo que aceptan las más restrictivas.</translation>
-    </message>
-    <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="71"/>
         <source>A video sent in a chat: 64 MB over a slow connection, 100 MB over a fast one, and WhatsApp DOWNSCALES rather than rejecting. Sending it as a Document instead allows 2 GB untouched, which is a different intent and not this row. Status is limited to 90 seconds and is also not this row.</source>
         <translation>Un vídeo enviado en un chat: 64 MB con una conexión lenta y 100 MB con una rápida, y WhatsApp REDUCE LA CALIDAD en lugar de rechazarlo. Enviarlo como Documento, en cambio, permite 2 GB intactos, lo cual es otra intención y no es esta fila. El Estado se limita a 90 segundos y tampoco es esta fila.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="72"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="71"/>
         <source>WhatsApp (animated GIF)</source>
         <translation>WhatsApp (GIF animado)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="73"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="72"/>
         <source>UNVERIFIED (WhatsApp publishes no organic cap for an animated image): GIFs are a documented chat surface, but WhatsApp publishes no byte cap, format list, dimension rule, frame count or duration for an image sent in a chat, and no statement about whether it transcodes one. The numbers that could be borrowed are all for other surfaces and are NOT applied here: 2 GB for a DOCUMENT, 100 MB or 64 MB for a VIDEO (fast and slow connections), 90 seconds for a status video, and the Cloud API&apos;s 5 MB image with a 500 KB animated sticker. No cap is applied, and the fit loop therefore has nothing to enforce.</source>
         <translation>SIN VERIFICAR (WhatsApp no publica ningún límite propio para una imagen animada): los GIF son una superficie de chat documentada, pero WhatsApp no publica ningún límite de bytes, lista de formatos, regla de dimensiones, número de fotogramas ni duración para una imagen enviada en un chat, ni ninguna declaración sobre si la transcodifica. Las cifras que podrían tomarse prestadas son todas de otras superficies y NO se aplican aquí: 2 GB para un DOCUMENTO, 100 MB o 64 MB para un VÍDEO (conexiones rápida y lenta), 90 segundos para un vídeo de estado, y los 5 MB de imagen de la Cloud API con un sticker animado de 500 KB. No se aplica ningún límite, y por tanto el bucle de ajuste no tiene nada que hacer cumplir.</translation>
     </message>
@@ -1130,472 +1451,498 @@
         <translation>Telegram CONVIERTE por su cuenta el GIF que se sube: “los GIF son en realidad vídeos MPEG4 (h264) sin sonido; si el usuario intenta subir un archivo GIF real, el servidor lo convertirá automáticamente en un archivo MPEG4”. Así que este destino escribe el archivo que Telegram habría creado de todos modos, sin el viaje de ida y vuelta por una paleta de GIF: H.264 sin sonido en MP4, y la transparencia NO PUEDE sobrevivir (la conversión es con pérdida y el H.264 4:2:0 no admite alfa). El WebP animado no se acepta como sticker (“el .WEBP animado NO es compatible actualmente”); un archivo de chat puede llegar a 2 GB (4 GB con Premium), que es el límite de archivos en la nube y no un límite de GIF. No se publica ningún número de fotogramas, duración ni velocidad de fotogramas para una animación de chat.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="77"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="78"/>
         <source>20 MB to send, 50 MB with Nitro Basic, 500 MB with Nitro; a boosted server lifts everyone to 50 MB (level 2) or 100 MB (level 3). Discord&apos;s older help pages still say 10 MB. On mobile the size is now measured BEFORE compression, so a video that used to fit may not.</source>
         <translation>20 MB para enviar, 50 MB con Nitro Basic y 500 MB con Nitro; un servidor con mejoras sube a todos a 50 MB (nivel 2) o 100 MB (nivel 3). Las páginas de ayuda antiguas de Discord todavía dicen 10 MB. En móvil el tamaño ahora se mide ANTES de la compresión, así que un vídeo que antes cabía puede que ya no.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="78"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="79"/>
         <source>Discord (animated image)</source>
         <translation>Discord (imagen animada)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="79"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="80"/>
         <source>An animated image, not a video: WebP is the format Discord&apos;s own pipeline produces for animation (they have served and accepted animated WebP since the 2024 mobile release 252), and a GIF upload is transcoded to WebP for display, so this goes out animated either way. Alpha survives here, which GIF&apos;s palette cannot carry. The English FAQ caps a non-Nitro upload at 10 MB (its Hindi page says 25 MB): 10 MB is used, and it is also the size above which Discord stops animating inline and offers the file as a download instead. One frame in the export gives a still WebP, so this row carries a still illustration as well as an animation. Transparency is on by default (WebP keeps it, GIF&apos;s palette cannot) and can be turned off.</source>
         <translation>Una imagen animada, no un vídeo: WebP es el formato que produce el propio proceso de Discord para la animación (han servido y aceptado WebP animado desde la versión 252 para móvil de 2024), y un GIF subido se transcodifica a WebP para mostrarlo, así que sale animado de cualquiera de las dos formas. El alfa sobrevive aquí, algo que la paleta del GIF no puede transportar. Las preguntas frecuentes en inglés limitan a 10 MB una subida sin Nitro (su página en hindi dice 25 MB): se usan 10 MB, que es además el tamaño a partir del cual Discord deja de animar en línea y ofrece el archivo como descarga. Un solo fotograma en la exportación da un WebP fijo, así que esta fila sirve tanto para una ilustración fija como para una animación. La transparencia está activada por defecto (WebP la conserva, la paleta del GIF no puede) y se puede desactivar.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="80"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="82"/>
         <source>Signal re-encodes client-side to 720p at roughly 2 Mbps and targets about 50 MB of output. The server flag is 100 MiB and remote-configurable, so 50 MB is the number to stay under. Sending as a File skips the transcode.</source>
         <translation>Signal vuelve a codificar en el cliente a 720p a unos 2 Mbps y apunta a unos 50 MB de salida. El indicador del servidor es 100 MiB y se puede configurar de forma remota, así que 50 MB es la cifra bajo la que conviene mantenerse. Enviarlo como Archivo evita la transcodificación.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="81"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="83"/>
         <source>Signal (animated GIF)</source>
         <translation>Signal (GIF animado)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="82"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="84"/>
         <source>UNVERIFIED (Signal publishes nothing usable here): a GIF is a first-class attachment (&quot;image, gif, video, voice message, or audio file&quot;), but Signal has no help page stating an attachment byte cap, a format list, a dimension rule, a frame count or a transcode rule for one. The only numbers that exist are in source code and issue threads rather than documentation: a GIF threshold of min(25 MB, the attachment limit) and a maintainer note that sending is still capped at 100 MB. 25 MB is used here as the code-level threshold, and every other fact is left unstated rather than invented. Note that Signal&apos;s STICKER page says &quot;Please do not upload GIFs&quot; - that is the sticker surface (APNG, 300 KB), a different thing from an attachment, and reading it as &quot;Signal rejects GIFs&quot; is a documented trap.</source>
         <translation>SIN VERIFICAR (Signal no publica nada utilizable aquí): un GIF es un archivo adjunto de primera clase (“imagen, gif, vídeo, mensaje de voz o archivo de audio”), pero Signal no tiene ninguna página de ayuda que indique un límite de bytes, una lista de formatos, una regla de dimensiones, un número de fotogramas ni una regla de transcodificación para un adjunto. Las únicas cifras que existen están en el código fuente y en hilos de incidencias, no en la documentación: un umbral de GIF de min(25 MB, el límite de adjuntos) y una nota de un responsable que indica que el envío sigue limitado a 100 MB. Aquí se usan 25 MB como umbral a nivel de código, y todos los demás datos se dejan sin afirmar en lugar de inventarlos. Tenga en cuenta que la página de STICKERS de Signal dice “No suba archivos GIF”: esa es la superficie de stickers (APNG, 300 KB), algo distinto de un adjunto, y leerlo como “Signal rechaza los GIF” es una trampa documentada.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="83"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="86"/>
         <source>UNVERIFIED: 25 MB is the published DEVELOPER API limit. Meta does not publish the consumer chat limit anywhere, so this is the closest sourced number, not the app&apos;s own. 75 seconds appears in the docs as a fetch timeout, NOT a duration limit.</source>
         <translation>SIN VERIFICAR: 25 MB es el límite publicado de la API PARA DESARROLLADORES. Meta no publica en ninguna parte el límite del chat de consumo, así que esta es la cifra documentada más cercana, no la de la propia app. Los 75 segundos aparecen en la documentación como tiempo de espera de descarga, NO como límite de duración.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="84"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="87"/>
         <source>Messenger (animated GIF)</source>
         <translation>Messenger (GIF animado)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="85"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="88"/>
         <source>UNVERIFIED (the consumer chat publishes no cap): Messenger offers a &quot;Send GIF&quot; action with no published formats, and Meta&apos;s API documentation says animated GIFs &quot;are playable in the conversation&quot;, but the consumer chat states no byte cap, dimension rule, frame count or transcode behaviour. The API numbers that exist (25 MB per asset, 8 MB for an image uploaded by URL) are labelled as API values and are not applied here, because Meta does not say they bind the in-app picker. The API template also lists only image and video as media types with no GIF value, which is a contradiction Meta leaves unresolved.</source>
         <translation>SIN VERIFICAR (el chat de consumo no publica ningún límite): Messenger ofrece una acción “Enviar GIF” sin formatos publicados, y la documentación de la API de Meta dice que los GIF animados “se pueden reproducir en la conversación”, pero el chat de consumo no indica ningún límite de bytes, regla de dimensiones, número de fotogramas ni comportamiento de transcodificación. Las cifras de la API que existen (25 MB por recurso, 8 MB para una imagen subida por URL) están etiquetadas como valores de API y no se aplican aquí, porque Meta no dice que obliguen al selector dentro de la app. La plantilla de la API además solo lista imagen y vídeo como tipos de medio, sin ningún valor para GIF, una contradicción que Meta deja sin resolver.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="86"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="89"/>
         <source>KakaoTalk (카카오톡)</source>
         <translation>KakaoTalk (카카오톡)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="87"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="90"/>
         <source>UNVERIFIED for mobile: 300 MB is the PC desktop file-send limit. Kakao does not publish the mobile chat limit. MP4/MOV/MKV/AVI/TS and others are accepted.</source>
         <translation>SIN VERIFICAR para móvil: 300 MB es el límite de envío de archivos del escritorio para PC. Kakao no publica el límite del chat móvil. Se aceptan MP4/MOV/MKV/AVI/TS y otros.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="88"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="91"/>
         <source>WeChat (微信)</source>
         <translation>WeChat (微信)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="89"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="92"/>
         <source>UNVERIFIED: Tencent publishes no size or duration limit for video sent in a personal chat, and no codec list. MP4/H.264 at 720p is the safe choice. The official-account route IS documented (10 MB per upload, 2 GB chunked) and is a different thing entirely.</source>
         <translation>SIN VERIFICAR: Tencent no publica ningún límite de tamaño o duración para el vídeo enviado en un chat personal, ni ninguna lista de códecs. MP4/H.264 a 720p es la opción segura. La vía de las cuentas oficiales SÍ está documentada (10 MB por subida, 2 GB por fragmentos) y es algo completamente distinto.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="90"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="93"/>
         <source>UNVERIFIED for the consumer app: 30 MB soft (silently becomes a FILE instead of an inline video) and 200 MB hard are BOT API numbers. Consumer chat limits are not published.</source>
         <translation>SIN VERIFICAR para la app de consumo: los 30 MB orientativos (el contenido pasa a un ARCHIVO en lugar de a un vídeo insertado, sin avisar) y los 200 MB estrictos son cifras de la API DE BOTS. Los límites del chat de consumo no se publican.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="91"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="94"/>
         <source>VK (ВКонтакте)</source>
         <translation>VK (ВКонтакте)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="92"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="95"/>
         <source>No cap worth encoding: 256 GB, up to 4K, and VK re-encodes. MP4/H.264 at 1280x720 or above, and they recommend 16:9.</source>
         <translation>Ningún límite que merezca codificarse: 256 GB, hasta 4K, y VK vuelve a codificar. MP4/H.264 a 1280x720 o más, y recomiendan 16:9.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="93"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="96"/>
         <source>X (Twitter)</source>
         <translation>X (Twitter)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="94"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="97"/>
         <source>A post accepts up to 8 GB and 20 minutes (16 GB / 125 minutes with Premium). The &quot;140 seconds / 512 MB&quot; figure repeated all over the web is X&apos;s DIRECT MESSAGE limit, not a post, and is 50x too small here. H.264 High, AAC-LC, yuv420p, closed GOP.</source>
         <translation>Una publicación acepta hasta 8 GB y 20 minutos (16 GB / 125 minutos con Premium). La cifra de “140 segundos / 512 MB” que se repite por toda la web es el límite de MENSAJE DIRECTO de X, no el de una publicación, y aquí se queda 50 veces corta. H.264 High, AAC-LC, yuv420p, GOP cerrado.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="95"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="98"/>
         <source>X (animated GIF)</source>
         <translation>X (GIF animado)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="96"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="99"/>
         <source>X accepts JPG, PNG, GIF and WEBP, and an animated GIF is its own media category (tweet_gif). The caps here come from X&apos;s API documentation, NOT from its help pages: 15 MB per animated GIF, resolution at most 1280x1080, at most 350 frames and at most 300 million pixels in total (width x height x frames). X&apos;s own API page adds that a GIF &quot;may fail during Post creation even if it is within the file size limit&quot;, so treat 15 MB as soft. The figure repeated across the web (5 MB mobile, 15 MB web) appears on no X-owned page, and X publishes nothing about transparency, looping, frame rate or duration for GIFs.</source>
         <translation>X acepta JPG, PNG, GIF y WEBP, y un GIF animado tiene su propia categoría de medio (tweet_gif). Los límites de aquí proceden de la documentación de la API de X, NO de sus páginas de ayuda: 15 MB por GIF animado, una resolución máxima de 1280x1080, un máximo de 350 fotogramas y un máximo de 300 millones de píxeles en total (anchura x altura x fotogramas). La propia página de la API de X añade que un GIF “puede fallar durante la creación de la publicación incluso si está dentro del límite de tamaño”, así que considere los 15 MB como orientativos. La cifra que se repite por la web (5 MB en móvil, 15 MB en web) no aparece en ninguna página de X, y X no publica nada sobre transparencia, bucle, velocidad de fotogramas ni duración para los GIF.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="97"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="100"/>
         <source>Instagram Reels</source>
         <translation>Instagram Reels</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="98"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="101"/>
         <source>300 MB, 3 seconds to 15 minutes, 9:16 up to 1920 px wide, H.264 or HEVC in a closed GOP. The moov atom must be at the FRONT of the file with no edit lists, which is what the faststart muxer option below does: without it the upload is rejected.</source>
         <translation>300 MB, de 3 segundos a 15 minutos, 9:16 con hasta 1920 px de ancho, H.264 o HEVC en un GOP cerrado. El átomo moov debe estar al PRINCIPIO del archivo y sin listas de edición, que es lo que hace la opción faststart del muxer indicada abajo: sin ella, la subida se rechaza.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="99"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="102"/>
         <source>4 GB, up to 10 minutes on some routes and 3 on others. 1080x1920 (9:16). GIF files are NOT accepted. WebM/MOV are accepted alongside MP4.</source>
         <translation>4 GB, hasta 10 minutos en algunas vías y 3 en otras. 1080x1920 (9:16). Los archivos GIF NO se aceptan. Se aceptan WebM/MOV junto con MP4.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="100"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="103"/>
         <source>Bilibili (哔哩哔哩)</source>
         <translation>Bilibili (哔哩哔哩)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="101"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="104"/>
         <source>UNVERIFIED (conflicting sources): Bilibili&apos;s help centre says 16 GB (64 GB at higher web levels), their own open-platform API documentation says 4 GB, and the page could not be re-fetched to settle it. 4 GB is used here as the floor that both agree on. Up to 4096x4096 at 120 fps, H.264/AAC, yuv420p.</source>
         <translation>SIN VERIFICAR (fuentes contradictorias): el centro de ayuda de Bilibili dice 16 GB (64 GB en niveles web superiores), su propia documentación de la API de plataforma abierta dice 4 GB, y no se pudo volver a consultar la página para resolverlo. Aquí se usan 4 GB como el mínimo en el que ambas coinciden. Hasta 4096x4096 a 120 fps, H.264/AAC, yuv420p.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="102"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="105"/>
         <source>Weibo (微博)</source>
         <translation>Weibo (微博)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="103"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="106"/>
         <source>15 GB from the desktop web, 4 GB from mobile. There is a MINIMUM of 3 seconds and no published maximum duration. 720p or better for the video section; 2K/4K are gated behind play counts. Codec list is not published: MP4/H.264.</source>
         <translation>15 GB desde la web de escritorio y 4 GB desde el móvil. Hay un MÍNIMO de 3 segundos y ninguna duración máxima publicada. 720p o mejor para la sección de vídeo; 2K/4K están condicionados por el número de reproducciones. La lista de códecs no se publica: MP4/H.264.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="104"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="107"/>
         <source>Weibo (animated GIF)</source>
         <translation>Weibo (GIF animado)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="105"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="108"/>
         <source>Weibo LOSES the animation rather than converting it: &quot;原始图片需不超过1080宽，超宽会导致动图不动&quot; (the original must be at most 1080 wide, wider makes the animation stop) and the original-quality box (原图) must be ticked or the GIF posts as a static image. So the width ceiling is a real constraint here, and this row caps the long side at 1080 px, which is stricter than the published rule but can never lose the animation. 20 MB is the published per-image cap from Weibo&apos;s own help centre (the API&apos;s 10 MB belongs to the API surface). No frame count, duration, frame rate or transparency statement is published for a GIF, and Weibo&apos;s two help pages contradict each other about ticking 原图: one requires it for animation, the other recommends leaving it off to avoid a colour cast.</source>
         <translation>Weibo PIERDE la animación en lugar de convertirla: “原始图片需不超过1080宽，超宽会导致动图不动” (el original debe tener como máximo 1080 de ancho; si es más ancho, la animación se detiene) y hay que marcar la casilla de calidad original (原图) o el GIF se publica como imagen fija. Así que el techo de anchura es una restricción real aquí, y esta fila limita el lado largo a 1080 px, lo cual es más estricto que la regla publicada pero nunca puede perder la animación. 20 MB es el límite publicado por imagen del propio centro de ayuda de Weibo (los 10 MB de la API pertenecen a la superficie de la API). No se publica ningún número de fotogramas, duración, velocidad de fotogramas ni declaración de transparencia para un GIF, y las dos páginas de ayuda de Weibo se contradicen sobre marcar 原图: una lo exige para la animación y la otra recomienda no marcarlo para evitar una dominante de color.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="106"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="110"/>
         <source>MP4 ONLY: the lexicon accepts video/mp4 and nothing else. 300 MB and 10 minutes (both raised recently, so most guides are out of date). No pixel cap; the aspect ratio travels as metadata.</source>
         <translation>SOLO MP4: el léxico acepta video/mp4 y nada más. 300 MB y 10 minutos (ambos ampliados hace poco, así que la mayoría de las guías están desactualizadas). Ningún límite de píxeles; la relación de aspecto viaja como metadato.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="107"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="111"/>
         <source>Bluesky (animation)</source>
         <translation>Bluesky (animación)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="108"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="112"/>
         <source>Bluesky keeps the animation by routing it down the VIDEO path: an animated GIF is &quot;processed as video&quot;, and the video embed lexicon accepts only video/mp4, so a GIF that arrives at Bluesky becomes an MP4. This row writes the MP4 directly, silent and H.264, which is what the platform serves anyway, and transparency cannot survive it. THE 2 MB IMAGE CAP DOES NOT APPLY HERE: 2,000,000 bytes is the app.bsky.embed.images lexicon limit for a STILL; the video embed allows 300 MB and 10 minutes, which is what is used. Note that Bluesky&apos;s own documentation contradicts itself about the still-image number (the code on that page enforces 2,000,000 while the prose beside it still says 1,000,000). No dimension, frame or frame-rate rule is published, and the 720p/30 fps/5000 kbps figures in circulation come from a user comment, not from documentation.</source>
         <translation>Bluesky conserva la animación encaminándola por la vía de VÍDEO: un GIF animado se “procesa como vídeo”, y el léxico de inserción de vídeo solo acepta video/mp4, así que un GIF que llega a Bluesky se convierte en MP4. Esta fila escribe el MP4 directamente, sin sonido y en H.264, que es lo que la plataforma sirve de todos modos, y la transparencia no puede sobrevivir a ello. EL LÍMITE DE 2 MB PARA IMÁGENES NO SE APLICA AQUÍ: 2.000.000 de bytes es el límite del léxico app.bsky.embed.images para una imagen FIJA; la inserción de vídeo permite 300 MB y 10 minutos, que es lo que se usa. Tenga en cuenta que la propia documentación de Bluesky se contradice sobre la cifra de imagen fija (el código de esa página aplica 2.000.000 mientras que el texto de al lado todavía dice 1.000.000). No se publica ninguna regla de dimensiones, fotogramas ni velocidad de fotogramas, y las cifras de 720p/30 fps/5000 kbps que circulan vienen de un comentario de usuario, no de la documentación.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="109"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="113"/>
         <source>99 MB for video and 16 MB for images are UPSTREAM DEFAULTS; every instance sets its own, and instances drift from upstream (mastodon.social reports double the upstream pixel limit). The authoritative answer is the server&apos;s own /api/v2/instance configuration. GIFs are converted to silent MP4, so transparency does not survive.</source>
         <translation>Los 99 MB para vídeo y 16 MB para imágenes son VALORES POR DEFECTO DEL PROYECTO PRINCIPAL; cada instancia fija los suyos y las instancias se alejan del proyecto principal (mastodon.social informa del doble del límite de píxeles original). La respuesta autoritativa es la propia configuración /api/v2/instance del servidor. Los GIF se convierten en MP4 sin sonido, así que la transparencia no sobrevive.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="110"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="115"/>
         <source>UNVERIFIED: Reddit does not publish a size limit for native video posts. No byte cap is applied rather than inventing one. The 15-minute figure comes from their 2017 launch post, and comment videos are capped much shorter.</source>
         <translation>SIN VERIFICAR: Reddit no publica un límite de tamaño para las publicaciones de vídeo nativas. No se aplica ningún límite de bytes en lugar de inventarlo. La cifra de 15 minutos procede de su publicación de lanzamiento de 2017, y los vídeos de comentarios tienen un límite mucho más corto.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="111"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="116"/>
         <source>Reddit (animated GIF)</source>
         <translation>Reddit (GIF animado)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="112"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="117"/>
         <source>UNVERIFIED (no organic numbers published): Reddit documents no byte cap for an image or GIF post. What IS visible is that a GIF post is stored and served as a Reddit VIDEO (Reddit&apos;s own Devvit model carries a media kind &quot;videogif&quot; and a RedditVideo.isGif flag), so animation survives but transparency does not, which is why alpha is forbidden here. The widely quoted &quot;20 MB image / 100 MB GIF&quot; figures come from third parties, and the Reddit numbers that are published belong to other surfaces (comment images at most 240 px, comment video under 1 GB and 3 minutes, and advertising specs that reject animated GIF outright). No frame, duration or frame-rate rule is published for an animated image.</source>
         <translation>SIN VERIFICAR (no se publican cifras propias): Reddit no documenta ningún límite de bytes para una publicación de imagen o GIF. Lo que SÍ se ve es que una publicación con GIF se almacena y se sirve como un VÍDEO de Reddit (el propio modelo Devvit de Reddit incluye un tipo de medio “videogif” y un indicador RedditVideo.isGif), así que la animación sobrevive pero la transparencia no, y por eso aquí se prohíbe el alfa. Las cifras que se citan por todas partes (“20 MB de imagen / 100 MB de GIF”) vienen de terceros, y las cifras de Reddit que sí se publican pertenecen a otras superficies (imágenes de comentarios de 240 px como máximo, vídeo de comentarios por debajo de 1 GB y 3 minutos, y especificaciones publicitarias que rechazan los GIF animados sin más). No se publica ninguna regla de fotogramas, duración ni velocidad de fotogramas para una imagen animada.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="113"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="118"/>
         <source>WeChat sticker (微信表情)</source>
         <translation>Sticker de WeChat (微信表情)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="114"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="119"/>
         <source>Animated stickers are GIF only, exactly 240x240, 500 KB, and must loop. Art that exceeds the spec is compressed AND CROPPED by WeChat rather than rejected, so an oversized export comes back with its edges cut off. Sticker sets are 8 to 24 images.</source>
         <translation>Los stickers animados son solo GIF, exactamente 240x240, 500 KB, y deben repetirse en bucle. WeChat comprime Y RECORTA la ilustración que supera la especificación en lugar de rechazarla, así que una exportación demasiado grande vuelve con los bordes cortados. Los conjuntos de stickers son de 8 a 24 imágenes.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="115"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="120"/>
         <source>KakaoTalk sticker (카카오톡 스티커)</source>
         <translation>Sticker de KakaoTalk (카카오톡 스티커)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="116"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="121"/>
         <source>Animated WebP, 360x360 (180x180 for mini, 540x540 for big), 650 KB, 24 frames maximum and four loops. Kakao publishes its own WebP animator, which is a useful sign of exactly which encoder behaviour they expect.</source>
         <translation>WebP animado, 360x360 (180x180 para mini, 540x540 para grande), 650 KB, 24 fotogramas como máximo y cuatro bucles. Kakao publica su propio animador WebP, lo que es una señal útil de exactamente qué comportamiento del codificador esperan.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="117"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="122"/>
         <source>QQ sticker</source>
         <translation>Sticker de QQ</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="118"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="123"/>
         <source>UNVERIFIED and DATE-STAMPED 2018-10-07: this is the last Tencent-owned specification that exists anywhere. yuanchuang.qq.com no longer resolves and archive.org holds no capture after October 2018, so the values below are what Tencent said eight years ago and nothing current confirms them. 16 GIFs at exactly 300x300, each 300 KB or less (&quot;表情大小：≤300kb/个&quot;, raised from 90 KB in 2016), on a transparent background (&quot;文件均为无色透明底&quot;). A white stroke is required but 3 px is only PREFERRED (&quot;以3像素的白色描边为佳&quot;), not an exact value. The same page contradicts itself about the 300x300 PNG thumbnail: its table says 200 KB and its body text says 20 KB, so no thumbnail cap is applied. Nothing is published about frame count, duration, frame rate, or re-encoding.</source>
         <translation>SIN VERIFICAR y FECHADA EL 2018-10-07: esta es la última especificación de Tencent que existe en cualquier sitio. yuanchuang.qq.com ya no resuelve y archive.org no guarda ninguna captura posterior a octubre de 2018, así que los valores de abajo son lo que Tencent dijo hace ocho años y nada actual los confirma. 16 GIF de exactamente 300x300, de 300 KB o menos cada uno (“表情大小：≤300kb/个”, ampliado desde 90 KB en 2016), sobre fondo transparente (“文件均为无色透明底”). Se exige un contorno blanco, pero 3 px es solo PREFERIBLE (“以3像素的白色描边为佳”), no un valor exacto. La misma página se contradice sobre la miniatura PNG de 300x300: su tabla dice 200 KB y su texto dice 20 KB, así que no se aplica ningún límite de miniatura. No se publica nada sobre el número de fotogramas, la duración, la velocidad de fotogramas ni la recodificación.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="119"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="124"/>
         <source>Nico Nico Douga (ニコニコ動画)</source>
         <translation>Nico Nico Douga (ニコニコ動画)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="120"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="125"/>
         <source>6 GB or 6 hours, whichever comes first; raised from 3 GB on 2024-10-29, so older guides are a revision behind. Up to 4096x2160 (or 2160x4096 vertical) and 60 fps. Their own page caps the vertical Short surface at 180 seconds, which is a different destination with the same name.</source>
         <translation>6 GB o 6 horas, lo que llegue antes; ampliado desde 3 GB el 2024-10-29, así que las guías más antiguas van una revisión por detrás. Hasta 4096x2160 (o 2160x4096 en vertical) y 60 fps. Su propia página limita a 180 segundos la superficie de Shorts verticales, que es un destino distinto con el mismo nombre.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="121"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="126"/>
         <source>Douyin (抖音)</source>
         <translation>Douyin (抖音)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="122"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="127"/>
         <source>UNVERIFIED (conflicting): ByteDance contradicts itself. The current upload endpoint says 4 GB total with chunked upload mandatory above 300 MB, while a 2024-04-09 chunked-upload page says 128 MB and 15 minutes, and the Android share SDK says 60 minutes. The widely quoted 500 MB could not be found on any ByteDance page. Short side under 2160, long side under 4096, 720p or above.</source>
         <translation>SIN VERIFICAR (contradictorio): ByteDance se contradice. El endpoint de subida actual dice 4 GB en total, con subida por fragmentos obligatoria por encima de 300 MB, mientras que una página de subida por fragmentos del 2024-04-09 dice 128 MB y 15 minutos, y el SDK de compartir de Android dice 60 minutos. Los 500 MB que tanto se citan no se pudieron encontrar en ninguna página de ByteDance. Lado corto por debajo de 2160, lado largo por debajo de 4096, 720p o más.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="123"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="128"/>
         <source>Facebook (video)</source>
         <translation>Facebook (vídeo)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="124"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="129"/>
         <source>UNVERIFIED (partial): Meta publishes NO byte or duration cap for organic video. The 4 GB and 240-minute figures that circulate are the ADVERTISING spec. Since September 2025 every video posted to Facebook is shared as a reel, so this and the reels destination differ only in the length the API enforces. Recommended: maximum width 4000 px with dimensions divisible by 16, 30 fps or lower, H.264 with AAC.</source>
         <translation>SIN VERIFICAR (parcial): Meta NO publica ningún límite de bytes ni de duración para el vídeo orgánico. Las cifras de 4 GB y 240 minutos que circulan son la especificación de PUBLICIDAD. Desde septiembre de 2025, todo vídeo publicado en Facebook se comparte como reel, así que este destino y el de reels solo se diferencian en la duración que aplica la API. Recomendado: anchura máxima de 4000 px con dimensiones divisibles por 16, 30 fps o menos, H.264 con AAC.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="125"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="130"/>
         <source>Facebook (animated GIF)</source>
         <translation>Facebook (GIF animado)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="126"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="131"/>
         <source>UNVERIFIED (advisory, not a published hard cap): Facebook lists GIF among the photo formats it recommends uploading (&quot;JPEG, BMP, PNG, GIF or TIFF&quot;) and recommends keeping photos under 15 MB, which is the number used here. No organic byte cap, dimension rule, frame count, duration or frame rate is published for an animated image; the only transcode statement Facebook makes is in the ADS documentation (a GIF there &quot;plays in the same way as all video files&quot;), and the numbers that circulate for GIF (4 GB, &quot;as video&quot;) belong to that advertising surface rather than to a photo post.</source>
         <translation>SIN VERIFICAR (orientativo, no un límite estricto publicado): Facebook incluye GIF entre los formatos de foto que recomienda subir (“JPEG, BMP, PNG, GIF o TIFF”) y recomienda mantener las fotos por debajo de 15 MB, que es la cifra que se usa aquí. No se publica ningún límite de bytes propio, regla de dimensiones, número de fotogramas, duración ni velocidad de fotogramas para una imagen animada; la única declaración de transcodificación que hace Facebook está en la documentación de ANUNCIOS (allí un GIF “se reproduce igual que todos los archivos de vídeo”), y las cifras que circulan para GIF (4 GB, “como vídeo”) pertenecen a esa superficie publicitaria y no a una publicación de foto.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="127"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="132"/>
         <source>Facebook Reels</source>
         <translation>Facebook Reels</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="128"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="133"/>
         <source>UNVERIFIED (conflicting): Meta Business Help says reels can be any length; the Reels Publishing API enforces 3 to 90 seconds and rejects anything else. 90 s is used here because it is the number that is enforced. 1080x1920 recommended, 540x960 minimum, 24 to 60 fps, no published byte cap.</source>
         <translation>SIN VERIFICAR (contradictorio): la Ayuda de Meta Business dice que los reels pueden tener cualquier duración; la API de publicación de reels aplica de 3 a 90 segundos y rechaza todo lo demás. Aquí se usan 90 s porque es la cifra que se aplica. 1080x1920 recomendado, 540x960 mínimo, de 24 a 60 fps, sin límite de bytes publicado.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="129"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="135"/>
         <source>500 MB and 10 minutes, and 20 posts a day. MOV or MP4; Tumblr transcodes toward 720p H.264. Photos are a separate destination: a static image gets 20 MB, but an animated GIF is served only up to about 5 MB and above that is reduced to its first frame.</source>
         <translation>500 MB y 10 minutos, y 20 publicaciones al día. MOV o MP4; Tumblr transcodifica hacia H.264 a 720p. Las fotos son un destino aparte: una imagen fija tiene 20 MB, pero un GIF animado solo se sirve hasta unos 5 MB y por encima de eso se reduce a su primer fotograma.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="130"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="136"/>
         <source>Tumblr (animated GIF)</source>
         <translation>Tumblr (GIF animado)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="131"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="137"/>
         <source>Tumblr transcodes EVERY uploaded GIF (&quot;we do convert all uploaded GIFs to the GIFV format&quot;, typically animated WebP, and on the web sometimes MP4), so the file it serves is not the file you send. It publishes three size numbers in one section (keep GIFs to 10 MB, a compressed GIF no larger than 5 MB, and &quot;we will do our best to compress&quot; between them) plus the consequence that matters: above 5 MB Tumblr may serve ONLY THE FIRST FRAME, so 5 MB is the cap used here and the file is fitted to it. 540 px wide is Tumblr&apos;s own recommendation. Frames are not counted (&quot;we only count bytes and seconds&quot;), no duration cap exists for a GIF, and transparency is documented only as a conversion criterion, not as a promise.</source>
         <translation>Tumblr transcodifica TODOS los GIF que se suben (“convertimos todos los GIF subidos al formato GIFV”, normalmente WebP animado y, en la web, a veces MP4), así que el archivo que sirve no es el que usted envía. Publica tres cifras de tamaño en una misma sección (mantener los GIF en 10 MB, un GIF comprimido de no más de 5 MB, y “haremos todo lo posible por comprimir” entre ambas) además de la consecuencia que importa: por encima de 5 MB Tumblr puede servir SOLO EL PRIMER FOTOGRAMA, así que 5 MB es el límite que se usa aquí y el archivo se ajusta a él. 540 px de ancho es la recomendación del propio Tumblr. Los fotogramas no se cuentan (“solo contamos bytes y segundos”), no existe ningún límite de duración para un GIF, y la transparencia se documenta solo como criterio de conversión, no como una garantía.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="132"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="138"/>
         <source>Pinterest (video Pin)</source>
         <translation>Pinterest (Pin de vídeo)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="133"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="139"/>
         <source>4 seconds to 5 minutes. No byte cap is published for organic video Pins; the &quot;2 GB / 15 minutes&quot; figure belongs to the ADVERTISING spec, which is a different surface and is quoted constantly as if it were this one. MP4/M4V, H.264 or H.265, 9:16 recommended.</source>
         <translation>De 4 segundos a 5 minutos. No se publica ningún límite de bytes para los Pines de vídeo orgánicos; la cifra de “2 GB / 15 minutos” pertenece a la especificación de PUBLICIDAD, que es otra superficie y se cita constantemente como si fuera esta. MP4/M4V, H.264 o H.265, 9:16 recomendado.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="134"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="140"/>
         <source>Snapchat Spotlight</source>
         <translation>Snapchat Spotlight</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="135"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="141"/>
         <source>UNVERIFIED (partial): Snapchat publishes a minimum of 5 seconds and a vertical requirement, and nothing else: no byte cap, no maximum duration, no accepted format list and no pixel specification. Still images are excluded. The &quot;1 GB / 3 to 30 minutes&quot; figure is the ADS spec. Vertical with sound; a landscape export will not be shown in Spotlight, and no size rule here can force that, so the file is exported as composed.</source>
         <translation>SIN VERIFICAR (parcial): Snapchat publica un mínimo de 5 segundos y el requisito de ser vertical, y nada más: ni límite de bytes, ni duración máxima, ni lista de formatos aceptados, ni especificación de píxeles. Las imágenes fijas quedan excluidas. La cifra de “1 GB / de 3 a 30 minutos” es la especificación de ANUNCIOS. Vertical y con sonido; una exportación horizontal no se mostrará en Spotlight, y ninguna regla de tamaño de aquí puede forzarlo, así que el archivo se exporta tal como se compone.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="136"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="142"/>
         <source>4 GB (64 GB on the top tier) and 2 hours. Up to 3840x2160 or 2160x3840, 24 to 60 fps. MOV, MP4, AVI, WMV, MKV and FLV are all accepted; MP4/H.264 is the practical target.</source>
         <translation>4 GB (64 GB en el nivel superior) y 2 horas. Hasta 3840x2160 o 2160x3840, de 24 a 60 fps. Se aceptan MOV, MP4, AVI, WMV, MKV y FLV; MP4/H.264 es el objetivo práctico.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="137"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="143"/>
         <source>UNVERIFIED (conflicting): Vimeo&apos;s advice to keep files under 200 GB, a plan note about 250 GB per video for legacy subscribers and an uploader page claiming no size limit cannot all be true; 200 GB is used as a soft ceiling. 24 hours is a hard refusal at upload. Vimeo states plainly that it has no alpha channel support, so transparency can never survive here. MP4/MOV, H.264 or ProRes.</source>
         <translation>SIN VERIFICAR (contradictorio): el consejo de Vimeo de mantener los archivos por debajo de 200 GB, una nota de plan sobre 250 GB por vídeo para suscriptores antiguos y una página del cargador que afirma que no hay límite de tamaño no pueden ser ciertas a la vez; se usan 200 GB como techo orientativo. 24 horas es un rechazo estricto en la subida. Vimeo afirma claramente que no admite canal alfa, así que la transparencia nunca puede sobrevivir aquí. MP4/MOV, H.264 o ProRes.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="138"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="144"/>
         <source>DeviantArt (video, Core members)</source>
         <translation>DeviantArt (vídeo, miembros Core)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="139"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="145"/>
         <source>1 GB and 10 to 12 minutes, and video submission is a Core membership feature. 1920x1080 recommended; the first frame becomes the preview, so it should not be a blank or transitional frame. An animated GIF is NOT a video here: DeviantArt counts it as an image and gives it the much larger image cap.</source>
         <translation>1 GB y de 10 a 12 minutos, y el envío de vídeo es una función de la membresía Core. 1920x1080 recomendado; el primer fotograma se convierte en la vista previa, así que no debería ser un fotograma en blanco ni de transición. Un GIF animado NO es un vídeo aquí: DeviantArt lo cuenta como imagen y le da el límite de imagen, mucho mayor.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="140"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="146"/>
         <source>Newgrounds (animation)</source>
         <translation>Newgrounds (animación)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="141"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="147"/>
         <source>UNVERIFIED (partial): Newgrounds publishes NO byte or duration cap. Their own wiki says the limit is shown on the signed-in upload form and can be raised on request, so it is per-account; the 100 MB and 6.3 GB figures in circulation come from a member forum post, not from Newgrounds. MP4/MOV/WMV and SWF are accepted, at 3840x2160, 1920x1080, 1280x720 or 640x380, around 10 to 20 Mbps at 1080p. Loop is an upload option for MP4 here, unlike everywhere else.</source>
         <translation>SIN VERIFICAR (parcial): Newgrounds NO publica ningún límite de bytes ni de duración. Su propia wiki dice que el límite se muestra en el formulario de subida cuando se ha iniciado sesión y que se puede ampliar a petición, así que es por cuenta; las cifras de 100 MB y 6,3 GB que circulan vienen de un mensaje de un foro de miembros, no de Newgrounds. Se aceptan MP4/MOV/WMV y SWF, a 3840x2160, 1920x1080, 1280x720 o 640x380, unos 10 a 20 Mbps a 1080p. El bucle es una opción de subida para MP4 aquí, al contrario que en todos los demás sitios.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="142"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="148"/>
         <source>pixiv (illustration)</source>
         <translation>pixiv (ilustración)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="143"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="149"/>
         <source>32 MB per image, 200 MB per post, JPG or PNG. No pixel cap is published. The 8 MB and 10 MB figures still quoted in guides are obsolete: pixiv raised the per-image limit to 32 MB. A post mixing formats is converted to JPG, so pick one format per post; PNG is the one that keeps transparency.</source>
         <translation>32 MB por imagen, 200 MB por publicación, JPG o PNG. No se publica ningún límite de píxeles. Las cifras de 8 MB y 10 MB que todavía se citan en las guías están obsoletas: pixiv elevó el límite por imagen a 32 MB. Una publicación que mezcla formatos se convierte a JPG, así que elija un solo formato por publicación; PNG es el que conserva la transparencia.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="144"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="150"/>
         <source>pixiv (ugoira animation)</source>
         <translation>pixiv (animación ugoira)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="145"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="151"/>
         <source>ugoira is a folder of numbered stills, not a video: up to 150 frames, 30 MB in total, 8 MB per frame, and every frame must share one format AND one canvas size. PNG or JPEG only, and pixiv rejects APNG and WebP outright. Frame TIMING is authored on the upload page, so no fps applies here. The alternative route is one animated GIF (16 MB, 500 frames), which costs you the palette. Desktop site only.</source>
         <translation>ugoira es una carpeta de imágenes fijas numeradas, no un vídeo: hasta 150 fotogramas, 30 MB en total, 8 MB por fotograma, y todos los fotogramas deben compartir un mismo formato Y un mismo tamaño de lienzo. Solo PNG o JPEG, y pixiv rechaza APNG y WebP sin más. El TIEMPO de los fotogramas se define en la página de subida, así que aquí no se aplica ningún fps. La vía alternativa es un único GIF animado (16 MB, 500 fotogramas), que le cuesta la paleta. Solo sitio de escritorio.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="146"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="152"/>
         <source>Nico Nico Seiga (ニコニコ静画)</source>
         <translation>Nico Nico Seiga (ニコニコ静画)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="147"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="153"/>
         <source>UNVERIFIED (partial): 10 MB per image, PNG or JPEG or GIF, no pixel cap published. Whether a posted illustration is re-encoded, whether PNG alpha survives, and whether an animated GIF animates on Seiga are all undocumented, so transparency is exported but not promised. Seiga is the still-image half of Nico Nico; videos go to Nico Nico Douga.</source>
         <translation>SIN VERIFICAR (parcial): 10 MB por imagen, PNG, JPEG o GIF, sin límite de píxeles publicado. Que una ilustración publicada se recodifique, que el alfa del PNG sobreviva y que un GIF animado se anime en Seiga no está documentado, así que la transparencia se exporta pero no se garantiza. Seiga es la mitad de imagen fija de Nico Nico; los vídeos van a Nico Nico Douga.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="148"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="154"/>
         <source>Instagram (photo)</source>
         <translation>Instagram (foto)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="149"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="155"/>
         <source>8 MB, JPEG ONLY, width between 320 and 1440 px, and an aspect ratio from 4:5 to 1.91:1. Transparency cannot survive a JPEG: a transparent background is written as solid black, so flatten the art first. Reels are a separate destination and do take video.</source>
         <translation>8 MB, SOLO JPEG, anchura entre 320 y 1440 px, y una relación de aspecto de 4:5 a 1.91:1. La transparencia no puede sobrevivir a un JPEG: un fondo transparente se escribe como negro sólido, así que aplane primero la ilustración. Los reels son un destino aparte y sí aceptan vídeo.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="150"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="156"/>
         <source>Facebook (photo)</source>
         <translation>Facebook (foto)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="151"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="157"/>
         <source>UNVERIFIED (conflicting): Meta&apos;s Graph API says a photo must be under 10 MB and that animated photos are not supported, while their help centre recommends below 15 MB and lists GIF as a photo format. The stricter API figure is used. PNG is accepted but Meta warns that a PNG above 1 MB may be shown pixelated, because it is re-compressed.</source>
         <translation>SIN VERIFICAR (contradictorio): la Graph API de Meta dice que una foto debe pesar menos de 10 MB y que las fotos animadas no son compatibles, mientras que su centro de ayuda recomienda menos de 15 MB e incluye GIF como formato de foto. Se usa la cifra más estricta, la de la API. El PNG se acepta, pero Meta advierte de que un PNG de más de 1 MB puede mostrarse pixelado, porque se vuelve a comprimir.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="152"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="158"/>
         <source>Tumblr (photo)</source>
         <translation>Tumblr (foto)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="153"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="159"/>
         <source>20 MB for a static image. 540x810 is the recommended size and 2048x3072 is the largest view served. ANIMATION IS A DIFFERENT LIMIT: a GIF is only served up to about 5 MB, and above that Tumblr shows its first frame instead of animating, so a long animation should go out as a video.</source>
         <translation>20 MB para una imagen fija. 540x810 es el tamaño recomendado y 2048x3072 es la vista más grande que se sirve. LA ANIMACIÓN TIENE UN LÍMITE DISTINTO: un GIF solo se sirve hasta unos 5 MB, y por encima de eso Tumblr muestra su primer fotograma en lugar de animarlo, así que una animación larga debería salir como vídeo.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="154"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="160"/>
         <source>Pinterest (image Pin)</source>
         <translation>Pinterest (Pin de imagen)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="155"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="161"/>
         <source>20 MB on the web. PNG, JPEG, BMP, TIFF or WEBP; GIF is not accepted as an organic Pin, so animation belongs on a video Pin. 2:3 is the recommended shape (1000x1500) and 9:16 also works; keep the art out of the bottom safe zone, where the interface covers it.</source>
         <translation>20 MB en la web. PNG, JPEG, BMP, TIFF o WEBP; el GIF no se acepta como Pin orgánico, así que la animación va en un Pin de vídeo. 2:3 es la forma recomendada (1000x1500) y 9:16 también funciona; mantenga la ilustración fuera de la zona segura inferior, donde la interfaz la cubre.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="156"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="162"/>
         <source>DeviantArt (image)</source>
         <translation>DeviantArt (imagen)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="157"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="163"/>
         <source>UNVERIFIED (conflicting): one DeviantArt help page says images are capped at 80 MB and another says 95 MB; 80 MB is used so a file that passes here passes both. JPEG, PNG or GIF, no pixel cap. An animated GIF counts as an IMAGE and gets this same cap, which is 16x what Tumblr allows a GIF.</source>
         <translation>SIN VERIFICAR (contradictorio): una página de ayuda de DeviantArt dice que las imágenes tienen un límite de 80 MB y otra dice 95 MB; se usan 80 MB para que un archivo que pase aquí pase en ambas. JPEG, PNG o GIF, sin límite de píxeles. Un GIF animado cuenta como IMAGEN y recibe este mismo límite, que es 16 veces lo que Tumblr permite a un GIF.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="158"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="164"/>
         <source>DeviantArt (animation)</source>
         <translation>DeviantArt (animación)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="159"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="165"/>
         <source>UNVERIFIED (conflicting): see the image row: 80 MB versus 95 MB on two official pages, and an animated GIF is submitted as an image rather than a video, so it gets that cap instead of the 1 GB video one. GIF means a 256-colour palette, which is a real cost for gradients but nothing else here animates on a free account.</source>
         <translation>SIN VERIFICAR (contradictorio): véase la fila de imagen: 80 MB frente a 95 MB en dos páginas oficiales, y un GIF animado se envía como imagen y no como vídeo, así que recibe ese límite en lugar del de 1 GB para vídeo. GIF implica una paleta de 256 colores, lo que supone un coste real para los degradados, pero ninguna otra cosa se anima aquí con una cuenta gratuita.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="160"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="166"/>
         <source>Stream overlay (OBS)</source>
         <translation>Superposición para emisiones (OBS)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="161"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="167"/>
         <source>VP9 WebM is native in OBS; no chroma-key. WebKit CANNOT decode alpha in WebM.</source>
         <translation>VP9 WebM es nativo en OBS; sin chroma key. WebKit NO PUEDE decodificar alfa en WebM.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="162"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="168"/>
         <source>Transparent video (Safari / iOS)</source>
         <translation>Vídeo transparente (Safari / iOS)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="163"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="169"/>
         <source>HEVC+alpha needs Apple&apos;s VideoToolbox encoder; libx265 ADVERTISES yuva420p and then refuses it at open. hvc1 is mandatory: Safari rejects untagged hev1. Where VideoToolbox is unavailable, use the WebM/VP9 overlay destination instead.</source>
         <translation>HEVC+alfa necesita el codificador VideoToolbox de Apple; libx265 ANUNCIA yuva420p y luego lo rechaza al abrir. hvc1 es obligatorio: Safari rechaza hev1 sin etiquetar. Donde VideoToolbox no esté disponible, use en su lugar el destino de superposición WebM/VP9.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="164"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="170"/>
         <source>YouTube re-encodes every upload. Official docs still recommend H.264/AAC; AV1/H.265 give more quality per bit. Codec is resolved by the ladder.</source>
         <translation>YouTube vuelve a codificar todas las subidas. La documentación oficial sigue recomendando H.264/AAC; AV1/H.265 dan más calidad por bit. El códec lo resuelve la escala de ajustes.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="165"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="171"/>
+        <source>Video</source>
+        <translation>Vídeo</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="172"/>
+        <source>The generic video: MP4 with H.264 (HEVC or AV1 where the destination takes one) and AAC, at the project&apos;s own resolution, with no size, duration or frame-rate ceiling of its own. Pick it when the destination is not one of the platforms below; when it is, take that platform&apos;s row, because the ceiling on it is the reason that row exists.</source>
+        <translation>El vídeo genérico: MP4 con H.264 (HEVC o AV1 donde el destino acepte uno) y AAC, a la resolución propia del proyecto, sin límite propio de tamaño, duración o velocidad de fotogramas. Elíjalo cuando el destino no sea una de las plataformas siguientes; cuando lo sea, tome la fila de esa plataforma, porque el límite que esa fila lleva es la razón de que exista.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="173"/>
+        <source>Animated image</source>
+        <translation>Imagen animada</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="174"/>
+        <source>An animated image, not a video: WebP, which keeps the transparency a GIF&apos;s palette cannot carry and is the format the chat apps&apos; own pipelines produce for an animation. One frame gives a still WebP, so this row carries an illustration as well as an animation. No upload cap of its own: take a platform row when that platform&apos;s cap is what you are up against.</source>
+        <translation>Una imagen animada, no un vídeo: WebP, que conserva la transparencia que la paleta de un GIF no puede llevar y es el formato que los propios procesos de las aplicaciones de chat producen para una animación. Un solo fotograma da un WebP fijo, así que esta fila lleva también una ilustración, además de una animación. Sin límite de subida propio: tome la fila de una plataforma cuando el límite de esa plataforma sea lo que le ocupa.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="175"/>
+        <source>Image sequence</source>
+        <translation>Secuencia de imagen</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="176"/>
+        <source>A folder of numbered stills, not a video: PNG keeps the transparency, every frame shares one format and one canvas size, and frame TIMING is authored where the sequence is uploaded, so no frame rate applies. No frame or byte cap of its own: take a platform row when that platform&apos;s limit is what you are up against.</source>
+        <translation>Una carpeta de imágenes fijas numeradas, no un vídeo: PNG conserva la transparencia, todos los fotogramas comparten un formato y un tamaño de lienzo, y el TIEMPO de fotograma se define donde se sube la secuencia, así que no aplica ninguna velocidad de fotogramas. Sin límite propio de fotogramas o bytes: tome la fila de una plataforma cuando el límite de esa plataforma sea lo que le ocupa.</translation>
+    </message>
+    <message>
         <source>Website</source>
-        <translation>Sitio web</translation>
+        <translation type="vanished">Sitio web</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="166"/>
         <source>Direct playback: decode compatibility dominates, so H.264 at every bucket. For transparency on the web, ship BOTH .webm (VP9) and .mov (HEVC hvc1).</source>
-        <translation>Reproducción directa: domina la compatibilidad de decodificación, así que H.264 en todos los niveles. Para la transparencia en la web, incluya AMBOS .webm (VP9) y .mov (HEVC hvc1).</translation>
+        <translation type="vanished">Reproducción directa: domina la compatibilidad de decodificación, así que H.264 en todos los niveles. Para la transparencia en la web, incluya AMBOS .webm (VP9) y .mov (HEVC hvc1).</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="167"/>
         <source>Just a file (not sure yet)</source>
-        <translation>Solo un archivo (todavía no lo sé)</translation>
+        <translation type="vanished">Solo un archivo (todavía no lo sé)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="168"/>
         <source>The fallback when the destination is unknown: maximum compatibility.</source>
-        <translation>La opción de reserva cuando no se conoce el destino: máxima compatibilidad.</translation>
+        <translation type="vanished">La opción de reserva cuando no se conoce el destino: máxima compatibilidad.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="169"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="177"/>
         <source>Archive file (highest quality)</source>
         <translation>Archivo (máxima calidad)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="170"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="178"/>
         <source>Lossless quality always writes FFV1, which carries transparency. With transparency ON the other quality buckets use VP9, the lossy codec that keeps the alpha channel here (AV1 drops it silently and H.265 refuses it). With transparency OFF AV1 is used at every quality bucket — Best, Balanced and Smaller file alike; H.265 is only the fallback for a build with no usable AV1 encoder.</source>
         <translation>La calidad Sin pérdida siempre escribe FFV1, que transporta transparencia. Con la transparencia ACTIVADA, los demás niveles de calidad usan VP9, el códec con pérdida que aquí conserva el canal alfa (AV1 lo descarta en silencio y H.265 lo rechaza). Con la transparencia DESACTIVADA se usa AV1 en todos los niveles de calidad, también en Mejor calidad, Equilibrado y Archivo más pequeño; H.265 es solo la opción de reserva para una compilación sin ningún codificador AV1 utilizable.</translation>
     </message>
@@ -1620,17 +1967,17 @@
         <translation type="vanished">por software</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="217"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="262"/>
         <source>%1. This site re-encodes uploads, so source quality matters more than compatibility</source>
         <translation>%1. Este sitio vuelve a codificar las subidas, así que la calidad del original importa más que la compatibilidad</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="223"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="268"/>
         <source>%1. This plays your file directly, so decode compatibility matters most</source>
         <translation>%1. Aquí el archivo se reproduce directamente, así que la compatibilidad de decodificación importa por encima de todo</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="228"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="273"/>
         <source>%1. A master copy, so fidelity matters most</source>
         <translation>%1. Una copia maestra, así que la fidelidad importa por encima de todo</translation>
     </message>
@@ -1639,72 +1986,72 @@
         <translation type="vanished">%1, unos %2 s aquí</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="269"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="333"/>
         <source>Quality intent not applied: the destination table declares no &lt;bucket_positions&gt;, so &apos;%1&apos; was left at its own default.</source>
         <translation>Intención de calidad no aplicada: la tabla de destinos no declara &lt;bucket_positions&gt;, así que &apos;%1&apos; se quedó en su valor por defecto.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="284"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="348"/>
         <source>&apos;%1&apos; is a lossy codec, so Lossless here means its highest quality, not a lossless file.</source>
         <translation>&apos;%1&apos; es un códec con pérdida, así que Sin pérdida aquí significa su máxima calidad, no un archivo sin pérdida.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="354"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="427"/>
         <source>cannot open %1</source>
         <translation>no se puede abrir %1</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="375"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="448"/>
         <source>%1: missing &lt;export_targets&gt; root</source>
         <translation>%1: falta el elemento raíz &lt;export_targets&gt;</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="598"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="676"/>
         <source>no frames selected</source>
         <translation>no hay fotogramas seleccionados</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="609"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="687"/>
         <source>%1 frames from %2 separate ranges</source>
         <translation>%1 fotogramas de %2 rangos distintos</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="639"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="717"/>
         <source>Size forced to %1x%2 (required by this destination); the art is %3.</source>
         <translation>Tamaño forzado a %1x%2 (lo exige este destino); la ilustración queda %3.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="645"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="723"/>
         <source>cropped to fill it</source>
         <translation>recortada para rellenarlo</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="646"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="724"/>
         <source>padded to fit it</source>
         <translation>ampliada con márgenes para encajarla</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="686"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="764"/>
         <source>Frame rate reduced %1 -&gt; %2 fps (destination limit).</source>
         <translation>Velocidad de fotogramas reducida de %1 a %2 fps (límite del destino).</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="698"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="776"/>
         <source>Trimmed %1 -&gt; %2 frames (%3s limit).</source>
         <translation>Recortado de %1 a %2 fotogramas (límite de %3 s).</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="710"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="788"/>
         <source>Trimmed %1 -&gt; %2 frames (destination limit).</source>
         <translation>Recortado de %1 a %2 fotogramas (límite del destino).</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="719"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="797"/>
         <source>WARNING: destination needs at least %1 frames but only %2 are available, so the upload will likely be rejected.</source>
         <translation>AVISO: el destino necesita al menos %1 fotogramas pero solo hay %2, así que probablemente se rechace la subida.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="737"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="815"/>
         <source>WARNING: destination needs at least %1 s but this export is %2 s, so the upload will likely be rejected. Select a longer frame range.</source>
         <translation>AVISO: el destino necesita al menos %1 s pero esta exportación dura %2 s, así que probablemente se rechace la subida. Seleccione un rango de fotogramas más largo.</translation>
     </message>
@@ -1725,129 +2072,142 @@
         <translation type="vanished">%1: nada de aquí es lo bastante rápido para este presupuesto (%2), así que esto es lo más rápido disponible</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="804"/>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="866"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="885"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="947"/>
         <source>no suitable encoder found in this build</source>
         <translation>no se encontró ningún codificador adecuado en esta compilación</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="947"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1037"/>
         <source>no destination selected</source>
         <translation>no hay destino seleccionado</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="951"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1041"/>
         <source>invalid source size</source>
         <translation>tamaño de origen no válido</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="963"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1058"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1075"/>
         <source>%1 is required by this destination.</source>
         <translation>Este destino requiere %1.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="976"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1060"/>
         <source>Transparency</source>
         <translation>transparencia</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="978"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1077"/>
         <source>Audio</source>
         <translation>audio</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="988"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1089"/>
         <source>no frames selected for export</source>
         <translation>no hay fotogramas seleccionados para exportar</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1028"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1129"/>
         <source>%1; the ranges play back to back and the frames between them are not exported.</source>
         <translation>%1; los rangos se reproducen seguidos y los fotogramas intermedios no se exportan.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1071"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1173"/>
         <source>no encoder available for this destination in this build</source>
         <translation>no hay ningún codificador disponible para este destino en esta compilación</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1107"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1209"/>
         <source>WARNING: this destination&apos;s limits are UNVERIFIED; re-check before relying on them.</source>
         <translation>AVISO: los límites de este destino NO ESTÁN VERIFICADOS; compruébelos antes de confiar en ellos.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1134"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1236"/>
         <source>One still image (frame %1), written as %2. The frame range above does not apply.</source>
         <translation>Una imagen fija (fotograma %1), escrita como %2. El rango de fotogramas de arriba no se aplica.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1141"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1243"/>
         <source>%1 frames written as numbered .%2 files.</source>
         <translation>%1 fotogramas escritos como archivos .%2 numerados.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1197"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1299"/>
         <source>%1 requires transparency, but &apos;%2&apos; cannot encode an alpha channel in this build (it advertises %3 and then refuses it). Use a destination whose codec carries alpha: WebM/VP9, APNG, or FFV1.</source>
         <translation>%1 requiere transparencia, pero &apos;%2&apos; no puede codificar un canal alfa en esta compilación (anuncia %3 y luego lo rechaza). Use un destino cuyo códec admita alfa: WebM/VP9, APNG o FFV1.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1206"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1308"/>
         <source>%1: %2 could not encode %3 and no fallback worked (%4)</source>
         <translation>%1: %2 no pudo codificar %3 y ningún respaldo funcionó (%4)</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1213"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1315"/>
         <source>Transparency dropped: &apos;%1&apos; advertises %2 but cannot encode it here, so %3 is used instead.</source>
         <translation>Transparencia descartada: &apos;%1&apos; anuncia %2 pero aquí no puede codificarlo, así que se usa %3 en su lugar.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1219"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1321"/>
         <source>the encoder default</source>
         <translation>el valor por defecto del codificador</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1295"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1397"/>
         <source>No sound: %1 does not accept an audio track.</source>
         <translation>Sin sonido: %1 no acepta pista de audio.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1300"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1402"/>
         <source>WARNING: %1 expects sound but this project has no audio track.</source>
         <translation>AVISO: %1 espera audio pero este proyecto no tiene pista de audio.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1327"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1467"/>
         <source>no frames left</source>
         <translation>no quedan fotogramas</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1365"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1520"/>
         <source>could not write %1</source>
         <translation>no se pudo escribir %1</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1373"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1528"/>
         <source>no files produced</source>
         <translation>no se produjo ningún archivo</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1415"/>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1439"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1574"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1672"/>
         <source>no file produced</source>
         <translation>no se produjo ningún archivo</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1473"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1651"/>
+        <source> (%1 could not be opened here; written with %2)</source>
+        <translation> (%1 no se pudo abrir aquí; se escribió con %2)</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1659"/>
+        <source>%1
+The %2 encoder could not be opened either (%3).</source>
+        <translation>%1
+Tampoco se pudo abrir el codificador %2 (%3).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1706"/>
         <source>frames: the plan selected %1, but %2 were supplied</source>
         <translation>fotogramas: el plan seleccionó %1, pero se proporcionaron %2</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="606"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="684"/>
         <source>%1 frame</source>
         <translation>%1 fotograma</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="607"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="685"/>
         <source>%1 frames</source>
         <translation>%1 fotogramas</translation>
     </message>
@@ -1856,7 +2216,7 @@
         <translation type="vanished">los fotogramas no coinciden: el plan selecciona %1 pero se proporcionaron %2 (véase plan.selection.indices())</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1542"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1786"/>
         <source>canceled</source>
         <translation>cancelado</translation>
     </message>
@@ -2019,30 +2379,30 @@
 <context>
     <name>Exporter</name>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="99"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="124"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="157"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="95"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="120"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="193"/>
         <source>Invalid common parameters.</source>
         <translation>Parámetros comunes no válidos.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="106"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="102"/>
         <source>Invalid directory path.</source>
         <translation>Ruta de directorio no válida.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="132"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="165"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="128"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="201"/>
         <source>Exporting was canceled.</source>
         <translation>Se canceló la exportación en curso.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="193"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="229"/>
         <source>No available video encoder can carry the &apos;%1&apos; container.</source>
         <translation>Ningún codificador de vídeo disponible admite el contenedor &apos;%1&apos;.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="206"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="242"/>
         <source>Encoder not available in this build: %1</source>
         <translation>Codificador no disponible en esta compilación: %1</translation>
     </message>
@@ -2051,49 +2411,63 @@
         <translation type="vanished">El contenedor &apos;%1&apos; no admite el códec de vídeo %2.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="212"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="248"/>
         <source>The &apos;%1&apos; container cannot carry the %2 video encoder.</source>
         <translation>El contenedor &apos;%1&apos; no admite el codificador de vídeo %2.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="225"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="265"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="537"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="641"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="307"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="323"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="643"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="747"/>
         <source>Video encoder error.
 %1</source>
         <translation>Error del codificador de vídeo.
 %1</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="295"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="346"/>
+        <source>The %1 encoder could not be opened here (%2); exported with the %3 encoder instead.</source>
+        <translation>El codificador %1 no se pudo abrir aquí (%2); se exportó con el codificador %3 en su lugar.</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="356"/>
+        <source>Video encoder error.
+%1
+The %2 encoder could not be opened either (%3).</source>
+        <translation>Error del codificador de vídeo.
+%1
+Tampoco se pudo abrir el codificador %2 (%3).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="389"/>
         <source>Finishing up</source>
         <translation>Finalizando</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="297"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="391"/>
         <source>Rendering</source>
         <translation>Renderizando</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="312"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="406"/>
         <source>Export was canceled.</source>
         <translation>La exportación se canceló.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="347"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="440"/>
         <source>Failed to initialize TextureDrawer</source>
         <translation>No se pudo inicializar TextureDrawer</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="579"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="685"/>
         <source>GIF encoder error.
 %1</source>
         <translation>Error del codificador de GIF.
 %1</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="619"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="725"/>
         <source>Audio mixing error.
 %1</source>
         <translation>Error de mezcla de audio.
@@ -2185,85 +2559,91 @@
         <translation type="vanished">Rebotar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="94"/>
         <source>In</source>
-        <translation>Dentro</translation>
+        <translation type="vanished">Dentro</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="96"/>
         <source>Out</source>
-        <translation>Fuera</translation>
+        <translation type="vanished">Fuera</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="98"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="100"/>
         <source>All</source>
-        <translation>Todo</translation>
+        <translation type="vanished">Todo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="119"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="133"/>
         <source>Auto</source>
-        <translation>Automático</translation>
+        <translation type="vanished">Automático</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="121"/>
         <source>English</source>
-        <translation>Inglés</translation>
+        <translation type="vanished">Inglés</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="123"/>
         <source>Japanese</source>
-        <translation>Japonés</translation>
+        <translation type="vanished">Japonés</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="125"/>
         <source>Chinese</source>
-        <translation>Chino</translation>
+        <translation type="vanished">Chino</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="127"/>
         <source>Spanish</source>
-        <translation>Español</translation>
+        <translation type="vanished">Español</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="129"/>
         <source>Russian</source>
-        <translation>Ruso</translation>
+        <translation type="vanished">Ruso</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="131"/>
         <source>Korean</source>
-        <translation>Coreano</translation>
+        <translation type="vanished">Coreano</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="160"/>
         <source>Frame number</source>
-        <translation>Número de fotograma</translation>
+        <translation type="vanished">Número de fotograma</translation>
     </message>
     <message>
         <source>Frame number (from 1)</source>
         <translation type="vanished">Número de fotograma (desde 1)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="163"/>
         <source>Seconds</source>
-        <translation>Segundos</translation>
+        <translation type="vanished">Segundos</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="166"/>
         <source>Seconds + Frame (SS+FF)</source>
-        <translation>Segundos + Fotograma (SS+FF)</translation>
+        <translation type="vanished">Segundos + Fotograma (SS+FF)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="168"/>
         <source>Timecode (SMPTE) (HH:MM:SS+FF)</source>
-        <translation>Código de tiempo (SMPTE) (HH:MM:SS+FF)</translation>
+        <translation type="vanished">Código de tiempo (SMPTE) (HH:MM:SS+FF)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="170"/>
         <source>Timecode (HH:MM:SS:mmm)</source>
-        <translation>Código de tiempo (HH:MM:SS:mmm)</translation>
+        <translation type="vanished">Código de tiempo (HH:MM:SS:mmm)</translation>
+    </message>
+</context>
+<context>
+    <name>GraphPanel</name>
+    <message>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="317"/>
+        <source>No keys on the selected layers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="318"/>
+        <source>Select a layer to show its curves</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="321"/>
+        <source>All channels of the selected layers are hidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="369"/>
+        <source>No room for the graph in this viewport</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2430,7 +2810,12 @@
         <translation>Transparencia:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="202"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="193"/>
+        <source>max %1 x %2</source>
+        <translation>máx. %1 x %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="209"/>
         <source>Limits:</source>
         <translation>Límites:</translation>
     </message>
@@ -2475,22 +2860,22 @@
         <translation>máx. %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="189"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="196"/>
         <source>max %1 s</source>
         <translation>máx. %1 s</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="191"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="198"/>
         <source>min %1 s</source>
         <translation>mín. %1 s</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="193"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="200"/>
         <source>max %1 frames</source>
         <translation>máx. %1 fotogramas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="195"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="202"/>
         <source>max %1 fps</source>
         <translation>máx. %1 fps</translation>
     </message>
@@ -2499,7 +2884,7 @@
         <translation type="vanished">Límites: %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="203"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="210"/>
         <source>, </source>
         <translation>, </translation>
     </message>
@@ -2597,68 +2982,130 @@
         <translation type="vanished">requiere %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1357"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1409"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1488"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1526"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1576"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1599"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1630"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1421"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1484"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1584"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1629"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1679"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1706"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1737"/>
         <source>Export Error</source>
         <translation>Error al exportar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1358"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1422"/>
         <source>Unknown export destination: %1</source>
         <translation>Destino de exportación desconocido: %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1428"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1513"/>
         <source>File exists</source>
         <translation>El archivo ya existe</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1429"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1514"/>
         <source>The file &quot;%1&quot; already exists. Overwrite?</source>
         <translation>El archivo “%1” ya existe. ¿Desea sobrescribirlo?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1489"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1585"/>
         <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
         <translation>%1 limita el tamaño del archivo, lo que obliga a codificarlo más de una vez, y eso necesita los %2 fotogramas en memoria (~%3 MB). Exporte menos fotogramas o elija un destino sin límite de tamaño.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1504"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1603"/>
         <source>Fitting under %1&apos;s %2 KB limit...</source>
         <translation>Ajustando por debajo del límite de %2 KB de %1...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1517"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1616"/>
         <source>Export Canceled</source>
         <translation>Exportación cancelada</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1518"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1617"/>
         <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
         <translation>La exportación se detuvo mientras se ajustaba al límite de tamaño de %1. El archivo ya escrito es el último intento y puede superar el límite.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1527"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1630"/>
         <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
 %4</source>
         <translation>%1 limita el archivo a %2 KB y ni siquiera el ajuste más pequeño logró encajarlo (%3 KB).
 %4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1535"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1638"/>
         <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
         <translation>Ajustado a %1 bytes en %2 intentos (%3x%4).</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="132"/>
+        <source>Y</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="132"/>
+        <source>X</source>
+        <translation type="unfinished">X</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="134"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="142"/>
+        <source>Angle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="136"/>
+        <source>Depth</source>
+        <translation type="unfinished">Profundidad</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="138"/>
+        <source>Opacity</source>
+        <translation type="unfinished">Opacidad</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="141"/>
+        <source>Radius Y</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="143"/>
+        <source>Radius X</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="147"/>
+        <source>Saturation</source>
+        <translation type="unfinished">Saturación</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="148"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="154"/>
+        <source>Value</source>
+        <translation type="unfinished">Valor : </translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="149"/>
+        <source>Hue</source>
+        <translation type="unfinished">Tono</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1020"/>
+        <source>The animation graph stopped moving: the dragged key changed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1123"/>
+        <source>The animation graph stopped editing: the dragged key changed.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>QPlatformTheme</name>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="327"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="412"/>
         <source>Cancel</source>
         <translation>Cancelar</translation>
     </message>
@@ -3225,32 +3672,32 @@
 <context>
     <name>gui</name>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="49"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="65"/>
         <source>Send in a chat</source>
         <translation>Enviar en un chat</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="50"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="66"/>
         <source>Post to a platform</source>
         <translation>Publicar en una plataforma</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="51"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="67"/>
         <source>Stickers and emoji</source>
         <translation>Stickers y emoji</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="52"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="68"/>
         <source>Overlays and transparency</source>
         <translation>Superposiciones y transparencia</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="53"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="69"/>
         <source>A file</source>
         <translation>Un archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="54"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="70"/>
         <source>Archive</source>
         <translation>Archivado</translation>
     </message>
@@ -3289,39 +3736,49 @@
 <context>
     <name>gui::DestinationPicker</name>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="309"/>
         <source>Where are you posting this?</source>
-        <translation>¿Dónde va a publicar esto?</translation>
+        <translation type="vanished">¿Dónde va a publicar esto?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="313"/>
         <source>Search: telegram, sticker, reels, illustration, 微信...</source>
-        <translation>Buscar: telegram, sticker, reels, ilustración, 微信...</translation>
+        <translation type="vanished">Buscar: telegram, sticker, reels, ilustración, 微信...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="317"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="393"/>
+        <source>Destination</source>
+        <translation>Destino</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="397"/>
+        <source>Search: telegram, sticker, reels, illustration, wechat...</source>
+        <translation>Buscar: telegram, sticker, reels, ilustración, wechat...</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="402"/>
         <source>Search destinations</source>
         <translation>Buscar destinos</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="258"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="406"/>
+        <source>Continue</source>
+        <translation>Continuar</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="326"/>
         <source>%1 destinations</source>
         <translation>%1 destinos</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="331"/>
         <source>My platform isn&apos;t listed (I&apos;ll choose the format)</source>
-        <translation>Mi plataforma no está en la lista (elijo el formato yo mismo)</translation>
+        <translation type="vanished">Mi plataforma no está en la lista (elijo el formato yo mismo)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="335"/>
         <source>Everything above is a destination we know the rules for. This one lets you state the format and codec yourself.</source>
-        <translation>Todo lo anterior son destinos cuyas reglas conocemos. Este le permite indicar el formato y el códec usted mismo.</translation>
+        <translation type="vanished">Todo lo anterior son destinos cuyas reglas conocemos. Este le permite indicar el formato y el códec usted mismo.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="321"/>
         <source>Use this destination</source>
-        <translation>Usar este destino</translation>
+        <translation type="vanished">Usar este destino</translation>
     </message>
 </context>
 <context>
@@ -3402,37 +3859,41 @@
 <context>
     <name>gui::ExportViewModel</name>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="306"/>
         <source>My platform isn&apos;t listed (I&apos;ll choose the format)</source>
-        <translation>Mi plataforma no está en la lista (elijo el formato yo mismo)</translation>
+        <translation type="vanished">Mi plataforma no está en la lista (elijo el formato yo mismo)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="336"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="359"/>
         <source>Output:</source>
         <translation>Salida:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="337"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="360"/>
         <source>%1 x %2, %3 fps</source>
         <translation>%1 x %2, %3 fps</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="347"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="370"/>
         <source>%1 fps</source>
         <translation>%1 fps</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="346"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="369"/>
         <source>Frame rate:</source>
         <translation>Velocidad de fotogramas:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="352"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="329"/>
+        <source>Manual</source>
+        <translation>Manual</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="375"/>
         <source>Format:</source>
         <translation>Formato:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="358"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="381"/>
         <source>%1 numbered %2 files</source>
         <translation>%1 archivos %2 numerados</translation>
     </message>
@@ -3441,120 +3902,125 @@
         <translation type="vanished">%1 en %2</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="378"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="401"/>
         <source>Audio:</source>
         <translation>Audio:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="379"/>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="394"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="402"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="417"/>
         <source>yes</source>
         <translation>sí</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="379"/>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="394"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="402"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="417"/>
         <source>no</source>
         <translation>no</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="386"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="409"/>
         <source>none in this project</source>
         <translation>no hay ninguno en este proyecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="388"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="411"/>
         <source>off in this dialog</source>
         <translation>está desactivado en este diálogo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="393"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="416"/>
         <source>Transparency:</source>
         <translation>Transparencia:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="403"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="426"/>
         <source>%1 cannot carry transparency, so this export will be opaque.</source>
         <translation>%1 no admite transparencia, así que esta exportación será opaca.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="411"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="434"/>
         <source>A GIF loops forever, so the Loop animation box is fixed on.</source>
         <translation>Un GIF se repite en bucle indefinidamente, así que la casilla Reproducir en bucle está fijada como activada.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="432"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="455"/>
         <source>PNG sequence</source>
         <translation>Secuencia PNG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="433"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="456"/>
         <source>JPEG sequence</source>
         <translation>Secuencia JPEG</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="619"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="635"/>
         <source>CRF</source>
         <translation>CRF</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="619"/>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="848"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="635"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="952"/>
         <source>Quality</source>
         <translation>Calidad</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="800"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="897"/>
         <source>Smaller file</source>
         <translation>Archivo más pequeño</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="800"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="897"/>
         <source>Balanced</source>
         <translation>Equilibrado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="800"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="897"/>
         <source>Best quality</source>
         <translation>Mejor calidad</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="800"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="897"/>
         <source>Lossless</source>
         <translation>Sin pérdida</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="844"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="944"/>
+        <source>Custom</source>
+        <translation>Personalizado</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="948"/>
         <source>Auto</source>
         <translation>Auto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1208"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1354"/>
         <source>%1 sequence</source>
         <translation>Secuencia %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1210"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1356"/>
         <source>animated GIF</source>
         <translation>GIF animado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1288"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1434"/>
         <source>Export with transparency</source>
         <translation>Exportar con transparencia</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1289"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1435"/>
         <source>Loop animation</source>
         <translation>Reproducir en bucle</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1290"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1436"/>
         <source>Export with audio</source>
         <translation>Exportar con audio</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1291"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1437"/>
         <source>Custom palette</source>
         <translation>Paleta personalizada</translation>
     </message>
@@ -3570,122 +4036,105 @@
         <translation type="vanished">Idioma (necesita reiniciar) :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="288"/>
         <source>Default keyframe easing</source>
-        <translation>Aceleración de fotogramas clave por defecto</translation>
+        <translation type="vanished">Aceleración de fotogramas clave por defecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="295"/>
         <source>Default keyframe range</source>
-        <translation>Rango de fotogramas clave por defecto</translation>
+        <translation type="vanished">Rango de fotogramas clave por defecto</translation>
     </message>
     <message>
         <source>Timeline format :</source>
         <translation type="vanished">Formato de cronología:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="281"/>
         <source>Language (needs restart)</source>
-        <translation>Idioma (necesita reiniciar)</translation>
+        <translation type="vanished">Idioma (necesita reiniciar)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="302"/>
         <source>Timeline format</source>
-        <translation>Formato de línea de tiempo</translation>
+        <translation type="vanished">Formato de línea de tiempo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
         <source>System</source>
         <translation>Sistema</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
         <source>Light</source>
         <translation>Claro</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
         <source>Dark</source>
         <translation>Oscuro</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="333"/>
         <source>Theme</source>
-        <translation>Tema</translation>
+        <translation type="vanished">Tema</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="367"/>
         <source>Accent color</source>
-        <translation>Color de acento</translation>
+        <translation type="vanished">Color de acento</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="375"/>
         <source>Automatically save your project</source>
-        <translation>Guarda automáticamente tu proyecto</translation>
+        <translation type="vanished">Guarda automáticamente tu proyecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="380"/>
         <source>Time (in minutes) between autosaves</source>
-        <translation>Tiempo (en minutos) entre autoguardados</translation>
+        <translation type="vanished">Tiempo (en minutos) entre autoguardados</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
         <source>Show mesh when selecting FFD</source>
-        <translation>Mostrar malla al seleccionar FFD</translation>
+        <translation type="vanished">Mostrar malla al seleccionar FFD</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="392"/>
         <source>On copy send keys to the clipboard</source>
-        <translation>Al copiar envía las claves al portapapeles</translation>
+        <translation type="vanished">Al copiar envía las claves al portapapeles</translation>
     </message>
     <message>
         <source>Always check for FFmpeg on export</source>
         <translation type="vanished">Comprobar siempre FFmpeg al exportar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="397"/>
         <source>Enforce ID check on asset download</source>
-        <translation>Comprobar ID en descarga de activos</translation>
+        <translation type="vanished">Comprobar ID en descarga de activos</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="401"/>
         <source>Ignore export warnings</source>
-        <translation>Ignorar advertencias de exportación</translation>
+        <translation type="vanished">Ignorar advertencias de exportación</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="405"/>
         <source>Allow donation menu</source>
-        <translation>Permitir menú de donaciones</translation>
+        <translation type="vanished">Permitir menú de donaciones</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="409"/>
         <source>Force project to load</source>
-        <translation>Forzar la carga del proyecto</translation>
+        <translation type="vanished">Forzar la carga del proyecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="411"/>
         <source>Reset recent files list</source>
-        <translation>Restablecer lista de archivos recientes</translation>
+        <translation type="vanished">Restablecer lista de archivos recientes</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
         <source>Deletes all project entries from your recents</source>
-        <translation>Elimina todas las entradas de proyecto de tus Recientes</translation>
+        <translation type="vanished">Elimina todas las entradas de proyecto de tus Recientes</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="290"/>
         <source>Success</source>
         <translation>Éxito</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="290"/>
         <source>All entries have been successfully removed</source>
         <translation>Todas las entradas se han eliminado correctamente</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="426"/>
         <source>Global keybind delay (ms)</source>
-        <translation>Retraso global de combinación de teclas (ms)</translation>
+        <translation type="vanished">Retraso global de combinación de teclas (ms)</translation>
     </message>
     <message>
         <source>Reset keybinds</source>
@@ -3864,14 +4313,12 @@ Comprobar generación de paletas FFmpeg ...</translation>
         <translation type="vanished">Al configurar FFmpeg se ha producido un error inesperado, por favor envíe la siguiente información a nuestros desarrolladores.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="444"/>
         <source>General</source>
-        <translation>General</translation>
+        <translation type="vanished">General</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="445"/>
         <source>QoL</source>
-        <translation>QoL</translation>
+        <translation type="vanished">QoL</translation>
     </message>
     <message>
         <source>FFmpeg</source>
@@ -3882,34 +4329,29 @@ Comprobar generación de paletas FFmpeg ...</translation>
         <translation type="vanished">Combinaciones de teclas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="433"/>
         <source>Inverse canvas scrolling</source>
-        <translation>Desplazamiento del lienzo inverso</translation>
+        <translation type="vanished">Desplazamiento del lienzo inverso</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="437"/>
         <source>Inverse timeline scrolling</source>
-        <translation>Desplazamiento de la línea de tiempo inversa</translation>
+        <translation type="vanished">Desplazamiento de la línea de tiempo inversa</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="441"/>
         <source>Middle mouse moves canvas</source>
-        <translation>El botón central del ratón mueve el lienzo</translation>
+        <translation type="vanished">El botón central del ratón mueve el lienzo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="180"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="116"/>
         <source>Settings</source>
         <translation>Ajustes</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="446"/>
         <source>Keyboard</source>
-        <translation>Teclado</translation>
+        <translation type="vanished">Teclado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="447"/>
         <source>Mouse</source>
-        <translation>Ratón</translation>
+        <translation type="vanished">Ratón</translation>
     </message>
 </context>
 <context>
@@ -3921,6 +4363,50 @@ Comprobar generación de paletas FFmpeg ...</translation>
     <message>
         <source>Relay bit rate (Kbps)</source>
         <translation type="vanished">Tasa de bits de relé (Kbps)</translation>
+    </message>
+</context>
+<context>
+    <name>gui::ImGuiOverlay</name>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="810"/>
+        <source>shown</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="811"/>
+        <source>hidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="825"/>
+        <source>%n channel(s) shown</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="829"/>
+        <source>%1, focused: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="837"/>
+        <source>%1 (%n more channel(s) not listed: no room in the panel)</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="860"/>
+        <source>Fit graph</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="861"/>
+        <source>double-click the plot</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3937,27 +4423,25 @@ Comprobar generación de paletas FFmpeg ...</translation>
 <context>
     <name>gui::KeyBindingDialog</name>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="80"/>
+        <location filename="../../src/gui/KeyBindingDialog.cpp" line="33"/>
         <source>Key Bindings</source>
         <translation>Combinaciones de teclas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="108"/>
         <source>Reset keybinds</source>
-        <translation>Restablecer combinaciones de teclas</translation>
+        <translation type="vanished">Restablecer combinaciones de teclas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="109"/>
         <source>Reset all keybindings to their default values.</source>
-        <translation>Restablecer todas las combinaciones de teclas a sus valores predeterminados.</translation>
+        <translation type="vanished">Restablecer todas las combinaciones de teclas a sus valores predeterminados.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="113"/>
+        <location filename="../../src/gui/KeyBindingDialog.cpp" line="100"/>
         <source>Reset keybindings</source>
         <translation>Restablecer combinaciones de teclas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="114"/>
+        <location filename="../../src/gui/KeyBindingDialog.cpp" line="101"/>
         <source>Reset all keybindings to their default values? This will discard any custom bindings.</source>
         <translation>¿Restablecer todas las combinaciones de teclas a sus valores predeterminados? Se descartarán las combinaciones personalizadas.</translation>
     </message>
@@ -4478,90 +4962,90 @@ Si olvidamos incluirte, avísanos o abre un PR.</translation>
         <translation type="vanished">Dock de herramienta</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="571"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="623"/>
         <source>Theme changed</source>
         <translation>Tema cambiado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="573"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="625"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>Puede haber artefactos visuales después de cambiar de tema, le recomendamos reiniciar la aplicación.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="794"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="846"/>
         <source> has been modified. Save changes?</source>
         <translation> ha sido modificado. ¿Guardar cambios?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="796"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="848"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>Algunos proyectos han sido modificados. ¿Guardar cambios?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="804"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="856"/>
         <source>Save Changes</source>
         <translation>Guardar Cambios</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="805"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="857"/>
         <source>Discard Changes</source>
         <translation>Descartar cambios</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="806"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="858"/>
         <source>Cancel</source>
         <translation>Cancelar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="827"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="879"/>
         <source>Undone : </source>
         <translation>Deshacer: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="890"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="942"/>
         <source>Redone : </source>
-        <translation>Redone : </translation>
+        <translation>Rehacer: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="933"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="993"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1022"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1091"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="994"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1054"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1083"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1152"/>
         <source>Loading Error</source>
         <translation>Error al cargar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="970"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1031"/>
         <source>Open File</source>
         <translation>Abrir archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1105"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1166"/>
         <source>Save File</source>
         <translation>Guardar archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1708"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1815"/>
         <source>Exported %1 (%2 KB)</source>
         <translation>Exportado %1 (%2 KB)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1718"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1825"/>
         <source> (%1 of %2 KB allowed for %3)</source>
         <translation> (%1 de %2 KB permitidos para %3)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1723"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1830"/>
         <source>; OVER THE LIMIT, it will be rejected</source>
         <translation>; POR ENCIMA DEL LÍMITE, se rechazará</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1762"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1869"/>
         <source>All files (*)</source>
         <translation>Todos los archivos (*)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1763"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1870"/>
         <source>%1 files (*.%2)</source>
         <translation>Archivos %1 (*.%2)</translation>
     </message>
@@ -4620,27 +5104,27 @@ En la siguiente pantalla puedes indicarle a AnimeEffects que lo descargue e inst
         <translation type="vanished">FFmpeg no ha podido generar paletas. Por favor, solucione problemas.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="159"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="161"/>
         <source>Animation</source>
         <translation>Animación</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="172"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="177"/>
         <source>Properties</source>
         <translation>Propiedades</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="218"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="223"/>
         <source>Tools</source>
         <translation>Herramientas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1042"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1103"/>
         <source>Recover unsaved project?</source>
         <translation>¿Recuperar proyecto sin guardar?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1043"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1104"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -4731,8 +5215,8 @@ Open it?</source>
         <translation type="vanished">Imagen etiquetada</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1756"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1831"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1942"/>
         <source>Export Folder</source>
         <translation>Exportar carpeta</translation>
     </message>
@@ -4749,7 +5233,7 @@ Open it?</source>
         <translation type="vanished">Error al exportar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1764"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1871"/>
         <source>Export File</source>
         <translation>Exportar archivo</translation>
     </message>
@@ -4773,60 +5257,58 @@ Open it?</source>
 <context>
     <name>gui::NewProjectDialog</name>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="16"/>
         <source>New Project Dialog</source>
-        <translation>Nuevo diálogo de proyecto</translation>
+        <translation type="vanished">Nuevo diálogo de proyecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="47"/>
+        <location filename="../../src/gui/NewProjectDialog.cpp" line="30"/>
+        <source>New Project</source>
+        <translation>Proyecto nuevo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/NewProjectDialog.cpp" line="85"/>
         <source>Open File</source>
         <translation>Abrir archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="56"/>
         <source>Initial asset</source>
-        <translation>Activo inicial</translation>
+        <translation type="vanished">Activo inicial</translation>
     </message>
     <message>
         <source>Maximum frame count</source>
         <translation type="vanished">Número máximo de fotogramas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="70"/>
         <source>Frame count</source>
-        <translation>Número de fotogramas</translation>
+        <translation type="vanished">Número de fotogramas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="80"/>
         <source>Frames per second</source>
-        <translation>Fotogramas por segundo</translation>
+        <translation type="vanished">Fotogramas por segundo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="112"/>
         <source>Specify canvas size</source>
-        <translation>Especifique el tamaño del lienzo</translation>
+        <translation type="vanished">Especifique el tamaño del lienzo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="113"/>
         <source>Canvas width</source>
-        <translation>Ancho del lienzo</translation>
+        <translation type="vanished">Ancho del lienzo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="114"/>
         <source>Canvas height</source>
-        <translation>Altura del lienzo</translation>
+        <translation type="vanished">Altura del lienzo</translation>
     </message>
 </context>
 <context>
     <name>gui::ObjectTreeWidget</name>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="145"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="608"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="147"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="701"/>
         <source>Contract</source>
         <translation>Contrato</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="148"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="150"/>
         <source>Add missing assets</source>
         <translation>Añadir activos faltantes</translation>
     </message>
@@ -4835,47 +5317,47 @@ Open it?</source>
         <translation type="vanished">Añadir nuevo PSD</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="151"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="153"/>
         <source>Add new assets</source>
         <translation>Añadir nuevos activos</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="154"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="156"/>
         <source>Rename</source>
         <translation>Renombrar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="157"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="159"/>
         <source>Paste from clipboard</source>
         <translation>Pegar desde portapapeles</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="160"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="162"/>
         <source>Create layer</source>
         <translation>Crear capa</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="163"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="165"/>
         <source>Duplicate node</source>
         <translation>Duplicar nodo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="166"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="168"/>
         <source>Add default keys</source>
         <translation>Añadir claves por defecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="169"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="171"/>
         <source>Create folder</source>
         <translation>Crear carpeta</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="172"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="174"/>
         <source>Delete</source>
         <translation>Eliminar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="608"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="701"/>
         <source>Enlarge</source>
         <translation>Ampliar</translation>
     </message>
@@ -4884,88 +5366,88 @@ Open it?</source>
         <translation type="vanished">Árbol de archivos no encontrado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="730"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="823"/>
         <source>File tree not found</source>
         <translation>Árbol de archivos no encontrado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="772"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="865"/>
         <source>Add</source>
         <translation>Añadir</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="778"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="871"/>
         <source>Cancel</source>
         <translation>Cancelar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="815"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="908"/>
         <source>No trees selected</source>
         <translation>Ningún árbol ha sido seleccionado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="816"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="909"/>
         <source>Please select at least one tree.</source>
         <translation>Porfavor seleccione al menos un árbol</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="821"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="914"/>
         <source>Done</source>
         <translation>Hecho</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="821"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="914"/>
         <source>Tree addition was attempted, layers with duplicate names have been suppressed.</source>
         <translation>Adición de árbol fué intentada, capas con nombres duplicados han sido suprimidas.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="916"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1009"/>
         <source>The requested FFD key mesh (at frame %1) has %2 vertices, but the parent mesh of the targeted node has %3 vertices, artifacts may be present.</source>
         <translation>La malla de la clave FFD solicitada (en el fotograma %1) tiene %2 vértices, pero la malla principal del nodo de destino tiene %3 vértices; pueden aparecer artefactos.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="942"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="949"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1035"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1042"/>
         <source>Successfully pasted </source>
         <translation>Pegado con éxito </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="942"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1035"/>
         <source> keys.</source>
         <translation> claves.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="944"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1037"/>
         <source> keys. The log is available below.</source>
         <translation> claves. El registro está disponible a continuación.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="944"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1037"/>
         <source>Warnings present for </source>
         <translation>Advertencias en </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="949"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1042"/>
         <source> keys.
 </source>
         <translation> claves.
 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="950"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1043"/>
         <source> error(s) have been detected.
 The log is available below.</source>
         <translation> error(es) han sido detectados.
 El registro está disponible a continuación.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="955"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="975"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1048"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1068"/>
         <source>Failed to paste key(s)</source>
         <translation>Error al pegar clave(s)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="958"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1051"/>
         <source>Clipboard does not contain valid JSON information or the timeline already has a key in the same frame.</source>
         <translation>El portapapeles no contiene información JSON válida o la línea de tiempo ya tiene una clave en el mismo fotograma.</translation>
     </message>
@@ -4974,7 +5456,7 @@ El registro está disponible a continuación.</translation>
         <translation type="vanished">El portapapeles no contiene información JSON válida o la línea de tiempo ya tiene una clave en el mismo fotograma.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="978"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1071"/>
         <source>Timeline has a key in the same frame.</source>
         <translation>La línea de tiempo tiene una clave en el mismo fotograma.</translation>
     </message>
@@ -5077,33 +5559,34 @@ El registro está disponible a continuación.</translation>
 <context>
     <name>gui::ProjectSettingDialog</name>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="554"/>
+        <location filename="../../src/gui/ProjectSettingDialog.cpp" line="34"/>
         <source>Project settings</source>
         <translation>Configuración del proyecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="591"/>
-        <source>Canvas size</source>
-        <translation>Tamaño del lienzo</translation>
+        <location filename="../../src/gui/ProjectSettingDialog.cpp" line="164"/>
+        <source>Viewport background</source>
+        <translation>Fondo de la vista</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="615"/>
+        <source>Canvas size</source>
+        <translation type="vanished">Tamaño del lienzo</translation>
+    </message>
+    <message>
         <source>Frame range</source>
-        <translation>Rango de fotogramas</translation>
+        <translation type="vanished">Rango de fotogramas</translation>
     </message>
     <message>
         <source>Max frame count</source>
         <translation type="vanished">Número máximo de fotogramas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="621"/>
         <source>Loop animation</source>
-        <translation>Reproducir en bucle</translation>
+        <translation type="vanished">Reproducir en bucle</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="627"/>
         <source>Frames per second</source>
-        <translation>Fotogramas por segundo</translation>
+        <translation type="vanished">Fotogramas por segundo</translation>
     </message>
 </context>
 <context>
@@ -5147,103 +5630,134 @@ El registro está disponible a continuación.</translation>
 <context>
     <name>gui::ResourceDialog</name>
     <message>
-        <location filename="../../src/gui/ResourceDialog.cpp" line="16"/>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="17"/>
         <source>Project assets</source>
         <translation>Activos del proyecto</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceDialog.cpp" line="22"/>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="23"/>
         <source>Add Assets</source>
         <translation>Añadir activos</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceDialog.cpp" line="80"/>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="25"/>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="104"/>
+        <source>Delete unused</source>
+        <translation>Eliminar activos sin usar</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="86"/>
         <source>Open Files</source>
         <translation>Abrir archivos</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="104"/>
+        <source>No unused assets to delete</source>
+        <translation>No hay activos sin usar que eliminar</translation>
     </message>
 </context>
 <context>
     <name>gui::ResourceTreeWidget</name>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="58"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="56"/>
         <source>Change file path</source>
         <translation>Cambiar ruta del archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="63"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="61"/>
         <source>Rename</source>
         <translation>Renombrar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="66"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="64"/>
         <source>Reload images from file</source>
         <translation>Recargar imágenes desde archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="69"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="67"/>
         <source>Monitor for changes</source>
         <translation>Seguimiento de cambios</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="72"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="70"/>
         <source>Stop monitoring for changes</source>
         <translation>Detener la monitorización de cambios</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="75"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="73"/>
         <source>Delete</source>
         <translation>Eliminar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="218"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="216"/>
         <source>Open File</source>
         <translation>Abrir archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="320"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="326"/>
         <source>File not found</source>
         <translation>Archivo no encontrado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="321"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="327"/>
         <source>The file couldn&apos;t be found, please change its file path using the button above.</source>
         <translation>No se ha podido encontrar el archivo, por favor, cambie la ruta del archivo utilizando el botón de arriba.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="331"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="338"/>
         <source>Invalid Selection</source>
         <translation>Selección no válida</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="331"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="338"/>
         <source>Already watching for changes in this file</source>
         <translation>Buscando cambios en este archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="343"/>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="360"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="395"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="447"/>
         <source>Success</source>
         <translation>Éxito</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="343"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="395"/>
         <source>This file will be monitored for changes.</source>
         <translation>Este archivo será monitoreado por cambios.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="360"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="447"/>
         <source>The file will no longer be monitored</source>
         <translation>El archivo ya no será monitoreado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="363"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="450"/>
         <source>File not monitored</source>
         <translation>Archivo no monitorizado</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="363"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="450"/>
         <source>The file is not being currently monitored</source>
         <translation>El archivo no está siendo monitoreado actualmente</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="513"/>
+        <source>Delete asset</source>
+        <translation>Eliminar activo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="514"/>
+        <source>Some layers use this asset.</source>
+        <translation>Algunas capas usan este activo.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="516"/>
+        <source>Delete the layer that uses it as well?</source>
+        <translation>¿Eliminar también la capa que lo usa?</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="517"/>
+        <source>Delete the %1 layers that use it as well?</source>
+        <translation>¿Eliminar también las %1 capas que lo usan?</translation>
     </message>
 </context>
 <context>
@@ -5462,6 +5976,12 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/ToolWidget.cpp" line="157"/>
         <source>Flip canvas</source>
         <translation>Voltear lienzo</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ToolWidget.cpp" line="164"/>
+        <location filename="../../src/gui/ToolWidget.cpp" line="176"/>
+        <source>Show animation graph</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5854,36 +6374,36 @@ El registro está disponible a continuación.</translation>
 <context>
     <name>gui::res::ResourceUpdater</name>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="291"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="293"/>
         <source>QImage Error</source>
         <translation>Error QImage</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="291"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="293"/>
         <source>Failed to load image file.</source>
         <translation>Error al cargar el archivo de imagen.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="301"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="303"/>
         <source>FileIO Error</source>
         <translation>Error de FileIO</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="301"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="303"/>
         <source>PSD file not found.</source>
         <translation>Archivo PSD no encontrado.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="310"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="312"/>
         <source>PSD parse error</source>
-        <translation>PSD parse error</translation>
+        <translation>Error de análisis de PSD</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="339"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="330"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="335"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="341"/>
         <source>ORA parse error</source>
-        <translation>ORA parse error</translation>
+        <translation>Error de análisis de ORA</translation>
     </message>
     <message>
         <source>Unable to find the mimetype of the solicited file.</source>
@@ -5894,7 +6414,7 @@ El registro está disponible a continuación.</translation>
         <translation type="vanished">El mimetype no es válido.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="339"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="341"/>
         <source>The file could not be read.</source>
         <translation>No se pudo leer el archivo.</translation>
     </message>
@@ -5907,69 +6427,96 @@ El registro está disponible a continuación.</translation>
         <translation type="vanished">¿Cómo quieres cargar este archivo ora ?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="330"/>
         <source>Unable to find the MIME type of the selected file.</source>
         <translation>No se puede encontrar el mimetype del archivo solicitado.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="335"/>
         <source>The MIME type is not valid.</source>
         <translation>El mimetype no es válido.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="345"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="347"/>
         <source>Select ORA type</source>
         <translation>Seleccionar tipo de ora</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="346"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="348"/>
         <source>How do you wish to load this ORA file?</source>
         <translation>¿Cómo quieres cargar este archivo ora ?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="347"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="349"/>
         <source>Load layered</source>
         <translation>Cargar capas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="348"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="350"/>
         <source>Load merged</source>
         <translation>Carga fusionada</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="349"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="351"/>
         <source>Cancel file load</source>
         <translation>Cancelar carga de archivo</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="473"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="594"/>
+        <source>Relink: layer &quot;%1&quot; is not in the source file. It stays, because the project still renders from it; remove the layer in AnimeEffects to delete it.</source>
+        <translation>Revinculación: la capa «%1» no está en el archivo de origen. Se conserva, porque el proyecto aún se renderiza desde ella; elimina la capa en AnimeEffects para borrarla.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="600"/>
+        <source>This layer is not in the source file. The project keeps the last version it read.</source>
+        <translation>Esta capa no está en el archivo de origen. El proyecto conserva la última versión que leyó.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="818"/>
         <source>Expected layer not found, if you wish to remove a layer or change its name, please do so from within AnimeEffects.</source>
         <translation>Capa esperada no encontrada, si desea eliminar una capa o cambiar su nombre, por favor hágalo desde AnimeEffects.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="476"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="821"/>
         <source>Import Error: Unable to find layer</source>
         <translation>Error de importación: no se puede encontrar la capa</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="596"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="786"/>
         <source>Failed to find a corresponding node.</source>
         <translation>No se pudo encontrar un nodo correspondiente.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="597"/>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="611"/>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="671"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="787"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="801"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="906"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="921"/>
         <source>Operation Error</source>
         <translation>Error de operación</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="607"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="797"/>
         <source>Failed to identify nodes due to the following duplicates.</source>
         <translation>Error al identificar los nodos debido a los siguientes duplicados.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="671"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="834"/>
+        <source>Relink: the source file renamed a layer onto a name the project already uses, which would put that layer&apos;s pixels on another layer:</source>
+        <translation>Revinculación: el archivo de origen renombró una capa a un nombre que el proyecto ya usa, lo que pondría los píxeles de esa capa sobre otra capa:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="839"/>
+        <source>Nothing was changed. Rename the layer inside AnimeEffects, then reload again.</source>
+        <translation>No se cambió nada. Renombra la capa dentro de AnimeEffects y vuelve a recargar.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="850"/>
+        <source>Relink: a layer of the source file could not be read, so nothing was changed.</source>
+        <translation>Revinculación: no se pudo leer una capa del archivo de origen, así que no se cambió nada.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="906"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="921"/>
         <source>Some layers are still referenced by objects.</source>
         <translation>Algunos objetos todavía hacen referencia a algunas capas.</translation>
     </message>
@@ -6020,7 +6567,7 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/tool/tool_BonePanel.cpp" line="59"/>
         <location filename="../../src/gui/tool/tool_BonePanel.cpp" line="74"/>
         <source>Radius</source>
-        <translation>Radius</translation>
+        <translation>Radio</translation>
     </message>
     <message>
         <location filename="../../src/gui/tool/tool_BonePanel.cpp" line="67"/>
@@ -6073,7 +6620,7 @@ El registro está disponible a continuación.</translation>
         <location filename="../../src/gui/tool/tool_FFDPanel.cpp" line="73"/>
         <location filename="../../src/gui/tool/tool_FFDPanel.cpp" line="106"/>
         <source>Radius</source>
-        <translation>Radius</translation>
+        <translation>Radio</translation>
     </message>
     <message>
         <location filename="../../src/gui/tool/tool_FFDPanel.cpp" line="81"/>
@@ -6178,7 +6725,7 @@ El registro está disponible a continuación.</translation>
     <message>
         <location filename="../../src/gui/tool/tool_PosePanel.cpp" line="53"/>
         <source>Radius</source>
-        <translation>Radius</translation>
+        <translation>Radio</translation>
     </message>
     <message>
         <location filename="../../src/gui/tool/tool_PosePanel.cpp" line="61"/>

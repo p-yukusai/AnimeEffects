@@ -112,6 +112,19 @@ private:
     void closeProjectTab(core::Project& aProject);
     void onProjectTabChanged(core::Project&);
     void onThemeUpdated(theme::Theme&);
+    // ONE place for the viewport background's decision: the project's own override
+    // when it has one, the theme's recessed canvas token (GUIResources::
+    // viewportBackground()) otherwise. Called on project switch (resetProjectRefs),
+    // on a theme change (onThemeUpdated) and after a project-attribute command (the
+    // menu's onProjectAttributeUpdated fan-out), so the rule is written once.
+    void applyViewportBackground();
+
+    // The colour that decision resolves to. applyViewportBackground() shows it in
+    // the canvas; the export carries it too (the artifact's background when
+    // transparency is off), so the two cannot disagree about what colour the
+    // viewport is. The theme is a GUI concept, which is why it is resolved here
+    // and handed to ctrl::/media:: as a plain QColor.
+    QColor effectiveViewportBackground() const;
 
     bool onStartup = true;
     bool themeChangeWarned = false;

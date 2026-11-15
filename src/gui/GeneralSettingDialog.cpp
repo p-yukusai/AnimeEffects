@@ -1,23 +1,32 @@
-#include <QApplication>
-#include <qstandardpaths.h>
-#include <algorithm>
-#include "MainWindow.h"
 #include "gui/GeneralSettingDialog.h"
+
+#include "MainWindow.h"
+#include "XCAssert.h"
+#include "core/TimeFormat.h"
+#include "gui/GUIResources.h"
+#include "gui/MouseSetting.h"
 #include "gui/ViaPoint.h"
-#include "util/NetworkUtil.h"
+#include "gui/qml/GeneralSettingViewModel.h"
+#include "gui/qml/QmlTheme.h"
 #include "util/Easing.h"
-#include <QComboBox>
-#include <QHBoxLayout>
-#include <QPixmap>
-#include "gui/theme/Colors.h"
+
+#include <QQuickItem>
+#include <QQuickWidget>
+#include <QQmlContext>
+#include <QScreen>
+#include <QSettings>
+#include <QUrl>
+#include <QVBoxLayout>
+#include <QVariantMap>
+#include <algorithm>
 
 namespace {
 
-constexpr int kLanguageTypeCount = 7;
-// Timeline format picker order. Frames_From1 is dropped from the UI (with
-// frames natively 1-indexed it is identical to Frames_From0), but the enum
-// value is kept so previously saved settings still load — they map to the
-// "Frame number" entry.
+// Timeline format picker order. Frames_From1 is dropped from the UI (with frames
+// natively 1-indexed it is identical to Frames_From0), but the enum value is kept so
+// previously saved settings still load - they map to the "Frame number" entry. The
+// scene's option list (gui::GeneralSettingViewModel::timeFormatOptions) is written in
+// this order and with this many entries.
 const core::TimeFormatType kTimeFormatOrder[] = {
     core::TimeFormatType_Frames_From0,       // Frame number
     core::TimeFormatType_Relative_FPS,       // Seconds (frame/fps)
@@ -42,12 +51,11 @@ int timeFormatComboIndexOf(core::TimeFormatType aType) {
     }
     return 0;
 }
-// The default-easing combo shows every DisplayOrder entry except Type_Custom
-// (a global default carries no bezier control points); derived from the
-// shared table so it can never drift from the picker order.
-const int kEasingTypeCount = util::Easing::displayCount() - 1;
-const int kRangeTypeCount = 3;
 
+// The canonical (untranslated) names the settings file stores, indexed the way the
+// scene's language/range option lists are: same order, same count. These are the
+// load/save halves only - the LABELS the user reads come from the view model, which
+// carries the widget's existing translation entries.
 int languageToIndex(const QString& aLanguage) {
     if (aLanguage == "Auto")
         return 0;
@@ -66,518 +74,351 @@ int languageToIndex(const QString& aLanguage) {
     return 0;
 }
 
+QString indexToLanguage(int aIndex) {
+    switch (aIndex) {
+    case 0: return {"Auto"};
+    case 1: return {"English"};
+    case 2: return {"Japanese"};
+    case 3: return {"Chinese"};
+    case 4: return {"Spanish"};
+    case 5: return {"Russian"};
+    case 6: return {"Korean"};
+    default: return {"Auto"};
+    }
+}
+
 int rangeToIndex(const QString& aRange) {
     if (aRange == "In")
         return 0;
     if (aRange == "Out")
         return 1;
-    if (aRange == "All")
-        return 2;
     return 2;
-    // Default range is InOut, it is referenced as "All" by Hidefuku
+    // "All" IS InOut - the widget stored the third entry under that name.
 }
 
-QString indexToEasing(int aIndex) {
-    // The combo lists the shared display order minus Custom (a default easing
-    // carries no bezier control points); an out-of-range index falls back to
-    // Linear. The label comes from getTypeName (one translation source).
-    util::Easing::Type type = util::Easing::typeAtDisplayIndex(aIndex);
-    if (type == util::Easing::Type_Custom)
-        type = util::Easing::Type_Linear;
-    return util::Easing::getTypeName(type);
-}
-
-QString indexToRange(int aRange, bool translated = true) {
-    if (translated) {
-        switch (aRange) {
-        case 0:
-            return QCoreApplication::translate("GeneralSettingsDialog", "In");
-        case 1:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Out");
-        case 3:
-            return QCoreApplication::translate("GeneralSettingsDialog", "All");
-        default:
-            return QCoreApplication::translate("GeneralSettingsDialog", "All");
-        }
-    }
-    switch (aRange) {
-    case 0:
-        return QString("In");
-    case 1:
-        return QString("Out");
-    case 3:
-        return QString("All");
-    default:
-        return QString("All");
-    }
-}
-
-QString indexToLanguage(int aIndex, bool translated = true) {
-    if (translated) {
-        switch (aIndex) {
-        case 0:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Auto");
-        case 1:
-            return QCoreApplication::translate("GeneralSettingsDialog", "English");
-        case 2:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Japanese");
-        case 3:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Chinese");
-        case 4:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Spanish");
-        case 5:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Russian");
-        case 6:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Korean");
-        default:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Auto");
-        }
-    }
+QString indexToRange(int aIndex) {
     switch (aIndex) {
-    case 0:
-        return {"Auto"};
-    case 1:
-        return {"English"};
-    case 2:
-        return {"Japanese"};
-    case 3:
-        return {"Chinese"};
-    case 4:
-        return {"Spanish"};
-    case 5:
-        return {"Russian"};
-    case 6:
-        return {"Korean"};
-    default:
-        return {"Auto"};
+    case 0: return {"In"};
+    case 1: return {"Out"};
+    default: return {"All"};
     }
 }
+
 } // namespace
-
-QString indexToTimeFormat(int aComboIndex) {
-    switch (timeFormatTypeAt(aComboIndex)) {
-    case core::TimeFormatType_Frames_From0:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Frame number");
-    case core::TimeFormatType_Relative_FPS:
-        // Shows the frame's exact time in seconds (frame / fps), fractional.
-        return QCoreApplication::translate("GeneralSettingsDialog", "Seconds");
-    case core::TimeFormatType_Seconds_Frames:
-        // SS+FF: whole seconds + frame-within-second, at the project fps.
-        return QCoreApplication::translate("GeneralSettingsDialog", "Seconds + Frame (SS+FF)");
-    case core::TimeFormatType_Timecode_SMPTE:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Timecode (SMPTE) (HH:MM:SS+FF)");
-    case core::TimeFormatType_Timecode_HHMMSSmmm:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Timecode (HH:MM:SS:mmm)");
-    default:
-        return "";
-    }
-}
-
 
 namespace gui {
 
-GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint& aViaPoint, QWidget* aParent):
-    EasyDialog(tr("Settings"), aParent),
-    mTabs(new QTabWidget(this)),
-    mInitialLanguageIndex(),
-    mLanguageBox(),
-    mInitialTimeFormatIndex(),
-    mTimeFormatBox(),
-    mInitialAccent(theme::kDefaultAccent),
-    mAccentGroup(),
-    mInitialThemeKey("dark"),
-    mThemeGroup(),
-    mInitialMouseValues(),
-    mInvertMainViewScalingBox(),
-    mInvertTimeLineScalingBox(),
-    mMiddleMouseMoveCanvas(),
-    mGUIResources(aGUIResources),
-    mViaPoint(aViaPoint) {
-    // read current settings
-    {
-        QSettings settings;
-        auto language = settings.value("generalsettings/language");
+GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint& aViaPoint, QWidget* aParent)
+    : QDialog(aParent),
+      mGUIResources(aGUIResources),
+      mViaPoint(aViaPoint) {
+    setObjectName(QStringLiteral("generalSettingsWidget"));
+    setWindowTitle(tr("Settings"));
+    // A native framed window, not a frameless popup: normal title bar, movable and
+    // resizable by the window manager, and modal over the main window.
+    setModal(true);
+    setSizeGripEnabled(true);
 
-        if (language.isValid()) {
-            mInitialLanguageIndex = languageToIndex(language.toString());
-        }
+    mModel = new GeneralSettingViewModel(this);
+
+    // Read the saved settings, the way the widget form did, and hand the resulting
+    // values over in one piece: the model's "before" and "now" sides both start here,
+    // so nothing reads as changed until the user moves something.
+    {
+        GeneralSettingViewModel::Init init;
+        QSettings settings;
+
+        auto language = settings.value("generalsettings/language");
+        if (language.isValid())
+            init.languageIndex = languageToIndex(language.toString());
 
         auto easing = settings.value("generalsettings/easing");
         if (easing.isValid()) {
-            // Saved as the enum value since the shared-table refactor; older
-            // settings stored the canonical name — accept both.
+            // Saved as the enum value since the shared-table refactor; older settings
+            // stored the canonical name - accept both.
             util::Easing::Type type = (easing.metaType().id() == QMetaType::QString)
                 ? util::Easing::easingToEnum(easing.toString())
                 : static_cast<util::Easing::Type>(easing.toInt());
-            mInitialEasingIndex = util::Easing::displayIndexOf(type);
-            if (type == util::Easing::Type_Custom || mInitialEasingIndex < 0 ||
-                mInitialEasingIndex >= kEasingTypeCount) {
-                mInitialEasingIndex = util::Easing::displayIndexOf(util::Easing::Type_Linear);
-            }
+            int index = util::Easing::displayIndexOf(type);
+            if (type == util::Easing::Type_Custom || index < 0 || index >= util::Easing::displayCount() - 1)
+                index = util::Easing::displayIndexOf(util::Easing::Type_Linear);
+            init.easingIndex = index;
         } else {
-            mInitialEasingIndex = util::Easing::displayIndexOf(util::Easing::Type_Linear);
+            init.easingIndex = util::Easing::displayIndexOf(util::Easing::Type_Linear);
         }
 
         auto range = settings.value("generalsettings/range");
-        mInitialRangeIndex = range.isValid() ? rangeToIndex(range.toString()) : rangeToIndex("All");
+        if (range.isValid())
+            init.rangeIndex = rangeToIndex(range.toString());
 
         auto timeScale = settings.value("generalsettings/ui/timeformat");
         if (timeScale.isValid()) {
-            // Stored as the enum value; map it (the legacy Frames_From1
-            // included) to a picker index.
-            mInitialTimeFormatIndex =
+            // Stored as the enum value; map it (the legacy Frames_From1 included) to a
+            // picker index.
+            init.timeFormatIndex =
                 timeFormatComboIndexOf(static_cast<core::TimeFormatType>(timeScale.toInt()));
         }
 
-        auto theme = settings.value("generalsettings/ui/theme");
-        if (theme.isValid()) {
-            mInitialThemeKey = theme.toString();
-        }
+        auto savedTheme = settings.value("generalsettings/ui/theme");
+        if (savedTheme.isValid())
+            init.themeKey = savedTheme.toString();
 
         const QString accentName = settings.value("generalsettings/ui/accent", QString()).toString();
-        mInitialAccent = theme::accentFromName(accentName);
+        init.accentIndex = int(theme::accentFromName(accentName));
 
         auto donationAllowed = settings.value("generalsettings/ui/donationAllowed");
-        bDonationAllowed = donationAllowed.isValid()? donationAllowed.toBool() : true;
+        init.donationAllowed = donationAllowed.isValid() ? donationAllowed.toBool() : true;
 
         auto forceSolverLoad = settings.value("forceSolverLoad", false);
-        bForceSolverLoad = forceSolverLoad.toBool();
+        init.forceSolverLoad = forceSolverLoad.toBool();
 
         auto ignoreWarnings = settings.value("export_ignore_warnings");
-        bIgnoreWarnings = ignoreWarnings.isValid()? ignoreWarnings.toBool(): false;
+        init.ignoreWarnings = ignoreWarnings.isValid() ? ignoreWarnings.toBool() : false;
 
         auto isAutoSave = settings.value("generalsettings/projects/enableAutosave");
-        bAutoSave = isAutoSave.isValid()? isAutoSave.toBool() : true;
+        init.autoSave = isAutoSave.isValid() ? isAutoSave.toBool() : true;
 
         auto isAutoSaveDelay = settings.value("generalsettings/projects/autosaveDelay");
-        mAutoSaveDelay = isAutoSaveDelay.isValid() ? std::max(1, isAutoSaveDelay.toInt()) : 5;
+        init.autoSaveDelayMinutes = isAutoSaveDelay.isValid() ? std::max(1, isAutoSaveDelay.toInt()) : 5;
 
+        // Kept byte-for-byte as the widget had it: the box opened UNTICKED whatever
+        // the file said (`!isAutoCbCopy.isValid() ? isAutoCbCopy.toBool() : false`
+        // evaluates to false on both branches). Faithfully ported rather than
+        // silently fixed; flagged in the port's report.
         auto isAutoCbCopy = settings.value("generalsettings/keys/autocb");
-        bAutoCbCopy = !isAutoCbCopy.isValid()? isAutoCbCopy.toBool() : false;
-
-
-
-        auto isResIDCheck = settings.value("res_id_check");
-        bResIDCheck = isResIDCheck.isValid()?  isResIDCheck.toBool() : true;
-
-        auto isKeyDelay = settings.value("generalsettings/keybindings/keyDelay");
-        mKeyDelay = isKeyDelay.isValid() ? isKeyDelay.toInt() : 125;
+        init.autoCbCopy = !isAutoCbCopy.isValid() ? isAutoCbCopy.toBool() : false;
 
         auto isAutoShowMesh = settings.value("generalsettings/tools/autoshowmesh");
-        bAutoShowMesh = isAutoShowMesh.isValid()? isAutoShowMesh.toBool() : false;
+        init.autoShowMesh = isAutoShowMesh.isValid() ? isAutoShowMesh.toBool() : false;
 
-        mInitialMouseValues.load();
+        auto isResIDCheck = settings.value("res_id_check");
+        init.resIDCheck = isResIDCheck.isValid() ? isResIDCheck.toBool() : true;
+
+        auto isKeyDelay = settings.value("generalsettings/keybindings/keyDelay");
+        init.keyDelayMs = isKeyDelay.isValid() ? isKeyDelay.toInt() : 125;
+
+        MouseSetting mouse;
+        mouse.load();
+        init.invertMainViewScaling = mouse.invertMainViewScaling;
+        init.invertTimeLineScaling = mouse.invertTimeLineScaling;
+        init.middleMouseMoveCanvas = mouse.middleMouseMoveCanvas;
+
+        mModel->seed(init);
     }
 
-    auto form = new QFormLayout();
-
-    // create inner widgets
+    // The three option lists the model cannot build itself: the theme ids come from
+    // gui::GUIResources::themeList() (the widget built its buttons from the same
+    // list), the easing names are the shared util::Easing table (the shell asserts
+    // the count against it) and the accent previews are the theme's own hues.
+    // Everything else is model-built.
+    XC_ASSERT(mModel->easingOptions().size() == util::Easing::displayCount() - 1);
     {
-        mLanguageBox = new QComboBox();
-        for (int i = 0; i < kLanguageTypeCount; ++i) {
-            mLanguageBox->addItem(indexToLanguage(i));
+        const QStringList themeIds = mGUIResources.themeList();
+        const QStringList themeLabels{tr("System"), tr("Light"), tr("Dark")};
+        QVariantList themes;
+        for (int i = 0; i < themeIds.size(); ++i) {
+            QVariantMap map;
+            map.insert(QStringLiteral("value"), themeIds.at(i));
+            // The widget indexed a fixed 3-label list and would have thrown on a
+            // fourth theme; the id is the fallback here instead.
+            map.insert(
+                QStringLiteral("label"), i < themeLabels.size() ? themeLabels.at(i) : themeIds.at(i)
+            );
+            themes.append(map);
         }
-        mLanguageBox->setCurrentIndex(mInitialLanguageIndex);
-        form->addRow(tr("Language (needs restart)"), mLanguageBox);
-
-        mEasingBox = new QComboBox();
-        for (int i = 0; i < kEasingTypeCount; ++i) {
-            mEasingBox->addItem(indexToEasing(i));
-        }
-        mEasingBox->setCurrentIndex(mInitialEasingIndex);
-        form->addRow(tr("Default keyframe easing"), mEasingBox);
-
-        mRangeBox = new QComboBox();
-        for (int i = 0; i < kRangeTypeCount; ++i) {
-            mRangeBox->addItem(indexToRange(i));
-        }
-        mRangeBox->setCurrentIndex(mInitialRangeIndex);
-        form->addRow(tr("Default keyframe range"), mRangeBox);
-
-        mTimeFormatBox = new QComboBox();
-        for (int i = 0; i < kTimeFormatOrderCount; ++i) {
-            mTimeFormatBox->addItem(indexToTimeFormat(i));
-        }
-        mTimeFormatBox->setCurrentIndex(mInitialTimeFormatIndex);
-        form->addRow(tr("Timeline format"), mTimeFormatBox);
-
-
-        // Theme: a segmented control on a recessed track; the active choice
-        // is an accent-filled pill (no per-segment borders — those read as
-        // "connected buttons", which is the dated look).
-        mThemeGroup = new QButtonGroup(this);
-        mThemeGroup->setExclusive(true);
-        {
-            const theme::Colors c = theme::Colors::current();
-            auto* themeRow = new QWidget();
-            themeRow->setAttribute(Qt::WA_StyledBackground, true);
-            auto* themeLayout = new QHBoxLayout(themeRow);
-            themeLayout->setContentsMargins(2, 2, 2, 2);
-            themeLayout->setSpacing(0);
-            const QStringList themeList = mGUIResources.themeList();
-            const QStringList themeLabels{tr("System"), tr("Light"), tr("Dark")};
-            for (int i = 0; i < themeList.size(); ++i) {
-                auto* b = new QPushButton(themeLabels.at(i));
-                b->setCheckable(true);
-                b->setProperty("themeId", themeList.at(i));
-                if (themeList.at(i) == mInitialThemeKey) b->setChecked(true);
-                mThemeGroup->addButton(b);
-                themeLayout->addWidget(b, 1);
-            }
-            themeRow->setStyleSheet(
-                QString("QWidget { background-color: %1; border-radius: 0.5em; }"
-                        "QPushButton { background-color: transparent; color: %2; border: none; border-radius: 0.375em; padding: 0.25em 0.875em; }"
-                        "QPushButton:hover { background-color: %3; }"
-                        "QPushButton:checked { background-color: %4; color: %5; }")
-                    .arg(c.recessed.name(), c.icon.name(), c.raised.name(), c.accent.name(), c.accentText.name()));
-            form->addRow(tr("Theme"), themeRow);
-        }
-
-        // Accent color: a row of square colored boxes. Border on hover, a
-        // contrast ring on the active choice. No hue numbers — the user
-        // picks the color, not a degree value.
-        mAccentGroup = new QButtonGroup(this);
-        mAccentGroup->setExclusive(true);
-        {
-            const theme::Colors c = theme::Colors::current();
-            auto* accentRow = new QWidget();
-            auto* accentLayout = new QHBoxLayout(accentRow);
-            accentLayout->setContentsMargins(0, 0, 0, 0);
-            accentLayout->setSpacing(6);
-            for (int i = 0; i < theme::kAccentCount; ++i) {
-                const theme::AccentColor acc = (theme::AccentColor)i;
-                auto* b = new QPushButton();
-                b->setCheckable(true);
-                b->setProperty("accent", i);
-                // Preview the accent hue at a mid lightness (accentSwatch):
-                // the fill token itself is theme-tuned (pale in light, deep
-                // in dark) and reads poorly as a bare swatch on the dialog
-                // background; the swatch shows the recognizable hue.
-                const QColor accent = (c.isDark ? theme::Colors::dark(acc) : theme::Colors::light(acc)).accentSwatch;
-                b->setStyleSheet(
-                    QString("QPushButton { width: 20px; height: 20px; background-color: %1; border: 2px solid transparent; padding: 0; min-height: 0; min-width: 0; }"
-                            "QPushButton:hover { border-color: %2; }"
-                            "QPushButton:checked { border-color: %3; }")
-                        .arg(accent.name(), c.outline.name(), c.text.name()));
-                if (acc == mInitialAccent) b->setChecked(true);
-                mAccentGroup->addButton(b);
-                accentLayout->addWidget(b);
-            }
-            accentLayout->addStretch();
-            form->addRow(tr("Accent color"), accentRow);
-        }
+        mModel->setThemeOptions(themes);
     }
-
-    auto projectSaving = new QFormLayout();
     {
-        mAutoSave = new QCheckBox();
-        mAutoSave->setChecked(bAutoSave);
-        projectSaving->addRow(tr("Automatically save your project"), mAutoSave);
-
-        mAutoSaveDelayBox = new QSpinBox();
-        mAutoSaveDelayBox->setRange(1, 999); // 0 would make the timer fire continuously
-        mAutoSaveDelayBox->setValue(mAutoSaveDelay);
-        projectSaving->addRow(tr("Time (in minutes) between autosaves"), mAutoSaveDelayBox);
-
-        mAutoShowMesh = new QCheckBox();
-        mAutoShowMesh->setChecked(bAutoShowMesh);
-        connect(mAutoShowMesh, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.setValue("generalsettings/tools/autoshowmesh", mAutoShowMesh->isChecked());
-        });
-        projectSaving->addRow(tr("Show mesh when selecting FFD"), mAutoShowMesh);
-
-        mAutoCbCopy = new QCheckBox();
-        mAutoCbCopy->setChecked(bAutoCbCopy);
-        projectSaving->addRow(tr("On copy send keys to the clipboard"), mAutoCbCopy);
-
-
-        bResIDBox = new QCheckBox();
-        bResIDBox->setChecked(bResIDCheck);
-        projectSaving->addRow(tr("Enforce ID check on asset download"), bResIDBox);
-
-        mIgnoreWarnings = new QCheckBox();
-        mIgnoreWarnings->setChecked(bIgnoreWarnings);
-        projectSaving->addRow(tr("Ignore export warnings"), mIgnoreWarnings);
-
-        mDonationAllowed = new QCheckBox();
-        mDonationAllowed->setChecked(bDonationAllowed);
-        projectSaving->addRow(tr("Allow donation menu"), mDonationAllowed);
-
-        mForceSolverLoad = new QCheckBox();
-        mForceSolverLoad->setChecked(bForceSolverLoad);
-        projectSaving->addRow(tr("Force project to load"), mForceSolverLoad);
-
-        mResetButton = new QPushButton(tr("Reset recent files list"));
-        mResetButton->setToolTip(tr("Deletes all project entries from your recents"));
-        connect(mResetButton, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.remove("projectloader/recents");
-            MainWindow::showInfoPopup(tr("Success"), tr("All entries have been successfully removed"), "Info");
-        });
-        projectSaving->addRow(mResetButton);
-    }
-
-    auto keybindingSettings = new QFormLayout();
-    {
-        mKeyDelayBox = new QSpinBox();
-        mKeyDelayBox->setRange(0, 10000);
-        mKeyDelayBox->setValue(mKeyDelay);
-        keybindingSettings->addRow(tr("Global keybind delay (ms)"), mKeyDelayBox);
-    }
-
-    auto mouseSettings = new QFormLayout();
-    {
-        mInvertMainViewScalingBox = new QCheckBox();
-        mInvertMainViewScalingBox->setChecked(mInitialMouseValues.invertMainViewScaling);
-        mouseSettings->addRow(tr("Inverse canvas scrolling"), mInvertMainViewScalingBox);
-
-        mInvertTimeLineScalingBox = new QCheckBox();
-        mInvertTimeLineScalingBox->setChecked(mInitialMouseValues.invertTimeLineScaling);
-        mouseSettings->addRow(tr("Inverse timeline scrolling"), mInvertTimeLineScalingBox);
-
-        mMiddleMouseMoveCanvas = new QCheckBox();
-        mMiddleMouseMoveCanvas->setChecked(mInitialMouseValues.middleMouseMoveCanvas);
-        mouseSettings->addRow(tr("Middle mouse moves canvas"), mMiddleMouseMoveCanvas);
-    }
-
-    createTab(tr("General"), form);
-    createTab(tr("QoL"), projectSaving);
-    createTab(tr("Keyboard"), keybindingSettings);
-    createTab(tr("Mouse"), mouseSettings);
-
-
-    this->setMainWidget(mTabs, false);
-
-    this->setOkCancel([=](int aResult) -> bool {
-        if (aResult == 0) {
-            this->saveSettings();
+        const theme::Colors c = theme::Colors::current();
+        QVariantList accents;
+        for (int i = 0; i < theme::kAccentCount; ++i) {
+            const theme::AccentColor acc = (theme::AccentColor)i;
+            QVariantMap map;
+            map.insert(QStringLiteral("value"), i);
+            // Preview the accent hue at a mid lightness (accentSwatch): the fill token
+            // itself is theme-tuned (pale in light, deep in dark) and reads poorly as a
+            // bare swatch on the dialog background.
+            map.insert(
+                QStringLiteral("swatch"),
+                (c.isDark ? theme::Colors::dark(acc) : theme::Colors::light(acc)).accentSwatch.name()
+            );
+            accents.append(map);
         }
-        return true;
+        mModel->setAccentOptions(accents);
+    }
+
+    mTheme = new QmlTheme(this);
+
+    mQuick = new QQuickWidget(this);
+    mQuick->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    // The theme and the model are context properties, exactly as the export shell
+    // does it: the scene reads `theme.base` and `generalSettingModel.languageIndex`
+    // with no C++ type registration. NOT "model": every Repeater and ListView has a
+    // `model` property of its own, so a scene binding would resolve the right-hand
+    // side to that shadowing property.
+    mQuick->rootContext()->setContextProperty(QStringLiteral("generalSettingModel"), mModel);
+    mQuick->rootContext()->setContextProperty(QStringLiteral("theme"), mTheme);
+    // The scene's backdrop: the theme's own window colour, so a resize does not flash
+    // white.
+    mQuick->setClearColor(theme::Colors::current().base);
+    mQuick->setSource(QUrl(QStringLiteral("qrc:/AnimeEffects/Dialogs/qml/GeneralSettingDialog.qml")));
+
+    // Size to the scene, now that it exists (see resizeToScene).
+    resizeToScene();
+
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(mQuick);
+
+    // The scene's buttons do not know about QDialog, and they should not: the model
+    // carries the outcome, and the shell turns the request into the dialog result and
+    // writes the settings. Saving happens BEFORE accept() so the call site's
+    // post-exec() read of the *HasChanged() predicates sees the same model state the
+    // settings were written from.
+    connect(mModel, &GeneralSettingViewModel::acceptRequested, this, [this]() {
+        saveSettings();
+        accept();
+    });
+    connect(mModel, &GeneralSettingViewModel::cancelRequested, this, &QDialog::reject);
+    // Each tab is a different set of rows, so the window re-hugs the scene when the
+    // user switches (the same size-to-scene rule as on open).
+    connect(mModel, &GeneralSettingViewModel::currentTabChanged, this, &GeneralSettingDialog::resizeToScene);
+    // The reset also raises the app's info popup, which is a WIDGET surface: the scene
+    // asks, the shell answers.
+    connect(mModel, &GeneralSettingViewModel::resetRecentFilesRequested, this, []() {
+        QSettings().remove(QStringLiteral("projectloader/recents"));
+        MainWindow::showInfoPopup(tr("Success"), tr("All entries have been successfully removed"), "Info");
+    });
+    // "Show mesh when selecting FFD" is not part of the accepted batch: the widget
+    // wrote its key the moment the box was clicked, and the port keeps that.
+    connect(mModel, &GeneralSettingViewModel::autoShowMeshChanged, this, [this]() {
+        QSettings().setValue(QStringLiteral("generalsettings/tools/autoshowmesh"), mModel->autoShowMesh());
     });
 }
 
-QFormLayout* GeneralSettingDialog::createTab(const QString& aTitle, QFormLayout* aForm) {
-    auto scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-
-    auto frame = new QFrame();
-    scroll->setWidget(frame);
-
-    auto form = new QFormLayout();
-    form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-    form->setLabelAlignment(Qt::AlignRight);
-    frame->setLayout(aForm);
-    frame->adjustSize();
-    mTabs->addTab(scroll, aTitle);
-
-    return form;
+GeneralSettingDialog::~GeneralSettingDialog() {
+    // Tear the scene down before the model/theme context objects die, so the scene's
+    // binding teardown never re-reads a destroyed context property (the same rule the
+    // export and new-project shells follow).
+    delete mQuick;
+    mQuick = nullptr;
 }
 
-bool GeneralSettingDialog::languageHasChanged() { return mInitialLanguageIndex != mLanguageBox->currentIndex(); }
-
-bool GeneralSettingDialog::easingHasChanged() { return mInitialEasingIndex != mEasingBox->currentIndex(); }
-
-bool GeneralSettingDialog::rangeHasChanged() { return mInitialRangeIndex != mRangeBox->currentIndex(); }
-
-bool GeneralSettingDialog::timeFormatHasChanged() { return mInitialTimeFormatIndex != mTimeFormatBox->currentIndex(); }
-
-bool GeneralSettingDialog::themeHasChanged() { return mInitialThemeKey != theme(); }
-
-bool GeneralSettingDialog::donationHasChanged() {return bDonationAllowed != mDonationAllowed->isChecked(); }
-
-bool GeneralSettingDialog::forceSolverLoadHasChanged() {return bForceSolverLoad != mForceSolverLoad->isChecked(); }
-
-bool GeneralSettingDialog::ignoreWarningsHasChanged() {return bIgnoreWarnings != mIgnoreWarnings->isChecked(); }
-
-bool GeneralSettingDialog::autoSaveHasChanged() { return bAutoSave != mAutoSave->isChecked(); }
-
-bool GeneralSettingDialog::autoSaveDelayHasChanged() { return mAutoSaveDelay != mAutoSaveDelayBox->value(); }
-
-bool GeneralSettingDialog::resIDCheckHasChanged() { return bResIDCheck != bResIDBox->isChecked(); }
-
-bool GeneralSettingDialog::cbCopyHasChanged() { return bAutoCbCopy != mAutoCbCopy->isChecked(); }
-
-QString GeneralSettingDialog::theme() {
-    return mThemeGroup->checkedButton() ? mThemeGroup->checkedButton()->property("themeId").toString() : mInitialThemeKey;
+void GeneralSettingDialog::resizeToScene() {
+    // The window HUGS the scene: the QML root's implicitHeight is the natural height
+    // of the current tab's rows plus the tab strip and the footer band, and the shell
+    // sizes the dialog to it. Both dimensions yield to the screen, and the scene's own
+    // scroll host covers a screen shorter than the rows.
+    constexpr int kDefaultWidth = 520;
+    constexpr int kMinimumWidth = 420;
+    constexpr int kMinimumHeight = 260;
+    const QRect avail = screen() ? screen()->availableGeometry() : QRect();
+    const int maxW = avail.width() > 0 ? avail.width() : kDefaultWidth;
+    const int maxH = avail.height() > 0 ? avail.height() : kMinimumHeight;
+    int wantedH = kMinimumHeight;
+    if (auto* scene = mQuick->rootObject()) {
+        const int natural = qRound(scene->implicitHeight());
+        if (natural > 0)
+            wantedH = natural;
+    }
+    setMinimumSize(qMin(kMinimumWidth, maxW), qMin(kMinimumHeight, maxH));
+    resize(qMin(kDefaultWidth, maxW), qMin(wantedH, maxH));
 }
 
-theme::AccentColor GeneralSettingDialog::accent() {
-    return mAccentGroup->checkedButton()
-        ? (theme::AccentColor)mAccentGroup->checkedButton()->property("accent").toInt()
-        : mInitialAccent;
-}
+void GeneralSettingDialog::selectTab(int aIndex) { mModel->setCurrentTab(aIndex); }
 
-bool GeneralSettingDialog::accentHasChanged() {
-    return mInitialAccent != accent();
-}
+bool GeneralSettingDialog::easingHasChanged() { return mModel->easingHasChanged(); }
 
+bool GeneralSettingDialog::rangeHasChanged() { return mModel->rangeHasChanged(); }
 
-bool GeneralSettingDialog::keyDelayHasChanged() { return mKeyDelay != mKeyDelayBox->value(); }
+bool GeneralSettingDialog::languageHasChanged() { return mModel->languageHasChanged(); }
 
-bool GeneralSettingDialog::mouseHasChanged() {
-    MouseSetting currentValues;
-    currentValues.invertMainViewScaling = mInvertMainViewScalingBox->isChecked();
-    currentValues.invertTimeLineScaling = mInvertTimeLineScalingBox->isChecked();
-    currentValues.middleMouseMoveCanvas = mMiddleMouseMoveCanvas->isChecked();
-    return mInitialMouseValues != currentValues;
-}
+bool GeneralSettingDialog::timeFormatHasChanged() { return mModel->timeFormatHasChanged(); }
+
+bool GeneralSettingDialog::autoSaveHasChanged() { return mModel->autoSaveHasChanged(); }
+
+bool GeneralSettingDialog::autoSaveDelayHasChanged() { return mModel->autoSaveDelayHasChanged(); }
+
+bool GeneralSettingDialog::resIDCheckHasChanged() { return mModel->resIDCheckHasChanged(); }
+
+bool GeneralSettingDialog::themeHasChanged() { return mModel->themeHasChanged(); }
+
+bool GeneralSettingDialog::donationHasChanged() { return mModel->donationHasChanged(); }
+
+bool GeneralSettingDialog::forceSolverLoadHasChanged() { return mModel->forceSolverLoadHasChanged(); }
+
+bool GeneralSettingDialog::ignoreWarningsHasChanged() { return mModel->ignoreWarningsHasChanged(); }
+
+bool GeneralSettingDialog::cbCopyHasChanged() { return mModel->cbCopyHasChanged(); }
+
+bool GeneralSettingDialog::keyDelayHasChanged() { return mModel->keyDelayHasChanged(); }
+
+bool GeneralSettingDialog::mouseHasChanged() { return mModel->mouseHasChanged(); }
+
+QString GeneralSettingDialog::theme() { return mModel->themeKey(); }
+
+theme::AccentColor GeneralSettingDialog::accent() { return (theme::AccentColor)mModel->accentIndex(); }
+
+bool GeneralSettingDialog::accentHasChanged() { return mModel->accentHasChanged(); }
 
 void GeneralSettingDialog::saveSettings() {
     QSettings settings;
     if (languageHasChanged())
-        settings.setValue("generalsettings/language", indexToLanguage(mLanguageBox->currentIndex(), false));
+        settings.setValue("generalsettings/language", indexToLanguage(mModel->languageIndex()));
 
     if (easingHasChanged()) {
-        // Store the enum value (locale-independent, and backward-compatible:
-        // older name strings still load via easingToEnum).
+        // Store the enum value (locale-independent, and backward-compatible: older
+        // name strings still load via easingToEnum).
         settings.setValue(
-            "generalsettings/easing", int(util::Easing::typeAtDisplayIndex(mEasingBox->currentIndex()))
+            "generalsettings/easing", int(util::Easing::typeAtDisplayIndex(mModel->easingIndex()))
         );
     }
     if (rangeHasChanged()) {
-        settings.setValue("generalsettings/range", indexToRange(mRangeBox->currentIndex(), false));
+        settings.setValue("generalsettings/range", indexToRange(mModel->rangeIndex()));
     }
     if (timeFormatHasChanged()) {
-        // Store the enum value (not the picker index) so a saved format is
-        // stable even if the picker order changes; load maps it back.
-        settings.setValue("generalsettings/ui/timeformat", int(timeFormatTypeAt(mTimeFormatBox->currentIndex())));
+        // Store the enum value (not the picker index) so a saved format is stable even
+        // if the picker order changes; load maps it back.
+        settings.setValue(
+            "generalsettings/ui/timeformat", int(timeFormatTypeAt(mModel->timeFormatIndex()))
+        );
     }
     if (themeHasChanged()) {
-        settings.setValue("generalsettings/ui/theme", theme());
+        settings.setValue("generalsettings/ui/theme", mModel->themeKey());
     }
-    if (donationHasChanged()){
-        settings.setValue("generalsettings/ui/donationAllowed", mDonationAllowed->isChecked());
+    if (donationHasChanged()) {
+        settings.setValue("generalsettings/ui/donationAllowed", mModel->donationAllowed());
     }
     // TODO: Bandaid fix, needs solving
     if (forceSolverLoadHasChanged()) {
-        settings.setValue("forceSolverLoad", mForceSolverLoad->isChecked());
+        settings.setValue("forceSolverLoad", mModel->forceSolverLoad());
     }
     if (ignoreWarningsHasChanged()) {
-        settings.setValue("export_ignore_warnings", mIgnoreWarnings->isChecked());
+        settings.setValue("export_ignore_warnings", mModel->ignoreWarnings());
     }
     if (autoSaveHasChanged()) {
-        settings.setValue("generalsettings/projects/enableAutosave", mAutoSave->isChecked());
+        settings.setValue("generalsettings/projects/enableAutosave", mModel->autoSave());
     }
     if (autoSaveDelayHasChanged()) {
-        settings.setValue("generalsettings/projects/autosaveDelay", mAutoSaveDelayBox->value());
+        settings.setValue("generalsettings/projects/autosaveDelay", mModel->autoSaveDelayMinutes());
     }
     if (resIDCheckHasChanged()) {
-        settings.setValue("res_id_check", bResIDBox->isChecked());
+        settings.setValue("res_id_check", mModel->resIDCheck());
     }
     if (cbCopyHasChanged()) {
-        settings.setValue("generalsettings/keys/autocb", mAutoCbCopy->isChecked());
+        settings.setValue("generalsettings/keys/autocb", mModel->autoCbCopy());
     }
     if (keyDelayHasChanged()) {
-        settings.setValue("generalsettings/keybindings/keyDelay", mKeyDelayBox->value());
+        settings.setValue("generalsettings/keybindings/keyDelay", mModel->keyDelayMs());
     }
     if (mouseHasChanged()) {
         MouseSetting newValues;
-        newValues.invertMainViewScaling = mInvertMainViewScalingBox->isChecked();
-        newValues.invertTimeLineScaling = mInvertTimeLineScalingBox->isChecked();
-        newValues.middleMouseMoveCanvas = mMiddleMouseMoveCanvas->isChecked();
+        newValues.invertMainViewScaling = mModel->invertMainViewScaling();
+        newValues.invertTimeLineScaling = mModel->invertTimeLineScaling();
+        newValues.middleMouseMoveCanvas = mModel->middleMouseMoveCanvas();
         newValues.save();
         mViaPoint.mouseSetting() = newValues;
     }
 }
+
 } // namespace gui

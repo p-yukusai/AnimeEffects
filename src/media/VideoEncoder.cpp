@@ -20,7 +20,7 @@ extern "C" {
 
 namespace media {
 
-QImage fitImage(const QImage& aImage, const QSize& aTarget, FitMode aFit) {
+QImage fitImage(const QImage& aImage, const QSize& aTarget, FitMode aFit, const QColor& aFill) {
     if (aFit == FitMode::None || aImage.size() == aTarget || aTarget.isEmpty()) {
         return aImage;
     }
@@ -32,7 +32,15 @@ QImage fitImage(const QImage& aImage, const QSize& aTarget, FitMode aFit) {
                                          : Qt::KeepAspectRatioByExpanding;
     const QImage fitted = src.scaled(aTarget, mode, Qt::SmoothTransformation);
     QImage canvas(aTarget, QImage::Format_RGBA8888);
-    canvas.fill(0x00000000); // fully transparent; stickers want no background
+    if (aFill.isValid()) {
+        // The export's background (transparency off): the margin must be OPAQUE,
+        // matching the render clear, so the artifact carries no alpha there.
+        QColor opaque = aFill;
+        opaque.setAlpha(255);
+        canvas.fill(opaque);
+    } else {
+        canvas.fill(0x00000000); // fully transparent; stickers want no background
+    }
     // KeepAspectRatioByExpanding can exceed the frame, so the offset may be
     // negative — that is the crop. Copy only the intersecting rectangle.
     const int ox = (aTarget.width() - fitted.width()) / 2;
@@ -124,6 +132,8 @@ struct VideoEncoder::Impl {
     AVPixelFormat mPixFmt = AV_PIX_FMT_NONE;
     bool mClosed = true;
     FitMode mFit = FitMode::None;
+    // Pad/crop margin colour (invalid = transparent); see Config::fill.
+    QColor mFill;
 
     // Optional audio stream (interleaved float, set via setAudio()).
     AVCodecContext* mAudioCtx = nullptr;
@@ -302,6 +312,7 @@ bool VideoEncoder::open(const Config& aConfig) {
     }
     mImpl->mPixFmt = pixFmt;
     mImpl->mFit = aConfig.fit;
+    mImpl->mFill = aConfig.fill;
 
     // Stream.
     mImpl->mStream = ::avformat_new_stream(mImpl->mFmt, nullptr);
@@ -400,7 +411,7 @@ bool VideoEncoder::writeFrame(const QImage& aFrame) {
 
     // Pad/Crop: reconcile the aspect ratio here (before the size-mismatch path
     // below) so the frame handed to sws is already exactly the encoded size.
-    rgba = fitImage(rgba, QSize(width, height), mImpl->mFit);
+    rgba = fitImage(rgba, QSize(width, height), mImpl->mFit, mImpl->mFill);
 
     // The encoder may have rounded a YUV frame dimension up to an even size
     // (normalizedSize). If the caller fed an odd-sized QImage, the sws/direct

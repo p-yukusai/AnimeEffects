@@ -6,6 +6,7 @@
 #include <QString>
 #include <QStringList>
 #include <QHash>
+#include <QColor>
 
 #include <algorithm>
 #include <functional>
@@ -120,6 +121,17 @@ struct ExportTarget {
     // axis is what kind of handover this is, and it puts 29 of the 55 rows in one
     // block, mixing what a file IS with what it is FOR.
     QString group;
+    // Where this row sits inside its section, when that order is a DESIGN decision
+    // rather than an alphabet (the four `general` rows: Video, Animated image,
+    // Image sequence, Archive file). 0 = unranked, and 0 is what an absent or
+    // unparseable attribute means - the row is then ordered by its label alone.
+    //
+    // Explicit because the label is TRANSLATED: a label sort is a different order
+    // in every language (it would put "Animated image" above "Video" and re-shuffle
+    // the block again under a translation), and because rank is the only way those
+    // rows can sit above the archive row - a sibling of theirs - without having to
+    // out-vote it by name. Data, like every other layout fact on this struct.
+    int order = 0;
     QString family;
     DestClass klass = DestClass::Fixed;
 
@@ -212,11 +224,25 @@ struct ExportGroup {
     QString title; // what the section says ("Telegram")
     // Whether this section's rows are VARIANTS of one platform (Telegram: a sticker,
     // a custom emoji, a video) or merely rows that share the absence of one
-    // ("general": a video for a chat app, a website, just a file, a master copy).
+    // ("general": a video, an animated image, a sequence, a master copy).
     // Variants are a node you open; the others are destinations and are listed
     // directly, because a platform holding one line, or holding four unrelated
     // answers, is a level of hierarchy that asks nothing.
     bool variants = true;
+    // Draw a full-width RULE after this group's rows (the `separatorAfter`
+    // attribute on the data table's <group>; set on `general`, the four answers with
+    // no platform of their own, whose end is where the platform sections begin).
+    // Which groups get one is a fact about the list's STRUCTURE, so it is data here
+    // for the same reason `variants` is: adding a block that needs its own boundary
+    // must be an edit to the table, never a constant in the view.
+    //
+    // It marks the END of the whole group, so it follows every row the group
+    // contributed whatever order they ended up in (the picker's sort runs before
+    // the insertion) - and it is set on `general` alone, after all FOUR of its
+    // rows. The archive row is why: a master copy is no more a platform than the
+    // video, image and sequence above it, so a rule between it and the platform
+    // sections would say something false about what a section means.
+    bool separatorAfter = false;
 };
 
 // An inclusive span of project frames. Inclusive rather than half-open because
@@ -323,6 +349,17 @@ struct ExportRequest {
     // stores no alpha at all; libx265 refuses it outright).
     bool allowTransparency = true;
 
+    // The effective viewport background colour (the project's override, else the
+    // theme's recessed token), resolved by the GUI and carried down plain. It is
+    // the colour the export paints behind the art WHEN THE ARTIFACT IS OPAQUE —
+    // i.e. when the plan resolves alpha off (planExport's alphaEnabled, which the
+    // fit loop reads). While transparency is on it is not used at all.
+    //
+    // On the request rather than a parameter of the fit call: the fit path
+    // re-plans from this same request and pads its own margins, so the colour has
+    // to travel with the fields the fit re-reads (see MainWindow's fitRequest).
+    QColor viewportBackground;
+
     // Whether audio is exported is NOT a preference — it is derived:
     //   included  iff  the project HAS audio  AND  not muted  AND  the
     //   destination permits it.
@@ -394,15 +431,15 @@ struct QualityControl {
     int best = 0;   // start here: highest quality
     int worst = 0;  // lowest quality we accept before shrinking instead
 
-    // The value that means "no override, let the Quality setting decide". It is ONE
-    // BELOW the span the codec accepts, not a fixed -1: the control that shows it is
-    // ranged to the codec's own span (a CRF box offering 0 for a codec whose span
-    // starts at 24 is a lie), and QSpinBox::setRange CLAMPS the current value into the
-    // new range. With the sentinel at -1 the range therefore erased it the moment it
-    // was applied, the box always held a real number, the Quality setting's combo was
-    // disabled as "not in charge", and the override was written into every export: the
-    // intent never ran. Outside the span, the sentinel survives the range.
-    int autoValue() const { return std::min(best, worst) - 1; }
+    // There is deliberately NO "auto" value here any more (ruled 2026-10-08: "Auto
+    // needs to be a special value, not just a visual thing"). Auto is a STATE of the
+    // dialog's own control (ExportViewModel::qualityOverrideAuto) and of the request
+    // (ExportParams::qualityOverride, -1 = let the Quality setting decide), so the
+    // span above is the codec's real one. The old `autoValue()` - "one below the
+    // span" - existed because a QSpinBox could not hold a value outside its range;
+    // the QML field can, which removed the sentinel, its clamping problem, and the
+    // comparison every codec change had to redo. See
+    // docs/export-dialog-implementation-notes.md, "Auto is a state".
 };
 
 struct FitResult {

@@ -155,7 +155,10 @@ public:
             opacity(),
             clipping(),
             flagsOffset(),
-            flags() {}
+            flags(),
+            name(),
+            identity(),
+            unicodeName() {}
 
         bool isVisible() const { return (flags & 0x02) == 0; }
         LayerEntryType entryType; // doesn't ref in writer
@@ -171,6 +174,19 @@ public:
         std::unique_ptr<LayerMask> mask;
         std::unique_ptr<BlendingRange> compositeBlendingRange;
         std::string name;
+        // Photoshop's stable per-layer id ("lyid"), in decimal form. It survives
+        // renames and re-saves, which is what lets a reimport match a project's
+        // layers back to their source: the display name cannot do that, because
+        // renaming a layer orphans the project's edits for it and two layers
+        // renamed to the same name get matched to each other. Empty when the file
+        // carries no "lyid" (ORA, older PSDs, non-Photoshop writers), which have
+        // no stable id -- identity then falls back to the name, see the identity
+        // resolution in img::Util::createResourceNodes.
+        std::string identity;
+        // The Unicode layer name ("luni"), decoded to UTF-8. It is the real name
+        // where it disagrees with the padded Pascal field, which is lossy outside
+        // Latin-1 and can be truncated by the writer. Empty when absent.
+        std::string unicodeName;
         AdditionalLayerInfoList additionalInfos; // it's contained by each layer
     };
     typedef std::unique_ptr<Layer> LayerPtr;

@@ -1,12 +1,10 @@
 #ifndef GUI_MAINMENUBAR_H
 #define GUI_MAINMENUBAR_H
 
-#include <QCheckBox>
 #include <QMenu>
-#include <QSpinBox>
+#include <QMenuBar>
 #include "core/Project.h"
 #include "ctrl/ExportTarget.h"
-#include "gui/EasyDialog.h"
 #include "gui/GUIResources.h"
 #include "qprocess.h"
 
@@ -56,29 +54,6 @@ public:
 private:
     GUIResources& mGUIResources;
 };
-
-//-------------------------------------------------------------------------------------------------
-class ProjectSettingDialog: public EasyDialog {
-    Q_OBJECT
-public:
-    ProjectSettingDialog(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent);
-    QSize canvasSize() const { return {mWidthBox->value(), mHeightBox->value()}; }
-    util::Range frameRange() const { return util::Range(mStartBox->value(), mEndBox->value()); }
-    bool loop() const { return mLoopBox->isChecked(); }
-    int fps() const { return mFPSBox->value(); }
-
-private:
-    bool confirmFrameRangeUpdating(const util::Range& aNewRange) const;
-    ViaPoint& mViaPoint;
-    core::Project& mProject;
-    QSpinBox* mWidthBox;
-    QSpinBox* mHeightBox;
-    QSpinBox* mStartBox;
-    QSpinBox* mEndBox;
-    QCheckBox* mLoopBox;
-    QSpinBox* mFPSBox;
-};
-
 
 } // namespace gui
 

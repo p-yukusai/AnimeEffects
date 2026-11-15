@@ -50,7 +50,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   require_export_flow
   ae set "Search destinations" "telegram.sticker" >/dev/null
   sleep 1.2
-  ae_activate "Use this destination" "the destination is accepted"
+  ae_activate "Continue" "the destination is accepted"
 
   # 2. The form, once the plan for that destination has been applied. Asking about
   #    "Destination" alone can answer with a snapshot of the form BEFORE the plan

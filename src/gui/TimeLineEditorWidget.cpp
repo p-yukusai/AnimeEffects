@@ -1061,5 +1061,32 @@ void TimeLineEditorWidget::setTrackSeperatorColor(const QColor& trackSeperatorCo
     mTimelineTheme.setTrackSeperatorColor(trackSeperatorColor);
 }
 
+//-------------------------------------------------------------------------------------------------
+void TimeLineEditorWidget::showKeyContextMenu(const core::TimeLineEvent& aTargets, const QPoint& aGlobalPos) {
+    // THE APPLICATION'S OWN ENTRY POINT for "change the easing of these keys".
+    // The menu is the one built above (mSelectEasing, from util::Easing's display
+    // table) and the action is onSelectEasingTriggered, which reads mTargets - so
+    // a caller from outside the timeline (the animation graph panel's right-click)
+    // gets the same list, the same labels, the same translations and the same
+    // edit path as a right-click in the timeline itself: there is no second menu
+    // to keep in step, and nothing here depends on the panel being up.
+    //
+    // aTargets is the caller's current selection in the timeline's own currency
+    // (ctrl::GraphEditor::retrieveSelection hands one out, and
+    // ctrl::TimeLineEditor::retrieveSelectionTargets hands out the same one when
+    // the two share their selection). It is stored in mTargets, which is what the
+    // menu's actions act on, exactly as onContextMenuRequested stores what it
+    // resolved from the click.
+    //
+    // popup() rather than exec(): the caller may be inside a paint or a press
+    // handler (the panel's right-click is the latter), and a nested event loop
+    // there could re-enter the code that is asking for the menu. The menu's
+    // actions fire from the event loop like any other popup's.
+    if (aTargets.targets().isEmpty())
+        return; // nothing to change the easing of
+
+    mTargets = aTargets;
+    mSelectEasing->popup(aGlobalPos);
+}
 
 } // namespace gui

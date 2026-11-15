@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
         q += "  AeIconButton { objectName: \"btnDrop\"; x: 30; y: 70; iconName: \"link\"; label: \"Keep aspect ratio\" }\n";
         q += "  AeTextField { objectName: \"fieldClear\"; x: 30; y: 110; width: 200; text: \"hello\"; clearButton: true; accessibleName: \"Name\" }\n";
         q += "  AeFrameRangeRow { objectName: \"rowRange\"; x: 30; y: 150; width: 320; firstFrame: 1; lastFrame: 48; firstLabel: \"First frame\"; lastLabel: \"Last frame\"; ordinal: 1 }\n";
-        q += "  AeNumberField { objectName: \"numReset\"; x: 30; y: 195; width: 180; label: \"Width\"; resetLabel: \"Reset to native\"; placeholder: \"Auto\"; placeholderValue: -1; value: 10; from: -1; to: 4096 }\n";
+        q += "  AeNumberField { objectName: \"numReset\"; x: 30; y: 195; width: 180; label: \"Width\"; resetLabel: \"Reset to native\"; placeholder: \"Auto\"; value: 10; from: 0; to: 4096 }\n";
         q += "}\n";
         f.write(q);
     }

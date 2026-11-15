@@ -3,6 +3,8 @@
 #include <QStyledItemDelegate>
 #include <QStyleOptionViewItem>
 #include <QTreeWidgetItemIterator>
+#include <algorithm>
+#include <functional>
 #include <memory>
 #include <QScrollBar>
 #include <QStyle>
@@ -253,6 +255,97 @@ void ObjectTreeWidget::notifyRestructure() {
     onTreeViewUpdated(this->topLevelItem(0));
     onScrollUpdated(scrollHeight());
     updateColumnWidth();
+}
+
+namespace {
+// The item that visualizes a given object node, or null when this tree does not
+// hold one (the node may live in a subtree the view never built).
+gui::obj::Item* findItemForNode(QTreeWidgetItem* aItem, const core::ObjectNode& aNode) {
+    if (auto* item = gui::obj::Item::cast(aItem)) {
+        if (&item->node() == &aNode) {
+            return item;
+        }
+    }
+    for (int i = 0; i < aItem->childCount(); ++i) {
+        if (auto* found = findItemForNode(aItem->child(i), aNode)) {
+            return found;
+        }
+    }
+    return nullptr;
+}
+} // namespace
+
+bool ObjectTreeWidget::canDeleteObjects(const QVector<core::ObjectNode*>& aNodes) const {
+    if (aNodes.isEmpty()) {
+        return true;
+    }
+    if (this->topLevelItemCount() == 0) {
+        return false;
+    }
+    QTreeWidgetItem* root = this->topLevelItem(0);
+    for (const core::ObjectNode* node : aNodes) {
+        if (!node) {
+            return false;
+        }
+        obj::Item* item = findItemForNode(root, *node);
+        if (!item || !item->parent()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void ObjectTreeWidget::pushDeleteObjects(const QVector<core::ObjectNode*>& aNodes, cmnd::ScopedMacro& aMacro) {
+    if (!mProject || aNodes.isEmpty() || this->topLevelItemCount() == 0) {
+        return;
+    }
+
+    // Resolve every node to its item NOW: the removals reindex the tree, so each
+    // parent and index has to be read from the state before any command runs.
+    struct Target {
+        obj::Item* item;
+        QTreeWidgetItem* parent;
+        int index;
+    };
+    QVector<Target> targets;
+    QTreeWidgetItem* root = this->topLevelItem(0);
+    for (core::ObjectNode* node : aNodes) {
+        if (!node) {
+            continue;
+        }
+        obj::Item* item = findItemForNode(root, *node);
+        if (!item || !item->parent()) {
+            continue;
+        }
+        targets.push_back({item, item->parent(), item->parent()->indexOfChild(item)});
+    }
+    if (targets.isEmpty()) {
+        return;
+    }
+
+    std::sort(targets.begin(), targets.end(), [](const Target& aLhs, const Target& aRhs) {
+        if (aLhs.parent != aRhs.parent) {
+            return std::less<QTreeWidgetItem*>()(aLhs.parent, aRhs.parent);
+        }
+        return aLhs.index > aRhs.index;
+    });
+
+    // one delete event carrying every target, for the model's own bookkeeping
+    auto* coreNotifier = new core::ObjectTreeNotifier(*mProject);
+    coreNotifier->event().setType(core::ObjectTreeEvent::Type_Delete);
+    for (const Target& target : targets) {
+        coreNotifier->event().pushTarget(target.item->node().parent(), target.item->node());
+    }
+    aMacro.grabListener(coreNotifier);
+    aMacro.grabListener(new obj::RestructureNotifier(*this));
+
+    auto& stack = mProject->commandStack();
+    for (const Target& target : targets) {
+        core::ObjectNode& node = target.item->node();
+        stack.push(mProject->objectTree().createNodeDeleter(node));
+        stack.push(new obj::RemoveItem(*target.parent, target.index, *target.item));
+        stack.push(new cmnd::GrabDeleteObject<obj::Item>(target.item));
+    }
 }
 
 //-------------------------------------------------------------------------------------------------

@@ -96,6 +96,53 @@ behaviour regresses. "It looks right in a screenshot" verifies none of the lines
     (Decided 2026-09-30: collapsed default, state persisted.)
 18. [R6] A destination with no children is not indented as though it had a parent.
 19. [D] Search matches across every group, and groups with no match are not listed.
+    (Decided 2026-10-08: the match is fuzzy, and PER QUERY TOKEN — every
+    whitespace- or punctuation-separated token of the query must match the row, and
+    each token tolerates typos, prefixes and word fragments; a subsequence is
+    matched only ever inside a single word, deliberately never across words, because
+    a cross-word subsequence makes a three-letter query match nearly every capped
+    row — every capped destination's search haystack ends in " capped size limit" —
+    and the picker would stop narrowing. The phrase bonus is FIELD-LOCAL for the
+    same reason: the row's fields are joined for scoring with a unit separator, so
+    the +400 means "the query's words are adjacent INSIDE one field of the row",
+    never a phrase that appears only by bridging two fields. It is measured, not
+    aesthetic: with a flat join the platform title "Telegram" abutted the family
+    word "sticker" in telegram.emoji's haystack, so typing the exact label
+    "telegram sticker" scored telegram.emoji level with telegram.sticker and
+    highlighted the earlier row, and the field boundary is what stops it. The score
+    decides only which match is HIGHLIGHTED; the row order stays the table's order,
+    and the highlighted row is still the row Enter answers with, B8 and C20.)
+    (Decided 2026-10-08, the same day as the fuzzy rule and about the same list: the picker's own
+    top is the `general` group's four rows — Video, Animated image, Image sequence, Archive file —
+    and the ORDER they are listed in is designed, not alphabetical. The group is declared first
+    and `variants="false"`, so per C18 its rows are listed directly rather than under a platform,
+    and each of the four carries an explicit `order` the picker sorts by: ranked rows first, by the
+    number the table gave them, and only an unranked row falls back to its label. The rank is
+    load-bearing rather than decorative: the label is TRANSLATED, so a label sort is a different
+    order in every language — it would put "Animated image" above "Video" — and a rank is also the
+    only way the three generic rows can sit above the Archive row, a sibling of theirs rather than
+    a variant of any platform above them. The row that claimed the top before them is gone:
+    `chat.generic.video` ("A video for a chat app") declared `<size mode="max" w="1280" h="720"/>`
+    and a 20 MB byte cap as the floor every chat app accepts, and neither holds for most of them,
+    so the generic Video row that replaced it declares the project's own size and no cap at all,
+    with each platform's ceiling left on that platform's own row. The eight labels renamed in the
+    same change follow one rule: a destination listed inside a platform's section that would
+    otherwise repeat the bare platform name carries its VARIANT instead — "Discord (video)",
+    "Telegram (video)", "WhatsApp (video)", "Signal (video)", "Messenger (video)", "Bluesky (video)",
+    "Reddit (video)", "Tumblr (video)" — because a bare platform name beside siblings that already say
+    what they make is vague; a platform with a single destination is left alone, since there is
+    nothing to disambiguate it from (YouTube, and likewise Vimeo, Dailymotion and Mastodon). The
+    declarations and their derivation are in `docs/export-dialog-implementation-notes.md`, "the
+    general trio replaces the chat-app floor".)
+    (Decided 2026-10-08, about the same block of rows: a full-width RULE closes the rows that have
+    no platform of their own. It sits after the WHOLE general block rather than after the third of
+    the four generic rows — the Archive row is no more a platform than they are, so a rule above it
+    would say the sections begin earlier than they do. Which block carries a rule is DATA: the table
+    sets `separatorAfter="true"` on the group, like the grouping itself, and the scene draws one
+    hairline in a 12 px band. It is not a row anyone can land on: it is not selectable, never the
+    current row, not counted among the destinations or the visible rows, and it is hidden while a
+    query is active, because a filtered list is a list of matches and the rule describes the
+    unfiltered structure.)
 20. [R1] Matches are reachable with the keyboard, not only with the pointer: the highlighted row is
     the row Enter activates and the row a click selects.
 21. [R7] No row paints a wrong intermediate colour: the hover state on first entry is identical to
@@ -149,20 +196,69 @@ item 30's "drawn above its owner" is the z-order.)
     `Qt.SizeHorCursor` for the whole field, which is the defect.
 32. [D] In scrub mode a horizontal drag changes the value by the field's step, clamped to the
     field's range, with the scrub cursor. (`ScrubSpinBox` specifies the drag and the cursor.)
+    (Amended 2026-10-08, on the report "when dragging the scrubbers, the drag also propagates to the
+    scroll area. This leads to the user accidentally scrolling while changing values": a drag that
+    STARTS on a scrub field belongs to that field — the enclosing scroll host may not steal it — so a
+    value edit can never scroll the page. The wheel still scrolls over such a field, and a drag
+    starting anywhere else on the page still scrolls it.)
 33. [D] `selectAll()` on entry and `Keys.onEscapePressed` are the design's behaviour. (Escape's
     effect decided 2026-09-30: restore the value the field had when this edit began — see 34.)
 34. [D] Escape restores the value from when the field was focused (the start of the current edit),
     not the value from when the dialog opened. (Decided 2026-09-30.)
 35. [D] The Auto/Reset affordance is a separate, icon-only control with its words in `resetLabel`
-    (`AeNumberField` already specifies this), and the row reads its placeholder word when the value
-    is the sentinel. The words surface as the button's tooltip — "Reset to default" (Decided
-    2026-09-30, see E29).
+    (`AeNumberField` already specifies this). The words surface as the button's tooltip — "Reset to
+    default" (Decided 2026-09-30, see E29).
+    (Amended 2026-10-08: a row that reads a WORD instead of a number does so from a STATE of the
+    control, never from the value being equal to a sentinel — "Auto needs to be a special value, not
+    just a visual thing". Every control whose number means "let the destination decide" carries that
+    state beside its value (`qualityOverrideAuto`, `sizeCapAuto`, `imageQualityAuto`), the field's
+    range is then the numbers the control really accepts, and the word is drawn for the state alone.
+    The superseded comparison rounded both sides, so a 0.25 MB size cap — a real cap, 256 KiB —
+    painted "Auto" over itself while the export really was fitted under it.)
 36. [D] Width and height keep their aspect lock; the frame-range fields clamp against each other so
     a range can never invert. (Lock ruled again 2026-10-03, with the crash report: while the lock is
     on, an edit keeps the ratio; pressing Reset re-bases the ratio to the size it just reset to, so
     the NEXT edit holds that one. The lock's own write-back was unbounded — a locked edit recursed
     261 291 frames deep and killed the process; see `docs/export-dialog-implementation-notes.md`,
     "The aspect lock crashed the app".)
+    (Ceiling and caps ruled 2026-10-08, on the report "The resolution aspect ratio linking is broken,
+    and so is the resolution reset. Also the default resolutions are really strange. It seems to
+    default to 720 in most cases even when the projects resolution is bigger." and the ruling "It
+    should default to project resolution unless a destination enforces a strict resolution limit."
+    A destination that only BOUNDS the size — `Free`, or `Max` as a ceiling — does not set it: the
+    Width/Height boxes hold the project's/user's size (a 1080x1080 project over `chat.whatsapp.video`'s
+    1280x720 ceiling opens 1080x1080, not the fitted 720x720), the ceiling bounds the OUTPUT and is
+    STATED in the Limits fact beside the byte cap ("max 1280 x 720"), and the fields carry no
+    destination maximum at all, so Reset to native lands the project's size exactly and the aspect
+    lock derives its partner from the PROJECT's ratio rather than the ceiling's. A destination that
+    PINS the size (`Exact`, `MaxExactSide`, `MaxMinSide`) still dictates it: the boxes report the
+    plan's size and stay uneditable. The per-number clamp this replaces was wrong in both directions
+    at once — it hid the project's size behind the ceiling's fit AND clamped the reset and the locked
+    partner against the same ceiling, which is why the pair took the ceiling's aspect. The ceiling
+    itself is not lost: `planExport` bounds the rule by the request and fits the source at export
+    time. And a byte cap is a MEASURED number, not a word: the table's `maxBytes` is a `qint64`, so
+    nine rows at or above 2 GiB (Telegram 2 GB through Vimeo 200 GB) used to parse as "no cap" and
+    lose both their Limits row and the export fit loop's bound; the evidence for both fixes is in the
+    implementation notes, "a resolution ceiling bounds the FILE, not the two boxes".)
+    (Ratio and reset re-ruled 2026-10-08, on the report "Looks like aspect ratio lock and resolution
+    reset to native are still broken. These dont follow mental model": the lock holds the ratio IN
+    EFFECT WHEN IT WAS LAST SWITCHED ON — not the project's, which made a locked pair of any other
+    shape snap back to the project's on the next edit — and Reset IGNORES the lock (it lands both
+    numbers at the project's size) while RE-BASING it to what it just landed on, so the next locked
+    edit holds the project's shape rather than the ratio that was there before. A lock that starts ON
+    from the saved preference holds the pair the form OPENED on.)
+    (Decided 2026-10-09, on this clause's second half: the pair-clamp is enforced at the MODEL
+    and offered at the ROW. `src/gui/qml/ExportViewModel.cpp:151-185`
+    (`ExportRangeModel::setRangeFirst`/`setRangeLast`) clamps each field against the project's
+    own extent and carries the neighbour along when an edit passes it, and the whole pair is
+    resolved in ONE pass so neither setter can re-enter the other and start an alternation;
+    `src/gui/qml/AeFrameRangeRow.qml:48-71` bounds each field's `from`/`to` by the partner, so
+    the form itself offers a pair that cannot invert — first=100 on a [10..50] range reads
+    100..100, not an inverted one. Both fields are re-emitted whether or not only one of them
+    moved, so a view redrawing only the edited field cannot keep showing the number the pair
+    no longer holds. The backend's swap-with-warning (`src/ctrl/ExportParams.h:229-238`) stays
+    as the last line rather than the only one. Pinned by `tests/export_form.cpp:1132-1205`,
+    written against the tree that took the number as typed.)
 
 ## G. Combo boxes (format, codec, quality intent)
 
@@ -183,9 +279,88 @@ item 30's "drawn above its owner" is the z-order.)
     own value as its explanation.
 41. [R12] The frame range lives under the Custom/Advanced section; the default surface stays
     uncluttered for the common case.
+    (Ruled 2026-10-09: the row MOVED rather than the clause — the Frames row is now the first
+    row of the Custom/Advanced section (`src/gui/qml/ExportDialog.qml:592-656`, the section's
+    ColumnLayout) instead of the first row of the OUTPUT grid, so this [R12] clause is MET as
+    written and was never amended; it stays gated by `rangeVisible`, so manual mode and a
+    Still artifact are unchanged. With it there the default surface is shorter by the rows,
+    which is the point of the move, and the D25 overflow measurements were re-taken around
+    it: the Advanced-open worst case is unchanged (the rows were already inside its height
+    while the section was open) and both figures are printed and re-measured by
+    `tests/form_layout.cpp:13-21`, which says which of the two numbers is the historical
+    before-column.)
 42. [D] Controls the destination dictates are stated, not offered; controls it merely defaults stay
     reachable under Advanced. (Ruled 2026-10-01: the offered codec row belongs HERE for destination
 mode — this clause governs it; manual mode's Encoding trio is unchanged.)
+    (Decided 2026-10-03: transparency is not an Advanced control. It sits on the regular surface,
+    below the Encoding rows, as the last regular row, and defaults OFF — turning it on moves the
+    archive ladder off its own best pick, so it is an opt-in the user makes, not a state the form
+    assumes. A destination's own `alpha="default-on"` still turns it on. What stays under Advanced
+    is what a destination merely DEFAULTS; where transparency was the section's only resident it is
+    no longer offered at all — `post.pixiv.ugoira` is the current example.)
+    (Measured 2026-10-03, OPEN — the saved preference does NOT win over the plan, and this is a
+    defect, not the rule: a saved `export_allow_transparency=true` is read into `Init::transparency`
+    and does reach the row, but for an `alpha="choice"` destination `planExport()` resolves
+    `Choice → false` and `freezeCapability()` then reads "row on, plan off" as a refusal — it clears
+    the value AND leaves the box disabled, and `readBack()` writes the cleared value back to the
+    setting. Measured on the landed tree: seeded `[General] export_allow_transparency=true` with
+    `twitch.emote` gives value 0, enabled 0. Left as-is pending a ruling; the evidence and the
+    one-line candidate fix are in the implementation notes under "the saved transparency preference
+    is erased by a rule that was only ever meant for refusals".)
+    (Decided 2026-10-08: the manual escape hatch has no button. The picker's footer used to carry
+    "My platform isn't listed (I'll choose the format)" as an answer of its own, standing beside the
+    destinations; it is gone, because the generic rows at the top of the list are what it was there
+    for and a button restating them read as a fourth kind of answer. Manual mode itself is unchanged
+    underneath: it is what the picker answers when the user types a query that matches nothing and
+    accepts the default answer ("Continue") — the model's own empty-id fallback,
+    `activate()` clearing the chosen id and accepting when the row it is asked about matched nothing
+    — so the dialog still hands the export form no destination, which is what manual mode means, and
+    the trio it hands over is item 46's. Both GUI probes already reached manual mode this way and
+    never through the button — `scripts/gui/probe_axes.sh` and `scripts/gui/probe_format.sh` type
+    "zzz no such platform" and then activate the default button, probe_format recording that it took
+    that answer partly because the button's own name carries apostrophes its single-quoted probe body
+    cannot address — so the surviving route is the one the probes already exercise. The model-side
+    witnesses are `tests/destination_picker.cpp` and `tests/picker_keyboard.cpp`; the evidence is in
+    `docs/export-dialog-implementation-notes.md`, "the general trio replaces the chat-app floor".)
+    (Decided 2026-10-08, about the picker's OWN WORDS: the export surface speaks the app's usual
+    dialog language — a noun-phrase title and an action verb on the confirm button — rather than
+    addressing the user in a sentence of its own. The picker's title is "Destination", the button
+    is "Continue", and manual mode's destination label is "Manual"; the field's placeholder lists
+    its examples in the UI's own script. The old wording was the app's only question-shaped dialog
+    title and its only sentence-shaped imperative, and the GUI probes address buttons by their
+    accessible NAME, so a reword is a probe change as well as a catalog one. Two consequences of
+    that are recorded here because they are not obvious: the manual button's name no longer carries
+    apostrophes (the probe note above was written when it did), and a NEW source string has no
+    catalog entry until translators fill it, so the picker's context is asserted in
+    `tests/destination_picker.cpp` on the search field's accessible name — a string that has been
+    in that context all along — instead of on the title it used to assert.)
+    (Decided 2026-10-09: H42 is CLOSED. The GUI's transparency answer now reaches the
+    destination-mode request — `src/gui/qml/ExportViewModel.cpp:1268` writes
+    `request.allowTransparency = mTransparency.value()` in `buildRequest()`, and the plan's
+    capability switch reads it (`src/ctrl/ExportTarget.cpp:1055`), so a `choice` row's plan
+    reports the choice it was GIVEN instead of resolving `Choice → false` over an answer it
+    never received. Two consequences the review recorded as dead are live again: the archive
+    ladder's alpha-OFF branch (AV1 at every non-Lossless bucket — the fall-through at
+    `src/ctrl/ExportTarget.cpp:978`, core-correct and unit-tested since the 2026-10-01 ruling)
+    is app-reachable, and the alpha-ON side's VP9 pick reaches the codec row
+    (`src/ctrl/ExportTarget.cpp:1160`). `freezeCapability`
+    (`src/gui/qml/ExportViewModel.cpp:814-834`) freezes only for `Required`/`Forbidden` and reads
+    a plan that refuses alpha over a choice the user made as the resolved CODEC's own refusal,
+    which is what that freeze is for — the mismatch it used to misread was one the PLAN produced
+    itself. Pinned by `tests/export_form.cpp:1103-1129` (the request carries the row in BOTH
+    states, because ON is the one the request's `true` default already carried) and
+    `tests/media_export_target.cpp:1482-1551` (the plan-side half).)
+    (Decided 2026-10-11: transparency OFF now means the export's BACKGROUND is the effective
+    viewport colour — the project's own override when it has one, the theme's `recessed` canvas
+    token otherwise, i.e. exactly the colour the viewport shows behind the art. The artwork
+    composites over it, so every pixel the art does not paint (the canvas, and any pad margin an
+    exact-size destination adds) is that colour, and an alpha-less artifact carries no alpha
+    there. Transparency ON is unchanged: transparent background, exactly as before. This
+    replaced the previous behaviour, where the export rendered on a fully transparent clear and
+    an alpha-less pixel format merely DROPPED that alpha — the background came out black in
+    video and as whatever the artwork's own pixels were in a still, and the colour was never
+    consulted at all. The colour is resolved in the GUI (the theme is a GUI concept) and travels
+    down as a plain QColor: `ctrl::` and `media::` read no theme.)
 
 ## I. Destination data
 
@@ -214,9 +389,11 @@ Cap unit = MB. At the limit: refuse with a visible reason.)
    codec actually resolved, because the muxer's default for HEVC in an ISO container is `hev1`,
    which Safari/iOS and QuickTime refuse. The tag therefore belongs to the RESOLVED CODEC, not to the
    row: `safari.transparent` pins it unconditionally (H.265 is its only codec, so the row and the
-   codec coincide), while the six rows that offer H.265 among others — `chat.discord.file`,
-   `post.instagram.reels`, `post.pinterest.video`, `youtube.video`, `website.video`, `generic.file` —
-   carry the same requirement behind that condition (the schema expresses it as an optional
+   codec coincide), while the five rows that offer H.265 among others — `chat.discord.file`,
+   `post.instagram.reels`, `post.pinterest.video`, `youtube.video`, `generic.video` — carry the same
+   requirement behind that condition (the 2026-10-08 fold of `website.video` and `generic.file` into
+   `generic.video` took the qualified tag with it — `assets/export/ExportTargets.txt:1153` is the row
+   and `:1161` its `<codecTag value="hvc1" codec="hevc"/>`; the schema expresses it as an optional
    `codec="<family>"` qualifier on `<codecTag>`; a `codecTag` with no qualifier stays
    unconditional, which is how the Safari row keeps its pin). H.264 and AV1 output is unchanged: no tag is
    written for any other codec. (The facts documented the requirement only for Safari; the ruling
@@ -242,6 +419,11 @@ Cap unit = MB. At the limit: refuse with a visible reason.)
     wrote this row's condition as "not manual mode" — wrong in both directions, and masked because
     the call form `exportModel.manualMode()` registers no binding dependency and froze the row
     visible; see the notes' call-form account. Fixed 2026-10-03.)
+    (Amended 2026-10-08, on "when CRF is used Quality should change to Custom instead of disabling,
+    this is established UI convention": while the codec's own number is named, this row READS
+    "Custom" — a fourth entry beside the three buckets, present only while it is the state — and
+    stays usable. Choosing a bucket from it hands the decision back to the intent, so a named number
+    and a bucket are never both in charge.)
 
 ## Design questions (all decided 2026-09-30 — kept for traceability)
 

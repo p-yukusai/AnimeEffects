@@ -167,11 +167,14 @@ PY
     ae_press "File" "the File menu opens"
     ae_press "Export project as" "the export entry is there"
     require_export_flow
-    ae wait "Use this destination" >/dev/null 2>&1 || true
-    ae_activate "Use this destination" "the destination is accepted"
+    ae wait "Continue" >/dev/null 2>&1 || true
+    ae_activate "Continue" "the destination is accepted"
     # The plan for the destination is applied after the form appears, so wait for a
     # widget it only shows once that has happened before reading any input back.
     ae wait "Advanced" >/dev/null 2>&1 || true
+    # H41: the frame range lives under Advanced, so the section must be OPEN before
+    # its rows can be addressed by name.
+    ae_activate "Advanced" "the Advanced section opens, adding its rows"
     sleep 1.5
   }
 

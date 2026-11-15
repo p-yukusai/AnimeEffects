@@ -12,6 +12,7 @@ ViaPoint::ViaPoint(QWidget* aParent):
     mParent(aParent),
     mProject(),
     mResDialog(),
+    mObjectTree(),
     mLogView(),
     mGLDeviceInfo(),
     mKeyCommandMap(),
@@ -24,6 +25,8 @@ void ViaPoint::setProject(core::Project* aProject) { mProject = aProject; }
 void ViaPoint::setMainMenuBar(MainMenuBar* aMainMenuBar) { mMainMenuBar = aMainMenuBar; }
 
 void ViaPoint::setResourceDialog(ResourceDialog* aResDialog) { mResDialog = aResDialog; }
+
+void ViaPoint::setObjectTreeWidget(ObjectTreeWidget* aTree) { mObjectTree = aTree; }
 
 img::ResourceNode* ViaPoint::requireOneResource() {
     QScopedPointer<ResourceDialog> dialog(new ResourceDialog(*this, true, mParent));

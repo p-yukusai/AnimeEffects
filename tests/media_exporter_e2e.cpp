@@ -633,6 +633,136 @@ int main(int argc, char** argv) {
         }
     }
 
+    // Scenario 10b: the OPAQUE export's background reaches the artifact's PIXELS.
+    // When transparency resolves OFF the GUI hands the exporter the effective
+    // viewport colour (CommonParam::background), and every pixel the artwork does
+    // not paint must carry it, fully opaque. Two regions prove the two code paths
+    // that fill such a pixel: the render's clear (pixels INSIDE the fitted art the
+    // artwork leaves unpainted) and the pad margin (fitImage's own fill). The same
+    // export with an INVALID background must be unchanged there - transparent - so
+    // this cannot pass on a fill that ignores the parameter. The PNG is loaded back
+    // and its pixels read: the artifact is the product, not the code path.
+    {
+        const QSize native = project.attribute().imageSize();
+        const int side = std::min(native.width(), native.height());
+        const QSize exact(side, side);
+        if (native.width() == native.height()) {
+            check(false, "e2e export-bg: project is already square, the pad margin is degenerate");
+        } else {
+            auto renderFirstPng = [&](const QString& aDir, ctrl::Exporter::CommonParam& cp) -> QImage {
+                QDir(aDir).removeRecursively();
+                QDir().mkpath(aDir);
+                std::unique_ptr<ctrl::Exporter> ex = makeExporter();
+                ctrl::Exporter::ImageParam ip;
+                ip.name = "ae_e2e_bg"; ip.suffix = "png"; ip.quality = 90;
+                cp.path = aDir;
+                if (!ex->execute(cp, ip)) return QImage();
+                const QStringList pngs = QDir(aDir).entryList(QStringList{ "*.png" }, QDir::Files);
+                if (pngs.isEmpty()) return QImage();
+                return QImage(QDir(aDir).filePath(pngs.first()));
+            };
+
+            const QString opaqueDir = aeTestTempPath("ae_e2e_bgopaque");
+            const QString clearDir = aeTestTempPath("ae_e2e_bgclear");
+
+            // An improbable colour: what is measured is a region the art cannot
+            // reach, so a match there can only have come from the background.
+            const QColor bg(17, 34, 51); // #112233
+
+            ctrl::Exporter::CommonParam base;
+            base.size = exact; base.fps = fps;
+            base.selection = ctrl::FrameSelection::fromRange(minFrame, minFrame);
+            // The same fitted render an exact-size destination plans (scenario 10).
+            const double scale = std::min(exact.width() / (double)native.width(),
+                                         exact.height() / (double)native.height());
+            base.renderSize = QSize(int(native.width() * scale) & ~1, int(native.height() * scale) & ~1);
+            base.fit = media::FitMode::Pad;
+
+            ctrl::Exporter::CommonParam opaque = base;
+            opaque.background = bg;                   // transparency resolved OFF
+            ctrl::Exporter::CommonParam clear = base;  // default invalid = transparent export
+
+            const QImage opaqueImg = renderFirstPng(opaqueDir, opaque);
+            const QImage clearImg = renderFirstPng(clearDir, clear);
+            check(!opaqueImg.isNull() && !clearImg.isNull(), "e2e export-bg: both exports wrote an image");
+            if (!opaqueImg.isNull() && !clearImg.isNull()) {
+                check(opaqueImg.size() == exact && clearImg.size() == exact,
+                      QStringLiteral("e2e export-bg: both are the exact size %1x%2 (got %3x%4)")
+                          .arg(exact.width()).arg(exact.height())
+                          .arg(opaqueImg.size().width()).arg(opaqueImg.size().height())
+                          .toUtf8().constData());
+
+                // The fitted art's rect, read the way scenario 10 reads it: the region
+                // the art can paint. Everything outside it is the pad margin.
+                const int ax = (exact.width() - base.renderSize.width()) / 2;
+                const int ay = (exact.height() - base.renderSize.height()) / 2;
+
+                // The margin is filled by fitImage with the exact colour; the clear
+                // INSIDE the art rect comes back through the 8-bit GL framebuffer, so
+                // compare with a small tolerance rather than bit equality.
+                const auto isBg = [&](const QColor& aColor) {
+                    return std::abs(aColor.red() - bg.red()) <= 2 &&
+                           std::abs(aColor.green() - bg.green()) <= 2 &&
+                           std::abs(aColor.blue() - bg.blue()) <= 2;
+                };
+
+                // 1. The pad margin: outside the fitted art, the opaque export is the
+                //    background at alpha 255, and the transparent export is unchanged
+                //    (alpha 0). A margin exists because the project is not square.
+                int marginCount = 0;
+                bool marginOk = true;
+                for (int y = 0; y < exact.height() && marginOk; ++y) {
+                    for (int x = 0; x < exact.width(); ++x) {
+                        const bool inArt = x >= ax && x < ax + base.renderSize.width() &&
+                                           y >= ay && y < ay + base.renderSize.height();
+                        if (inArt) continue;
+                        ++marginCount;
+                        const QColor o = opaqueImg.pixelColor(x, y);
+                        const QColor c = clearImg.pixelColor(x, y);
+                        if (!isBg(o) || o.alpha() != 255 || c.alpha() != 0) {
+                            marginOk = false;
+                            break;
+                        }
+                    }
+                }
+                check(marginCount > 0, "e2e export-bg: the fitted art leaves a pad margin to measure");
+                check(marginOk, "e2e export-bg: the pad margin IS the background, OPAQUE "
+                                "(and transparent without it)");
+
+                // 2. The render's clear: pixels INSIDE the fitted art that the artwork
+                //    does not paint. They are transparent in the transparent export, and
+                //    with the background they must be that colour at alpha 255 - which is
+                //    the CLEAR, since fitImage's fill never reaches inside the fitted
+                //    rect. The fixture carries alpha, so there are such pixels; the
+                //    precondition is asserted rather than letting an opaque project pass
+                //    without ever observing the clear.
+                int unpaintedInArt = 0;
+                bool clearOk = true;
+                for (int y = ay; y < std::min(ay + base.renderSize.height(), exact.height()) && clearOk; ++y) {
+                    for (int x = ax; x < std::min(ax + base.renderSize.width(), exact.width()); ++x) {
+                        if (qAlpha(clearImg.pixel(x, y)) != 0) continue; // the art painted here
+                        ++unpaintedInArt;
+                        const QColor o = opaqueImg.pixelColor(x, y);
+                        if (!isBg(o) || o.alpha() != 255) {
+                            clearOk = false;
+                            break;
+                        }
+                    }
+                }
+                fprintf(stderr, "    export-bg: margin %d px, unpainted-in-art %d px\n",
+                        marginCount, unpaintedInArt);
+                check(unpaintedInArt > 0,
+                      "e2e export-bg: the project leaves pixels inside the art unpainted "
+                      "(so the clear is observable)");
+                check(clearOk, "e2e export-bg: where the art does not paint, the render clear IS the "
+                               "background, opaque");
+
+                QDir(opaqueDir).removeRecursively();
+                QDir(clearDir).removeRecursively();
+            }
+        }
+    }
+
     // Scenario 11: the destination table's encoder-level requirements reach the
     // encoder. Before this they could not: the exporter had no way to carry them,
     // so a row documenting auto-alt-ref=0 or hvc1 could not honour it.

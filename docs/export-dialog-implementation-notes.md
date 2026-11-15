@@ -1653,3 +1653,1009 @@ behaviour — it is a **platform-confidence gap**, recorded so it is not mistake
 Reopens if a Wayland-only input complaint ever arrives; the measurement would then be: activate the
 window, drive one dialog with `ydotool`, and screenshot the pointer path with
 `ffmpeg -f x11grab -draw_mouse 1` (see AGENTS.md).
+
+## Post-R1, landed: transparency leaves Advanced, and two stale-state defects come out with it (2026-10-03)
+
+Ruling, verbatim: "why is transparency under Advanced? since it pushes the codec choice onto a
+suboptimal codec it belongs in the regular options, and off by default." Contract line: item 42 of
+`docs/export-dialog-behavior.md`, whose decided-paragraph now carries the measured behaviour as well
+as the rule.
+
+### What moved
+
+| before | after |
+| --- | --- |
+| `ExportDialog.qml:577-584`, first child of the Advanced `ColumnLayout` | `ExportDialog.qml:579-586`, the last REGULAR row: after the encoding `GridLayout`, before the `12px` spacer at `:589` and the disclosure at `:590-597` |
+| drawn only inside a subtree bound to `advancedVisible && advancedOpen` | drawn whenever `transparency.visible`, with no dependence on `advancedOpen` |
+| `Init::transparency = true` (`ExportViewModel.h:285`) | `ExportViewModel.h:288` — `false` |
+| `QSettings("export_allow_transparency", true)` (`MainWindow.cpp:1990`) | `MainWindow.cpp:1995` — fallback `false` |
+
+The six bindings on the checkbox (`Layout.fillWidth`, `visible`, `text`, `checked`, `enabled`,
+`onToggled`) are byte-identical before and after the move; only its position in the tree changed.
+Nothing else in the dialog was re-ordered. The stale D25 note at the head of the scrolling content
+(`ExportDialog.qml:117-127`) and the one in `tests/form_layout.cpp:1-23` both quoted "630px of
+content in 558px of page" as the *current* measured case; both now carry the re-measured number and
+say which figure is the historical before-column.
+
+### Why off by default, and what keeps Advanced alive
+
+The toggle is not a control for a destination default: turning it **on** moves the encoder ladder off
+its own best pick — `libsvtav1` keeps the encode "ok" and silently drops alpha, `libx265` refuses to
+open with `yuva420p`, and only `libvpx-vp9` and `ffv1` carry it (the table already in this file). So
+it starts off and only a destination's own rule or the user turns it on. `applyDestinationDefaults`
+(`ExportViewModel.cpp:970`) still applies `setCapabilityDefault(aTarget.alpha, mTransparency)` per
+destination, which is why `discord.animation` (`alpha="default-on"`) arrives checked — measured, see
+below.
+
+Because the toggle left the section, it can no longer be the thing that keeps the section
+non-empty, and `applyArtifactConstraints` had to say so explicitly
+(`ExportViewModel.cpp:629-645`):
+
+```cpp
+    mAdvancedVisible = audioPossible || isGif || knobUsable
+                       || (isVideo && knob.isEmpty())
+                       || (codecVisible() && !manualMode());
+```
+
+`activeCodecCarriesAlpha()` is no longer a term, deliberately: asking it here would open Advanced
+onto a section whose only ex-resident is now on the regular surface — the dead end the comment above
+the assignment forbids. The offered codec row replaces it, because it *is* inside the section in
+destination mode (`manual mode`'s copy sits beside Format, and the two are never both visible). The
+comment records that for every destination in the current table the new term is already implied by
+the video terms, and that it is stated anyway so a hypothetical one-image destination offering a
+codec choice cannot hide the row that owns that choice.
+
+### What the tests now say
+
+`tests/export_form.cpp`'s destination expectation table had to change with the rule, not around it:
+with transparency gone from Advanced, `post.pixiv.ugoira` (a numbered static-image folder: one PNG
+codec, `fps="ignored"`, no audio, no loop, no palette) no longer has anything to put in the section.
+Before the table edit the suite failed on exactly that row —
+
+```
+FAIL  post.pixiv.ugoira: Advanced offered
+```
+
+— and after it, `=== export_form: OK ===`. `anythingInside` (`:335-340`) dropped its
+`model.transparency()->visible()` term (one of the four cases the loop/audio/palette/quality/bitrate/
+codec terms now cover) and gained `(model.codecVisible() && !model.manualMode())` in exchange. Both
+invariants at `:341` and `:343` are unchanged: visibility must agree with content, in both
+directions.
+
+### The placement and default assertions, and what they measure
+
+The new block in `tests/form_layout.cpp:638-872` drives the real `ExportDialog.qml`, finds the
+checkbox by its model-provided label (it has no `objectName`; the Advanced disclosure is found by
+class **plus** `text == "Advanced"`, because `Details` is also an `AeDisclosure`) and asserts three
+things, in order:
+
+* **Placement by geometry, not by visibility.** With Advanced shut, the row is visible; the walk
+  identifies the Advanced container as the parent of the *loop* and *audio* rows, asserts that the
+  transparency row is **not** inside it, then opens Advanced at runtime, asserts the container and the
+  loop row became visible and that `contentHeight` really grew, and re-measures the row's rect in
+  page coordinates. Measured on 560x640 with four frame ranges and the GIF row:
+
+  ```
+  [measured] 560x640, four ranges, GIF row, Advanced shut -> open: contentHeight 657 -> 751
+  ```
+
+  The row's rect in page coordinates is `(0, 591, 528x24)` with Advanced shut and the identical rect
+  with it open — compared by `sameRect` to 0.5px, so "it did not move" is a measurement rather than a
+  restatement of `visible`. The `contentHeight` growth matters for the same reason: `AeDisclosure.open`
+  changes only the caret bitmap and the label colour, so without a real section opening underneath,
+  equal rects would prove nothing.
+* **The default.** A form built from an unmodified `Init` on `alpha="choice"` (`twitch.emote`) comes
+  up with the row enabled and unchecked, and the checkbox's own `checked` is false too.
+* **A destination rule still wins.** `discord.animation` (`alpha="default-on"`) arrives checked, and a
+  codec that cannot carry alpha (`chat.discord.file`) hides the row entirely.
+
+One form at a time: `makeForm` puts the view model on the shared root context with
+`setContextProperty`, so building a second form while the first is alive re-lays the first one out
+retroactively (both then report `contentHeight` 751 and both Advanced containers read visible — 
+measured). The block disposes each form before building the next and says so in its own comment.
+
+### Defect 1: a section the model closed by itself was still drawn open
+
+`applyArtifactConstraints` ended with a bare `mAdvancedOpen = false;` and no
+`emit advancedOpenChanged()`, so the disclosure's `open` binding kept the *old* value and the caret
+(and the accessible description, "Expanded") disagreed with the model. It is reachable exactly as the
+test drives it: make Advanced visible, open it, then pick a destination whose artifact has no
+Advanced content. Pre-fix, `form_layout` exited rc=1 with
+
+```
+324:FAIL  advanced open state: a section the model closed by itself is not still drawn as open (the caret and the accessible state follow advancedOpenChanged)
+326:FAIL  advanced open state: and the control does not come back open
+328:FAILURES: 2
+```
+
+Every precondition passed, so the failures are the stale state and not a setup problem. Fixed by
+guarding and announcing the assignment (`ExportViewModel.cpp:646-648`), and the D25 reachability walk
+now asserts the invariant for every form it builds (`tests/form_layout.cpp:347-348`: the Advanced
+disclosure never contradicts `model.advancedOpen`) so the same contradiction cannot pass unnoticed
+again. Post-fix: `ALL PASS 0`, 95 PASS, 0 FAIL, 0 TypeErrors.
+
+### Defect 2, OPEN: the saved transparency preference is erased by a rule that was only ever meant for refusals
+
+The new default is off, so the only way a user gets `true` is by having turned it on in an earlier
+run. That path is broken today, and the earlier draft of this change claimed the opposite ("a saved
+`export_allow_transparency` still wins"). That claim is **refuted by measurement**; the comments in
+`MainWindow.cpp:1990-1994` and `ExportDialog.qml:561-578` were corrected to say only that the saved
+value is read as the dialog's starting point.
+
+Two independent measurements. First, the real application on Xvfb with a seeded
+`[General] export_allow_transparency=true` (`[General]` is the group it writes, and `scripts/gui/_lib.sh`
+sandboxes `XDG_CONFIG_HOME`, so the probe never sees the developer's file): the row rendered
+`STATE=[Unchecked]`, and after the run the config contained
+`export_allow_transparency=false` — the application overwrote the user's setting. Second, a
+headless probe feeding `Init::transparency = true` straight into `gui::ExportViewModel`:
+
+```
+[probe] destination=twitch.emote alpha-rule=4 value=0 enabled=0 visible=1 advanced=1
+[probe] destination=discord.animation alpha-rule=2 value=1 enabled=1 visible=1 advanced=1
+[probe] destination=chat.discord.file alpha-rule=1 value=0 enabled=0 visible=0 advanced=1
+[probe] destination=<manual> alpha-rule=1 value=1 enabled=1 visible=0 advanced=1
+```
+
+Mechanism, read off the landed source: `alpha-rule=4` is `Capability::Choice`; `buildRequest()`
+carries no alpha field, and `ctrl::ExportTarget.cpp:972` resolves `Choice` to `false` in the plan.
+`freezeCapability` (`ExportViewModel.cpp:768-786`) then reads "the row is on while the plan says off"
+as the destination having refused alpha — the branch written for `Forbidden` — and does
+`setValue(false); setEnabled(false)`. `readBack()` (`:1345`) reports that cleared value and
+`MainWindow.cpp:2027` saves it, which is why the config file ends up rewritten. `discord.animation`
+(`default-on`, rule 2) is unaffected: its resolved value is `true`, matching the row. Manual mode
+(rule 1, i.e. `Forbidden` with an empty destination id) keeps the value but hides the row.
+
+This was left as found rather than "fixed": the correct behaviour for a `choice` destination — the
+row *is* the choice, so a plan that never carried one must not be allowed to overrule it — is a
+product ruling, and the same `Choice → false` resolution is what `MainWindow.cpp:1856` deliberately
+relies on (`genParam.allowTransparency = true; // the destination decides, in the plan`). The
+candidate one-liner, not applied and not verified end to end: in `freezeCapability`, freeze only for
+`Required`/`Forbidden` and `return` early for `Choice` after re-enabling the row, or give
+`buildRequest()`/`planExport()` the row's value so the plan stops reporting a choice it never
+received.
+
+### Gates run on the landed tree
+
+* Debug and Release builds: rc=0 each, **0** compiler warnings.
+* `scripts/run_suites.sh Debug`: `=== Debug: pass=21 fail=0 skipped: failed: ===`, rc=0.
+* `tests/export_form` and `tests/form_layout` re-run individually after every edit to them; both
+  green, `form_layout` with 0 TypeErrors (a binding that throws writes no value and is invisible to a
+  suite that only asserts what it expects — the stderr check is part of the gate).
+* Not run from this session: the full `scripts/gui/run_probes.sh` sweep. `probe_dest.sh` is the one
+  end-to-end probe exercised for this change.
+
+## Post-R1, landed: the notes behind "Details" wrap instead of widening the page (2026-10-03)
+
+Report, verbatim: "I noticed the Details text doesn't wrap, it gets a horizontal scroll instead."
+This is a second, independent workflow from the transparency note above; every number below was
+measured in this session, on this tree, and only the notes delegate was touched.
+
+### What was happening
+
+The notes are rendered by the `Repeater` behind `AeDisclosure { text: "Details" }`
+(`ExportDialog.qml:278-316`). Its delegate was a `Text` with `Layout.fillWidth: true`,
+`wrapMode: Text.WordWrap` and no width hint, and the page it lives on is
+`width: scroller.contentWidth` with `contentWidth: Math.max(width, page.implicitWidth)`
+(`ExportDialog.qml:138`, `:183`). A `Text`'s `implicitWidth` is its **unwrapped** natural width —
+`3983.48px` measured for `qq.sticker`'s longest note — and Qt Quick Layouts count a child's
+`implicitWidth` towards the layout's own `implicitWidth` (*Qt Quick Layouts Overview*: "the
+spacing, as well as the implicitWidth of any children, contributes to the implicitWidth of the
+layout"). So:
+
+```
+longest note implicitWidth 3983.48
+  -> invisible delegate already sized to 3984 while Details is shut (excluded from the sum)
+  -> on open, that width enters page.implicitWidth:  436 -> 4004
+  -> scroller.contentWidth = max(width, implicitWidth):  528 -> 4004
+  -> page.width:  528 -> 4004, the note gets width 3984
+  -> the Text never needs to wrap:  lineCount stays 1
+  -> a horizontal axis exists, and the text runs off the viewport
+```
+
+The last three lines are the feedback loop, and they are why the symptom is "no wrapping **and** a
+horizontal scrollbar" rather than one or the other: the page followed the text's unwrapped width,
+which then handed the text exactly that width back.
+
+### Before and after
+
+Destination `qq.sticker` (956 characters of notes in 4 rows; runner-up `chat.signal.gif`, 881), in
+the `form_layout` D25 worst-case window (560x640, four ranges, Advanced shut). Numbers are
+`[measured]` lines from `/tmp/fl_d6_phase1.log` (before) and the landed tree (after):
+
+| probe | before | after |
+| --- | --- | --- |
+| note `Text` width, Details open | `3984` | `508` |
+| note `Text` `lineCount`, Details open | `1` | `9` |
+| note `Text` height, Details open | `15` | `135` |
+| note `Text` `implicitWidth` (unchanged) | `3983.48` | `3983.48` |
+| `page.implicitWidth`, Details shut | `436` | `436` |
+| `page.implicitWidth`, Details open | `4004` | `436` |
+| `scroller.contentWidth`, Details open | `4004` | `528` |
+| `scroller.width` (viewport, unchanged) | `528` | `528` |
+| `page.contentHeight`, Details shut -> open | `657 -> 731` | `657 -> 851` |
+| `scroller.contentWidth`, 380px window | `4004` | `436` |
+| `page.contentHeight`, 380px window | `731` | `881` |
+
+The unwrapped `implicitWidth` is deliberately unchanged — the fix does not lie about the text's
+natural width, it stops the *layout* from using it as a width hint.
+
+### What was tried, and why one line won
+
+Three candidates, each applied to the landed tree and measured with the same run (the three
+regression assertions failed on the unmodified tree — `/tmp/fl_d6_red.log`, rc=1, `FAILURES: 3` —
+so the comparison is against a demonstrated defect, not against an assumption):
+
+| candidate | measurement | verdict |
+| --- | --- | --- |
+| (a) `Layout.preferredWidth: 0` on the delegate | `lineCount=9`, `contentWidth=528 == scroller.width`, `implicitWidth=436`; the three assertions pass, rc=0 | **chosen** |
+| (b) (a) plus `Layout.minimumWidth: 0` | every number byte-identical to (a) | rejected: adds nothing |
+| (c) an `AeFactRow`-shaped wrapper (`implicitWidth: 340`, height from `contentHeight`, inner `Text` anchored) | passes, and open/narrow numbers equal to (a) | rejected: ~20 lines and an arbitrary `340` for no measured gain |
+
+The reason (b) is inert is documented, not guessed: *"If minimum size has not been explicitly
+specified on an item, the size is set to 0"* (Layout QML Type). The minimum width was already `0`,
+so writing it changed nothing — measured as a byte-identical result. What was *not* `0` is the
+**preferred** width, which defaults to `implicitWidth`; (a) overrides exactly that, so the layout no
+longer asks the wrapping text how wide it would like to be.
+
+Candidate (c) is the pattern already used at `AeFactRow.qml:27`, and it is the right shape *there*
+because that row's text is anchored to a fixed-width parent so its `implicitWidth` is genuinely
+fixed. Here it would mean inventing a fixed width (`340`) that has no relationship to the form's
+own minimum, and it lays hidden notes out: measured with Details **shut**, (c) gives the inner
+`Text` `width=340`, `lineCount=13`, `height=195`, where (a) leaves a hidden delegate at `width=0`,
+`lineCount=1`, `height=15`. Neither reaches the page height (an invisible item is excluded), but
+there is no reason to build and wrap thirteen lines to hide them.
+
+### `Layout.preferredHeight: implicitHeight` is deliberate, and measured
+
+The delegate also carries `Layout.preferredHeight: implicitHeight`. That is only safe if
+`implicitHeight` tracks the *wrapped* height rather than the unwrapped one, and it does — measured
+across all three states: `height == implicitHeight == contentHeight` at `15/15/15` (shut),
+`135/135/135` (open, 9 lines) and `150/150/150` (380px window, 10 lines). `AeFactRow.qml:28-30`
+uses `contentHeight` because *there* a fixed width makes `implicitHeight` the wrong quantity; here
+`Layout.preferredWidth: 0` supplies the width, so `implicitHeight` is already the wrapped answer.
+The run reports 0 binding-loop warnings either way.
+
+### The rule this lands
+
+A `Text` that wraps is a **width-dependent** item: its `implicitWidth` describes a layout it must
+never be given. In a layout, such an item needs an explicit `Layout.preferredWidth` (or an explicit
+fixed width), or its unwrapped natural width becomes the layout's natural width and the wrapping
+never happens. `scripts/gui`-visible consequence: a long note must grow the page **vertically**;
+the page already scrolls with `ScrollBar.AsNeeded` (D23), and the vertical axis is the one that is
+allowed to move.
+
+The horizontal axis is still allowed to exist, but only for the form's own minimum width
+(`ExportDialog.qml:125-127`, ~468px declared, **436px measured** here): in a 380px window the page
+minimum genuinely exceeds the 348px viewport, so `contentX` offsets are required and preserved —
+`PASS defect 6: a genuinely narrow window still pans horizontally`. A note's length must never be
+what creates that axis: before, a 380px window measured `contentWidth=4004`; now it measures `436`,
+the form's own minimum.
+
+### What the tests now say
+
+`tests/form_layout.cpp` gained one scene with a destination chosen for its note length (scanned from
+the real registry, so a future table edit that removes every long note fails loudly instead of
+passing quietly) and four assertions: the note wraps (`lineCount > 1`), the page does not exceed the
+viewport (`contentWidth <= scroller.width`), opening Details makes the page taller rather than wider
+(`contentHeight` grows), and in a 380px window the horizontal extent is the form's minimum rather
+than the note's width, while panning still works. Preconditions assert that the destination really
+declares a long note, that the disclosure exists and is visible, and that the delegates exist but are
+hidden while Details is shut.
+
+Two traps cost time here and are recorded for the next walk: a `Repeater` delegate **cannot** be
+reached with `findChildren<QQuickItem*>()` or `QObject::children()` — the delegate's `QObject`
+parent is the delegate model, and a census of 270 descendants contained zero delegates — it is
+reachable only by walking `QQuickItem::childItems()`. And a census that selects by `factId` finds
+nothing, because a delegate's `required property` values are not readable through the meta-object;
+select on the rendered `text` instead.
+
+### Gates run on the landed tree
+
+* Debug and Release builds: rc=0 each, **0** compiler warnings (Debug
+  `grep -c 'warning:'` = 0; Release `grep -c 'warning:'` = 0).
+* `tests/form_layout`: rc=0, `ALL PASS 0`, 108 PASS, 0 FAIL, 0 TypeErrors.
+* `scripts/run_suites.sh Debug`: `=== Debug: pass=21 fail=0 skipped: failed: ===`, rc=0.
+* `scripts/gui/probe_dest.sh`: rc=0, 17 PASS, 0 FAIL, `=== probe_dest: OK ===`.
+* Not run from this session: the full `scripts/gui/run_probes.sh` sweep.
+
+### Proposed, not applied — a dated line for `docs/export-dialog-behavior.md`
+
+Item 25 ("D. Scrolling and overflow") is the line that owns this. The sentence below is **proposed
+for the orchestrator to place or reject**; it has deliberately not been written into
+`docs/export-dialog-behavior.md` by this session, so the contract document's diff stays a review
+decision. It is written to append to item 25, after the 2026-10-01 confirmation:
+
+> Confirmed 2026-10-03 with a fourth call: the horizontal axis belongs to the form's own minimum
+> width and to nothing else — a wrapping fact, note or other width-dependent text is given
+> `Layout.preferredWidth: 0` so its unwrapped natural width never reaches the layout
+> (`ExportDialog.qml:303`). Measured with `qq.sticker`'s 956 characters of notes open in a 560x640
+> window: `page.implicitWidth` stays 436 and `contentWidth` stays 528, against 4004 and 4004 before;
+> long notes grow the page vertically (657 -> 851) and are reached with the D23 scrollbar.
+
+## Post-R1, landed: the picker's search is fuzzy, per query token and never across words (C19, 2026-10-08)
+
+Item 19 ("Search matches across every group, and groups with no match are not listed") is the line
+that owns this. The search was `haystack.contains(query)` — a plain case-insensitive substring test —
+so the three shapes a person actually types all returned nothing: "telegram sticker" (two words,
+never contiguous), "telegrm" (a typo) and "discordemote" (two words, space left out). A match is now
+scored, per query token, and the best-scoring row is the one the picker highlights.
+
+### The two `contains(q)` tests become `gui::fuzzy::queryScore`
+
+`DestinationPickerModel::applyQuery()` had two call sites of the substring test, and both take the
+same edit — a row matches when the query scores against its haystack as anything other than
+`gui::fuzzy::kNoMatch`, and an empty query still means "no filter", not "no results":
+
+| site | BEFORE (`applyQuery()`) | AFTER (landed) |
+| --- | --- | --- |
+| a section's child | `const bool match = q.isEmpty() \|\| child.haystack.contains(q);` | `const int score = q.isEmpty() ? 0 : gui::fuzzy::queryScore(child.haystack, q);` then `const bool match = q.isEmpty() \|\| score != gui::fuzzy::kNoMatch;` |
+| a top-level destination | `r.visible = q.isEmpty() \|\| r.haystack.contains(q);` | `const int score = q.isEmpty() ? 0 : gui::fuzzy::queryScore(r.haystack, q);` then `r.visible = q.isEmpty() \|\| score != gui::fuzzy::kNoMatch;` |
+
+Nothing else in the tree logic moved: a section is visible while it has a matching child, a search
+opens the platform it found, expansion is never undone, and the section holding the answer is still
+opened so the answer is on screen. The include is `#include "gui/qml/FuzzyMatch.h"`
+(`DestinationPickerModel.cpp:3`), the same relative path the model already uses for its own header.
+
+### `src/gui/qml/FuzzyMatch.h` — header-only, and the rule table
+
+The header is header-only (`inline` free functions, no state, no dependency beyond
+QString/QStringList/QChar) on purpose: the model's three build targets — `destination_picker`,
+`picker_keyboard` and `persist_state` in `tests/CMakeLists.txt`, each of which compiles
+`DestinationPickerModel.cpp` directly — and the `gui` library the application links need no CMake
+change at all. The one new target in `tests/CMakeLists.txt` is the header's own contract test
+(below).
+
+`words()` lower-cases and splits on every character that is not a letter or a digit, dropping empty
+words; both `tokenScore` and `queryScore` lower-case their own arguments. Per token, with L the
+token's length, the score is the MAXIMUM over the rules that fire:
+
+| # | rule | score |
+| --- | --- | --- |
+| 1 | the token is a whole word | 1000 + 8L |
+| 2 | the token is a prefix of a word | 700 + 8L - (wordLen - L) |
+| 3 | the token is the initials of two or more consecutive words ("cgv" for "chat generic video") | 600 + 8L |
+| 4 | the token is a substring of one word | 400 + 8L - offset |
+| 5 | the token is a contiguous run in ONE field's words joined with no separator ("discordanim" for "discord animated image") | 350 + 8L - offset |
+| 6 | the token is a subsequence of ONE word, `L >= 3` and `span <= 2L + 2` | 200 + 8L - 4*(span - L) |
+
+Every score is positive, so `kNoMatch` (-1) can never collide with a weak match; a query matches only
+if EVERY one of its tokens matches. The haystack's fields — `haystackFor` joins the label, the id,
+the group title, the family, the family title, the container, the artifact words and " capped size
+limit" with the unit separator `QChar(0x1f)`, not a space — are what `queryScore` splits on before it
+scores: each token is scored per FIELD and takes the maximum over fields, so no rule, rule 5's joined
+run included, may join words that sit in two different fields. The query score is the sum of the
+per-token scores plus at most one phrase bonus of 400, and the bonus is FIELD-LOCAL: it is granted
+only when the query's words joined occur inside ONE field's words joined, so it means "these words
+are adjacent inside one field of the row", never a phrase that appears only by bridging two fields.
+The ordering is the point, not the constants: an exact word beats a prefix, which beats initials, a
+substring and a cross-word run, and an in-word subsequence is last.
+
+The field boundary is not a refinement, it is the fix for a measured ranking artifact. `haystackFor`
+used to join those fields with a SPACE, which made the group title "Telegram" abut the family key
+"sticker" in `telegram.emoji`'s haystack: the flat join carried the substring "telegramsticker", so
+typing the exact label "telegram sticker" earned `telegram.emoji` the phrase bonus it had no field
+for and the two Telegram rows tied, and the earlier row `telegram.emoji` won. With the separator the
+same query's phrase bonus is `telegram.sticker`'s alone — its label IS "Telegram sticker" — and the
+row the label names is the row selected.
+
+Rule 6 is deliberately confined to one word, and the reason is measured, not aesthetic: every capped
+destination's haystack ends in " capped size limit" (`haystackFor`, `DestinationPickerModel.cpp:38`),
+so a cross-word subsequence would let a three-letter query match nearly every capped row — "wec"
+would find all of them — and the picker would stop narrowing at all.
+`tests/destination_picker.cpp` asserts the narrowing with `visibleRowCount() >= 1 &&
+visibleRowCount() < targets.size()` for "wec" (that assertion predates this change and is kept),
+and `tests/fuzzy_match.cpp` pins the refusal itself.
+
+### The default selection with a query in the field
+
+BEFORE, `applyQuery()` moved the current row only when it could no longer be chosen:
+`target = currentIsAnswer ? mCurrentRow : firstDestination`, with the comment explaining that the
+constructor preselects the REMEMBERED destination (MainWindow passes QSettings
+"export_destination" in) and calls `applyQuery()` at the end of that constructor, so selecting the
+first visible row would contradict the remembered setting on screen.
+
+AFTER, that rule is unchanged for an EMPTY query, and for a NON-EMPTY query it is deliberately the
+other way round: typing is the user asking "which of these is what I mean", so the visible
+destination with the highest `queryScore` becomes the current row (`if (!q.isEmpty() &&
+bestDestination >= 0) target = bestDestination; else target = currentIsAnswer ? mCurrentRow :
+firstDestination;`). Ties keep the earlier row — the comparison is `score > bestScore`, not `>=`, so
+the same query always lands on the same destination — and only a destination can be current, because
+the running best is updated only for destination rows (a section and the "table is broken" statement
+are never answers). Clearing the field returns to the BEFORE rule: the current destination keeps its
+place while it is still an answer, otherwise the first destination is selected. The score therefore
+decides only which match is HIGHLIGHTED; the row order stays the table's order.
+
+### `tests/fuzzy_match.cpp` — the contract, one rule per assertion
+
+New target in `tests/CMakeLists.txt`: `add_executable(fuzzy_match fuzzy_match.cpp)` with the repo
+root as its include dir and `Qt6::Core` as its only library — the header-only property is what makes
+that enough, the same shape as `treeutil_delete_uaf` above it. `scripts/run_suites.sh` discovers
+targets by grepping `add_executable(` in `tests/CMakeLists.txt`, so the new target is picked up with
+no registration.
+
+The test asserts, one line each: `words()` splits "chat.generic.video" into three words, "Discord
+(animated image)" into three, "Discord__animated" into two, and drops empty and separator-only input
+("...   ---/  ") to nothing. Orderings are asserted as comparisons rather than literals, and
+`checkGreater` fails unless BOTH scores are real matches (so a case that could not fire either rule
+fails rather than passing on two equal `kNoMatch` values): rule 1 beats rule 6 for "abc" ({abc} vs
+{aubec}), and rule 2 beats rule 4 for "gen" ({generic} vs {hydrogen}). Rule 3 fires for {chat,
+generic, video} x "cgv"; rule 5 fires for {discord, animated, image} x "discordanim"; rule 6 fires
+for {telegram} x "telegrm". Rule 6's two gates are negative assertions: {archivearchive} x "aae" is
+`kNoMatch` because the letters are in order but span 14 > 2L+2 = 8, and {discord} x "dr" is
+`kNoMatch` (L < 3) while "drd" matches; "dt" is `kNoMatch` while "di" matches — as a rule 2 prefix,
+not as a subsequence. The load-bearing negative is the cross-word case: {discord, animated} x "dna"
+is `kNoMatch`, because d, n and a are in order but in DIFFERENT words and no rule may join them (the
+test's comment names "wec" and " capped size limit" as what that would cost). On a real haystack
+("Telegram Sticker (animated image) capped size limit") it asserts the empty query scores 0,
+"zzqqjj" is `kNoMatch`, and "telegram sticker", "sticker telegram" (order does not matter),
+"telegrm" and `queryScore("Chat Generic Video", "chat.generic.video")` (dots are separators) all
+match; the phrase bonus is asserted as an ordering, adjacent haystack > far-apart haystack for
+"telegram sticker". The field boundary gets its own pair: a phrase inside ONE field scores strictly
+higher than the same two words split across two fields by `QChar(0x1f)` — the one-field haystack keeps
+the +400 and the split one does not — and a joined run may not bridge that boundary: a token spelled
+by the words on either side of the separator does not fire rule 5. Every comparison prints both
+scores, so a run that could not observe the ordering fails loudly instead of passing quietly.
+
+### `tests/destination_picker.cpp` — the cases the model test gained
+
+The block that types into the picker (case 5, which already pinned "wec" narrowing to fewer than
+`targets.size()` destinations, the one-destination "youtube" row and the platform-wide "instagram"
+match) gained a `rowOfId` helper — a destination id to its row, so the assertions name ids rather
+than positions — and eight fuzzy cases against the real table. The block's own comment marks four of
+them as cases the substring test could not answer and the rest as invariants that must keep holding:
+
+- **"telegram sticker"** pins `telegram.sticker` as the current row: `telegram.sticker`'s label is
+  "Telegram sticker", one field whose words joined are exactly "telegramsticker", so it earns the
+  +400 phrase bonus; `telegram.emoji` has "Telegram" in one field (its group title) and "sticker" in
+  another (its family key), so under the field-local rule it earns nothing, and the two rows' token
+  sums are equal, so the bonus alone gives the row to `telegram.sticker`. This is the case the flat
+  join got wrong — joining the fields with a space let "Telegram" abut "sticker", so the two scored
+  equal and the earlier `telegram.emoji` won. It also asserts the winner is on screen; the other
+  Telegram row stays visible too.
+- **"sticker telegram"** (the words reversed) is a token-sum TIE with NO phrase bonus: "stickertelegram"
+  is inside no field of either row — it would only appear if `telegram.sticker`'s label ran into its
+  id, and the field boundary refuses that bridge — so the two rows score the same and the tie falls
+  to row order, the earlier `telegram.emoji`. The order the user typed no longer flips which row wins.
+- **"telegrm"** (the typo) must find an on-screen Telegram destination — several Telegram rows carry
+  the word "telegram" and all score the same subsequence, so the assertion names the platform (not a
+  section, on screen) rather than one id.
+- **"discord emoji"** asserts the best score wins rather than assuming it: the query matches exactly
+  two rows, `discord.emoji` and `discord.sticker`, whose token sums are identical (the sticker row
+  carries an "emoji" whole word too, from its family title "Stickers and emoji"), and only the phrase
+  bonus separates them — `discord.emoji`'s joined words start "discordemoji" (its label),
+  `discord.sticker`'s never do — so the row the query NAMES is the one selected, by 400. The other
+  row is still revealed.
+- The invariants: "chat.generic.video" (an id typed whole) still selects `chat.generic.video`;
+  "zzqqjj" matches nothing (`visibleRowCount() == 0`, the list collapses rather than falling back to
+  the whole table); "ae" leaves `post.facebook.video` hidden, with preconditions asserting the row
+  exists and that no word of its haystack carries "ae" — two characters may not match by gathering
+  letters from across a word; and "qq", two characters that ARE a word, selects an on-screen QQ
+  destination (again the platform, not one id, because which QQ row wins is row order).
+
+### `scripts/gui/probe_fuzzy.sh` — the end-to-end witness
+
+The unit tests can check a score; only driving the real picker can check that the row the user gets
+is the row the label states. The probe (same harness and flow revision as `probe_dest.sh`,
+`RECORDED_AGAINST=2`) types an imprecise query by NAME into the real picker and reads the FORM's
+Destination row back with `ae value "Destination"` (`scripts/gui/ae_ui.py value`), retried up to
+eight times because a read taken while the application is still building the plan can come back
+empty, and an empty file would report a failure of the read as a failure of the application.
+
+Two passes in one session: "telegrm" (a substring of nothing in the table) must be answered by a
+Telegram destination — the assertion greps the read-back label for "Telegram", deliberately not for
+a row, because which of the two Telegram destinations wins is the score's business and what the user
+needs is the platform they meant; then the form's own Destination row reopens the picker (the route
+`probe_axes.sh` uses) and "discordemoji" — the words of `discord.emoji` run together, and a substring
+of neither its id nor its label — must be answered by exactly `Discord emoji`, compared as a whole
+string so a row that merely contains the words cannot stand in. On the pre-change code the first
+pass fails loudly and early: "telegrm" matched no row, the picker's current row stayed -1, "Use this
+destination" opened nothing, the form never appeared, and both label reads came back EMPTY — which
+the probe's own header records as the reason its assertions are on the label rather than on a
+screenshot that is merely not black. Not run from this session; the orchestrator runs it.
+
+## Post-R1, landed: a resolution ceiling bounds the FILE, not the two boxes (item 36, 2026-10-08)
+
+Ruling, verbatim: "It should default to project resolution unless a destination enforces a strict
+resolution limit." Reported with it: "The resolution aspect ratio linking is broken, and so is the
+resolution reset. Also the default resolutions are really strange. It seems to default to 720 in
+most cases even when the projects resolution is bigger."
+
+Contract line: item 36 (the aspect lock; the two size fields). One mistake — a destination's size
+rule written into the fields as a per-number MAXIMUM — produced all three symptoms. `Max` is a
+ceiling on the FILE, `Free` imposes nothing, and only `Exact`, `MaxExactSide` and `MaxMinSide`
+dictate the size. Of the table's 66 destinations, 31 carry `<size mode="max">` (eight of them
+1280x720) and 25 are `free`; the other 10 pin the size.
+
+### The write-back and the maxima, before and after
+
+The size block of `ExportViewModel::applyPlan` (`src/gui/qml/ExportViewModel.cpp:993-1024`):
+
+| | BEFORE | AFTER |
+| --- | --- | --- |
+| boxes on `Free`/`Max` | `writeSize(aPlan.size)` (line 996) — always the PLAN's fitted size | `writeSize(beforeFit)` (line 1013) — the request the boxes already held |
+| boxes on a pinning rule | the plan's size, uneditable | unchanged — the plan's size, uneditable (`mSizeEditable = sizeIsUsers`, line 1023) |
+| field maxima | `mWidthMaximum`/`mHeightMaximum` = the destination's ceiling/fit | `INT32_MAX` — no destination bound at all (lines 1021-1022) |
+| the ceiling | invisible: it was the fit written into the boxes | STATED: the Limits fact gains `max W x H` beside the byte cap (`src/gui/ExportFacts.cpp:188-194`, the row emitted at `:203-212`) |
+| the request captured | not captured | `const QSize beforeFit(mWidth, mHeight)` (line 994), read BEFORE `writeSize(aPlan.size)` |
+
+`sizeIsUsers` is `Free || Max` (lines 1006-1007) and `mLastSizeDictated = !sizeIsUsers` (line 1017)
+keeps `setSizeToNative`'s "did the destination dictate this" bookkeeping honest. `clearPlan()` —
+manual mode — already reset both maxima to `INT32_MAX` (lines 1142-1143), so the bounding modes now
+follow the rule manual mode always did.
+
+### Why each symptom followed from the same clamp
+
+`setWidth`/`setHeight` clamp independently against `mWidthMaximum`/`mHeightMaximum` before doing
+anything else (`ExportViewModel.cpp:662-664` and `:692-693`). With the destination's ceiling sitting
+in those maxima:
+
+- **"defaults to 720 in most cases even when the projects resolution is bigger"** — on every
+  bounding row, `writeSize(aPlan.size)` (line 996) replaced the project's resolution with the plan's
+  fitted one: a 1080x1080 project over a 1280x720 ceiling opened showing 720x720. The plan's size is
+  the right answer when the destination DICTATES it; on a ceiling it answers a question the user
+  never asked.
+- **"the resolution reset is broken"** — `setSizeToNative()` calls `writeSize(mNativeSize)`
+  (line 724), which goes through the same clamping setters. With the ceiling as the field maximum
+  the native height was clamped back to it, so a 1080x1080 project could not land 1080.
+- **"the resolution aspect ratio linking is broken"** — the lock derives the partner as
+  `(mNativeSize.height() * mWidth) / mNativeSize.width()`, rounded up to even, and writes it through
+  `setHeight` (`:678-683`). That write clamps against `mHeightMaximum`, so a 720x1172 project under a
+  1280x720 ceiling edited to Width 800 derived 1301 and came back 720: the pair took the CEILING's
+  aspect, not the project's. The same clamp is what left the crash note's "order of clamping and
+  deriving" corner a written unknown ("The aspect lock crashed the app", 2026-10-03); once the
+  destination contributes no maximum, that corner is gone.
+
+One trap the fix must not fall into: on a `Max` row the boxes and the facts now disagree ON PURPOSE
+— the boxes are the request, the plan is the file. The dialog-level test pins both at once.
+
+### Where the ceiling acts instead
+
+Nothing was dropped: `planExport` bounds a `Max` rule by the request and fits the art inside the
+smaller of the two (`src/ctrl/ExportTarget.cpp:1006-1024` — the comment spells out the "export this
+at 640x360 for Discord" case the old clamp made inexpressible). The field maximum was never what
+capped the file.
+
+### The tests that pin it
+
+`tests/export_form.cpp`, on the model:
+
+- every row: `widthMaximum() == INT32_MAX && heightMaximum() == INT32_MAX` on a bounding row, and the
+  ceiling instead present in the Limits fact (`max 1280 x 720`) — lines 353-376;
+- the ceiling block (lines 784-846), over `chat.generic.video`'s 1280x720 rule: a 1080x1080 and a
+  1920x1080 project each open at their own resolution (`:812-816`), the plan still fits the ceiling
+  (`:822-826`), and `setSizeToNative()` lands the project's size exactly (`:840-844`);
+- the aspect block (lines 848-873): a 720x1172 project under the ceiling, Width 800 derives the
+  PROJECT's ratio, past 720 — not the ceiling's;
+- the pinning block (lines 875-911): a 1080x1080 project still reports the plan's size on `Exact`,
+  `MaxExactSide` and `MaxMinSide` and stays uneditable, so the fix did not leak into the modes that
+  do dictate.
+
+`tests/form_layout.cpp` (lines 642-765) drives the REAL `ExportDialog.qml`: a 1080x1080 project over
+`chat.whatsapp.video`'s 1280x720 ceiling, through the actual `AeNumberField`s, the `AeIconButton`
+reset and the keep-aspect toggle —
+
+- the fields open at 1080x1080, not the fitted 720x720 (`:715-719`);
+- `clicked` on the real Reset button lands BOTH fields at 1080x1080 (`:732-741`) — the assertion the
+  superseded clamp failed with 1080x720;
+- the aspect toggle's own edit path (`aeAccessibleValue.accessibleSetValue`, the route a typed edit
+  takes) at Width 1000 derives Height 1000 from the project's 1:1 ratio, not the ceiling's 720
+  (`:744-764`);
+- and the block asserts the facts STILL state the ceiling-fitted file ("720 x 720") while the fields
+  hold the request (`:726-729`), so a fix that made boxes equal facts would fail.
+
+Both suites are green, and every assertion named above fails on the pre-fix code (orchestrator-run).
+
+### A cap that parsed as zero: `attrInt` on a `qint64`
+
+Separate bug, same report window. `attrInt` (`src/ctrl/ExportTarget.cpp:62-66`) returns `int` via
+`toInt(&ok)` with a default on failure; it was used to read `caps.maxBytes`, which is a `qint64`.
+`toInt` fails the moment the value passes `INT_MAX`, so every cap at or above 2^31 — Telegram's 2 GB
+is `2147483648`, exactly one past it — parsed as 0. Zero means "no cap": the Limits fact omits the
+byte cap (`src/gui/ExportFacts.cpp:186`) and the fit loop's only bound, `const qint64 cap =
+aTarget.caps.maxBytes` (`src/ctrl/ExportTarget.cpp:1492`), is 0, so a capped export was neither
+bounded nor re-encoded to fit. Nine rows lost it:
+
+| row | declared (`assets/export/ExportTargets.txt`) | `maxBytes` |
+| --- | --- | --- |
+| `chat.telegram.video` | line 317 | 2 GB (2147483648) |
+| `post.tiktok.video` | line 544 | 4 GB (4294967296) |
+| `post.bilibili.video` | line 557 | 4 GB (4294967296) |
+| `post.douyin.video` | line 749 | 4 GB (4294967296) |
+| `post.dailymotion.video` | line 879 | 4 GB (4294967296) |
+| `post.niconico.video` | line 735 | 6 GB (6442450944) |
+| `post.x.video` | line 497 | 8 GB (8589934592) |
+| `post.weibo.video` | line 571 | 15 GB (16106127360) |
+| `post.vimeo.video` | line 892 | 200 GB (214748364800) |
+
+Fix: an `attrLongLong` sibling (`src/ctrl/ExportTarget.cpp:68-76`) — same shape and same
+default-on-failure, only the width differs — and `maxBytes` now reads through it (line 450).
+
+**The lesson is the helper, not the cap: a measured value that a helper silently defaults.** `toInt`
+does not distinguish "the attribute says 0" from "the attribute did not fit an int"; both return the
+default. The test that used to "cover" this row asserted only that its facts contained the word "GB",
+and the row's own `<note>` already supplies that ("2 GB per file", `ExportTargets.txt:319`), so it
+passed with `caps.maxBytes == 0` and the Limits row missing. The new assertions pin the NUMBER and
+round-trip it: `chat.telegram.video`'s `2147483648` (`tests/export_form.cpp:933-935`, the old weak
+check's own comment left at `:693-696`), and — so one row cannot stand in for the table — a
+helper in the test reads every row's declared `maxBytes` as text and compares `toLongLong()` against
+the parsed value (`:121-160`). Both fail on the pre-fix code.
+
+## Post-R1, landed: the general trio replaces the chat-app floor, and manual mode loses its button (2026-10-08)
+
+The session's rulings, verbatim — the floor row, the replacement, the names, the escape hatch. On the
+floor row: *"'A video for a chat app' is a strange destination"* — *"Wouldn't a generic video option
+be better at the top as well as generic animated image, and image sequence options below it? Would
+also kill the need for the 'My platform isn't listed' button at the bottom. Its cleaner."* — and
+then, choosing: *"Trio + Archive. The generic chat app one is nonsensical, it assumes chat apps have
+a 20MB cap and worse, a 1280x720 ceiling, which just isnt true in so many cases."* On the names:
+*"some of these options are weird, like Discord maybe should be Discord attachment or similar,
+'Discord' is vague when the other options are things like Discord emoji, 'Youtube' makes sense
+because there is only one youtube, which is youtube video."* On the escape hatch: *"Remove the
+button, keep manual mode."*
+
+Contract lines: **item 19** (the list's content and order) and **item 42** (the manual escape hatch)
+now carry the decided-paragraphs; this section is the evidence behind them. `archive.master` is not
+replaced — "Trio + Archive" is the four `general` rows, and the archive row keeps its slot with the
+new rank (`order="4"`).
+
+### The data change — three rows out, three rows in, eight labels renamed
+
+All in `assets/export/ExportTargets.txt`. Removed:
+
+| removed id | label | declarations as landed before this change |
+| --- | --- | --- |
+| `chat.generic.video` | "A video for a chat app" | `general`; family `chat`; class `direct`; `container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"`; `alpha="forbidden" audio="default-on" loop="forbidden"`; `<size mode="max" w="1280" h="720"/>`; `<caps maxBytes="20971520"/>` (20 MB); `<audio codec="aac" bitrate="128000">` |
+| `website.video` | "Website" | `general`; family `file`; class `direct`; `container="mp4" codec="" codecs="h264 hevc av1" pixfmt="yuv420p"` (no `default` — the class policy resolved it); `alpha="choice" audio="choice" loop="choice"`; `<size mode="free"/>`; NO `<caps>`; `<audio codec="aac" bitrate="128000">`; `<codecTag value="hvc1" codec="hevc"/>` |
+| `generic.file` | "Just a file (not sure yet)" | `general`; family `file`; class `direct`; `container="mp4" codec="" codecs="h264 hevc av1" pixfmt="yuv420p"`; `alpha="choice" audio="default-on" loop="forbidden"`; `<size mode="free"/>`; NO `<caps>`; `<audio codec="aac" bitrate="160000">`; `<codecTag value="hvc1" codec="hevc"/>` |
+
+Added, and what each was derived FROM:
+
+| new id | label, `order` | declarations as landed | derived from |
+| --- | --- | --- | --- |
+| `generic.video` | "Video", `order="1"` | `general`; family `file`; class `direct`; `container="mp4" codec="" codecs="h264 hevc av1" default="h264" pixfmt="yuv420p"`; `alpha="forbidden" audio="default-on" loop="forbidden"`; `<size mode="free"/>`; NO `<caps>`; `<audio codec="aac" bitrate="160000">`; `<codecTag value="hvc1" codec="hevc"/>`; icon `film-strip` | the removed `generic.file` one field at a time — accepted list, free size, 160 kbps audio and the conditional `hvc1` tag all match — with two deliberate changes: `default="h264"` is DECLARED instead of left to the class policy, and `alpha="forbidden"`. The removed `website.video` declared the same accepted list and the same conditional tag with a free size and no caps, so it is folded in here as well; NOTHING comes from `chat.generic.video`'s ceiling or cap, which is the assumption the ruling rejects |
+| `generic.animation` | "Animated image", `order="2"` | `general`; family `file`; class `direct`; `container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"`; `alpha="default-on" audio="forbidden" loop="default-on"`; `<size mode="free"/>`; NO `<caps>`; icon `image` | `discord.animation` — the same WebP declarations, the same alpha/loop defaults and a free size, minus that row's 10 MB cap and its platform wording |
+| `generic.sequence` | "Image sequence", `order="3"` | `general`; family `file`; class `reencode artifact="sequence" fps="ignored"`; `container="png" minScalePct="25"`; `alpha="default-on" audio="forbidden" loop="forbidden"`; `<size mode="free"/>`; NO `<caps>`; icon `images` | `post.pixiv.ugoira` — the same sequence/PNG/`minScalePct` declarations and the same alpha/audio/loop values, minus ugoira's `maxBytes="31457280" maxFrames="150"` |
+| `archive.master` | "Archive file (highest quality)", `order="4"` | every declaration unchanged; the `order` attribute is the only edit | — |
+
+The trio carries no brand mark (it belongs to no platform): the icons are the app's own Phosphor
+glyphs (`film-strip`, `image`, `images`) — see the icon note below, which is where the MDI set that
+used to serve these rows was retired.
+
+The eight renames — all of them rows that shared a section with at least one sibling that already
+says what it makes, which is exactly where a bare platform name is ambiguous:
+
+| id | before | after | the siblings it sat beside |
+| --- | --- | --- | --- |
+| `chat.whatsapp.video` | WhatsApp | WhatsApp (video) | WhatsApp sticker, WhatsApp (animated GIF) |
+| `chat.telegram.video` | Telegram | Telegram (video) | Telegram sticker, Telegram custom emoji, Telegram (animated GIF) |
+| `chat.discord.file` | Discord | Discord (video) | Discord sticker, Discord emoji, Discord (animated image) |
+| `chat.signal.video` | Signal | Signal (video) | Signal sticker, Signal (animated GIF) |
+| `chat.messenger.video` | Messenger | Messenger (video) | Messenger (animated GIF) |
+| `post.bluesky.video` | Bluesky | Bluesky (video) | Bluesky (animation) |
+| `post.reddit.video` | Reddit | Reddit (video) | Reddit (animated GIF) |
+| `post.tumblr.video` | Tumblr | Tumblr (video) | Tumblr (animated GIF), Tumblr (photo) |
+
+A platform with a SINGLE destination is deliberately untouched — there is nothing to disambiguate it
+from: `youtube.video` stays "YouTube" (the user's own example), and so do `post.vimeo.video`,
+`post.dailymotion.video` and `post.mastodon.video`. Labels are the search surface, so the renames
+also changed what those rows match; no id changed, so QSettings' remembered `export_destination` and
+every id-keyed test fixture kept working for the eight renamed rows. A remembered id that names one
+of the three REMOVED rows selects nothing (`DestinationPickerModel::selectRemembered` finds no such
+row and returns), and the picker's own fallback then lands on the first destination — which is
+`generic.video`, the successor row. The extraction list
+(`src/ctrl/ExportTargetStrings.h`, regenerated from the table by
+`scripts/i18n/gen_export_targets_i18n.py`) carries the trio's three new label strings and the eight
+renamed ones. The catalogs were re-run in the same landing: the removed rows' label and note strings
+are now `type="vanished"` — the translation kept, its location gone, so nothing reads it — and the
+trio's labels arrive as `type="unfinished"` entries (Spanish, for one, keeps values for "Video" and
+"Image sequence" and has none for "Animated image"), which is why `tests/export_form.cpp` counts
+translated labels off the LOADED table instead of asserting a fixed number (see (iv)).
+
+One GUI consumer was addressed by POSITION and had to be re-pointed: `scripts/gui/probe_dest.sh`
+answered the query `discord` with "the first row of the platform", which was `chat.discord.file` only
+while its label was the bare "Discord" — and the `20 MB` its facts assertion checks is that row's cap.
+Under `rowOrderLessThan` the renamed label puts "Discord (animated image)" (a 10 MB cap) ahead of it,
+so the probe read the wrong destination's facts and failed on a correct application. It now presses the
+row by name (`ae_activate "Discord (video)" … "list item"`), the same rule `probe_format`'s `choose`
+follows. Measured 2026-10-08 with the renamed labels in place: before the fix the probe read the
+animated-image facts and reported two failures, after it all 23 assertions pass.
+
+### The `order` mechanism
+
+- **Data.** `ExportTarget::order` — `src/ctrl/ExportTarget.h:123-133`, an `int`, `0` meaning
+  unranked; parsed in `ExportTargets::load` with `t.order = attrInt(d, QStringLiteral("order"))`
+  (`src/ctrl/ExportTarget.cpp:405`). `attrInt`'s default-on-failure is deliberate here: a typo'd rank
+  leaves the row unranked (ordered by label) rather than dropping it from the table. The attribute is
+  documented in the table's own schema comment and carried by the four `general` rows only.
+- **Model.** `rowOrderLessThan` (`src/gui/qml/DestinationPickerModel.cpp:98-104`): ranked rows before
+  unranked, then by number, then `QString::localeAwareCompare` on the label. The single sort site is
+  `std::stable_sort(rows.begin(), rows.end(), rowOrderLessThan)` at `:187`, inside
+  `DestinationPickerModel::build`, once per section as that section's rows are collected — the flat
+  row vector is built after it, so there is no second ordering pass to keep in step.
+- **Why.** Alphabetical order would put "Animated image" above "Video", i.e. it cannot express the
+  designed order at all; and because the label is TRANSLATED, a label sort is a different order in
+  every language, so the designed order would re-shuffle under any translation. The rank is also the
+  only way the three generic rows can sit above `archive.master`: that row is their SIBLING (all four
+  are `general`, and the group is `variants="false"`), not a variant of a platform above them, so
+  without a rank their relative order would have to be won on spelling.
+- **Unchanged path.** A section's unranked rows are ordered by label exactly as before, which is how
+  the variants inside a platform have always been ordered ("Instagram Reels" before "Instagram
+  (photo)"). The four `general` rows are the only ones that carry a rank today.
+
+### The button removal, and the measured reason it is safe
+
+The picker's footer used to draw the escape hatch as a button — an `Item` plus
+`AeButton { text: picker.manualText; onClicked: picker.acceptManually() }`, under a comment reading
+"---- 'My platform isn't listed' ----". It is deleted; `src/gui/qml/DestinationPicker.qml:383-390`
+now records why (it read as a fourth kind of answer standing beside the destinations) and states
+what is unchanged underneath: manual mode is the model's own empty-id fallback.
+
+**Both GUI probes already entered manual mode without the button**, which is what makes the removal
+safe rather than merely tidy:
+
+| probe | the two steps it takes | its own note |
+| --- | --- | --- |
+| `scripts/gui/probe_axes.sh:59-65` | `ae set "Search destinations" "zzz no such platform"`, then `ae_activate "Continue"` | "A search that matches nothing is answered as 'no destination known', which is manual mode" |
+| `scripts/gui/probe_format.sh:45-60` | the same two steps | "The escape hatch is one of the two answers the picker offers … The other answer is the button the picker draws for it, and that button is visible and named in the accessibility tree — but its name carries apostrophes, and an apostrophe inside this single-quoted body closes the quote silently, so this probe takes the answer that is addressable without one" |
+
+So the surviving route is precisely the route both probes exercise; no probe loses its witness, and
+neither had ever driven the button itself. The fallback lives in `DestinationPickerModel::activate()`
+(`src/gui/qml/DestinationPickerModel.cpp:583-588`): after the section branch and the valid-row guards,
+a row that is not visible — which is every row, once the query matches nothing — takes the
+"nothing matched" branch, clears `mChosenId` and emits `accepted()`. `acceptManually()` survives
+(`DestinationPickerModel.h:185`, `DestinationPickerModel.cpp:651`) but nothing in a scene calls it any
+more: the button was its only QML caller.
+
+**`manualTooltip` is deleted** (property and declaration from `DestinationPickerModel.h`, definition
+from the `.cpp`). **`manualText` stayed**
+(`Q_PROPERTY` at `DestinationPickerModel.h:55`, declaration `:146`, definition
+`DestinationPickerModel.cpp:372`) for one reason only: `tests/picker_keyboard.cpp:441` reads it off
+the model to assert that NO `AeButton` in the scene carries that text. It is the model's own word for
+the mode and the test is what keeps it honest; with that read gone the string could go too.
+
+### The consumers
+
+Which files named a removed id and what they were re-pointed to:
+
+| file | named before | now | why |
+| --- | --- | --- | --- |
+| `tests/media_export_target.cpp` `run_frame_selection` (`:1034-1038`) | `generic.file` (its no-cap fixture) | `generic.video` | the declarations moved one for one |
+| the same, `run_codec_lists` (`:1355-1358`, `:1514-1517`) | `website.video` (the "H.264 at every bucket" row) and the `hvc1` id list naming `website.video` + `generic.file` | `generic.video`, named once | the same list-constrained declarations, folded into one row |
+| the same, `run_bucket_quality` (`:2170-2192`) | `generic.file` (encoder fixture + the printed line) | `generic.video` | idem |
+| the same, `run_load_and_validate` (`:527-541`) | the policy-default floor `policyRows >= 3` | `>= 2` | the two rows that carried ">1 accepted codec and no declared default" were `website.video` and `generic.file`; `generic.video` declares `default="h264"`, so the survivors are `youtube.video` and `archive.master` |
+| the same, `run_image_artifacts` (`:2308-2319`) | `imageRows == 8` | `== 9` | `generic.sequence` is the ninth still/sequence row; `generic.animation` is a VIDEO artifact here (WebP goes through the encoder), so it is not in that walk |
+| the same, `run_fit_cost` (`:2612`, `:2680`, `:2794`) | `chat.generic.video` | `chat.discord.file`, its closest surviving twin | same libx264 default, same `<size mode="max" w="1280" h="720"/>`, same 20 MB cap |
+| `tests/destination_picker.cpp` | the header comment "the picker opened on 'A video for a chat app'" | "opened on 'Video' (the first row, generic.video)" (`:8`) | the removed label was the old first row |
+| the same, the new test block (`:459-495`) | — | NEW: the id query `generic.video` still selects its row, and the manual route is asserted on the model | the escape hatch's surviving route had no witness outside the scenes |
+| `tests/export_form.cpp` | `chat.generic.video` (the translated-name sample, and the only general row the ceiling fixtures could have used) | `chat.whatsapp.video` for the ceiling tests (`:799-940`) and `archive.master` for the translated sample (`:991-1000`) | a trio row's label is new English-only source text, so it cannot stand in for a translated sample; `chat.whatsapp.video` is the surviving `Max` row carrying the same 1280x720 ceiling |
+| `tests/picker_keyboard.cpp:420-470` | the scan that FOUND the manual button and asserted it carried no tooltip | the scan that asserts NO button carries `manualText`, plus the fallback assertion | the button is gone; the mode is not |
+| `scripts/gui/probe_export.sh:192-196`, `:285-300` | the search id `chat.generic.video`, and the facts assertion `"20 MB"` | the search id `generic.video`, and `"H.264 · MP4"` plus the negative that the no-ceiling row states NO `Limits:` line | `generic.video` is the no-cap row, so asserting its old cap would be a lie about the data |
+
+The two model-side additions are also what make the removal honest: `tests/destination_picker.cpp`
+first asserts a REAL query answers with its id (`generic.video` + `activateCurrent()`), so the empty
+id that follows is the fallback and not the model's untouched state, then drives `zzqqjj` +
+`activateCurrent()` and checks `accepted` fired exactly once with an empty `chosenId`.
+`tests/picker_keyboard.cpp` does the same on the scene's own model and restores the previous query
+afterwards, so the hover and C18 checks below it see the table they expect.
+
+### Not re-derived here: the fit-cost numbers a build has to confirm
+
+The `run_fit_cost` re-point is an ID change only. **No export was run against `chat.discord.file`
+while writing this**, so every figure that came with the old id is carried over on the twin argument
+above and has to be confirmed by running the suite:
+
+- the per-case attempt ceiling in `Case cases[]`: `6, 15` for `chat.discord.file`
+  (`tests/media_export_target.cpp:2677-2680`);
+- the small-canvas case in `Small smalls[]`: `"49 settings behind 76 percents"` with
+  `capDivisor = 2` on a 96x64 plan (`:2791-2794`);
+- the totals comment table's `chat.discord.file  libx264  10  5`, whose totals (`40` blind
+  bisection / `29` interpolated) are what set `kFitAttemptCeiling = 11` and
+  `kFitAttemptBudget = 34` (`:2600-2622`).
+
+Everything else in the consumer list is read off the loaded table by the test itself (the
+`policyRows` and `imageRows` counts, and `tests/export_form.cpp`'s translated-label count, which the
+test reads row by row and whose comment records 37 of 66 where the old table read 40) and therefore
+re-derives itself on the first run; the fit-cost figures are the only ones that are measurements
+standing in for a measurement.
+
+## Post-R1, landed: a rule closes the general block, the picker's words go conventional, and the glyphs come from Phosphor (2026-10-08)
+
+### The rule after the general block (item 19's chain)
+The user asked: "Would it make sense to put a separator after the trio at the top of destinations?"
+It goes after the WHOLE block rather than after the third row, because `archive.master` is no more a
+platform than the three generic rows are — a rule above it would claim the sections start earlier than
+they do. The table asks for it with `separatorAfter="true"` on the `general` group (documented in the
+data file's own attribute block, parsed at `src/ctrl/ExportTarget.cpp:358`, carried as
+`ExportGroup::separatorAfter`, `src/ctrl/ExportTarget.h:244`), so WHICH block carries a rule is data,
+like the grouping itself. The model inserts one row of a third kind after that group's rows,
+independently of the `order` sort (`DestinationPickerModel::build`), and that row is not an answer:
+`flags()` withholds `Qt::ItemIsSelectable` (`DestinationPickerModel.cpp:370`), `select()`,
+`activate()` and `step()` refuse or skip it (`:623` and the `step()` walk), `visibleRowCount()` and
+`destinationCount()` do not count it (`:254`, `:268`), it is never the current row, and it is hidden
+whenever the query is not empty (`isOnScreen`, `:300`) — a filtered list is a list of matches, not a
+structure. The scene draws one hairline in a 12 px band (`DestinationPicker.qml:185-310`; the rule
+carries `objectName: "rowSeparatorRule"`), and because it is a band rather than a 30 px row it does not
+disturb the delegate rhythm the wheel block and the C18 walk both measure. Tests:
+`tests/destination_picker.cpp` — the row kind, the counts, the refusals, the hidden-under-a-query case,
+and a synthetic two-group table proving the insertion follows the GROUP and not the rank sort — and
+`tests/picker_keyboard.cpp`.
+
+### The picker's words (item 19's chain and item 42)
+Verbatim ruling: "I kind of dislike the language 'Where are you posting this?' and 'Use this
+destination'. Why is the UI talking to me?" — then, on the scope: conventional voice across the export
+surface, and "Manual" for the export form's no-destination label. What moved:
+
+| where | before | after |
+| --- | --- | --- |
+| the dialog title (`DestinationPickerModel::windowTitleText`) | "Where are you posting this?" | "Destination" |
+| the confirm button (`okText`) | "Use this destination" | "Continue" |
+| the export form's no-destination label (`ExportViewModel::updateDestinationLabel`) | "My platform isn't listed (I'll choose the format)" | "Manual" |
+| the search field's placeholder | "…illustration, 微信…" | "…illustration, wechat…" |
+
+The audit that preceded it is why the change was worth more than the two strings named: the picker's
+title was the app's ONLY question-shaped dialog title (1 of ~21), and its confirm button the export
+path's only sentence-shaped imperative. `manualText()` and `manualTooltip()` are deleted with the
+button they belonged to, and `tests/picker_keyboard.cpp` now asserts the footer carries exactly two
+buttons by counting those whose text is neither `okText()` nor `cancelText()` — a third one cannot come
+back unnoticed. The GUI probes address widgets by accessible NAME, so every
+`ae_activate "Use this destination"` became `ae_activate "Continue"` (ten call sites across nine
+`probe_*.sh` scripts plus `_lib.sh`'s `require_export_flow` gate). `tests/destination_picker.cpp`
+pins the English copy in the block that runs BEFORE any catalog is installed — the only place the
+source comes back verbatim — and asserts the picker's CONTEXT on the search field's accessible name,
+which has been translated all along ("Buscar destinos"): pinning a new source under a loaded
+translator asserts the translation, not the copy, and the first draft of that assertion failed for
+exactly that reason. Catalogs were regenerated by `ninja 'src/gui/update_translations:Debug'`; the
+picker's new sources are `unfinished` in all five until translators fill them, which is the normal
+state for a new string.
+
+### The glyphs are Phosphor — the MDI set is retired
+The user: "Why MDI? We use phosphor for our icons." Measured, and the author's own error: `assets/icons/
+ph/` IS the app's set — `src/gui/theme/Icons.cpp:160-200` tints "the canonical currentColor set (root
+icons plus the ph/ phosphor imports)" and resolves a name against the root directory first and `ph/`
+second — and that directory ALREADY shipped `image.svg` and `images.svg`, i.e. the two glyphs the
+generic trio needed. The `dest-*.svg` files were the tree's only Material Design Icons; their
+provenance is recorded in `assets/icons/README.md`, which documents MDI as the "generic glyphs" set.
+The four rows that used them now use Phosphor names, three needing no new file at all:
+`generic.video` and `post.douyin.video` → `film-strip` (fetched from
+`api.iconify.design/ph/film-strip.svg` and registered in `assets/assets.qrc`), `archive.master` →
+`folder`, `generic.animation` → `image`, `generic.sequence` → `images`. Two MDI files added during this
+work were deleted; the seven pre-existing `dest-*.svg` are now unreferenced and are LEFT ON DISK,
+because they were not added by this work and deleting them is the repository owner's call.
+
+### The picker's wheel (D23), measured
+`tests/picker_keyboard.cpp` carries the picker's first wheel coverage at all: D23's "responds to the
+wheel" had been asserted for the export FORM's scroller (`tests/form_layout.cpp:267-275`) and never for
+this list, while `scripts/gui/probe_scroll.sh` drives the scroll BAR with xdotool drags and never the
+wheel. Measured offscreen: one 120-unit notch is 72 px = 2.4 rows at `wheelScrollLines()==3`; the step
+is proportional to the delta (15 units → 9 px, ratio 8 exactly), which is what rules out a page scroll
+or a flick; Qt eases each notch over ~300 ms through its own timeline (the scene sets no `Behavior`, no
+wheel step and no flick properties); and a notch that immediately FOLLOWS a direct `contentY` write
+travels a CONSTANT 1125 px whatever the delta is — QQuickFlickable's wheel timeline resuming a target
+it was left holding — which is the one reading the block reports rather than asserts, because the
+harness cannot say whether a real compositor-delivered wheel event hits the same path. The assertions
+are therefore response, monotonicity, exact reversal, and the delta ratio; that ambiguous first
+reading is a warm-up. NOT measured, and why: what a real wheel does over a Wayland-native window needs
+`ydotool` on a live session (AGENTS.md), which this author declined to do on the owner's desktop.
+
+## Auto is a state, the lock holds a captured ratio, and the Quality row says Custom (2026-10-08)
+
+Three rulings in one batch, all of them reactions to one class of defect: a value that MEANT something
+other than itself, or a control that contradicted the model.
+
+### Auto is a state, not a sentinel inside the range (item 35)
+
+Verbatim: "the auto value handling for CRF and Size cap is terrible, and probably any other auto value
+that exists in the export UI. Auto needs to be a special value, not just a visual thing."
+
+What was there, and why each part was wrong:
+
+- `ctrl::QualityControl::autoValue()` returned `min(best, worst) - 1` — a REAL number for a
+  backwards knob (libx264's CRF span is 18..34, so Auto was 17, a value BETTER than the codec's best)
+  — and the field's range was widened to include it (`from: qualityOverrideMinimum`, i.e. that
+  sentinel). The original reason was a QSpinBox, which clamps a value outside its own range: an
+  out-of-range -1 was erased the moment the span was applied (`probe_quality.sh` recorded exactly
+  that — the box always held a number, the intent was disabled, and the export wrote the number over
+  it). Widening the range fixed that and broke something worse: the codec's own best value became
+  unpickable, because the field's bottom step was the word.
+- `AeNumberField` drew the word by COMPARING values: `atPlaceholder` was
+  `Math.round(value) === Math.round(placeholderValue)`. For the size cap (`decimals: 2`, sentinel 0)
+  that rounding is a lie: 0.25 MB — 256 KiB, the cap `scripts/gui/probe_capped.sh` sets — was drawn
+  as "Auto" while the export really was fitted under it. No test caught it, because a probe reads the
+  accessible VALUE (0.25) and never the painted word.
+- `qualityInCharge()` was `value <= autoValue()`, and the Quality combo bound `enabled:
+  qualityInCharge` — so naming a CRF greyed the intent out, which is the convention the user names
+  and rejects.
+
+What replaced it: the state lives in the model (`qualityOverrideAuto`, `sizeCapAuto`,
+`imageQualityAuto`), the value is a real number in the codec's (or writer's) own span, the field draws
+the word when — and only when — the state says so (`AeNumberField.auto`), and the REQUEST boundary
+keeps the encoding the request already had (`ExportParams::qualityOverride = -1`,
+`imageExportQuality = -1`, `sizeCapBytes = 0`). Each consumer reads the state instead of re-deriving
+it, which is what `translateVideoExport()` did: `g.qualityOverride > control.autoValue()` became
+`g.qualityOverride >= 0`.
+
+Consequences worth knowing:
+
+- 0 in the size cap field CHOOSES Auto (`setSizeCap`), because 0 MB is not a cap anyone means.
+- A number the NEW codec would not accept cannot stand as if the user had chosen it: a codec change
+  puts the state back to Auto (`setQualityRangeFromCodec`). The old code reached the same answer by
+  comparing against the sentinel of the codec the value was last set for — the bookkeeping the state
+  removes.
+- The value kept beside an Auto state is where an edit out of Auto STARTS (the codec's own best, 75
+  for the image writer). It is a starting point, deliberately not a claim about what the writer would
+  have done by itself.
+- Escape still restores the value an edit began with (item 34) and reports it, so an owner that keeps
+  its own rule for the word still works; the field itself never decides what the word means
+  (`tests/scrub_escape.cpp` drives both halves).
+
+### The lock holds the ratio it was switched on with, and Reset re-bases it (item 36)
+
+Verbatim: "Aspect ratio should lock aspect ratio to the one used when the lock was last activated.
+Reset should ignore aspect ratio lock and set a new aspect ratio for it if the lock is enabled."
+
+The derive block read `mNativeSize` — the PROJECT's ratio — so the lock could only ever reproduce the
+project's shape: unlock, set 1000x1000, lock, and the next edit snapped the pair back to the project's.
+The fix is one member: `mLockRatio` (a `QSize`, i.e. the PAIR, so the arithmetic stays integral and the
+rounding — up to even — reproduces the widget form's numbers exactly), captured by
+`captureLockRatio()` in exactly three places: the constructor (a lock that starts ON from the saved
+preference holds the pair the form opened on), `setKeepAspectRatio(true)` (the ruling, verbatim), and
+`setSizeToNative()` (the re-base). Nothing else writes it: a destination change hands the user's size
+back through `writeSize()` and must NOT re-pick the ratio, or choosing Twitch would silently re-shape
+every later edit.
+
+`setSizeToNative()` needed no other change to "ignore the lock" — `writeSize()` already runs with the
+one-way guard up — and that guard's reason to exist is unchanged (the equality check cannot stop the
+418/680 alternation, so a derived write must be terminal across the recursive call). The crash
+regression assertions are still in `tests/export_form.cpp`, with the formula's source renamed from the
+project's pair to the pair the lock holds; the new cases cover the capture, the re-base, and a lock
+that starts on over a remembered 1000x1000.
+
+### The Quality row says Custom (item 46)
+
+Verbatim: "when CRF is used Quality should change to Custom instead of disabling, this is established
+UI convention." The combo keeps `enabled: true` and gains a fourth entry — `tr("Custom")`, from
+`qualityCustomLabel()`, present in `options` only while `qualityCustom` (=
+`qualityOverrideVisible && !qualityOverrideAuto`) holds, so it can never be picked as a fifth intent.
+Its `index` is the model's `qualityIndex` unless the state is Custom, in which case it is that
+appended entry; `onActivated` still routes through `setQualityIndex()`, which now hands the decision
+back to the intent (`setQualityOverrideToAuto()`) — including when the bucket chosen is the one already
+current, because the row read "Custom" until that moment. `tests/form_layout.cpp` asserts the whole
+round trip through the real combo's own activation signal, and `scripts/gui/probe_quality.sh` asserts
+it through AT-SPI (the combo's accessible NAME is its current text, so "Custom" is readable from the
+tree without a screenshot).
+
+### A drag on a scrub field belongs to the field (item 32)
+
+Reported 2026-10-08: "the scroll area in the export menu has lmb drag to move down/up, but the
+scrubbers themselves have drag left right and when dragging the scrubbers, the drag also propagates to
+the scroll area. This leads to the user accidentally scrolling while changing values."
+
+Cause: `Flickable` — the form's own scroll host (D25) — STEALS the mouse from a child MouseArea once a
+press-drag passes its threshold. `ScrubSpinBox`'s scrub area had the grab from the press (`MouseArea`
+accepts it by default) but a Flickable takes it back, and the control shows that this is old: its
+`onCanceled` handler exists to reset the scrub state when "another item took the grab". With both axes
+moving - a scrub is dx-driven, but a hand is never purely horizontal - the steal put contentY in motion
+mid-edit.
+
+One line fixes it: `preventStealing: true` on the scrub area, Qt's documented way to keep the gesture a
+control started. The wheel is untouched (a distinct event), and a drag beginning anywhere else on the
+page still scrolls. The trade-off is deliberate and stated in the contract: a drag that starts ON a
+scrub field never scrolls the page, so a user who wants to scroll by dragging starts elsewhere.
+
+The gate is `scripts/gui/probe_scrub.sh`, and it had to be a probe, which is worth recording because the
+first attempt was a trap. The contract was written as an offscreen assertion in
+`tests/form_layout.cpp` first, and that harness cannot decide it: with the fix REMOVED the synthetic
+press-drag still scrubbed (1000 -> 1008) with contentY at 0, i.e. the Flickable's steal never happened
+on that event path at all. The one signal that looked like a steal - `ScrubSpinBox.scrubbing` going
+false - was the test reading the `AeNumberField` WRAPPER, which has no such property, so it read an
+invalid QVariant, i.e. false, in every run including the green ones. A test that is green by
+construction is worse than no test, so the block was deleted and the note left in its place.
+
+`probe_scrub.sh` decides it with a real pointer under Xvfb: it opens a form that genuinely overflows
+(the D25 worst case - Advanced open plus four frame ranges; `xdotool windowsize` is NOT an option, there
+is no window manager and the X request is refused), proves the scroll reading is live by moving it both
+ways with the wheel, then drags on a frame field with `ae_drag` (sideways for the scrub plus a vertical
+component, which is what a hand does and what tips a Flickable over its threshold) and requires the
+value to change AND three separate rectangles - the dragged field's and two other rows' - to be exactly
+where they were. Measured: with the fix, 0 -> 9 and every rectangle unmoved; the red run is what the
+probe exists for.

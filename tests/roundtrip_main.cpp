@@ -96,6 +96,61 @@ struct ProjectSlot {
     QString tmpPath;
 };
 
+// In-process round trip for the optional viewport background: a project that
+// set a colour must reload with the same rgb and has=true, a cleared one must
+// reload with has=false (the theme default). Returns 0 on success.
+static int checkViewportBackgroundRoundTrip(NullAnimator& animator, const gl::DeviceInfo& aDev, NullReporter& aReporter) {
+    const auto saveAndReload = [&](core::Project& aProject, std::unique_ptr<core::Project>& aOut) -> bool {
+        QTemporaryFile tmp;
+        tmp.setAutoRemove(false);
+        if (!tmp.open()) {
+            std::fprintf(stderr, "BG tmp open failed\n");
+            return false;
+        }
+        const QString tmpPath = tmp.fileName() + ".anie";
+        tmp.close();
+        QFile::remove(tmpPath);
+        ctrl::ProjectSaver saver;
+        if (!saver.save(tmpPath, aProject)) {
+            std::fprintf(stderr, "BG SAVE FAILED: %s\n", qPrintable(saver.log()));
+            QFile::remove(tmpPath);
+            return false;
+        }
+        aOut = std::make_unique<core::Project>(tmpPath, animator, nullptr);
+        ctrl::ProjectLoader loader;
+        if (!loader.load(tmpPath, *aOut, aDev, aReporter)) {
+            std::fprintf(stderr, "BG RELOAD FAILED: %s\n", qPrintable(joinLog(loader.log())));
+            QFile::remove(tmpPath);
+            return false;
+        }
+        QFile::remove(tmpPath);
+        return true;
+    };
+
+    const auto fail = [](const char* aWhat) {
+        std::fprintf(stderr, "BG ROUNDTRIP FAILED: %s\n", aWhat);
+        return 1;
+    };
+
+    core::Project painted(QString(), animator, nullptr);
+    painted.attribute().setViewportBackground(QColor(17, 34, 51));
+    std::unique_ptr<core::Project> reloaded;
+    if (!saveAndReload(painted, reloaded)) return 1;
+    if (!reloaded->attribute().hasViewportBackground()) return fail("set colour came back unset");
+    if (reloaded->attribute().viewportBackground().rgb() != QColor(17, 34, 51).rgb())
+        return fail("set colour changed on reload");
+
+    core::Project cleared(QString(), animator, nullptr);
+    cleared.attribute().setViewportBackground(QColor(17, 34, 51));
+    cleared.attribute().clearViewportBackground();
+    std::unique_ptr<core::Project> reloadedClear;
+    if (!saveAndReload(cleared, reloadedClear)) return 1;
+    if (reloadedClear->attribute().hasViewportBackground()) return fail("cleared colour came back set");
+
+    std::fprintf(stderr, "VIEWPORT BACKGROUND ROUNDTRIP OK\n");
+    return 0;
+}
+
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
     if (argc < 2) {
@@ -129,6 +184,10 @@ int main(int argc, char** argv) {
     gl::DeviceInfo::setInstance(&dev);
     NullAnimator animator;
     NullReporter reporter;
+
+    // The optional viewport background round trip is independent of the files
+    // below, so exercise it once here.
+    const int bgFailures = checkViewportBackgroundRoundTrip(animator, dev, reporter);
 
     // Load all projects up front (tabs alive simultaneously), round-trip each
     // through serialize+reload once, then "close" (destroy) all.
@@ -181,5 +240,5 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "CLOSED: %s\n", qPrintable(pslot.filePath));
     }
     std::fprintf(stderr, "DONE (load failures: %d)\n", loadFailures);
-    return loadFailures > 0 ? 1 : 0;
+    return (loadFailures > 0 || bgFailures != 0) ? 1 : 0;
 }

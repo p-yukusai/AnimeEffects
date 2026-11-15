@@ -151,9 +151,23 @@ void ExportRangeModel::removeRange(int aIndex) {
 void ExportRangeModel::setRangeFirst(int aIndex, int aValue) {
     if (aIndex < 0 || aIndex >= mRanges.size())
         return;
-    if (mRanges.at(aIndex).first == aValue)
+    const ctrl::FrameRange held = mRanges.at(aIndex);
+    ctrl::FrameRange range = held;
+    // F36: the two fields clamp against EACH OTHER so a range can never invert, and
+    // each against the project's own extent - the same clamp MainWindow applies to
+    // the remembered ranges when it restores them. An edit past the row's last
+    // carries the last along with it rather than being silently shortened: the pair
+    // stays a pair, and the whole pair is resolved in ONE pass, so neither setter can
+    // re-enter the other and start an alternation.
+    range.first = std::clamp(aValue, mProjectFirst, mProjectLast);
+    if (range.first > range.last)
+        range.last = range.first;
+    if (range.first == held.first && range.last == held.last)
         return;
-    mRanges[aIndex].first = aValue;
+    mRanges[aIndex] = range;
+    // BOTH fields, whether or not only one of them moved: the neighbour may have
+    // been dragged along, and a view that redraws only the edited field would keep
+    // showing the number the pair no longer holds.
     emit dataChanged(index(aIndex, 0), index(aIndex, 0), {FirstRole, LastRole});
     emit rangesChanged();
 }
@@ -161,9 +175,14 @@ void ExportRangeModel::setRangeFirst(int aIndex, int aValue) {
 void ExportRangeModel::setRangeLast(int aIndex, int aValue) {
     if (aIndex < 0 || aIndex >= mRanges.size())
         return;
-    if (mRanges.at(aIndex).last == aValue)
+    const ctrl::FrameRange held = mRanges.at(aIndex);
+    ctrl::FrameRange range = held;
+    range.last = std::clamp(aValue, mProjectFirst, mProjectLast);
+    if (range.last < range.first)
+        range.first = range.last;
+    if (range.first == held.first && range.last == held.last)
         return;
-    mRanges[aIndex].last = aValue;
+    mRanges[aIndex] = range;
     emit dataChanged(index(aIndex, 0), index(aIndex, 0), {FirstRole, LastRole});
     emit rangesChanged();
 }
@@ -252,6 +271,10 @@ ExportViewModel::ExportViewModel(const Init& aInit, QObject* aParent)
     mUserSizeKnown = true;
     mFps = aInit.fps > 0 ? aInit.fps : mNativeFps;
     mKeepAspectRatio = aInit.keepAspectRatio;
+    // The lock starts holding the ratio the form OPENS on - the remembered pair, or
+    // the project's own when there is none. Ruled 2026-10-08: "Aspect ratio should
+    // lock aspect ratio to the one used when the lock was last activated."
+    captureLockRatio();
     mTransparency.setValue(aInit.transparency);
     mLoop.setValue(aInit.loop);
     mAudio.setValue(aInit.audio);
@@ -303,7 +326,7 @@ void ExportViewModel::setDestinationId(const QString& aId) {
 
 void ExportViewModel::updateDestinationLabel() {
     if (mDestinationId.isEmpty()) {
-        mDestinationLabel = tr("My platform isn't listed (I'll choose the format)");
+        mDestinationLabel = tr("Manual");
         mDestinationIconName.clear();
         return;
     }
@@ -510,37 +533,30 @@ QString ExportViewModel::qualityKnob() const {
     return qualityControl().option;
 }
 
-int ExportViewModel::qualityOverrideAutoValue() const {
-    const ctrl::QualityControl control = qualityControl();
-    return control.option.isEmpty() ? -1 : control.autoValue();
-}
-
 void ExportViewModel::setQualityRangeFromCodec() {
-    // The sentinel has to be INSIDE the range. QSpinBox::setRange clamped it away
-    // against a span that started higher; a QML field does not clamp by itself, so
-    // the model does the equivalent bookkeeping: a value left over from another
-    // codec's span (WebP's 29 inside libx264's 18..34) is an ordinary number here
-    // and would silently stop being Auto.
-    //
-    // The comparison is against the Auto value the value was LAST SET FOR, not against
-    // this codec's own: this function runs after the codec changed, so asking the new
-    // control what Auto is compares the old number with the wrong answer and keeps it.
-    // Two encoders whose Auto values differ (VP9's CRF and libx264's) are enough - a
-    // manual WebM export left its CRF behind as a fixed number on the H.264
-    // destination chosen next.
+    // The range is the codec's OWN span - not a span extended downwards by one to hide
+    // a sentinel at the bottom of it. Auto is a state (see the property), so the number
+    // that used to MEAN it is no longer reachable from the field: a user who wants the
+    // codec's best value gets the codec's best value.
     const ctrl::QualityControl control = qualityControl();
-    const bool wasAuto = mQualityOverrideValue < 0
-                         || mQualityOverrideValue == mQualityOverrideSentinel
-                         || mQualityOverrideValue < control.autoValue()
-                         || mQualityOverrideValue > std::max(control.best, control.worst);
     if (control.option.isEmpty()) {
-        mQualityOverrideValue = -1;
+        mQualityOverrideMinimum = 0;
         mQualityOverrideMaximum = 0;
-        mQualityOverrideSentinel = -1;
+        mQualityOverrideValue = 0;
+        mQualityOverrideAuto = true;
     } else {
+        mQualityOverrideMinimum = std::min(control.best, control.worst);
         mQualityOverrideMaximum = std::max(control.best, control.worst);
-        mQualityOverrideValue = wasAuto ? control.autoValue() : mQualityOverrideValue;
-        mQualityOverrideSentinel = control.autoValue();
+        // A number this codec would not accept cannot stand as if the user had chosen
+        // it, so the state falls back to Auto. (The old code re-derived that answer by
+        // comparing the number with the sentinel of the codec it was last set for; the
+        // state replaces the bookkeeping, which is what a WebP quality left behind
+        // inside libx264's span used to need on every codec change.)
+        if (mQualityOverrideValue < mQualityOverrideMinimum
+            || mQualityOverrideValue > mQualityOverrideMaximum)
+            mQualityOverrideAuto = true;
+        if (mQualityOverrideAuto)
+            mQualityOverrideValue = control.best;
     }
     emit qualityOverrideChanged();
 }
@@ -629,11 +645,36 @@ void ExportViewModel::applyArtifactConstraints() {
     // An empty Advanced section is a dead end, so it is only offered when something
     // inside it applies to this artifact. Asked of the FLAGS above, never of a
     // child's visibility, or the section would hide itself in the two cases where
-    // the palette, the loop flag and transparency are the only things in there.
+    // the palette and the loop flag are the only things in there.
+    //
+    // Alpha capability is deliberately NOT one of these terms any more: since
+    // 2026-10-03 the transparency toggle lives on the regular surface, so a codec
+    // that carries alpha no longer puts anything inside the section, and asking it
+    // here would open Advanced onto nothing - the dead end this comment forbids.
+    // The offered codec row is a resident (destination mode only; manual mode's copy
+    // sits beside Format), so IT keeps the section alive. For every destination in
+    // the current table that term is already implied by the video ones below; it is
+    // stated anyway so a one-image destination that offers a codec choice cannot end
+    // up hiding the row that owns that choice.
+    //
+    // The frame-range rows are residents TOO since H41 (2026-10-09): item 41 moved
+    // them into this section, so a destination that offers a range must offer the
+    // section or the row is unreachable. `rangeVisible` is true for video, animated
+    // image and image SEQUENCE - and a sequence has none of the terms above (no
+    // audio, no GIF loop, no codec row, no quality knob, and the bitrate term needs a
+    // video artifact), so without this one `post.pixiv.ugoira`/`generic.sequence`
+    // draw their Frames row behind a shut, invisible disclosure. The rule above is
+    // not weakened: a Still artifact has `rangeVisible` false, so with nothing else
+    // inside the section still hides (tests/form_layout.cpp, "H41: a Still artifact
+    // still has no Frames row").
     mAdvancedVisible = audioPossible || isGif || knobUsable
-                       || (isVideo && knob.isEmpty()) || activeCodecCarriesAlpha();
-    if (!mAdvancedVisible)
+                       || (isVideo && knob.isEmpty())
+                       || (codecVisible() && !manualMode())
+                       || rangeVisible();
+    if (!mAdvancedVisible && mAdvancedOpen) {
         mAdvancedOpen = false;
+        emit advancedOpenChanged();
+    }
 
     emit constraintsChanged();
 }
@@ -648,6 +689,24 @@ void ExportViewModel::writeSize(const QSize& aSize) {
     mUserSizeKnown = true;
 }
 
+// The paired write's own rounding: a codec's chroma plane is not half a pixel, and
+// rounding UP is what the widget form did, so the numbers a user has seen for years
+// do not move.
+static int evenUp(int aValue) {
+    return aValue % 2 ? aValue + 1 : aValue;
+}
+
+void ExportViewModel::captureLockRatio() {
+    // The ratio the lock holds is the PAIR ON SCREEN when it was last switched on
+    // (ruled 2026-10-08). The project's own size is only the fallback for a pair that
+    // cannot carry a ratio, because a zero would make every edit divide by zero.
+    if (mWidth > 0 && mHeight > 0) {
+        mLockRatio = QSize(mWidth, mHeight);
+    } else {
+        mLockRatio = (mNativeSize.width() > 0 && mNativeSize.height() > 0) ? mNativeSize : QSize();
+    }
+}
+
 void ExportViewModel::setWidth(int aValue) {
     if (aValue < 0)
         aValue = 0;
@@ -658,18 +717,20 @@ void ExportViewModel::setWidth(int aValue) {
         emit sizeChanged();
     }
     // The aspect link: editing Width moves Height, rounded UP to an even number so a
-    // codec's chroma plane is not half a pixel. The formula is the widget form's, so
-    // the numbers a user has seen for years do not change.
+    // codec's chroma plane is not half a pixel. The ratio is the one the LOCK holds
+    // (captured when it was switched on, or re-based by Reset) - not the project's,
+    // which is what made a locked 1:1 pair snap back to the project's shape on the
+    // next edit.
     //
     // The write-back is ONE WAY: the derived Height write must not derive a Width in
     // turn. The equality check above cannot stop that, because the derive block runs on
     // every call, and the rounding makes the pair unstable (680 -> 418 -> 680, forever).
     // So the guard is carried ACROSS the recursive call, which makes the derived write
     // terminal while leaving both numbers exactly as they were.
-    if (!mWritingSize && mKeepAspectRatio && mNativeSize.width() > 0 && mNativeSize.height() > 0) {
-        const int res = (mNativeSize.height() * mWidth) / mNativeSize.width();
+    if (!mWritingSize && mKeepAspectRatio && mLockRatio.width() > 0 && mLockRatio.height() > 0) {
+        const int res = (mLockRatio.height() * mWidth) / mLockRatio.width();
         mWritingSize = true;
-        setHeight(res % 2 ? res + 1 : res);
+        setHeight(evenUp(res));
         mWritingSize = false;
     }
     if (!mWritingSize) {
@@ -688,10 +749,10 @@ void ExportViewModel::setHeight(int aValue) {
         emit sizeChanged();
     }
     // The mirror of setWidth, and ONE WAY for the same reason.
-    if (!mWritingSize && mKeepAspectRatio && mNativeSize.height() > 0 && mNativeSize.width() > 0) {
-        const int res = (mNativeSize.width() * mHeight) / mNativeSize.height();
+    if (!mWritingSize && mKeepAspectRatio && mLockRatio.height() > 0 && mLockRatio.width() > 0) {
+        const int res = (mLockRatio.width() * mHeight) / mLockRatio.height();
         mWritingSize = true;
-        setWidth(res % 2 ? res + 1 : res);
+        setWidth(evenUp(res));
         mWritingSize = false;
     }
     if (!mWritingSize) {
@@ -704,11 +765,21 @@ void ExportViewModel::setKeepAspectRatio(bool aOn) {
     if (mKeepAspectRatio == aOn)
         return;
     mKeepAspectRatio = aOn;
+    // Switching the lock ON is what picks the ratio it holds: whatever the two boxes
+    // say at that moment. Switching it OFF changes nothing else - the pair the user
+    // was looking at stays exactly as it is.
+    if (aOn)
+        captureLockRatio();
     emit keepAspectRatioChanged();
 }
 
 void ExportViewModel::setSizeToNative() {
+    // Reset IGNORES the lock - writeSize lands both numbers, so the pair is the
+    // project's exactly - and it RE-BASES the lock to what it just landed on, so the
+    // next locked edit holds the project's own shape instead of the ratio that was
+    // there before the reset (ruled 2026-10-08, and contract item 36 before it).
     writeSize(mNativeSize);
+    captureLockRatio();
 }
 
 void ExportViewModel::setFps(int aValue) {
@@ -763,7 +834,12 @@ void ExportViewModel::freezeCapability(ctrl::Capability aCapability, ExportCapab
     }
     // The plan has the last word: a destination may ask for alpha the chosen codec
     // cannot deliver, so whenever the plan says no the box must say no too - and stay
-    // put, so the refusal cannot be re-asserted.
+    // put, so the refusal cannot be re-asserted. The request now carries the row's
+    // own answer (H42), so on a row the destination merely OFFERS the choice on a
+    // mismatch can only mean the resolved CODEC refuses alpha - a genuine refusal,
+    // which is exactly what this freeze is for. What used to make the branch wrong
+    // was a mismatch the PLAN produced itself, `Choice -> false`, over an answer it
+    // never received.
     if (aRow.value() && !aResolved) {
         aRow.setValue(false);
         aRow.setEnabled(false);
@@ -797,14 +873,24 @@ void ExportViewModel::restoreManualState() {
 
 // ----------------------------------------------------------- quality intent
 void ExportViewModel::setQualityIndex(int aIndex) {
-    if (aIndex < 0 || aIndex > 3 || aIndex == mQualityIndex)
+    if (aIndex < 0 || aIndex > 3)
         return;
-    mQualityIndex = aIndex;
-    emit qualityIndexChanged();
-    // Lossless is a real answer for a codec that can carry it, and the plan says so;
-    // the destination is otherwise unchanged, so the facts are rebuilt rather than
-    // the whole form re-planned.
-    refresh();
+    const bool bucketChanged = aIndex != mQualityIndex;
+    if (bucketChanged) {
+        mQualityIndex = aIndex;
+        emit qualityIndexChanged();
+    }
+    // Choosing an intent hands the decision back to it: the codec's own number returns
+    // to Auto, so the combo's "Custom" cannot outlive the choice that ended it. That
+    // includes re-choosing the bucket that was already current - the combo reads
+    // "Custom", so picking "Balanced" has to mean Balanced again.
+    setQualityOverrideToAuto();
+    if (bucketChanged) {
+        // Lossless is a real answer for a codec that can carry it, and the plan says so;
+        // the destination is otherwise unchanged, so the facts are rebuilt rather than
+        // the whole form re-planned.
+        refresh();
+    }
 }
 
 QStringList ExportViewModel::qualityLabels() const {
@@ -825,30 +911,37 @@ void ExportViewModel::setQualityOverrideValue(int aValue) {
     const ctrl::QualityControl control = qualityControl();
     if (control.option.isEmpty())
         return;
-    const int low = control.autoValue();
-    const int high = std::max(control.best, control.worst);
-    if (aValue < low)
-        aValue = low;
-    if (aValue > high)
-        aValue = high;
-    if (mQualityOverrideValue == aValue)
+    if (aValue < mQualityOverrideMinimum)
+        aValue = mQualityOverrideMinimum;
+    if (aValue > mQualityOverrideMaximum)
+        aValue = mQualityOverrideMaximum;
+    // Naming a number is what ENDS Auto: one question, two controls, and a number the
+    // user chose cannot still mean "the quality setting decides".
+    const bool wasAuto = mQualityOverrideAuto;
+    mQualityOverrideAuto = false;
+    if (mQualityOverrideValue == aValue && !wasAuto)
         return;
     mQualityOverrideValue = aValue;
     emit qualityOverrideChanged();
-    // Two controls for one number: while the user has named the value, the intent is
-    // not in charge, and a combo still reading "Balanced" beside "CRF 18" is the form
-    // contradicting itself.
+    // The Quality combo reads "Custom" from here on (and stays usable): it is the
+    // control that says what the other one did.
     emit constraintsChanged();
 }
 
 void ExportViewModel::setQualityOverrideToAuto() {
-    setQualityOverrideValue(qualityOverrideAutoValue());
+    // Auto is not "a value at the bottom of the range": it is the state in which the
+    // request carries no number at all and the field draws the word. The number kept
+    // beside it is only where the next edit out of Auto starts, and the codec's own
+    // best is the honest place for that - it is in range for every codec.
+    const ctrl::QualityControl control = qualityControl();
+    mQualityOverrideAuto = true;
+    mQualityOverrideValue = control.option.isEmpty() ? 0 : control.best;
+    emit qualityOverrideChanged();
+    emit constraintsChanged();
 }
 
-bool ExportViewModel::qualityInCharge() const {
-    if (!mQualityOverrideVisible)
-        return true;
-    return mQualityOverrideValue <= qualityOverrideAutoValue();
+QString ExportViewModel::qualityCustomLabel() const {
+    return tr("Custom");
 }
 
 QString ExportViewModel::qualityOverrideAutoText() const {
@@ -882,18 +975,25 @@ int ExportViewModel::bitrateValue() const {
 }
 
 void ExportViewModel::setImageQuality(int aValue) {
-    if (aValue < -1)
-        aValue = -1;
+    if (aValue < 0)
+        aValue = 0;
     if (aValue > 100)
         aValue = 100;
-    if (mImageQuality == aValue)
+    const bool wasAuto = mImageQualityAuto;
+    mImageQualityAuto = false;
+    if (mImageQuality == aValue && !wasAuto)
         return;
     mImageQuality = aValue;
     emit imageQualityChanged();
 }
 
 void ExportViewModel::setImageQualityToAuto() {
-    setImageQuality(-1);
+    // The STATE, not a number: -1 (the writer's own default) is what the request
+    // carries for it, and the field draws the word instead of any number at all.
+    if (mImageQualityAuto)
+        return;
+    mImageQualityAuto = true;
+    emit imageQualityChanged();
 }
 
 void ExportViewModel::setSizeCap(double aValue) {
@@ -901,14 +1001,26 @@ void ExportViewModel::setSizeCap(double aValue) {
         aValue = sizeCapMinimum();
     if (aValue > sizeCapMaximum())
         aValue = sizeCapMaximum();
-    if (qFuzzyCompare(mSizeCapValue, aValue))
+    // Zero is not a cap anybody means: it is the "Auto" state (no cap enforced), which
+    // the field draws as the word. Typing 0 therefore chooses Auto instead of a number
+    // that only looks like one.
+    const bool autoNow = aValue <= 0.0;
+    const bool changed = (autoNow != mSizeCapAuto)
+                         || (!autoNow && !qFuzzyCompare(mSizeCapValue, aValue));
+    mSizeCapAuto = autoNow;
+    mSizeCapValue = autoNow ? 0.0 : aValue;
+    if (!changed)
         return;
-    mSizeCapValue = aValue;
     emit sizeCapChanged();
 }
 
 void ExportViewModel::setSizeCapToAuto() {
-    setSizeCap(0.0);
+    const bool changed = !mSizeCapAuto || mSizeCapValue != 0.0;
+    mSizeCapAuto = true;
+    mSizeCapValue = 0.0;
+    if (!changed)
+        return;
+    emit sizeCapChanged();
 }
 
 // ---------------------------------------------------------------- disclosure
@@ -983,19 +1095,30 @@ void ExportViewModel::applyPlan(const ctrl::ExportPlan& aPlan, const ctrl::Expor
         writeSize(aPlan.size);
     // THE SIZE STAYS THE USER'S WHEREVER THE DESTINATION ONLY BOUNDS IT.
     //   Free  the destination imposes nothing: the project's own size
-    //   Max   a CEILING ("no bigger than 1280x720"): the user may export smaller,
-    //         and the boxes say so by carrying that as their maximum
+    //   Max   a CEILING ("no bigger than 1280x720"): a ceiling bounds the OUTPUT,
+    //         not either of the two numbers, so the boxes keep the user's size
+    //         (put back below, over the plan's own fitted write) and the ceiling
+    //         is stated in the facts; planExport bounds the rule by the request at
+    //         export time, so the file is still capped
     //   Exact / MaxExactSide / MaxMinSide   the size is pinned, so the boxes report
     //         it and stop accepting edits.
-    const bool boundsOnly = aTarget.size.mode == ctrl::SizeMode::Max;
-    const bool sizeIsUsers = aTarget.size.mode == ctrl::SizeMode::Free || boundsOnly;
+    const bool sizeIsUsers = aTarget.size.mode == ctrl::SizeMode::Free
+                             || aTarget.size.mode == ctrl::SizeMode::Max;
     if (sizeIsUsers) {
+        // The plan wrote its own fitted size into the boxes; hand the user's back.
+        // Leaving the fit there made a Max row's limit look like the project's
+        // resolution, and "Reset to native" could not restore it because the same
+        // ceiling was also the field's maximum and clamped the write.
+        writeSize(beforeFit);
         mUserSize = beforeFit;
         mUserSizeKnown = true;
     }
     mLastSizeDictated = !sizeIsUsers;
-    mWidthMaximum = (boundsOnly && aTarget.size.w > 0) ? aTarget.size.w : INT32_MAX;
-    mHeightMaximum = (boundsOnly && aTarget.size.h > 0) ? aTarget.size.h : INT32_MAX;
+    // The boxes carry the FIELD's own bounds, never a destination ceiling: a rule
+    // acts at export time, so a maximum here would clamp the reset and skew the
+    // aspect lock against a number the destination never dictated.
+    mWidthMaximum = INT32_MAX;
+    mHeightMaximum = INT32_MAX;
     mSizeEditable = sizeIsUsers;
     emit sizeLimitsChanged();
 
@@ -1020,10 +1143,16 @@ void ExportViewModel::applyPlan(const ctrl::ExportPlan& aPlan, const ctrl::Expor
     // destination decides".
     mBitrate = QStringLiteral("Auto");
     mBitrateEnabled = false;
-    // Image quality is NOT a frozen fact when the artifact goes through
-    // QImage::save(): it is the only quality control that file has, so it is left
-    // enabled and starts at Auto, which is the writer's own default.
-    mImageQuality = -1;
+    // Image quality is NOT a frozen fact when the artifact goes through QImage::save():
+    // it is the only quality control that file has, so it is left enabled and starts at
+    // Auto, which is the writer's own default. The STATE is set rather than a -1 left in
+    // the number, and it is emitted: a field whose binding the user's own scrub breaks
+    // (ScrubSpinBox writes `value`) re-syncs only on the signal, so a silently changed
+    // number would keep showing the value of the last artifact.
+    if (!mImageQualityAuto) {
+        mImageQualityAuto = true;
+        emit imageQualityChanged();
+    }
     // The artifact is the destination's, so the manual combos report it and stop
     // accepting edits.
     const bool imageArtifact = planOk && aPlan.artifact != ctrl::ArtifactKind::Video;
@@ -1143,6 +1272,12 @@ ctrl::ExportRequest ExportViewModel::buildRequest() const {
                                                         std::max(spanFirst(), spanLast()));
     request.exportableAudioTracks = mInit.exportableAudioTracks;
     request.mute = !mAudio.value();
+    // H42: the destination-mode plan must receive the USER'S answer, not the
+    // request's own `true` default. The row's own resolution - an alpha the
+    // destination merely OFFERS the choice on - and the archive ladder's alpha-OFF
+    // branch are only reachable from here; with the default standing, neither is,
+    // and a box the user unticked is a control that lies.
+    request.allowTransparency = mTransparency.value();
     request.playhead = mPlayhead;
     // I44: the user's codec row choice travels on the request - but only once
     // they HAVE chosen. Unpinned, the request says nothing and the plan applies
@@ -1320,15 +1455,15 @@ ExportViewModel::ReadBack ExportViewModel::readBack() const {
     out.height = mHeight;
     out.fps = mFps;
     out.bitrate = bitrateValue();
-    // The sentinel is the bottom of the control's own range, and -1 means "there is
-    // no knob here at all".
-    out.qualityOverride = (mQualityOverrideVisible && mQualityOverrideValue > qualityOverrideAutoValue())
-                              ? mQualityOverrideValue
-                              : -1;
-    out.imageExportQuality = mImageQuality;
-    // I43: the opt-in cap travels in bytes. 0 (the "Auto" sentinel) stays 0 —
-    // the fit block runs only on a value the user chose.
-    out.sizeCapBytes = (mSizeCapValue > 0.0) ? qint64(qRound64(mSizeCapValue * 1048576.0)) : 0;
+    // "-1 = the quality intent decides" is the request's own encoding; Auto is a state
+    // in the dialog, so the two are converted exactly here.
+    out.qualityOverride = (mQualityOverrideVisible && !mQualityOverrideAuto) ? mQualityOverrideValue : -1;
+    out.imageExportQuality = mImageQualityAuto ? -1 : mImageQuality;
+    // I43: the opt-in cap travels in bytes. 0 = no cap is the same encoding the fit
+    // block and GeneralParams::sizeCapBytes already use, and the state says which of
+    // the two it is.
+    out.sizeCapBytes =
+        (!mSizeCapAuto && mSizeCapValue > 0.0) ? qint64(qRound64(mSizeCapValue * 1048576.0)) : 0;
     out.allowTransparency = mTransparency.value();
     out.loop = mLoop.value();
     out.exportWithAudio = mAudio.value();
@@ -1338,10 +1473,10 @@ ExportViewModel::ReadBack ExportViewModel::readBack() const {
     out.ranges = mRanges.ranges();
     out.artifactId = currentFormatId();
     out.sequence = out.artifactId.startsWith(QLatin1String("image/"));
-    out.artifactSuffix = out.sequence ? out.artifactId.mid(6)
-                                      : (out.artifactId.startsWith(QLatin1String("image/"))
-                                             ? out.artifactId.mid(6)
-                                             : out.artifactId);
+    // A sequence's suffix is what follows the image/ prefix; anything else IS its
+    // own suffix. (The inner ternary that used to sit here asked whether the id
+    // started with "image/" again, which `sequence` has already answered.)
+    out.artifactSuffix = out.sequence ? out.artifactId.mid(6) : out.artifactId;
     // I44: the codec that goes into the export. The user's pin, when they set
     // one; otherwise the PLAN's exact resolution (possibly a hardware encoder of
     // the offered format) - the row shows its FORMAT either way, and the

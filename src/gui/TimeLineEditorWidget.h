@@ -83,6 +83,15 @@ public:
     // The controller the surface renders; TimeRuler drives it through the
     // same updateCursor entry point as the track input path.
     ctrl::TimeLineEditor* editor() const { return mEditor.data(); }
+    // Shows the application's own KEY EASING MENU at aGlobalPos, for the keys
+    // aTargets names (the caller's current selection, in the timeline's
+    // currency). This is the entry point for callers that are not the timeline's
+    // own context-menu handler - the animation graph panel's right-click - and it
+    // reuses the menu this widget already builds and populates, so the two routes
+    // cannot offer different easing lists or take different edit paths. Nothing
+    // here depends on the panel: a caller with a selection and a screen position
+    // gets the menu, and an EMPTY target list shows nothing.
+    void showKeyContextMenu(const core::TimeLineEvent& aTargets, const QPoint& aGlobalPos);
     // The MoveCanvas key (space by default) is held: the ruler lets a
     // left-press propagate to the timeline's pan instead of seeking.
     void setPanKeyHeld(bool aHeld) {

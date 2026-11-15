@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QColor>
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QRegularExpression>
@@ -15,6 +16,7 @@
 #include "gui/DockSash.h"
 #include "gui/NewProjectDialog.h"
 #include "gui/ProjectHook.h"
+#include "gui/obj/obj_Item.h"
 #include "gui/menu/menu_ProgressReporter.h"
 #include "util/NetworkUtil.h"
 #include <set>
@@ -139,7 +141,7 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         mMainDisplayStyle.reset(new MainDisplayStyle(font, mGUIResources));
         mMainDisplay = new MainDisplayWidget(mViaPoint, this);
         this->setCentralWidget(mMainDisplay);
-        mMainDisplay->setViewportBackground(mGUIResources.viewportBackground());
+        this->applyViewportBackground();
 
         mProjectTabBar = new ProjectTabBar(mMainDisplay, mGUIResources);
         mMainDisplay->setProjectTabBar(mProjectTabBar);
@@ -163,6 +165,9 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
 
         mTarget = new TargetWidget(mViaPoint, mGUIResources, dockWidget, QSize(256, 256));
         dockWidget->setWidget(mTarget);
+        // The asset removal path reaches the object tree through ViaPoint to
+        // delete the layers that reference a removed asset in ONE undo step.
+        mViaPoint.setObjectTreeWidget(&mTarget->objectTreeWidget());
     }
 
     // create property widget
@@ -266,10 +271,40 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         objTree.onSelectionChanged.connect(mProperty, &PropertyWidget::onSelectionChanged);
         objTree.onSelectionChanged.connect(&timeLine, &TimeLineWidget::onSelectionChanged);
 
+        // The graph works on every selected layer, but the signal above only
+        // carries a representative node (null when the selection is empty or
+        // mixed), so collect the whole tree selection here.
+        objTree.onSelectionChanged.connect([this](core::ObjectNode*) {
+            QVector<core::ObjectNode*> nodes;
+            for (QTreeWidgetItem* item : mTarget->objectTreeWidget().selectedItems()) {
+                if (auto* objItem = gui::obj::Item::cast(item)) nodes.push_back(&objItem->node());
+            }
+            if (auto* drv = mDriverHolder->driver()) drv->setGraphTargets(nodes);
+        });
+
+        // A driver that already exists when the connections are made never saw
+        // the selection, so hand it the current one (possibly empty).
+        if (auto* drv = mDriverHolder->driver()) {
+            QVector<core::ObjectNode*> nodes;
+            for (QTreeWidgetItem* item : mTarget->objectTreeWidget().selectedItems()) {
+                if (auto* objItem = gui::obj::Item::cast(item)) nodes.push_back(&objItem->node());
+            }
+            drv->setGraphTargets(nodes);
+        }
+
         objTree.onTreeViewUpdated.connect(&timeLine, &TimeLineWidget::onTreeViewUpdated);
         objTree.onScrollUpdated.connect(&timeLine, &TimeLineWidget::onScrollUpdated);
         timeLine.onVerticalScrollRequested.connect(
             [&objTree](int aValue) { objTree.verticalScrollBar()->setValue(aValue); });
+
+        // The animation graph panel is a SECOND VIEW of this timeline: it shows the
+        // timeline's own visible frame window and writes the timeline's own live key
+        // selection (see MainDisplayWidget::setTimeLineWidget and
+        // syncGraphPanelSharedState). Handed over here, once, because the timeline
+        // widget outlives every project while the graph editor does not - it lives in
+        // the driver, which is created and destroyed per project, so
+        // MainDisplayWidget::setDriver re-hands the new editor this same state.
+        disp.setTimeLineWidget(&timeLine);
 
         timeLine.onFrameUpdated.connect(&driver, &DriverHolder::onFrameUpdated);
         timeLine.onFrameUpdated.connect(&prop, &PropertyWidget::onFrameUpdated);
@@ -278,6 +313,7 @@ MainWindow::MainWindow(ctrl::System& aSystem, GUIResources& aResources, LocalePa
         menu.onProjectAttributeUpdated.connect(&disp, &MainDisplayWidget::onProjectAttributeUpdated);
         menu.onProjectAttributeUpdated.connect(&timeLine, &TimeLineWidget::onProjectAttributeUpdated);
         menu.onProjectAttributeUpdated.connect(&driver, &DriverHolder::onProjectAttributeUpdated);
+        menu.onProjectAttributeUpdated.connect(this, &MainWindow::applyViewportBackground);
         menu.onTimeFormatChanged.connect(&timeLine, &TimeLineWidget::triggerOnTimeFormatChanged);
 
         mGUIResources.onThemeChanged.connect(this, &MainWindow::onThemeUpdated);
@@ -528,12 +564,37 @@ void MainWindow::resetProjectRefs(core::Project* aProject) {
 
     mMainDisplay->setDriver(mDriverHolder->driver());
     mTool->setDriver(mDriverHolder->driver());
+
+    // The driver is created here (and later destroyed with the project), which
+    // is the first moment the tree selection can be handed to the graph.
+    if (auto* drv = mDriverHolder->driver()) {
+        QVector<core::ObjectNode*> nodes;
+        for (QTreeWidgetItem* item : mTarget->objectTreeWidget().selectedItems()) {
+            if (auto* objItem = gui::obj::Item::cast(item)) nodes.push_back(&objItem->node());
+        }
+        drv->setGraphTargets(nodes);
+    }
+
+    // The viewport background follows the project that is now in front (its override,
+    // or the theme colour when it has none) - a switch must not leave the previous
+    // project's colour on screen.
+    this->applyViewportBackground();
 }
 
 void MainWindow::onProjectTabChanged(core::Project& aProject) { resetProjectRefs(&aProject); }
 
+void MainWindow::applyViewportBackground() {
+    mMainDisplay->setViewportBackground(effectiveViewportBackground());
+}
+
+QColor MainWindow::effectiveViewportBackground() const {
+    return (mCurrent && mCurrent->attribute().hasViewportBackground())
+               ? mCurrent->attribute().viewportBackground()
+               : mGUIResources.viewportBackground();
+}
+
 void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
-    mMainDisplay->setViewportBackground(mGUIResources.viewportBackground());
+    this->applyViewportBackground();
 
     const QString standard = aTheme.loadStylesheet("standard.ssa");
     if (!standard.isEmpty()) {
@@ -901,6 +962,7 @@ void MainWindow::onNewProjectTriggered() {
     core::Project::Attribute attribute;
     QString fileName;
     bool specifiesCanvasSize = false;
+    bool liveLink = false;
     {
         QScopedPointer<NewProjectDialog> dialog(new NewProjectDialog(this));
 
@@ -911,6 +973,7 @@ void MainWindow::onNewProjectTriggered() {
         attribute = dialog->attribute();
         fileName = dialog->fileName();
         specifiesCanvasSize = dialog->specifiesCanvasSize();
+        liveLink = dialog->liveLink();
     }
 
     // clear old project
@@ -929,6 +992,13 @@ void MainWindow::onNewProjectTriggered() {
         mProjectTabBar->pushProject(*result.project);
 
         mMainDisplay->resetCamera();
+
+        // The project is live now, so its assets are the ones to monitor. The
+        // resource dialog was just handed the new project by resetProjectRefs,
+        // and its tree already lists the asset the new project was created from.
+        if (liveLink && mResourceDialog) {
+            mResourceDialog->watchAllAssets();
+        }
     } else {
         QMessageBox::warning(nullptr, tr("Loading Error"), result.messages());
 
@@ -1271,14 +1341,11 @@ static void translateVideoExport(exportParam& exParam, const std::vector<audioCo
                               : aVideo.codec;
     const QString knob = ctrl::qualityKnobFor(codec);
     if (!knob.isEmpty()) {
-        // The dialog states "no override" as the codec's own sentinel (one below the
-        // span it accepts), because that is the only value a box ranged to that span
-        // can still hold. Reading it as "any negative number" was fine while the
-        // sentinel was -1; what was NOT fine is that the range clamped -1 away, so this
-        // branch always took the override and the Quality setting never decided.
-        const ctrl::QualityControl control =
-            ctrl::ExportTargets::loadQualityControl().value(codec);
-        if (g.qualityOverride > control.autoValue()) {
+        // The dialog states "no override" as -1 (ExportParams::qualityOverride), and
+        // any number at or above zero is a value the user named. The old test compared
+        // against the codec's own sentinel - one below its span - because the box could
+        // not hold anything else; the check is now simply "did the user name one".
+        if (g.qualityOverride >= 0) {
             aVideo.encOptions.insert(knob, QString::number(g.qualityOverride));
         } else {
             ctrl::applyQualityIntent(codec, exParam.qualityBucket, aVideo.encOptions);
@@ -1350,6 +1417,12 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
     // so it cannot be skipped for the image case it is asked to decide. It used to
     // run only when the artifact was not an image, which meant an image destination
     // could not be planned at all.
+    //
+    // The request is declared HERE, at function scope, and not inside the block
+    // below: the fit path further down must plan from the SAME request the plain
+    // path planned from, and it can only copy what it can see. A hand-built
+    // second request is exactly how the two paths drifted apart.
+    ctrl::ExportRequest request;
     if (!exParam.destinationId.isEmpty()) {
         const ctrl::ExportTarget target =
             ctrl::ExportTargets::find(ctrl::ExportTargets::load(), exParam.destinationId);
@@ -1358,7 +1431,6 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
                                  QObject::tr("Unknown export destination: %1").arg(exParam.destinationId));
             return false;
         }
-        ctrl::ExportRequest request;
         request.outputPath = g.osExportTarget;
         request.sourceSize = mCurrent->attribute().imageSize();
         // The user's own size is an input only where the destination does not
@@ -1385,9 +1457,11 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
         // the priority below was reversed — the PROJECT name won, and a sequence
         // came out as "nene0000.png" beside a status bar that said
         // probe_frames.png. It stayed invisible while every capped sequence rode
-        // the fit path (whose request never carried a stem and fell back to the
-        // typed name); I43's opt-in cap gate moved sequences to the direct path
-        // and the two writers' disagreement appeared.
+        // the fit path, which built its own request that never carried a stem and
+        // fell back to the typed name; I43's opt-in cap gate moved sequences to
+        // the direct path and the two writers' disagreement appeared. The fit
+        // path now copies this request instead of building one, so the stem is
+        // structural there too.
         request.imageStem = QFileInfo(g.osExportTarget).completeBaseName();
         if (request.imageStem.isEmpty()) {
             request.imageStem = QFileInfo(g.fileName).baseName();
@@ -1403,6 +1477,16 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
         // "the destination's default"). planExport re-validates it against the
         // destination's accepted list either way.
         request.codec = exParam.videoParams.codec;
+        // The GUI's transparency answer. THIS is the live export path (the view
+        // model's own buildRequest() feeds the facts panel, not the export), so
+        // the toggle has to land here or planExport resolves a `choice` row to
+        // the request's `true` default over the user's answer. The plan then
+        // applies the per-target rule (alpha required/forbidden override it) and
+        // the export reads the RESOLVED value (`plan.alphaEnabled`) below.
+        request.allowTransparency = g.allowTransparency;
+        // The effective viewport colour, carried to the fit path too: its
+        // re-encodes pad their own margins and need the same background.
+        request.viewportBackground = g.viewportBackground;
 
         plan = ctrl::planExport(target, request, exParam.qualityBucket);
         if (!plan.ok()) {
@@ -1416,6 +1500,16 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
         cparam.fps = plan.fps;
         cparam.selection = plan.selection;
     }
+
+    // The export's BACKGROUND. When the artifact is OPAQUE — the PLAN's resolved
+    // transparency is off, so a destination that forbids alpha gets the colour
+    // even with the box checked — the art composites over the viewport colour and
+    // any pad margin is filled with it; when transparency is on the canvas stays
+    // transparent, exactly as before. Resolved ONCE here, where the theme lives:
+    // ctrl::Exporter and media:: receive a plain QColor (an invalid one means
+    // "transparent") and read no theme.
+    cparam.background =
+        (havePlan ? !plan.alphaEnabled : !g.allowTransparency) ? g.viewportBackground : QColor();
 
     // GIF is the one artifact media::GifEncoder owns rather than libav, so which
     // branch runs follows from the container itself.
@@ -1462,20 +1556,31 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
     if (havePlan && g.sizeCapBytes > 0) {
         ctrl::ExportTarget fitTarget = plan.target;
         fitTarget.caps.maxBytes = g.sizeCapBytes;
-        ctrl::ExportRequest fitRequest;
-        fitRequest.outputPath = g.osExportTarget;
-        // The same stem a plain export writes ("a fitted set has the same file
-        // names as an unfitted one" is the flow's invariant; the fit writer's
-        // fallback computes the same name, this makes it structural).
-        fitRequest.imageStem = imageStem;
-        fitRequest.sourceSize = mCurrent->attribute().imageSize();
-        fitRequest.requestedSize = QSize(g.exportWidth, g.exportHeight);
+        // The fit re-plans from the SAME request the plain path above just
+        // planned from — a copy, not a second request built by hand. The
+        // hand-built one carried six fields and dropped the rest, so the fit
+        // planned with playhead 0, no audio and the default alpha state whatever
+        // the plain path had sent: a capped Still destination re-planned from
+        // frame 0 instead of the frame on screen, and a muted or alpha-off
+        // export was fitted under different audio/alpha assumptions than the
+        // plain path next to it was written with. Copying removes the drift by
+        // construction, and a request field added later cannot miss the fit path
+        // again.
+        // Pins: the fields a hand-built copy dropped — playhead,
+        // exportableAudioTracks, mute, audioChannels, audioSampleRate and
+        // allowTransparency — must reach ctrl::exportWithFit, so a capped Still
+        // writes the playhead frame and a capped sequence the same-named set a
+        // plain export writes.
+        ctrl::ExportRequest fitRequest = request;
+        // Fit-specific: the two inputs the plan above RESOLVED, which the frames
+        // the exporter is about to render are the result of. The raw request
+        // values would make the fit's internal re-plan disagree with that render:
+        // plan.selection is the selection after the row's own frame cap, and the
+        // fit refuses when its plan's frame count differs from the frames
+        // supplied (ctrl::exportWithFit's guard); plan.fps is the row-capped rate
+        // the frames were rendered at.
         fitRequest.fps = cparam.fps;
         fitRequest.selection = cparam.selection;
-        fitRequest.gifPalettePath = (g.useCustomPalette && g.palettePath.exists())
-                                        ? g.palettePath.absolutePath()
-                                        : QString();
-        fitRequest.gifLoop = g.loop ? 0 : -1;
 
         // Fitting needs every frame in memory at once. Bounded by the row's own
         // caps (a 512px, 3-second sticker is ~70 MB), but checked rather than
@@ -1501,9 +1606,12 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
             // it re-encodes a dozen times leaves the user watching a stuck 98%. So
             // the section says what is happening and every attempt is logged as it
             // happens (pushLog pumps events, so the dialog also stays alive).
+            // Pins: the number is the cap the fit ENFORCES (fitTarget.caps.maxBytes
+            // is the user's, set above), not the destination's stated one, so the
+            // two differ exactly when this string would have lied.
             progress.setSection(QObject::tr("Fitting under %1's %2 KB limit...")
                                     .arg(plan.target.label)
-                                    .arg(plan.target.caps.maxBytes / 1024));
+                                    .arg(fitTarget.caps.maxBytes / 1024));
             const ctrl::FitResult fit = ctrl::exportWithFit(
                 fitTarget, fitRequest, exParam.qualityBucket, frames,
                 [&progress](const QString& aStep) {
@@ -1523,11 +1631,15 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
             }
             if (!fit.ok) {
                 fitFailed = true;
+                // Pins: the cap named is the one enforced (the user's, via
+                // fitTarget.caps.maxBytes above), not the destination's stated
+                // one — the failure is against the enforced number, so the
+                // message must quote the enforced number.
                 QMessageBox::warning(widget, QObject::tr("Export Error"),
                                      QObject::tr("%1 caps the file at %2 KB and even the "
                                                  "smallest setting did not fit it (%3 KB).\n%4")
                                          .arg(plan.target.label)
-                                         .arg(plan.target.caps.maxBytes / 1024)
+                                         .arg(fitTarget.caps.maxBytes / 1024)
                                          .arg(fit.bytes / 1024)
                                          .arg(fit.error));
                 return;
@@ -1590,7 +1702,11 @@ bool exportProject(exportParam& exParam, core::Project* mCurrent, QWidget* widge
         // Custom palette: the UI collects a PNG whose pixels ARE the palette
         // (the paletteuse convention). Feed it to the encoder; otherwise it
         // builds an adaptive palette from the rendered frames.
-        gparam.transparent = g.allowTransparency;
+        // The RESOLVED alpha state: a destination's own rule decides (a row that
+        // forbids transparency writes none even with the box checked), and manual
+        // mode is the toggle. Not the raw checkbox — that is the answer the plan
+        // was given, not the one it resolved.
+        gparam.transparent = havePlan ? plan.alphaEnabled : g.allowTransparency;
         gparam.palettePath = (g.useCustomPalette && g.palettePath.exists())
                                  ? g.palettePath.absolutePath()
                                  : QString();
@@ -1780,6 +1896,10 @@ void MainWindow::onExportAgainTriggered() {
     // "Export again" repeats the settings, not the frame: a still destination
     // exports what is on screen now.
     mLastExport->playhead = mTarget->currentFrame().get();
+    // The export's OPAQUE background (transparency off) is what the viewport is
+    // showing right now. Resolved here, where the theme lives; exportProject turns
+    // it into the render clear and the pad fill.
+    mLastExport->generalParams.viewportBackground = effectiveViewportBackground();
     const bool wrote = exportProject(*mLastExport, mCurrent, this, validAudioStreams);
     reportExportOutcome(*mLastExport, wrote);
 }
@@ -1877,6 +1997,7 @@ void MainWindow::onQuickExportDestinationTriggered(const QString& aDestinationId
         AudioPlaybackWidget::getValidAudioStreams(*mCurrent->pConf);
     if (isExportParamValid(exParam, this, &validAudioStreams)) {
         exParam->playhead = mTarget->currentFrame().get();
+        exParam->generalParams.viewportBackground = effectiveViewportBackground();
         const bool wrote = exportProject(*exParam, mCurrent, this, validAudioStreams);
         reportExportOutcome(*exParam, wrote);
     }
@@ -1987,7 +2108,12 @@ void MainWindow::openExportDialog(const QString& aDestinationId) {
         // radio buttons: a stored 0 (one-to-one) means "keep", which is what it did in
         // every export.
         init.keepAspectRatio = settings.value(QStringLiteral("export_aspect_ratio"), 1).toInt() != 2;
-        init.transparency = settings.value(QStringLiteral("export_allow_transparency"), true).toBool();
+        // Off for a fresh profile (ruled 2026-10-03: the toggle lives on the regular
+        // surface because turning it on pushes the encoder onto a codec that keeps
+        // alpha but loses quality). A value saved by an earlier run is read here as
+        // the dialog's starting point; the target's own alpha rule overrides it (see
+        // item 42 of docs/export-dialog-behavior.md).
+        init.transparency = settings.value(QStringLiteral("export_allow_transparency"), false).toBool();
         init.loop = settings.value(QStringLiteral("export_loop_anim"), false).toBool();
         init.audio = settings.value(QStringLiteral("export_allow_audio"), false).toBool();
         // The quality the user last chose, not a silent Balanced: the quick-export
@@ -2147,6 +2273,7 @@ void MainWindow::openExportDialog(const QString& aDestinationId) {
         AudioPlaybackWidget::getValidAudioStreams(*mCurrent->pConf);
     if (isExportParamValid(exParam, &fileDiag, &validAudioStreams)) {
         exParam->playhead = mTarget->currentFrame().get();
+        exParam->generalParams.viewportBackground = effectiveViewportBackground();
         const bool wrote = exportProject(*exParam, mCurrent, &fileDiag, validAudioStreams);
         reportExportOutcome(*exParam, wrote);
     }

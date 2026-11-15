@@ -178,11 +178,22 @@ bool ProjectLoader::readGlobalBlock(util::LEStreamReader& aIn, core::Project& aP
     const uint8 loop = aIn.readByte();
 
     // reserved: the frame range start lives in the first 4 bytes (zero in
-    // every format <= 0.10, so those files load as [0, frameEnd]); the rest
-    // stays reserved and zero.
+    // every format <= 0.10, so those files load as [0, frameEnd]). From minor
+    // 0.12 the optional viewport background override follows it (a presence
+    // byte then an ARGB word); older files have the whole region zero and load
+    // as no override. The rest stays reserved and zero.
     uint32 frameStart = aIn.readUInt32();
-    if (!aIn.skipZeroArea(47 - 4))
+
+    bool hasViewportBackground = false;
+    uint32 viewportBackground = 0;
+    if (mVersion.minorVersion() >= 12) {
+        hasViewportBackground = aIn.readByte() != 0;
+        viewportBackground = aIn.readUInt32();
+        if (!aIn.skipZeroArea(47 - 4 - 1 - 4))
+            return false;
+    } else if (!aIn.skipZeroArea(47 - 4)) {
         return false;
+    }
 
     if (aIn.isFailed())
         return false;
@@ -202,6 +213,9 @@ bool ProjectLoader::readGlobalBlock(util::LEStreamReader& aIn, core::Project& aP
     aProject.attribute().setFrameRange(util::Range((int)frameStart, (int)frameEnd));
     aProject.attribute().setFps(fps);
     aProject.attribute().setLoop((bool)loop);
+    if (hasViewportBackground) {
+        aProject.attribute().setViewportBackground(QColor::fromRgba(viewportBackground));
+    }
     return true;
 }
 

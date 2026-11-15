@@ -2,6 +2,7 @@
 #define CORE_PROJECT_H
 
 #include <QUuid>
+#include <QColor>
 #include <functional>
 #include <functional>
 #include "util/LifeLink.h"
@@ -47,6 +48,15 @@ public:
         void setLoop(bool aLoop);
         bool loop() const { return mLoop; }
 
+        // Optional viewport background override. Unset is the default for every
+        // project that never picked one, and means "follow the theme" (see
+        // gui::GUIResources::viewportBackground); the colour is only meaningful
+        // while hasViewportBackground() is true.
+        void setViewportBackground(const QColor& aColor);
+        void clearViewportBackground();
+        bool hasViewportBackground() const { return mHasViewportBackground; }
+        const QColor& viewportBackground() const { return mViewportBackground; }
+
         // Wire the observable change notification (called by the owning Project).
         void setChangeNotifier(std::function<void(ProjectEvent::Type)> aNotifier) { mChangeNotifier = std::move(aNotifier); }
 
@@ -55,6 +65,8 @@ public:
         util::Range mFrameRange;
         int mFps;
         bool mLoop;
+        bool mHasViewportBackground;
+        QColor mViewportBackground;
         std::function<void(ProjectEvent::Type)> mChangeNotifier;
     };
 

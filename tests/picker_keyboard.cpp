@@ -21,12 +21,14 @@
 // wiring between the field and the model is under test and not a reimplementation
 // of it.
 //
-// Deliberately NOT here, because it needs a window and this file has none:
+// Deliberately NOT here, because it needs a visible window and a screen grab:
 //   B12 the pointer is an I-beam over the text area (a cursor shape is a property of
 //       a real window, and X11 screen grabs do not contain the pointer either - this
 //       needs `ffmpeg -f x11grab -draw_mouse 1` against a visible window).
-//   B11 clicking outside the field removes its focus (there is no focus without a
-//       window, so there is nothing to remove).
+// F31's I-beam is the same story. A click outside a focused field once sat in this
+// note too ("no focus without a window"); the blocks below now host the scene in a
+// real offscreen window (the B10 route and the same measurement that let the
+// window-route Escape pass), so B11 is covered below rather than deferred.
 //
 // Run: QT_QPA_PLATFORM=offscreen ./build/tests/Debug/picker_keyboard
 #include <QApplication>
@@ -39,10 +41,12 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QStyleHints>
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QThread>
 #include <QUrl>
+#include <QWheelEvent>
 #include <QColor>
 
 #include "ctrl/ExportTarget.h"
@@ -418,11 +422,12 @@ int main(int argc, char** argv) {
 
         // The ROW tooltip is the only tooltip in the picker that is not inside an
         // icon button (the search field's Clear keeps a gated instance - E29 drops
-        // its hover text, not the component). The manual button's explanatory
-        // prose is gone instance and all.
+        // its hover text, not the component). The manual button is GONE (decided
+        // 2026-10-08), so the scan below proves its ABSENCE; manual mode survives in
+        // the model, and is asserted just after.
         QObject* rowTip = nullptr;
         int rowTips = 0;
-        bool manualFound = false;
+        int extraButtons = 0;
         const auto all = root->findChildren<QObject*>();
         for (QObject* o : all) {
             const QByteArray cls = o->metaObject()->className();
@@ -432,17 +437,46 @@ int main(int argc, char** argv) {
                     if (QByteArray(p->metaObject()->className()).contains("AeIconButton")) { inButton = true; break; }
                 if (!inButton) { ++rowTips; rowTip = o; }
             }
-            if (cls.contains("AeButton")
-                && o->property("text").toString() == model.property("manualText").toString()) {
-                manualFound = true;
-                int underManual = 0;
-                for (QObject* d : o->findChildren<QObject*>())
-                    if (QByteArray(d->metaObject()->className()).contains("AeToolTip")) ++underManual;
-                check(underManual == 0, "E29: the manual button carries NO tooltip (its prose is dropped)");
+            // The rule is now the OPPOSITE of E29's old one: the footer carries the
+            // two conventional buttons and NOTHING else. The escape hatch's sentence
+            // went with its button, so the check is "no button whose words are
+            // neither the confirm nor the cancel label" - a third button cannot come
+            // back unnoticed.
+            if (cls.contains("AeButton")) {
+                const QString text = o->property("text").toString();
+                const QString confirm = model.okText();
+                const QString cancel = model.cancelText();
+                if (text != confirm && text != cancel) ++extraButtons;
             }
         }
-        check(manualFound, "precondition: the manual button is in the scene");
+        check(extraButtons == 0,
+              QStringLiteral("E29: the footer carries the two conventional buttons and no third one "
+                             "(%1 button(s) with other words; the escape hatch's row was removed "
+                             "2026-10-08)").arg(extraButtons));
         check(rowTips == 1 && rowTip, "E29: exactly one ROW tooltip feeds from the list hover");
+
+        // ...and the escape hatch did not go with the button: it lives in the MODEL
+        // now, as the fallback activate() takes on a row that matched nothing. Driven on
+        // the scene's own model, and non-vacuously - a real match first answers with its
+        // id, so the empty id below is the fallback and not the model's untouched state.
+        // The query is restored afterwards so the hover checks below and C18 see the
+        // table they expect.
+        {
+            const QString previous = model.query();
+            model.setQuery(QStringLiteral("generic.video"));
+            model.activateCurrent();
+            check(!model.chosenId().isEmpty(),
+                  "E29: precondition: a query that matches answers with its id");
+            const int before = acceptedCount;
+            model.setQuery(QStringLiteral("zzqqjj"));
+            model.activateCurrent();
+            check(acceptedCount == before + 1 && model.chosenId().isEmpty(),
+                  QStringLiteral("E29: with the button gone, the model's fallback is the only "
+                                 "route into manual mode - a query that matches nothing and "
+                                 "Enter accepts once with an EMPTY id (got '%1')")
+                      .arg(model.chosenId()));
+            model.setQuery(previous);
+        }
 
         QQuickItem* list = root->findChild<QQuickItem*>(QStringLiteral("pickerList"));
         check(list != nullptr, "precondition: the list is addressable");
@@ -716,6 +750,625 @@ int main(int argc, char** argv) {
             check(near(child.caret, 20.0),
                   QString("C18: the caret lane follows the level for a nested row too (measured %1)")
                       .arg(child.caret));
+        }
+    }
+
+    // ---- THE STRUCTURAL RULE (decided 2026-10-08): the data table asks for a
+    // separator after the `general` block, and the model inserts it as a row of its
+    // own kind. The MODEL half - where the row sits, what it is, and that nothing can
+    // select, activate or step onto it - is asserted in tests/destination_picker.cpp.
+    // What only the built scene can answer is what the DELEGATE does with it: that the
+    // row's band is the separator's own height, that a 1 px hairline is drawn at the
+    // theme's rule colour across the LIST's width (not the indent lane), and that the
+    // row cannot be hovered or clicked.
+    //
+    // Read off the scene's own items rather than a screenshot - this test has no
+    // display to grab, and "the rule is there" is a RECTANGLE question, which the
+    // delegate answers exactly.
+    {
+        auto spin = [](int ms) {
+            QElapsedTimer t;
+            t.start();
+            while (t.elapsed() < ms) {
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+                QThread::msleep(5);
+            }
+        };
+        auto near = [](double a, double b) { return a > b - 0.5 && a < b + 0.5; };
+
+        // The block above leaves the field empty (its C18 precondition clears it), and
+        // the rule is drawn only with an empty query - say so rather than assume it.
+        search->setProperty("text", QString());
+        spin(250);
+        check(model.query().isEmpty(),
+              "precondition (rule): the search filter is cleared, so the list shows its structure");
+
+        // The scene binds the row kind by ROLE NAME (like `level`), which is the
+        // contract between this model and the QML: a role the scene cannot see is a
+        // delegate that falls back to guessing from an empty label.
+        bool hasSeparatorRole = false;
+        const QHash<int, QByteArray> names = model.roleNames();
+        for (auto it = names.cbegin(); it != names.cend(); ++it) {
+            if (it.value() == "isSeparator") hasSeparatorRole = true;
+        }
+        check(hasSeparatorRole, "the model exposes an 'isSeparator' role for the delegate to branch on");
+
+        QList<int> separatorRows;
+        for (int row = 0; row < model.rowCount(); ++row) {
+            if (model.isSeparator(row)) separatorRows << row;
+        }
+        check(separatorRows.size() == 1,
+              QStringLiteral("precondition (rule): the model has exactly one separator (%1)")
+                  .arg(separatorRows.size()));
+
+        QQuickItem* list = root->findChild<QQuickItem*>(QStringLiteral("pickerList"));
+        check(list != nullptr, "precondition (rule): the list is addressable");
+        auto itemAt = [&](int row) -> QQuickItem* {
+            QQuickItem* it = nullptr;
+            QMetaObject::invokeMethod(list, "itemAtIndex",
+                                      Q_RETURN_ARG(QQuickItem*, it), Q_ARG(int, row));
+            return it;
+        };
+
+        if (list && separatorRows.size() == 1) {
+            const int sep = separatorRows.first();
+            const int above = sep - 1;  // the last general row
+            const int below = sep + 1;  // the flat destination listed right under the rule
+            // Put the row ABOVE the rule at the top of the viewport, so all three rows
+            // around it are inside it: the scene has scrolled deep into the list (the
+            // remembered destination is the current row), and a delegate that was never
+            // instantiated has no rectangle to measure.
+            QMetaObject::invokeMethod(list, "positionViewAtIndex", Q_ARG(int, above), Q_ARG(int, 0));
+            spin(250);
+            QQuickItem* aboveItem = itemAt(above);
+            QQuickItem* sepItem = itemAt(sep);
+            QQuickItem* belowItem = itemAt(below);
+            check(aboveItem && sepItem && belowItem,
+                  "precondition (rule): the three rows around the separator have delegates");
+
+            if (aboveItem && sepItem && belowItem) {
+                // The band IS the separator's height, in the real layout: the row above
+                // is the usual 30 px rhythm, then the rule's own band, then the next row.
+                check(near(aboveItem->height(), 30.0),
+                      QStringLiteral("the row above the rule is a normal 30 px row (%1)")
+                          .arg(aboveItem->height()));
+                check(near(sepItem->height(), 12.0),
+                      QStringLiteral("the separator's delegate is the 12 px band (%1)")
+                          .arg(sepItem->height()));
+                check(near(sepItem->y() - aboveItem->y(), 30.0),
+                      QStringLiteral("and it starts where the 30 px row above it ends (%1)")
+                          .arg(sepItem->y() - aboveItem->y()));
+                check(near(belowItem->y() - sepItem->y(), 12.0),
+                      QStringLiteral("with the next row starting 12 px lower (%1)")
+                          .arg(belowItem->y() - sepItem->y()));
+
+                // The rule itself: one hairline, the full width of the LIST (NOT the
+                // indent lane - the statement is about the list's structure, so it must
+                // not take the child lane or move the lanes the rows draw in), in the
+                // token every other rule in this design uses.
+                QQuickItem* rule =
+                    sepItem->findChild<QQuickItem*>(QStringLiteral("rowSeparatorRule"));
+                check(rule != nullptr, "the separator delegate draws a rule item");
+                if (rule) {
+                    check(rule->isVisible(), "the rule is drawn (not merely present)");
+                    check(near(rule->height(), 1.0),
+                          QStringLiteral("it is one pixel high (%1)").arg(rule->height()));
+                    check(near(rule->width(), list->width()),
+                          QStringLiteral("and spans the whole list width, not the indent lane "
+                                         "(%1 vs the list's %2)")
+                              .arg(rule->width()).arg(list->width()));
+                    check(near(rule->x(), 0.0),
+                          QStringLiteral("starting at the list's left edge (%1)").arg(rule->x()));
+                    // The band exists FOR the margin: a rule flush against the row above
+                    // would read as that row's underline rather than as a boundary after
+                    // the block, so the rule is centered (and pixel-snapped) inside it.
+                    check(rule->y() >= 1.0 && rule->y() + rule->height() <= sepItem->height() - 1.0,
+                          QStringLiteral("with air above and below it inside its band (y %1 of %2)")
+                              .arg(rule->y()).arg(sepItem->height()));
+                    check(rule->property("color").value<QColor>() == theme.hairline(),
+                          "and it uses the theme's own rule colour, theme.hairline "
+                          "(so it agrees with the form's rules)");
+                }
+
+                // No words and no interaction: the row is disabled, so it can take
+                // neither the hover highlight nor a click, and its label carries
+                // nothing a tooltip could be about.
+                check(!sepItem->isEnabled(),
+                      "the separator row is not hit-testable (a disabled delegate emits no "
+                      "clicked and lights no HoverHandler)");
+                QQuickItem* label = sepItem->findChild<QQuickItem*>(QStringLiteral("rowLabelText"));
+                check(label && label->property("text").toString().isEmpty(),
+                      "and it carries no label text");
+            }
+        }
+    }
+
+    // ---- A3/B11 (contract items 3 and 11): a click on the picker's own empty
+    // space removes the search field's focus, and its TEXT and the list's
+    // SELECTION are unchanged by that click. The export form's shell has had a
+    // background MouseArea since the start; this scene had none until
+    // 2026-10-09, so a click beside the list left the field holding a caret
+    // while the pointer was somewhere else entirely.
+    //
+    // The observables are the window's REAL active focus item (what a click
+    // actually changes) plus the two things item 11 says the click must not
+    // disturb - the field's text and the model's selection - so a handler that
+    // "cleared focus" by wiping the query would fail here.
+    {
+        auto spin = [](int ms) {
+            QElapsedTimer t;
+            t.start();
+            while (t.elapsed() < ms) {
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+                QThread::msleep(5);
+            }
+        };
+        // The scene sizes from its ROOT item, and the ColumnLayout's 14px margin
+        // is where "outside the controls" actually is.
+        window.resize(640, 480);
+        root->setWidth(640);
+        root->setHeight(480);
+        spin(250);
+        search->forceActiveFocus();
+        spin(60);
+        check(window.activeFocusItem() == search,
+              "B11 precondition: the field holds the window's focus, the state the picker opens in");
+        search->setProperty("text", QStringLiteral("telegram"));
+        spin(200);
+        check(model.query() == QLatin1String("telegram"),
+              "B11 precondition: the field holds a query, so the text is observable");
+        const QStringList rowsBefore = onScreenRows(model);
+        const int rowBefore = model.currentRow();
+        check(!rowsBefore.isEmpty(),
+              "B11 precondition: the filtered list really is filtered, so a row change would show");
+
+        const QPointF outside(4, 4); // inside the root, outside every control
+        QMouseEvent press(QEvent::MouseButtonPress, outside, outside,
+                          Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(&window, &press);
+        QMouseEvent release(QEvent::MouseButtonRelease, outside, outside,
+                            Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(&window, &release);
+        spin(60);
+        check(window.activeFocusItem() != search && !search->hasActiveFocus(),
+              "B11: a click on the picker's empty space removes the search field's focus");
+        check(search->property("text").toString() == QLatin1String("telegram"),
+              "B11: and the field's text is unchanged by that click");
+        check(model.query() == QLatin1String("telegram"),
+              "B11: so the filter it drives is unchanged too");
+        check(model.currentRow() == rowBefore && onScreenRows(model) == rowsBefore,
+              "B11: and the list's selection and its contents are unchanged");
+        // Back to the unfiltered table, which is the state the blocks below expect.
+        search->setProperty("text", QString());
+        spin(200);
+        check(model.query().isEmpty(),
+              "precondition: the query is cleared again for the blocks that follow");
+    }
+
+    // ---- E27, the wheel case: the row tooltip must follow its row when the list
+    // scrolls under a stationary hovered pointer. The owner rect the tooltip is
+    // positioned from was read as the delegate's own x/y, which are coordinates
+    // in the view's CONTENT - and a ListView scroll moves the content under a clip
+    // window that does not move. So the two numbers were identical before and
+    // after a scroll: the tooltip stayed anchored where the row USED to be, E27
+    // was violated in that one case, and E28's clamp still held (it re-reads every
+    // ancestor's contentY), which is why the clamp's own tests saw nothing wrong.
+    //
+    // The observation is the one a person sees: the bubble's distance from its row,
+    // in window coordinates, must not change when the scroll moves both of them.
+    // The scroll is written directly on contentY - the same property every wheel
+    // notch, page and flick writes - so the fix is measured on the number that
+    // decides the position, with no animation or recycling to obscure it.
+    {
+        auto near = [](double a, double b) { return a > b - 0.5 && a < b + 0.5; };
+        auto spin = [](int ms) {
+            QElapsedTimer t;
+            t.start();
+            while (t.elapsed() < ms) {
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+                QThread::msleep(5);
+            }
+        };
+        window.resize(640, 480);
+        root->setWidth(640);
+        root->setHeight(480);
+        spin(250);
+
+        QQuickItem* list = root->findChild<QQuickItem*>(QStringLiteral("pickerList"));
+        check(list != nullptr, "precondition (E27/scroll): the list is addressable");
+        auto itemAt = [&](int row) -> QQuickItem* {
+            QQuickItem* it = nullptr;
+            QMetaObject::invokeMethod(list, "itemAtIndex",
+                                      Q_RETURN_ARG(QQuickItem*, it), Q_ARG(int, row));
+            return it;
+        };
+        // The row is chosen by INDEX and then brought into view on purpose: a
+        // delegate only exists for a row near the viewport, so picking one that
+        // already has a delegate ties the test to wherever the previous block left
+        // the scroll - and that is how the first version of this block ended up
+        // measuring a row pressed against the end of the content, where the step it
+        // asked for was clamped away and the tooltip legitimately flipped.
+        int rowIdx = -1;
+        for (int row = 0; row < model.rowCount(); ++row) {
+            if (!model.isOnScreen(row) || model.isSection(row)) continue;
+            if (model.labelOf(row).length() < 10) continue;
+            rowIdx = row;
+            break;
+        }
+        check(rowIdx >= 0,
+              "precondition (E27/scroll): an on-screen row with a long label exists");
+        if (rowIdx >= 0) {
+            QMetaObject::invokeMethod(list, "positionViewAtIndex", Q_ARG(int, rowIdx), Q_ARG(int, 0));
+            spin(250);
+        }
+        QQuickItem* rowItem = rowIdx >= 0 ? itemAt(rowIdx) : nullptr;
+        QQuickItem* rowLabel =
+            rowItem ? rowItem->findChild<QQuickItem*>(QStringLiteral("rowLabelText")) : nullptr;
+        check(rowItem && rowLabel != nullptr,
+              "precondition (E27/scroll): that row has a delegate and a label to elide");
+        if (rowItem && rowLabel) {
+            rowItem->setWidth(90); // the label lane narrows to 18px and the label elides
+            spin(150);
+            check(rowLabel->property("truncated").toBool(),
+                  "precondition (E27/scroll): the narrowed row's label elides, so it keeps a tooltip");
+            // CENTRE the row in the viewport, clamped to the view's own bounds: a row
+            // near an edge has no room to scroll in one direction, and E27 turns the
+            // bubble above at the bottom edge - so the gap would change for a reason
+            // that has nothing to do with the binding under test.
+            const qreal viewportH = list->height();
+            const qreal contentH = list->property("contentHeight").toReal();
+            const qreal maxY = qMax(0.0, contentH - viewportH);
+            list->setProperty("contentY", qMin(maxY, qMax(0.0,
+                rowItem->y() - (viewportH - rowItem->height()) / 2)));
+            spin(250);
+            const QPointF hoverPoint =
+                rowItem->mapToItem(window.contentItem(), QPointF(30, 15));
+            QMouseEvent move(QEvent::MouseMove, hoverPoint, hoverPoint,
+                             Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+            QCoreApplication::sendEvent(&window, &move);
+            QHoverEvent hover(QEvent::HoverMove, hoverPoint, hoverPoint, QPointF(-10, 15));
+            QCoreApplication::sendEvent(&window, &hover);
+            QCoreApplication::processEvents();
+            spin(900); // past the 500ms E26 wake-up delay
+
+            // The ONE row tooltip: the same scan E29's block performs, so the row
+            // tip cannot be confused with an icon button's own instance.
+            QObject* rowTip = nullptr;
+            for (QObject* o : root->findChildren<QObject*>()) {
+                if (!QByteArray(o->metaObject()->className()).contains("AeToolTip")) continue;
+                bool inButton = false;
+                for (QObject* p = o->parent(); p; p = p->parent())
+                    if (QByteArray(p->metaObject()->className()).contains("AeIconButton")) {
+                        inButton = true;
+                        break;
+                    }
+                if (!inButton) rowTip = o;
+            }
+            auto* tip = qobject_cast<QQuickItem*>(rowTip);
+            check(tip && tip->property("revealed").toBool(),
+                  "precondition (E27/scroll): the row tooltip is revealed before the scroll");
+            if (tip && tip->property("revealed").toBool()) {
+                const qreal rowY0 = rowItem->mapToItem(window.contentItem(), 0, 0).y();
+                const qreal tipY0 = tip->mapToItem(window.contentItem(), 0, 0).y();
+                const qreal gap0 = tipY0 - rowY0;
+                check(tipY0 >= rowY0 + rowItem->height(),
+                      QStringLiteral("precondition (E27/scroll): it sits BELOW its row (gap %1 px), "
+                                     "so the gap is the one E27 chose").arg(gap0));
+
+                // The step the view can really take. Scrolling DOWN cannot flip the
+                // bubble (it moves the row away from the bottom edge, where E27
+                // legitimately turns the tip above), so down is preferred; but a row
+                // near the end of the content has no room down at all, so UP is the
+                // fallback, its step capped by the room the bubble still needs below
+                // the row. Either way the step is the room that is actually there:
+                // the Flickable clamps a bigger one, and a measurement of the clamp
+                // is a measurement of nothing.
+                const qreal cy = list->property("contentY").toReal();
+                const qreal rowTop = rowY0 - list->mapToItem(window.contentItem(), 0, 0).y();
+                const qreal rowBottom = rowTop + rowItem->height();
+                const qreal roomDown = qMin(maxY - cy, rowTop);
+                const qreal roomUp = qMin(cy, qMax(0.0, viewportH - rowBottom - 6.0 - tip->height()));
+                check(roomDown >= 25 || roomUp >= 25,
+                      QStringLiteral("precondition (E27/scroll): the view has room to scroll either "
+                                     "way with the row staying on screen and the bubble un-flipped "
+                                     "(down %1 px, up %2 px at contentY %3 of %4)")
+                          .arg(roomDown).arg(roomUp).arg(cy).arg(maxY));
+                const qreal step = roomDown >= 25 ? qMin(60.0, roomDown)
+                                                  : -qMin(60.0, roomUp);
+                list->setProperty("contentY", cy + step);
+                spin(200);
+                const qreal after = list->property("contentY").toReal();
+                check(qAbs((after - cy) - step) < 0.5,
+                      QStringLiteral("precondition (E27/scroll): the list scrolled by exactly the "
+                                     "step asked for (%1px: %2 -> %3, no clamp in the way)")
+                          .arg(step).arg(cy).arg(after));
+                check(after != cy,
+                      QStringLiteral("precondition (E27/scroll): the scroll really happened (%1 -> "
+                                     "%2), so the checks below are not vacuous").arg(cy).arg(after));
+                const qreal rowY1 = rowItem->mapToItem(window.contentItem(), 0, 0).y();
+                check(near(rowY0 - rowY1, after - cy),
+                      QStringLiteral("the row moved with the scroll (row y %1 -> %2, contentY %3 -> "
+                                     "%4)").arg(rowY0).arg(rowY1).arg(cy).arg(after));
+                // A stationary pointer over the scrolled list RE-HOVERS: the window
+                // updates the item under the cursor when the content moves under it,
+                // which is how the tooltip's subject changes while a person scrolls.
+                // The move below is that delivery (measured: without it the hover is
+                // simply lost and the tooltip has no owner to be measured against),
+                // and the row it lands on is the one moved under the pointer.
+                const QPointF reHover =
+                    rowItem->mapToItem(window.contentItem(), QPointF(30, 15));
+                QMouseEvent move2(QEvent::MouseMove, reHover, reHover,
+                                  Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+                QCoreApplication::sendEvent(&window, &move2);
+                QHoverEvent hover2(QEvent::HoverMove, reHover, reHover, hoverPoint);
+                QCoreApplication::sendEvent(&window, &hover2);
+                QCoreApplication::processEvents();
+                spin(900); // the new owner is a new tooltip and gets its own delay
+                const qreal rowY2 = rowItem->mapToItem(window.contentItem(), 0, 0).y();
+                const qreal tipY2 = tip->mapToItem(window.contentItem(), 0, 0).y();
+                check(tip->property("revealed").toBool()
+                          && tip->parentItem()->property("hoveredRow").toInt() == rowIdx,
+                      "precondition (E27/scroll): the tooltip is revealed again on the same row "
+                      "after the scroll");
+                // THE FIX, measured two ways:
+                //  (1) the owner rect the tooltip is positioned from is the row's
+                //      DRAWN position - the delegate's own y inside the view's
+                //      CONTENT is not where the row is drawn; the contentY read in
+                //      the binding is what makes the difference, and it is 982px of
+                //      scroll here, so a stale binding is not a subtle failure.
+                check(near(tip->property("ownerY").toReal(),
+                           rowItem->mapToItem(tip->parentItem(), 0, 0).y()),
+                      QStringLiteral("E27: the tooltip's owner is the row's DRAWN position "
+                                     "(ownerY %1 vs the row's %2 in the list area, at contentY %3)")
+                          .arg(tip->property("ownerY").toReal())
+                          .arg(rowItem->mapToItem(tip->parentItem(), 0, 0).y())
+                          .arg(after));
+                //  (2) what a person sees: the bubble follows its row, in window
+                //      coordinates, over the scroll - same side, same gap.
+                check(qAbs((tipY2 - rowY2) - gap0) < 2.0,
+                      QStringLiteral("E27: the tooltip kept its place under the row through the "
+                                     "scroll (gap %1 -> %2 px over a %3px scroll; before the "
+                                     "contentY dependency the bubble stayed put and the gap read %4)")
+                          .arg(gap0).arg(tipY2 - rowY2).arg(after - cy).arg(gap0 + (after - cy)));
+                // Restore the view for the block that follows, which measures the
+                // wheel from rest at the top.
+                list->setProperty("contentY", cy);
+                spin(150);
+            }
+        }
+    }
+
+    // ---- D23 (contract line 117-118): the list "responds to the wheel". The export
+    // FORM's scroller has had a wheel assertion since D25 (form_layout.cpp); the
+    // picker's own list never did - the GUI probe drives its scroll BAR with xdotool
+    // drags (scripts/gui/probe_scroll.sh) and never the wheel - so D23's "responds
+    // to the wheel" had no test on this list at all, and this list is what the
+    // "scrolling feels sluggish" report is about.
+    //
+    // WHAT IT MEASURES, and why that is the number the report needs: one 120-unit
+    // notch moves the list by wheelScrollLines * 24 px - QQuickFlickable's own
+    // arithmetic, read in qquickflickable.cpp, where the no-acceleration path does
+    // "wheelScroll = -qApp->styleHints()->wheelScrollLines() * 24" and then
+    // "scrollPixel = -yDelta / 120 * wheelScroll" - which is 72 px on a platform
+    // whose wheelScrollLines() is 3.
+    //
+    // Against the 30 px delegate that is 2.4 rows of travel for one notch, so the
+    // [measured] line below states the step in both units. The readings, each from rest:
+    // the notch that immediately follows a DIRECT contentY write jumps far - measured
+    // 1125 px whatever the wheel delta is, i.e. the wheel's own timeline resuming a
+    // target it was left holding - so that one is a WARM-UP whose travel is reported and
+    // not asserted; then one notch moves DOWN, the next moves further down, the opposite
+    // notch undoes exactly the last step, and a notch of an eighth the delta moves an
+    // eighth as far.
+    //
+    // The step is EASED, and that is Qt's, not the scene's: DestinationPicker.qml has
+    // no Behavior, no wheel step and no flick properties, and the notch is played by
+    // QQuickFlickable through its own timeline - moveBy(..., OutExpo,
+    // 3*fixupDuration/4) = 300 ms, read in the same file. So every reading here is a
+    // SETTLED one: a contentY read the instant the event lands is a snapshot of a
+    // running animation, not the step the wheel asked for.
+    //
+    // WHAT THIS BLOCK DOES NOT MEASURE: frame time, GPU cost, or how that ease looks
+    // while it runs - an offscreen run has no frames to time. It pins the STEP, which
+    // is what D23 says and all an offscreen scene can see.
+    {
+        QQuickItem* list = root->findChild<QQuickItem*>(QStringLiteral("pickerList"));
+        check(list != nullptr, "precondition (D23): the list is addressable");
+        if (list) {
+            auto spin = [](int ms) {
+                QElapsedTimer t;
+                t.start();
+                while (t.elapsed() < ms) {
+                    QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+                    QThread::msleep(5);
+                }
+            };
+            auto contentY = [list]() { return list->property("contentY").toReal(); };
+            // Read from rest only: the ease above runs for 300 ms, so a step is taken
+            // once contentY has stopped moving (8 quiet polls, ~40-160 ms), with a 2 s
+            // cap so a step that never settles fails here rather than reading a number
+            // that is still moving.
+            auto settle = [&]() {
+                QElapsedTimer t;
+                t.start();
+                qreal last = contentY();
+                int quiet = 0;
+                while (t.elapsed() < 2000 && quiet < 8) {
+                    const qreal now = contentY();
+                    if (now == last) ++quiet;
+                    else { quiet = 0; last = now; }
+                    QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+                    QThread::msleep(5);
+                }
+                return contentY();
+            };
+
+            // The start state has to be one the SCENE agrees with, or the scene moves
+            // the view after this block has started measuring "from rest". The blocks
+            // above (and C18's reveal) left the model's current row DEEP in the list,
+            // and DestinationPicker.qml keeps the selection on screen with
+            // `onCurrentRowChanged -> positionViewAtIndex(currentRow, Contain)`; a view
+            // whose current row is deep still owes a scroll to that row, and that
+            // scroll is the 1110 px the first notch used to swallow. Writing contentY
+            // directly cannot beat it because the scene's scroll arrives afterwards.
+            //
+            // So bring the selector itself to the top through the MODEL, not the view:
+            // the FIRST destination row (row 0, generic.video, a level-0 destination -
+            // select() refuses sections, which is exactly the behaviour wanted here).
+            // Moving the model's current row to the top makes the scene's own handler
+            // put the view at the top too, so nothing is left queued to move it.
+            // Writing contentY is kept as a belt-and-braces start, and the precondition
+            // below asserts the settled value really is the top, so a future change
+            // that makes the scene scroll elsewhere fails loudly instead of producing a
+            // 1110 px "notch".
+            //
+            // This is the LAST block in main(), so the selection it moves is not
+            // restored; if a block is ever added after it, restore the previous
+            // current row here.
+            int firstDestination = -1;
+            for (int row = 0; row < model.rowCount(); ++row) {
+                if (!model.isSection(row)) { firstDestination = row; break; }
+            }
+            check(firstDestination >= 0,
+                  "precondition (D23): the model has a first destination row to select");
+            if (firstDestination >= 0) model.select(firstDestination);
+            list->setProperty("contentY", 0.0);
+            const qreal restY = settle();
+            check(qAbs(restY) <= 1.0,
+                  QStringLiteral("precondition (D23): after selecting the first destination the view "
+                                 "rests at the top (contentY %1), so no scene scroll is pending to "
+                                 "fight the wheel").arg(restY));
+            // STABLE, not merely quiet for one settle: a second rest has to read the
+            // same value, or something (a deferred scene scroll) is still coming.
+            check(qAbs(settle() - restY) <= 1.0,
+                  "precondition (D23): and it stays at the top from rest to rest");
+
+            const qreal viewportH = list->height();
+            const qreal contentH = list->property("contentHeight").toReal();
+            check(contentH > viewportH,
+                  QStringLiteral("precondition (D23): the content is taller than the viewport (%1 > %2), "
+                                 "so a notch has somewhere to go").arg(contentH).arg(viewportH));
+            int collapsed = 0;
+            for (int row = 0; row < model.rowCount(); ++row)
+                if (model.isSection(row) && !model.isExpanded(row)) ++collapsed;
+            check(collapsed >= 1,
+                  QStringLiteral("precondition (D23): at least one section is collapsed, so the 0-height "
+                                 "delegates are really part of what a notch crosses (%1 collapsed)")
+                      .arg(collapsed));
+            // The delegate's row height, read off a live on-screen row rather than
+            // restated: `height: model.onScreen ? 30 : 0` is the QML's own statement of
+            // it, and a change there must not leave rows-per-notch quietly wrong.
+            qreal rowH = -1;
+            for (int row = 0; row < model.rowCount() && rowH < 0; ++row) {
+                QQuickItem* rowDelegate = nullptr;
+                QMetaObject::invokeMethod(list, "itemAtIndex",
+                                          Q_RETURN_ARG(QQuickItem*, rowDelegate), Q_ARG(int, row));
+                if (rowDelegate && rowDelegate->height() > 0) rowH = rowDelegate->height();
+            }
+            check(rowH == 30,
+                  QStringLiteral("precondition (D23): an on-screen delegate row is the QML's 30 px "
+                                 "(measured %1)").arg(rowH));
+
+            // One notch, built and delivered the way D25's wheel is (form_layout.cpp):
+            // a QWheelEvent sent to the WINDOW at a point over the list - its centre,
+            // in window coordinates - which is what a real wheel does; the window hands
+            // it to the item under the pointer and then up that item's ancestors to the
+            // Flickable. The timestamp is the one thing a hand-built event must be
+            // given: a real wheel event always carries one, and QQuickFlickable (read in
+            // qquickflickable.cpp) drops a notch whose elapsed time against the previous
+            // one is not positive - so two timestamp-0 events in a row would silently
+            // measure a step that never happened.
+            quint64 stamp = 0;
+            auto notch = [&](int aAngle) {
+                const QPointF at = list->mapToItem(window.contentItem(),
+                                                   QPointF(list->width() / 2, list->height() / 2));
+                QWheelEvent we(at, at, QPoint(0, 0), QPoint(0, aAngle),
+                               Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+                we.setTimestamp(stamp += 200);
+                QCoreApplication::sendEvent(&window, &we);
+                return settle();
+            };
+
+            // WARM-UP, AND WHY IT IS NOT ASSERTED. Measured: the notch that follows a
+            // DIRECT contentY write travels far - 1125 px - and the same 1125 px whatever
+            // the wheel delta is (120 units and 15 units both read 1125), so it is not a
+            // step at all: it is QQuickFlickable's wheel timeline resuming a target it was
+            // left holding when the view was moved behind its back. That matters beyond
+            // the harness - the SCENE writes the view the same way, with
+            // `positionViewAtIndex(currentRow, Contain)` whenever the current row changes
+            // (typing a query, stepping with the arrows) - but the harness cannot say
+            // whether a REAL wheel event through the compositor hits it, and offscreen
+            // there is no compositor to ask. So the travel is REPORTED below and the
+            // assertions start from the stream that follows.
+            const qreal warmUp = notch(-120);
+            // Back to the top for the measured pair: contentY is written directly, and
+            // the model's current row is already the top row, so the scene has no scroll
+            // of its own to add (it re-positions the view on a current-row CHANGE only,
+            // and a wheel notch never changes the current row).
+            list->setProperty("contentY", 0.0);
+            const qreal restart = settle();
+
+            // The reading `before` is the ACTUAL contentY, taken from rest immediately
+            // before the notch is sent - never an assumed 0 - so a scene that moves the
+            // view again (a resize settling, a row change) cannot silently turn the
+            // delta below into something other than the wheel's own step.
+            const qreal before = contentY();
+            // One 120-unit notch is wheelScrollLines() * 24 px, QQuickFlickable's own
+            // no-acceleration arithmetic (read in qquickflickable.cpp; the block header
+            // above spells it out). The precondition is only that the notch has that
+            // much room before the bottom edge: a step clamped by the edge would be a
+            // SHORTER one, and the assertions below would then fail for the clamp
+            // rather than for the wheel.
+            const qreal oneNotch = QGuiApplication::styleHints()->wheelScrollLines() * 24.0;
+            check(qAbs(restart - before) <= 1.0 && before + oneNotch <= contentH - viewportH,
+                  QStringLiteral("precondition (D23): the warm-up left the view where it can be "
+                                 "measured from and there is room to move down from the reading "
+                                 "(contentY %1 + one notch %2 px <= contentHeight %3 - viewport %4 "
+                                 "= %5)")
+                      .arg(before).arg(oneNotch).arg(contentH).arg(viewportH)
+                      .arg(contentH - viewportH));
+
+            const qreal y1 = notch(-120);
+            check(y1 > before,
+                  QStringLiteral("D23: one wheel notch scrolls the list down (contentY %1 -> %2)")
+                      .arg(before).arg(y1));
+
+            const qreal y2 = notch(-120);
+            check(y2 > y1,
+                  QStringLiteral("D23: a second notch scrolls it further down (%1 -> %2)")
+                      .arg(y1).arg(y2));
+
+            const qreal y3 = notch(120);
+            check(qAbs(y3 - y1) < 0.5,
+                  QStringLiteral("D23: a notch the other way undoes the last step exactly "
+                                 "(%1 vs %2)").arg(y3).arg(y1));
+
+            // THE STEP IS PROPORTIONAL TO THE DELTA, which is what rules out a page scroll
+            // or a flick: QQuickFlickable's arithmetic is angleDelta / 120 *
+            // wheelScrollLines() * 24, so a notch of 15 units must move exactly an eighth
+            // of what a notch of 120 units moves (72 px vs 9 px at wheelScrollLines()==3).
+            // The ratio is asserted rather than the pixels, because the pixels follow the
+            // platform's wheelScrollLines(); the ratio does not.
+            const qreal step120 = y2 - y1;
+            const qreal y4 = notch(-15);
+            const qreal step15 = y4 - y3;
+            check(step15 > 0.0 && qAbs(step120 / step15 - 8.0) < 0.2,
+                  QStringLiteral("D23: the step follows the wheel delta, not a page or a flick "
+                                 "(120 units -> %1 px, 15 units -> %2 px, ratio %3, expected 8)")
+                      .arg(step120).arg(step15).arg(step15 > 0.0 ? step120 / step15 : 0.0));
+
+            // The reading the report needs, in the test's own output: what one notch is
+            // worth in pixels and in rows, and what the platform calls a notch
+            // (wheelScrollLines() is the style hint QQuickFlickable itself sizes the
+            // step from).
+            QTextStream(stdout) << QStringLiteral(
+                "[measured] picker wheel (D23): per-notch delta=%1px contentHeight=%2 viewportHeight=%3 "
+                "delegateRowHeight=%4 rows-per-notch=%5 wheelScrollLines=%6 collapsedSections=%7 "
+                "warmUpNotchTravel=%8px stepAt15Units=%9px")
+                .arg(step120).arg(contentH).arg(viewportH).arg(rowH)
+                .arg(step120 / rowH).arg(QGuiApplication::styleHints()->wheelScrollLines()).arg(collapsed)
+                .arg(warmUp).arg(step15)
+                << "\n";
         }
     }
 

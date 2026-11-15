@@ -56,6 +56,12 @@ public:
     // Vertical scroll request (MMB pan or keyboard); the object tree applies
     // it, clamps to its own range, and syncs the actual value back
     util::Signaler<void(int)> onVerticalScrollRequested;
+    // The VISIBLE FRAME WINDOW changed: a scroll, a zoom, a resize, a new frame
+    // range, or another project. Emitted only when visibleFrameRange() really
+    // answers something new, so a subscriber that pushes the window somewhere (the
+    // animation graph panel, see MainDisplayWidget::setTimeLineWidget) can treat
+    // it as "the frames on screen are now these" rather than as a tick.
+    util::Signaler<void()> onViewRangeChanged;
 
 public:
     void onTreeViewUpdated(QTreeWidgetItem* aTopNode);
@@ -63,6 +69,31 @@ public:
     void onSelectionChanged(core::ObjectNode* aRepresent);
     void onProjectAttributeUpdated();
     void triggerOnTimeFormatChanged();
+
+    // The controller the inner surface renders, and the handle the animation graph
+    // panel reaches the timeline's own state through: its live selection (editor()
+    // ->selection()) is the set the panel shares, and its scale is what
+    // visibleFrameRange() below is derived from.
+    ctrl::TimeLineEditor* editor() const;
+    // Shows the application's own key EASING MENU at aGlobalPos for the keys
+    // aTargets names - the panel's right-click route to the timeline's menu (see
+    // TimeLineEditorWidget::showKeyContextMenu, which is where the menu and its
+    // action live). aGlobalPos is in GLOBAL (screen) coordinates, and an empty
+    // target list shows nothing.
+    void showKeyContextMenu(const core::TimeLineEvent& aTargets, const QPoint& aGlobalPos);
+    // The frames this widget is showing right now: the visible window on the
+    // content axis, in frames, derived through the editor's own scale (the same
+    // mapping every input path here converts a pixel with). This is what the
+    // animation graph panel's horizontal window IS while the two are attached
+    // (see MainDisplayWidget::setTimeLineWidget).
+    util::Range visibleFrameRange() const;
+    // The two horizontal gestures the panel delegates here, in FRAMES - the one
+    // unit both views can agree on: a pan (positive reveals LATER frames) and a
+    // wheel notch about a frame. Both drive this widget's own view transform and
+    // zoom ladder, which is what keeps a gesture made over the panel and one made
+    // over the timeline from landing on different frames.
+    void scrollFramesBy(double aFrameDelta);
+    void zoomFramesAbout(int aWheelDelta, core::Frame aAnchorFrame);
 
 private:
     virtual void mouseMoveEvent(QMouseEvent* aEvent);
@@ -91,6 +122,12 @@ private:
     void onPlayBackUpdated();
     void syncAudioTracks();
     void onThemeUpdated(theme::Theme&);
+    // Emits onViewRangeChanged when the visible frame window moved since the last
+    // call. Called from the one place the view's projection is recomputed
+    // (projectHorizontalScrollBar), so every path that can change the window -
+    // scroll, zoom, resize, frame range, project - reports exactly once, and a
+    // path that changed nothing reports nothing.
+    void notifyViewRange();
 
     GUIResources& mGUIResources;
     ViaPoint& mViaPoint;
@@ -107,6 +144,11 @@ private:
     // and never feeds back, except through explicit user slider actions.
     int mHorizontalOffset;
     bool mPendingScrollbarAdopt;
+    // The frame window the last onViewRangeChanged emission reported, so the
+    // signal only fires when visibleFrameRange() really answered something new.
+    // A window with min > max means "nothing reported yet" (no project, no
+    // geometry), which can never equal a real range.
+    util::Range mReportedFrameRange;
     // Custom scrollbar thumb drag: Qt remaps the mouse against the live
     // range, which compounds (exponential gain) while the track grows; the
     // drag is anchored instead — the value<->pixel ratio is frozen at press
@@ -117,6 +159,13 @@ private:
     int mScrollbarDragAnchorX;
     double mScrollbarDragRatio;
     bool mIsPanning;
+    // WHICH button started the pan. The pan is a gesture of one button, and
+    // only that button's release may end it: while a middle-drag pan is in
+    // flight the surface still forwards a left press to the editor's cursor
+    // (a marquee), so a release test of "panning && (Middle || Left)" swallows
+    // the LEFT release and leaves the editor stuck in State_EncloseKeys — the
+    // selection box then stays painted. Measured 2026-10-11.
+    Qt::MouseButton mPanButton;
     // The MoveCanvas key (space by default, configurable like the viewport's
     // pan) is held: left-drag pans instead of selecting/scrubbing. Mirrors
     // MainDisplayWidget's mMovingCanvasByKey.

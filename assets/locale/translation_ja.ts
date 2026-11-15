@@ -10,16 +10,22 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="107"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="255"/>
         <source>Loop animation</source>
         <translation>ループ再生</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="138"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="200"/>
         <source>Frame range</source>
         <translation>フレーム範囲</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/AnimationSettingDialog.qml" line="174"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="221"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="227"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="261"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="267"/>
         <source>Frames per second</source>
         <translation>フレーム毎秒</translation>
     </message>
@@ -29,142 +35,146 @@
         <translation>パレットパスを選択する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="198"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="218"/>
         <source>Destination</source>
         <translation>出力先</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="233"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="253"/>
         <source>Change</source>
         <translation>変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="282"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="302"/>
         <source>Details</source>
         <translation>詳細</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="322"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="343"/>
         <source>Output</source>
         <translation>出力</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="334"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="619"/>
         <source>Frames</source>
         <translation>フレーム</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="370"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="655"/>
         <source>Add range</source>
         <translation>範囲を追加</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="380"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="361"/>
         <source>Resolution</source>
         <translation>解像度</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="387"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="368"/>
         <source>Width</source>
         <translation>幅</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="406"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="387"/>
         <source>Height</source>
         <translation>高さ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="419"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="447"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="400"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="428"/>
         <source>Reset to native</source>
         <translation>元の値に戻す</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="429"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="410"/>
         <source>Keep aspect ratio</source>
         <translation>アスペクト比を維持する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="436"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="443"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="417"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="424"/>
         <source>Frame rate</source>
         <translation>フレームレート</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="462"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="443"/>
         <source>Encoding</source>
         <translation>エンコード</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="475"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="477"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="456"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="458"/>
         <source>Format</source>
         <translation>形式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="496"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="500"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="638"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="642"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="477"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="481"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="718"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="722"/>
         <source>Codec</source>
         <translation>コーデック</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="516"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="518"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="497"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="499"/>
         <source>Quality</source>
         <translation>品質</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="538"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="545"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="535"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="543"/>
         <source>Image quality</source>
         <translation>画質</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="549"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="696"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="732"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="548"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="786"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="826"/>
         <source>Auto</source>
         <translation>自動</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="550"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="673"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="706"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="734"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="549"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="757"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="796"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="827"/>
         <source>Reset to auto</source>
         <translation>自動に戻す</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="566"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="592"/>
         <source>Advanced</source>
         <translation>詳細設定</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="667"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="749"/>
         <source>Quality override</source>
         <translation>品質の上書き</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="687"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="697"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="771"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="787"/>
         <source>Bitrate</source>
         <translation>ビットレート</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="719"/>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="726"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="811"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="819"/>
         <source>Size cap (MB)</source>
         <translation>サイズ上限（MB）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="799"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="892"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="363"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="397"/>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="292"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="559"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportDialog.qml" line="804"/>
+        <location filename="../../src/gui/qml/ExportDialog.qml" line="897"/>
         <source>Export</source>
         <translation>エクスポート</translation>
     </message>
@@ -189,7 +199,7 @@
         <translation>未チェック</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/AeFrameRangeRow.qml" line="71"/>
+        <location filename="../../src/gui/qml/AeFrameRangeRow.qml" line="81"/>
         <source>Remove range %1</source>
         <translation>範囲 %1 を削除</translation>
     </message>
@@ -212,6 +222,259 @@
         <location filename="../../src/gui/qml/AeTextField.qml" line="123"/>
         <source>Clear</source>
         <translation>クリア</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="146"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="157"/>
+        <source>Initial asset</source>
+        <translation>初期アセット</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="156"/>
+        <source>Select an asset file</source>
+        <translation>アセットファイルを選択</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="160"/>
+        <source>Browse…</source>
+        <translation>参照…</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="203"/>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="209"/>
+        <source>Frame count</source>
+        <translation>フレーム数</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="247"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="143"/>
+        <source>Canvas size</source>
+        <translation>キャンバスサイズ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="249"/>
+        <source>Specify canvas size</source>
+        <translation>キャンバスサイズを指定する</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="269"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="152"/>
+        <source>Canvas width</source>
+        <translation>キャンバス幅</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="291"/>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="179"/>
+        <source>Canvas height</source>
+        <translation>キャンバス高さ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="182"/>
+        <source>Live link</source>
+        <translation>ライブリンク</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="188"/>
+        <source>Reload when the asset file changes on disk</source>
+        <translation>アセットファイルがディスク上で変更されたら再読み込み</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/NewProjectDialog.qml" line="368"/>
+        <source>Create</source>
+        <translation>作成</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="172"/>
+        <source>by</source>
+        <translation>かける</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="209"/>
+        <source>Frame start</source>
+        <translation>開始フレーム</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="228"/>
+        <source>to</source>
+        <translation>から</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="235"/>
+        <source>Frame end</source>
+        <translation>終了フレーム</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="295"/>
+        <source>Viewport background</source>
+        <translation>ビューポートの背景</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="321"/>
+        <source>Choose…</source>
+        <translation>選択…</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="326"/>
+        <source>Use theme background</source>
+        <translation>テーマの背景を使用</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="402"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="564"/>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="111"/>
+        <source>Reset keybinds</source>
+        <translation>キーバインドをリセットする</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="188"/>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="197"/>
+        <source>Not set</source>
+        <translation>未設定</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="228"/>
+        <source>Conflicts with %1</source>
+        <translation>%1 と競合しています</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="297"/>
+        <source>Ok</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="126"/>
+        <source>General</source>
+        <translation>一般</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="127"/>
+        <source>QoL</source>
+        <translation>使いやすさ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="128"/>
+        <source>Keyboard</source>
+        <translation>キーボード</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="129"/>
+        <source>Mouse</source>
+        <translation>マウス</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="221"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="223"/>
+        <source>Language (needs restart)</source>
+        <translation>言語（要リブート）</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="232"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="234"/>
+        <source>Default keyframe easing</source>
+        <translation>デフォルトのキーフレームイージング</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="243"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="245"/>
+        <source>Default keyframe range</source>
+        <translation>デフォルトのキーフレーム範囲</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="259"/>
+        <source>Theme</source>
+        <translation>テーマ</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="290"/>
+        <source>Accent color</source>
+        <translation>アクセントカラー</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="306"/>
+        <source>Accent color %1</source>
+        <translation>アクセントカラー %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="327"/>
+        <source>Allow donation menu</source>
+        <translation>寄付メニューを許可する</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="339"/>
+        <source>Reset recent files list</source>
+        <translation>最近使ったファイル一覧をリセットする</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="344"/>
+        <source>Deletes all project entries from your recents</source>
+        <translation>すべてのプロジェクトのエントリーを履歴から削除します</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="362"/>
+        <source>Automatically save your project</source>
+        <translation>プロジェクトを自動で保存する</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="367"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="373"/>
+        <source>Time (in minutes) between autosaves</source>
+        <translation>オートセーブまでの時間（分）</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
+        <source>Show mesh when selecting FFD</source>
+        <translation>FFD選択時にメッシュを自動で表示する</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="401"/>
+        <source>On copy send keys to the clipboard</source>
+        <translation>キーをクリップボードに自動でコピーする</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="408"/>
+        <source>Enforce ID check on asset download</source>
+        <translation>アセットダウンロード時のIDチェックを強制する</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="415"/>
+        <source>Ignore export warnings</source>
+        <translation>エクスポート警告を無視</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="422"/>
+        <source>Force project to load</source>
+        <translation>強制的にプロジェクトをロードする</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="427"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="429"/>
+        <source>Timeline format</source>
+        <translation>タイムライン形式</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="449"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="455"/>
+        <source>Global keybind delay (ms)</source>
+        <translation>グローバルキーバインドディレイ(ミリ秒)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="482"/>
+        <source>Inverse canvas scrolling</source>
+        <translation>タイムラインの拡縮を逆にする</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="489"/>
+        <source>Inverse timeline scrolling</source>
+        <translation>タイムラインの拡縮を逆にする</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="496"/>
+        <source>Middle mouse moves canvas</source>
+        <translation>マウス中ボタンでキャンバスを移動</translation>
     </message>
 </context>
 <context>
@@ -472,7 +735,7 @@
         <translation type="vanished">キーを移動</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="354"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="360"/>
         <source>Move keys</source>
         <translation>キーを移動</translation>
     </message>
@@ -481,17 +744,17 @@
         <translation type="vanished">キーをクリップボードに貼り付ける</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="669"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="675"/>
         <source>Paste clipboard keys</source>
         <translation>キーをクリップボードに貼り付ける</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="843"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="849"/>
         <source>Paste keys</source>
         <translation>キーを貼り付け</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="908"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="914"/>
         <source>Delete keys</source>
         <translation>キーを削除</translation>
     </message>
@@ -666,7 +929,7 @@
         <translation>新しい画像キーの追加</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="671"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="576"/>
         <source>Change the canvas size</source>
         <translation>キャンバスサイズを変更</translation>
     </message>
@@ -675,52 +938,57 @@
         <translation type="vanished">最大フレームを変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="692"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="597"/>
         <source>Change the frame range</source>
         <translation>フレーム範囲を変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="713"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="618"/>
         <source>Change loop settings</source>
         <translation>ループ設定を変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="735"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="640"/>
         <source>Change the FPS</source>
         <translation>FPSを変更する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="399"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="668"/>
+        <source>Change the viewport background</source>
+        <translation>ビューポートの背景を変更</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="492"/>
         <source>Rename object</source>
         <translation>オブジェクトの名前を変更する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1056"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1149"/>
         <source>Create a layer</source>
         <translation>レイヤーを作成する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1180"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1273"/>
         <source>Duplicate base folder</source>
         <translation>フォルダを複製</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1315"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1408"/>
         <source>Duplicate layer</source>
         <translation>レイヤーを複製</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1494"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1587"/>
         <source>create a folder object</source>
         <translation>フォルダオブジェクトを作成</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1544"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1637"/>
         <source>Delete object</source>
         <translation>削除オブジェクト</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1678"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1771"/>
         <source>Move object</source>
         <translation>オブジェクトを移動する</translation>
     </message>
@@ -739,27 +1007,27 @@
         <translation type="vanished">クリッピング設定を更新</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="257"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="259"/>
         <source>Add new asset</source>
         <translation>新しいアセットを追加</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="635"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="864"/>
         <source>Reload images</source>
         <translation>イメージをリロード</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="703"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="951"/>
         <source>Delete images</source>
         <translation>画像を削除</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="225"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="223"/>
         <source>Update asset file path</source>
         <translation>アセットファイルパスを更新</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="279"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="277"/>
         <source>Rename asset</source>
         <translation>アセット名を変更</translation>
     </message>
@@ -767,6 +1035,21 @@
         <location filename="../../src/gui/TargetWidget.cpp" line="168"/>
         <source>Change animation settings</source>
         <translation>アニメーション設定の変更</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1077"/>
+        <source>move a key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1162"/>
+        <source>change a key easing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1299"/>
+        <source>remove a key</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1091,26 +1374,64 @@
     </message>
     <message>
         <location filename="../../src/ctrl/ExportTargetStrings.h" line="69"/>
+        <source>WhatsApp (video)</source>
+        <translation>WhatsApp（動画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="73"/>
+        <source>Telegram (video)</source>
+        <translation>Telegram（動画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="77"/>
+        <source>Discord (video)</source>
+        <translation>Discord（動画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="81"/>
+        <source>Signal (video)</source>
+        <translation>Signal（動画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="85"/>
+        <source>Messenger (video)</source>
+        <translation>Messenger（動画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="109"/>
+        <source>Bluesky (video)</source>
+        <translation>Bluesky（動画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="114"/>
+        <source>Reddit (video)</source>
+        <translation>Reddit（動画）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="134"/>
+        <source>Tumblr (video)</source>
+        <translation>Tumblr（動画）</translation>
+    </message>
+    <message>
         <source>A video for a chat app</source>
-        <translation>チャットアプリ用の動画</translation>
+        <translation type="vanished">チャットアプリ用の動画</translation>
+    </message>
+    <message>
+        <source>The one to pick when the app is not in this list. MP4/H.264 with AAC at 720p and under 20 MB is accepted by every chat app here, and is what the restrictive ones accept.</source>
+        <translation type="vanished">このリストにないアプリを使う場合に選ぶものです。720p で 20 MB 未満の AAC 付き MP4/H.264 は、ここにあるすべてのチャットアプリで受け付けられ、制限の厳しいアプリが受け付けるのもこれです。</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/ExportTargetStrings.h" line="70"/>
-        <source>The one to pick when the app is not in this list. MP4/H.264 with AAC at 720p and under 20 MB is accepted by every chat app here, and is what the restrictive ones accept.</source>
-        <translation>このリストにないアプリを使う場合に選ぶものです。720p で 20 MB 未満の AAC 付き MP4/H.264 は、ここにあるすべてのチャットアプリで受け付けられ、制限の厳しいアプリが受け付けるのもこれです。</translation>
-    </message>
-    <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="71"/>
         <source>A video sent in a chat: 64 MB over a slow connection, 100 MB over a fast one, and WhatsApp DOWNSCALES rather than rejecting. Sending it as a Document instead allows 2 GB untouched, which is a different intent and not this row. Status is limited to 90 seconds and is also not this row.</source>
         <translation>チャットで送信する動画：低速回線では 64 MB、高速回線では 100 MB で、WhatsApp は拒否するのではなくダウンスケールします。代わりにドキュメントとして送信すると 2 GB をそのまま扱えますが、これは別の意図であり、この行の対象ではありません。ステータスは 90 秒に制限されており、これもこの行の対象ではありません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="72"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="71"/>
         <source>WhatsApp (animated GIF)</source>
         <translation>WhatsApp（アニメーションGIF）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="73"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="72"/>
         <source>UNVERIFIED (WhatsApp publishes no organic cap for an animated image): GIFs are a documented chat surface, but WhatsApp publishes no byte cap, format list, dimension rule, frame count or duration for an image sent in a chat, and no statement about whether it transcodes one. The numbers that could be borrowed are all for other surfaces and are NOT applied here: 2 GB for a DOCUMENT, 100 MB or 64 MB for a VIDEO (fast and slow connections), 90 seconds for a status video, and the Cloud API&apos;s 5 MB image with a 500 KB animated sticker. No cap is applied, and the fit loop therefore has nothing to enforce.</source>
         <translation>未確認（WhatsApp はアニメーション画像について独自の上限を公開していません）：GIF は文書化されたチャットの送信対象ですが、WhatsApp はチャットで送信する画像について、バイト数の上限、形式の一覧、寸法のルール、フレーム数、再生時間を公開しておらず、トランスコードするかどうかについての記述もありません。流用できる数値はすべて別の機能向けのもので、ここでは適用しません：ドキュメントは 2 GB、動画は 100 MB または 64 MB（高速回線と低速回線）、ステータス動画は 90 秒、Cloud API の 5 MB の画像および 500 KB のアニメーションステッカーです。上限は適用されないため、フィットループが守るべきものは何もありません。</translation>
     </message>
@@ -1130,472 +1451,498 @@
         <translation>Telegram はアップロードされた GIF 自体を変換します：&quot;GIFs are actually MPEG4 (h264) videos without sound; if the user tries to upload an actual GIF file, it will be automatically converted to an MPEG4 file by the server&quot;。そのためこの出力先は、Telegram がいずれにせよ作成するファイルを、GIF パレットを経由する往復なしで書き出します。つまり、MP4 内の無音 H.264 であり、透明度は決して維持できません（変換は非可逆であり、H.264 4:2:0 はアルファを持ちません）。アニメーションWebP はステッカーとして受け付けられません（&quot;Animated .WEBP is NOT currently supported&quot;）。チャットのファイルは最大 2 GB（Premium では 4 GB）で、これは GIF の上限ではなくクラウドファイルの上限です。チャットのアニメーションについて、フレーム数、再生時間、フレームレートは公開されていません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="77"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="78"/>
         <source>20 MB to send, 50 MB with Nitro Basic, 500 MB with Nitro; a boosted server lifts everyone to 50 MB (level 2) or 100 MB (level 3). Discord&apos;s older help pages still say 10 MB. On mobile the size is now measured BEFORE compression, so a video that used to fit may not.</source>
         <translation>送信は 20 MB、Nitro Basic では 50 MB、Nitro では 500 MB です。ブーストされたサーバーでは全員が 50 MB（レベル 2）または 100 MB（レベル 3）に引き上げられます。Discord の古いヘルプページには今も 10 MB と書かれています。モバイルではサイズが圧縮前の時点で測定されるようになったため、以前は収まっていた動画が収まらないことがあります。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="78"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="79"/>
         <source>Discord (animated image)</source>
         <translation>Discord（アニメーション画像）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="79"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="80"/>
         <source>An animated image, not a video: WebP is the format Discord&apos;s own pipeline produces for animation (they have served and accepted animated WebP since the 2024 mobile release 252), and a GIF upload is transcoded to WebP for display, so this goes out animated either way. Alpha survives here, which GIF&apos;s palette cannot carry. The English FAQ caps a non-Nitro upload at 10 MB (its Hindi page says 25 MB): 10 MB is used, and it is also the size above which Discord stops animating inline and offers the file as a download instead. One frame in the export gives a still WebP, so this row carries a still illustration as well as an animation. Transparency is on by default (WebP keeps it, GIF&apos;s palette cannot) and can be turned off.</source>
         <translation>動画ではなくアニメーション画像です。WebP は Discord 自身のパイプラインがアニメーション用に生成する形式であり（2024 年のモバイル版リリース 252 以降、アニメーションWebP を配信し受理しています）、GIF をアップロードしても表示用に WebP へトランスコードされるため、どちらの場合もアニメーションとして出力されます。ここではアルファが保持されますが、GIF のパレットでは保持できません。英語版 FAQ では Nitro 以外のアップロードの上限を 10 MB としています（ヒンディー語版のページには 25 MB とあります）：ここでは 10 MB を使用しており、これは Discord がインラインでのアニメーションをやめて代わりにファイルをダウンロードとして提示するようになるサイズでもあります。エクスポートで 1 フレームにすると静止 WebP になるため、この行はアニメーションだけでなく静止イラストにも対応します。透明度はデフォルトで有効で（WebP は保持でき、GIF のパレットでは保持できません）、オフにすることもできます。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="80"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="82"/>
         <source>Signal re-encodes client-side to 720p at roughly 2 Mbps and targets about 50 MB of output. The server flag is 100 MiB and remote-configurable, so 50 MB is the number to stay under. Sending as a File skips the transcode.</source>
         <translation>Signal はクライアント側で 720p・約 2 Mbps に再エンコードし、出力は約 50 MB を目標としています。サーバー側のフラグは 100 MiB でリモートから設定可能なため、50 MB が下回っておくべき数値です。ファイルとして送信すればトランスコードは行われません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="81"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="83"/>
         <source>Signal (animated GIF)</source>
         <translation>Signal（アニメーションGIF）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="82"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="84"/>
         <source>UNVERIFIED (Signal publishes nothing usable here): a GIF is a first-class attachment (&quot;image, gif, video, voice message, or audio file&quot;), but Signal has no help page stating an attachment byte cap, a format list, a dimension rule, a frame count or a transcode rule for one. The only numbers that exist are in source code and issue threads rather than documentation: a GIF threshold of min(25 MB, the attachment limit) and a maintainer note that sending is still capped at 100 MB. 25 MB is used here as the code-level threshold, and every other fact is left unstated rather than invented. Note that Signal&apos;s STICKER page says &quot;Please do not upload GIFs&quot; - that is the sticker surface (APNG, 300 KB), a different thing from an attachment, and reading it as &quot;Signal rejects GIFs&quot; is a documented trap.</source>
         <translation>未確認（Signal はここに関して使える情報を公開していません）：GIF は正式な添付ファイルです（&quot;image, gif, video, voice message, or audio file&quot;）が、Signal には添付ファイルのバイト上限、形式一覧、寸法ルール、フレーム数、トランスコード規則を記載したヘルプページがありません。存在する数値はドキュメントではなくソースコードと issue スレッドの中にのみあります：GIF のしきい値 min(25 MB, the attachment limit) と、送信は依然として 100 MB が上限であるというメンテナーの記述です。ここではコード側のしきい値として 25 MB を使用し、その他の事実は推測せずに未記載のままにしています。Signal の STICKER ページには &quot;Please do not upload GIFs&quot; とある点に注意してください。これはステッカー（APNG、300 KB）の話であり、添付ファイルとは別物で、これを「Signal は GIF を拒否する」と読むのはドキュメント化された罠です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="83"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="86"/>
         <source>UNVERIFIED: 25 MB is the published DEVELOPER API limit. Meta does not publish the consumer chat limit anywhere, so this is the closest sourced number, not the app&apos;s own. 75 seconds appears in the docs as a fetch timeout, NOT a duration limit.</source>
         <translation>未確認：25 MB は公開されている DEVELOPER API の上限です。Meta は一般ユーザー向けチャットの上限をどこにも公開していないため、これは出典のある最も近い数値であり、このアプリ自身の上限ではありません。75 秒がドキュメントに登場するのは取得タイムアウトとしてであり、決して長さの制限ではありません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="84"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="87"/>
         <source>Messenger (animated GIF)</source>
         <translation>Messenger（アニメーションGIF）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="85"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="88"/>
         <source>UNVERIFIED (the consumer chat publishes no cap): Messenger offers a &quot;Send GIF&quot; action with no published formats, and Meta&apos;s API documentation says animated GIFs &quot;are playable in the conversation&quot;, but the consumer chat states no byte cap, dimension rule, frame count or transcode behaviour. The API numbers that exist (25 MB per asset, 8 MB for an image uploaded by URL) are labelled as API values and are not applied here, because Meta does not say they bind the in-app picker. The API template also lists only image and video as media types with no GIF value, which is a contradiction Meta leaves unresolved.</source>
         <translation>未確認（一般ユーザー向けチャットは上限を公開していません）：Messenger には &quot;Send GIF&quot; アクションがありますが、公開されている形式はなく、Meta の API ドキュメントにはアニメーションGIF は &quot;are playable in the conversation&quot; とありますが、一般ユーザー向けチャットにはバイト上限、寸法ルール、フレーム数、トランスコードの挙動について何も記載されていません。存在する API の数値（アセットあたり 25 MB、URL からアップロードする画像は 8 MB）は API の値として示されており、Meta がアプリ内のピッカーに適用されるとは述べていないため、ここでは適用していません。また API テンプレートがメディア種別として挙げているのは image と video だけで、GIF の値がありません。これは Meta が未解決のままにしている矛盾です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="86"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="89"/>
         <source>KakaoTalk (카카오톡)</source>
         <translation>KakaoTalk（카카오톡）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="87"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="90"/>
         <source>UNVERIFIED for mobile: 300 MB is the PC desktop file-send limit. Kakao does not publish the mobile chat limit. MP4/MOV/MKV/AVI/TS and others are accepted.</source>
         <translation>モバイルについては未確認：300 MB は PC デスクトップ版のファイル送信上限です。Kakao はモバイルチャットの上限を公開していません。MP4/MOV/MKV/AVI/TS などが受け付けられます。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="88"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="91"/>
         <source>WeChat (微信)</source>
         <translation>WeChat（微信）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="89"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="92"/>
         <source>UNVERIFIED: Tencent publishes no size or duration limit for video sent in a personal chat, and no codec list. MP4/H.264 at 720p is the safe choice. The official-account route IS documented (10 MB per upload, 2 GB chunked) and is a different thing entirely.</source>
         <translation>未確認：Tencent は個人チャットで送信する動画のサイズや長さの制限、コーデック一覧を公開していません。MP4/H.264 の 720p が安全な選択です。公式アカウント経由についてはドキュメントに明記されており（1 回のアップロードあたり 10 MB、分割アップロードなら 2 GB）、まったく別の話です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="90"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="93"/>
         <source>UNVERIFIED for the consumer app: 30 MB soft (silently becomes a FILE instead of an inline video) and 200 MB hard are BOT API numbers. Consumer chat limits are not published.</source>
         <translation>一般ユーザー向けアプリについては未確認：30 MB のソフト制限（インライン動画ではなく黙って FILE になる）と 200 MB のハード制限は BOT API の数値です。一般ユーザー向けチャットの上限は公開されていません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="91"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="94"/>
         <source>VK (ВКонтакте)</source>
         <translation>VK（ВКонтакте）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="92"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="95"/>
         <source>No cap worth encoding: 256 GB, up to 4K, and VK re-encodes. MP4/H.264 at 1280x720 or above, and they recommend 16:9.</source>
         <translation>アプリに組み込む価値のある上限はありません：256 GB、最大 4K、そして VK は再エンコードします。MP4/H.264 で 1280x720 以上、また 16:9 が推奨されています。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="93"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="96"/>
         <source>X (Twitter)</source>
         <translation>X（Twitter）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="94"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="97"/>
         <source>A post accepts up to 8 GB and 20 minutes (16 GB / 125 minutes with Premium). The &quot;140 seconds / 512 MB&quot; figure repeated all over the web is X&apos;s DIRECT MESSAGE limit, not a post, and is 50x too small here. H.264 High, AAC-LC, yuv420p, closed GOP.</source>
         <translation>投稿は最大 8 GB、20 分です（Premium では 16 GB / 125 分）。ウェブ上で至るところに繰り返されている &quot;140 seconds / 512 MB&quot; という数値は、X のダイレクトメッセージの上限であって投稿の上限ではなく、ここでは 50 倍も小さすぎます。H.264 High、AAC-LC、yuv420p、closed GOP です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="95"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="98"/>
         <source>X (animated GIF)</source>
         <translation>X（アニメーションGIF）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="96"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="99"/>
         <source>X accepts JPG, PNG, GIF and WEBP, and an animated GIF is its own media category (tweet_gif). The caps here come from X&apos;s API documentation, NOT from its help pages: 15 MB per animated GIF, resolution at most 1280x1080, at most 350 frames and at most 300 million pixels in total (width x height x frames). X&apos;s own API page adds that a GIF &quot;may fail during Post creation even if it is within the file size limit&quot;, so treat 15 MB as soft. The figure repeated across the web (5 MB mobile, 15 MB web) appears on no X-owned page, and X publishes nothing about transparency, looping, frame rate or duration for GIFs.</source>
         <translation>X は JPG、PNG、GIF、WEBP に対応しており、アニメーションGIF は独自のメディアカテゴリ（tweet_gif）です。ここでの上限は X の API ドキュメントに由来するものであり、ヘルプページのものではありません：アニメーションGIF 1 件あたり 15 MB、解像度は最大 1280x1080、最大 350 フレーム、合計で最大 3 億ピクセル（幅 x 高さ x フレーム数）です。X 自身の API ページは、GIF は &quot;may fail during Post creation even if it is within the file size limit&quot; と付け加えているため、15 MB はソフトリミットとして扱ってください。ウェブ上で繰り返されている数値（モバイル 5 MB、ウェブ 15 MB）は X が保有するどのページにも記載されておらず、X は GIF の透明度、ループ、フレームレート、再生時間について何も公開していません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="97"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="100"/>
         <source>Instagram Reels</source>
         <translation>Instagramリール</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="98"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="101"/>
         <source>300 MB, 3 seconds to 15 minutes, 9:16 up to 1920 px wide, H.264 or HEVC in a closed GOP. The moov atom must be at the FRONT of the file with no edit lists, which is what the faststart muxer option below does: without it the upload is rejected.</source>
         <translation>300 MB、3 秒から 15 分、9:16 で幅は最大 1920 px、closed GOP の H.264 または HEVC です。moov アトムは編集リストなしでファイルの先頭になければならず、それを実現するのが以下にある faststart muxer（多重化）オプションです：これがないとアップロードは拒否されます。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="99"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="102"/>
         <source>4 GB, up to 10 minutes on some routes and 3 on others. 1080x1920 (9:16). GIF files are NOT accepted. WebM/MOV are accepted alongside MP4.</source>
         <translation>4 GB、一部の経路では最大 10 分、他の経路では 3 分です。1080x1920（9:16）。GIF ファイルは受け付けられません。MP4 に加えて WebM/MOV も受け付けられます。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="100"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="103"/>
         <source>Bilibili (哔哩哔哩)</source>
         <translation>Bilibili（哔哩哔哩）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="101"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="104"/>
         <source>UNVERIFIED (conflicting sources): Bilibili&apos;s help centre says 16 GB (64 GB at higher web levels), their own open-platform API documentation says 4 GB, and the page could not be re-fetched to settle it. 4 GB is used here as the floor that both agree on. Up to 4096x4096 at 120 fps, H.264/AAC, yuv420p.</source>
         <translation>未確認（情報源が矛盾）：Bilibili のヘルプセンターは 16 GB（ウェブレベルが高い場合は 64 GB）と記載しており、同社自身のオープンプラットフォーム API ドキュメントは 4 GB と記載していて、そのページを再取得して決着させることはできませんでした。ここでは両者が一致する下限として 4 GB を使用しています。最大 4096x4096、120 fps、H.264/AAC、yuv420p です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="102"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="105"/>
         <source>Weibo (微博)</source>
         <translation>Weibo（微博）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="103"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="106"/>
         <source>15 GB from the desktop web, 4 GB from mobile. There is a MINIMUM of 3 seconds and no published maximum duration. 720p or better for the video section; 2K/4K are gated behind play counts. Codec list is not published: MP4/H.264.</source>
         <translation>デスクトップ版ウェブからは 15 GB、モバイルからは 4 GB です。最小が 3 秒で、公開された最大再生時間はありません。動画セクションでは 720p 以上、2K/4K は再生回数を条件に解放されます。コーデックの一覧は公開されていません：MP4/H.264 です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="104"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="107"/>
         <source>Weibo (animated GIF)</source>
         <translation>Weibo（アニメーションGIF）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="105"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="108"/>
         <source>Weibo LOSES the animation rather than converting it: &quot;原始图片需不超过1080宽，超宽会导致动图不动&quot; (the original must be at most 1080 wide, wider makes the animation stop) and the original-quality box (原图) must be ticked or the GIF posts as a static image. So the width ceiling is a real constraint here, and this row caps the long side at 1080 px, which is stricter than the published rule but can never lose the animation. 20 MB is the published per-image cap from Weibo&apos;s own help centre (the API&apos;s 10 MB belongs to the API surface). No frame count, duration, frame rate or transparency statement is published for a GIF, and Weibo&apos;s two help pages contradict each other about ticking 原图: one requires it for animation, the other recommends leaving it off to avoid a colour cast.</source>
         <translation>Weibo はアニメーションを変換するのではなく失います：&quot;原始图片需不超过1080宽，超宽会导致动图不动&quot;（元の画像は幅 1080 以下でなければならず、それを超えるとアニメーションが止まります）という記載があり、オリジナル画質のチェックボックス（原图）をオンにしなければ、GIF は静止画として投稿されます。そのため幅の上限はここでは実際の制約となり、この行では長辺を 1080 px に制限しています。これは公開されている規則よりも厳しいものですが、アニメーションが失われることは決してありません。20 MB は Weibo 自身のヘルプセンターに記載された画像 1 枚あたりの上限です（API の 10 MB は API 側の話です）。GIF について、フレーム数、再生時間、フレームレート、透明度に関する記述は公開されておらず、Weibo の 2 つのヘルプページは原图をオンにすることについて互いに矛盾しています：一方はアニメーションのためにそれを必須としており、もう一方は色かぶりを避けるためにオフのままにすることを勧めています。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="106"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="110"/>
         <source>MP4 ONLY: the lexicon accepts video/mp4 and nothing else. 300 MB and 10 minutes (both raised recently, so most guides are out of date). No pixel cap; the aspect ratio travels as metadata.</source>
         <translation>MP4 のみ：lexicon が受け付けるのは video/mp4 だけで、それ以外は受け付けません。300 MB、10 分です（いずれも最近引き上げられたため、ほとんどのガイドは古くなっています）。ピクセル数の上限はなく、アスペクト比はメタデータとして伝わります。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="107"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="111"/>
         <source>Bluesky (animation)</source>
         <translation>Bluesky（アニメーション）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="108"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="112"/>
         <source>Bluesky keeps the animation by routing it down the VIDEO path: an animated GIF is &quot;processed as video&quot;, and the video embed lexicon accepts only video/mp4, so a GIF that arrives at Bluesky becomes an MP4. This row writes the MP4 directly, silent and H.264, which is what the platform serves anyway, and transparency cannot survive it. THE 2 MB IMAGE CAP DOES NOT APPLY HERE: 2,000,000 bytes is the app.bsky.embed.images lexicon limit for a STILL; the video embed allows 300 MB and 10 minutes, which is what is used. Note that Bluesky&apos;s own documentation contradicts itself about the still-image number (the code on that page enforces 2,000,000 while the prose beside it still says 1,000,000). No dimension, frame or frame-rate rule is published, and the 720p/30 fps/5000 kbps figures in circulation come from a user comment, not from documentation.</source>
         <translation>Bluesky はアニメーションを動画の経路に通すことで保持します：アニメーションGIF は &quot;processed as video&quot; として扱われ、動画埋め込み用の lexicon が受け付けるのは video/mp4 のみであるため、Bluesky に届いた GIF は MP4 になります。この行は MP4 を直接書き出します。無音の H.264 であり、これはプラットフォームがいずれにせよ配信する形式でもあり、透明度はこれを経由して残ることはできません。2 MB という画像の上限はここでは適用されません：2,000,000 バイトは静止画に対する app.bsky.embed.images の lexicon の上限であり、動画埋め込みでは 300 MB と 10 分が許可されており、ここではそれが使用されています。Bluesky 自身のドキュメントは静止画の数値について矛盾している点に注意してください（そのページのコードは 2,000,000 を強制していますが、その横にある文章はいまだに 1,000,000 と書いています）。寸法、フレーム、フレームレートに関する規則は公開されておらず、出回っている 720p/30 fps/5000 kbps という数値はドキュメントではなく、あるユーザーのコメントに由来します。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="109"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="113"/>
         <source>99 MB for video and 16 MB for images are UPSTREAM DEFAULTS; every instance sets its own, and instances drift from upstream (mastodon.social reports double the upstream pixel limit). The authoritative answer is the server&apos;s own /api/v2/instance configuration. GIFs are converted to silent MP4, so transparency does not survive.</source>
         <translation>動画は 99 MB、画像は 16 MB という値はあくまで上流の既定値です。各インスタンスがそれぞれ独自に設定しており、インスタンスは上流からずれていきます（mastodon.social は上流のピクセル上限の 2 倍を報告しています）。信頼できる答えは、サーバー自身の /api/v2/instance 設定です。GIF は無音の MP4 に変換されるため、透明度は保持されません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="110"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="115"/>
         <source>UNVERIFIED: Reddit does not publish a size limit for native video posts. No byte cap is applied rather than inventing one. The 15-minute figure comes from their 2017 launch post, and comment videos are capped much shorter.</source>
         <translation>未確認：Reddit はネイティブ動画投稿のサイズ上限を公開していません。推測で数値を作るより、バイト上限は適用しない方針です。15 分という数値は 2017 年のローンチ投稿に由来しており、コメント動画はそれよりずっと短く制限されています。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="111"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="116"/>
         <source>Reddit (animated GIF)</source>
         <translation>Reddit（アニメーションGIF）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="112"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="117"/>
         <source>UNVERIFIED (no organic numbers published): Reddit documents no byte cap for an image or GIF post. What IS visible is that a GIF post is stored and served as a Reddit VIDEO (Reddit&apos;s own Devvit model carries a media kind &quot;videogif&quot; and a RedditVideo.isGif flag), so animation survives but transparency does not, which is why alpha is forbidden here. The widely quoted &quot;20 MB image / 100 MB GIF&quot; figures come from third parties, and the Reddit numbers that are published belong to other surfaces (comment images at most 240 px, comment video under 1 GB and 3 minutes, and advertising specs that reject animated GIF outright). No frame, duration or frame-rate rule is published for an animated image.</source>
         <translation>未確認（通常の投稿に関する数値は未公開）：Reddit は画像または GIF 投稿のバイト上限を文書化していません。実際に確認できるのは、GIF 投稿が Reddit の動画として保存・配信されるという点です（Reddit 自身の Devvit モデルにはメディア種別 &quot;videogif&quot; と RedditVideo.isGif フラグがあります）。そのためアニメーションは保持されますが透明度は保持されず、ここでアルファが禁止されている理由でもあります。広く引用されている &quot;20 MB image / 100 MB GIF&quot; という数値は第三者によるもので、公開されている Reddit の数値は別の機能に属するものです（コメント画像は最大 240 px、コメント動画は 1 GB 未満かつ 3 分、そしてアニメーションGIF を完全に拒否する広告仕様）。アニメーション画像については、フレーム数、再生時間、フレームレートの規則が公開されていません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="113"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="118"/>
         <source>WeChat sticker (微信表情)</source>
         <translation>WeChatステッカー（微信表情）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="114"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="119"/>
         <source>Animated stickers are GIF only, exactly 240x240, 500 KB, and must loop. Art that exceeds the spec is compressed AND CROPPED by WeChat rather than rejected, so an oversized export comes back with its edges cut off. Sticker sets are 8 to 24 images.</source>
         <translation>アニメーションステッカーは GIF のみで、厳密に 240x240、500 KB、そしてループさせなければなりません。仕様を超えた画像は WeChat によって拒否されるのではなく、圧縮され、しかも切り取られます。そのため大きすぎる書き出しは端が切られた状態で返ってきます。ステッカーセットは 8 から 24 枚です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="115"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="120"/>
         <source>KakaoTalk sticker (카카오톡 스티커)</source>
         <translation>KakaoTalkステッカー（카카오톡 스티커）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="116"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="121"/>
         <source>Animated WebP, 360x360 (180x180 for mini, 540x540 for big), 650 KB, 24 frames maximum and four loops. Kakao publishes its own WebP animator, which is a useful sign of exactly which encoder behaviour they expect.</source>
         <translation>アニメーションWebP、360x360（ミニは 180x180、ビッグは 540x540）、650 KB、最大 24 フレーム、ループは 4 回です。Kakao は独自の WebP アニメーターを公開しており、これは彼らがどのエンコーダー挙動を期待しているかを正確に示す有用な手がかりです。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="117"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="122"/>
         <source>QQ sticker</source>
         <translation>QQステッカー</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="118"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="123"/>
         <source>UNVERIFIED and DATE-STAMPED 2018-10-07: this is the last Tencent-owned specification that exists anywhere. yuanchuang.qq.com no longer resolves and archive.org holds no capture after October 2018, so the values below are what Tencent said eight years ago and nothing current confirms them. 16 GIFs at exactly 300x300, each 300 KB or less (&quot;表情大小：≤300kb/个&quot;, raised from 90 KB in 2016), on a transparent background (&quot;文件均为无色透明底&quot;). A white stroke is required but 3 px is only PREFERRED (&quot;以3像素的白色描边为佳&quot;), not an exact value. The same page contradicts itself about the 300x300 PNG thumbnail: its table says 200 KB and its body text says 20 KB, so no thumbnail cap is applied. Nothing is published about frame count, duration, frame rate, or re-encoding.</source>
         <translation>未確認（日付は 2018-10-07）：これはどこを探しても残っている最後の Tencent 所有の仕様です。yuanchuang.qq.com は現在解決できず、archive.org にも 2018 年 10 月以降のキャプチャはありません。そのため以下の値は 8 年前に Tencent が述べたものであり、現在それを裏付けるものは何もありません。GIF はちょうど 300x300 で 16 枚、それぞれ 300 KB 以下（&quot;表情大小：≤300kb/个&quot;、2016 年に 90 KB から引き上げ）、背景は透明（&quot;文件均为无色透明底&quot;）です。白い縁取りは必須ですが、3 px はあくまで推奨（&quot;以3像素的白色描边为佳&quot;）であり、厳密な値ではありません。同じページは 300x300 の PNG サムネイルについて自己矛盾しており、表には 200 KB、本文には 20 KB と書かれているため、サムネイルの上限は適用していません。フレーム数、再生時間、フレームレート、再エンコードについては何も公開されていません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="119"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="124"/>
         <source>Nico Nico Douga (ニコニコ動画)</source>
         <translation>Nico Nico Douga（ニコニコ動画）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="120"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="125"/>
         <source>6 GB or 6 hours, whichever comes first; raised from 3 GB on 2024-10-29, so older guides are a revision behind. Up to 4096x2160 (or 2160x4096 vertical) and 60 fps. Their own page caps the vertical Short surface at 180 seconds, which is a different destination with the same name.</source>
         <translation>6 GB または 6 時間のいずれか早い方です。2024-10-29 に 3 GB から引き上げられたため、古いガイドは 1 版遅れています。最大 4096x2160（縦向きは 2160x4096）、60 fps。同社のページでは縦型ショート機能は 180 秒に制限されており、これは同じ名前の別の出力先です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="121"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="126"/>
         <source>Douyin (抖音)</source>
         <translation>Douyin（抖音）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="122"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="127"/>
         <source>UNVERIFIED (conflicting): ByteDance contradicts itself. The current upload endpoint says 4 GB total with chunked upload mandatory above 300 MB, while a 2024-04-09 chunked-upload page says 128 MB and 15 minutes, and the Android share SDK says 60 minutes. The widely quoted 500 MB could not be found on any ByteDance page. Short side under 2160, long side under 4096, 720p or above.</source>
         <translation>未確認（情報源が矛盾）：ByteDance は自ら矛盾しています。現在のアップロードエンドポイントは合計 4 GB で、300 MB を超える場合はチャンクアップロードが必須としていますが、2024-04-09 のチャンクアップロードのページは 128 MB と 15 分としており、Android 共有 SDK は 60 分としています。広く引用されている 500 MB は、どの ByteDance のページにも見つかりませんでした。短辺 2160 未満、長辺 4096 未満、720p 以上です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="123"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="128"/>
         <source>Facebook (video)</source>
         <translation>Facebook（動画）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="124"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="129"/>
         <source>UNVERIFIED (partial): Meta publishes NO byte or duration cap for organic video. The 4 GB and 240-minute figures that circulate are the ADVERTISING spec. Since September 2025 every video posted to Facebook is shared as a reel, so this and the reels destination differ only in the length the API enforces. Recommended: maximum width 4000 px with dimensions divisible by 16, 30 fps or lower, H.264 with AAC.</source>
         <translation>未確認（一部のみ）：Meta は通常の動画についてバイト数や再生時間の上限を一切公開していません。出回っている 4 GB と 240 分という数値は広告の仕様です。2025 年 9 月以降、Facebook に投稿されたすべての動画はリールとして共有されるため、この出力先とリールの出力先は API が強制する長さだけが異なります。推奨：最大幅 4000 px で寸法が 16 で割り切れること、30 fps 以下、H.264 と AAC。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="125"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="130"/>
         <source>Facebook (animated GIF)</source>
         <translation>Facebook（アニメーションGIF）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="126"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="131"/>
         <source>UNVERIFIED (advisory, not a published hard cap): Facebook lists GIF among the photo formats it recommends uploading (&quot;JPEG, BMP, PNG, GIF or TIFF&quot;) and recommends keeping photos under 15 MB, which is the number used here. No organic byte cap, dimension rule, frame count, duration or frame rate is published for an animated image; the only transcode statement Facebook makes is in the ADS documentation (a GIF there &quot;plays in the same way as all video files&quot;), and the numbers that circulate for GIF (4 GB, &quot;as video&quot;) belong to that advertising surface rather than to a photo post.</source>
         <translation>未確認（参考情報であり、公表された厳密な上限ではありません）：Facebook はアップロードを推奨する写真形式として GIF を挙げており（&quot;JPEG, BMP, PNG, GIF or TIFF&quot;）、写真は 15 MB 未満に保つことを推奨しています。ここではその数値を採用しています。アニメーション画像については、通常投稿のバイト上限、寸法規則、フレーム数、再生時間、フレームレートのいずれも公表されていません。Facebook がトランスコードについて述べている唯一の記述は ADS のドキュメントにあり（そこでは GIF が &quot;plays in the same way as all video files&quot;）、GIF について流布している数値（4 GB、&quot;as video&quot;）は、写真投稿ではなく、その広告向けの機能に属するものです。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="127"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="132"/>
         <source>Facebook Reels</source>
         <translation>Facebookリール</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="128"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="133"/>
         <source>UNVERIFIED (conflicting): Meta Business Help says reels can be any length; the Reels Publishing API enforces 3 to 90 seconds and rejects anything else. 90 s is used here because it is the number that is enforced. 1080x1920 recommended, 540x960 minimum, 24 to 60 fps, no published byte cap.</source>
         <translation>未確認（情報源が矛盾）：Meta Business Help ではリールは長さを問わないとされていますが、Reels Publishing API は 3 秒から 90 秒を強制し、それ以外は拒否します。ここでは強制されている数値であるため 90 秒を採用しています。1080x1920 を推奨、540x960 を最小、24 から 60 fps、公表されたバイト上限はありません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="129"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="135"/>
         <source>500 MB and 10 minutes, and 20 posts a day. MOV or MP4; Tumblr transcodes toward 720p H.264. Photos are a separate destination: a static image gets 20 MB, but an animated GIF is served only up to about 5 MB and above that is reduced to its first frame.</source>
         <translation>500 MB、10 分、および 1 日 20 投稿です。MOV または MP4。Tumblr は 720p H.264 へトランスコードします。写真は別の出力先です。静止画像には 20 MB が割り当てられますが、アニメーションGIF は約 5 MB までしか配信されず、それを超えるものは最初のフレームに縮小されます。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="130"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="136"/>
         <source>Tumblr (animated GIF)</source>
         <translation>Tumblr（アニメーションGIF）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="131"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="137"/>
         <source>Tumblr transcodes EVERY uploaded GIF (&quot;we do convert all uploaded GIFs to the GIFV format&quot;, typically animated WebP, and on the web sometimes MP4), so the file it serves is not the file you send. It publishes three size numbers in one section (keep GIFs to 10 MB, a compressed GIF no larger than 5 MB, and &quot;we will do our best to compress&quot; between them) plus the consequence that matters: above 5 MB Tumblr may serve ONLY THE FIRST FRAME, so 5 MB is the cap used here and the file is fitted to it. 540 px wide is Tumblr&apos;s own recommendation. Frames are not counted (&quot;we only count bytes and seconds&quot;), no duration cap exists for a GIF, and transparency is documented only as a conversion criterion, not as a promise.</source>
         <translation>Tumblr はアップロードされたすべての GIF をトランスコードします（&quot;we do convert all uploaded GIFs to the GIFV format&quot;。通常はアニメーションWebP、Web 上ではときに MP4）。そのため、配信されるファイルは送信したファイルではありません。Tumblr は 1 つのセクションで 3 つのサイズ数値を公表しており（GIF は 10 MB までに抑える、圧縮した GIF は 5 MB 以下、その間については &quot;we will do our best to compress&quot;）、さらに重要な帰結として、5 MB を超えると Tumblr は最初のフレームのみを配信する場合があるため、ここでは 5 MB を上限として採用し、ファイルをそれに合わせて調整します。540 px 幅は Tumblr 自身の推奨値です。フレームはカウントされず（&quot;we only count bytes and seconds&quot;）、GIF に再生時間の上限は存在せず、透明度は変換の判断基準としてのみ記載されており、保証されたものではありません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="132"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="138"/>
         <source>Pinterest (video Pin)</source>
         <translation>Pinterest（動画ピン）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="133"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="139"/>
         <source>4 seconds to 5 minutes. No byte cap is published for organic video Pins; the &quot;2 GB / 15 minutes&quot; figure belongs to the ADVERTISING spec, which is a different surface and is quoted constantly as if it were this one. MP4/M4V, H.264 or H.265, 9:16 recommended.</source>
         <translation>4 秒から 5 分です。通常の動画ピンにはバイト上限が公表されていません。&quot;2 GB / 15 minutes&quot; という数値は広告仕様のものであり、それは別の機能であって、あたかもこの出力先のものであるかのように絶えず引用されています。MP4/M4V、H.264 または H.265、9:16 を推奨。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="134"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="140"/>
         <source>Snapchat Spotlight</source>
         <translation>Snapchat Spotlight</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="135"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="141"/>
         <source>UNVERIFIED (partial): Snapchat publishes a minimum of 5 seconds and a vertical requirement, and nothing else: no byte cap, no maximum duration, no accepted format list and no pixel specification. Still images are excluded. The &quot;1 GB / 3 to 30 minutes&quot; figure is the ADS spec. Vertical with sound; a landscape export will not be shown in Spotlight, and no size rule here can force that, so the file is exported as composed.</source>
         <translation>未確認（一部のみ）：Snapchat が公表しているのは、最小 5 秒と縦向きの要件のみで、それ以外は何もありません。バイト上限、最大再生時間、対応形式の一覧、ピクセル仕様のいずれも公表されていません。静止画像は対象外です。&quot;1 GB / 3 to 30 minutes&quot; という数値は ADS の仕様です。音声付きの縦向きである必要があり、横向きのエクスポートは Spotlight に表示されません。ここでのどのサイズ規則でもそれを強制することはできないため、ファイルは構成どおりにエクスポートされます。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="136"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="142"/>
         <source>4 GB (64 GB on the top tier) and 2 hours. Up to 3840x2160 or 2160x3840, 24 to 60 fps. MOV, MP4, AVI, WMV, MKV and FLV are all accepted; MP4/H.264 is the practical target.</source>
         <translation>4 GB（最上位プランでは 64 GB）、および 2 時間。最大 3840x2160 または 2160x3840、24 から 60 fps。MOV、MP4、AVI、WMV、MKV、FLV のすべてを受け付けます。実用的な目標は MP4/H.264 です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="137"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="143"/>
         <source>UNVERIFIED (conflicting): Vimeo&apos;s advice to keep files under 200 GB, a plan note about 250 GB per video for legacy subscribers and an uploader page claiming no size limit cannot all be true; 200 GB is used as a soft ceiling. 24 hours is a hard refusal at upload. Vimeo states plainly that it has no alpha channel support, so transparency can never survive here. MP4/MOV, H.264 or ProRes.</source>
         <translation>未確認（情報源が矛盾）：ファイルを 200 GB 未満に保つという Vimeo の助言、従来プランの契約者向けに動画 1 本あたり 250 GB とするプランの注記、サイズ制限はないと主張するアップローダーのページは、すべてが同時に正しいとは言えません。ここでは 200 GB を緩やかな上限として採用しています。24 時間はアップロード時に厳しく拒否されます。Vimeo はアルファチャンネルをサポートしていないと明言しているため、透明度がここで残ることは決してありません。MP4/MOV、H.264 または ProRes。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="138"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="144"/>
         <source>DeviantArt (video, Core members)</source>
         <translation>DeviantArt（動画、Core メンバー）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="139"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="145"/>
         <source>1 GB and 10 to 12 minutes, and video submission is a Core membership feature. 1920x1080 recommended; the first frame becomes the preview, so it should not be a blank or transitional frame. An animated GIF is NOT a video here: DeviantArt counts it as an image and gives it the much larger image cap.</source>
         <translation>1 GB、10 分から 12 分、また動画の投稿は Core メンバーシップの機能です。1920x1080 を推奨します。最初のフレームがプレビューになるため、空白のフレームや遷移中のフレームであってはなりません。ここではアニメーションGIF は動画ではありません。DeviantArt はそれを画像として扱い、はるかに大きな画像の上限を適用します。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="140"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="146"/>
         <source>Newgrounds (animation)</source>
         <translation>Newgrounds（アニメーション）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="141"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="147"/>
         <source>UNVERIFIED (partial): Newgrounds publishes NO byte or duration cap. Their own wiki says the limit is shown on the signed-in upload form and can be raised on request, so it is per-account; the 100 MB and 6.3 GB figures in circulation come from a member forum post, not from Newgrounds. MP4/MOV/WMV and SWF are accepted, at 3840x2160, 1920x1080, 1280x720 or 640x380, around 10 to 20 Mbps at 1080p. Loop is an upload option for MP4 here, unlike everywhere else.</source>
         <translation>未確認（一部のみ）：Newgrounds はバイト数および再生時間の上限を一切公表していません。同社の wiki によれば、上限はログイン後のアップロードフォームに表示され、申請により引き上げられることがあるため、アカウントごとに異なります。流布している 100 MB や 6.3 GB という数値は Newgrounds によるものではなく、メンバーのフォーラム投稿に由来します。MP4/MOV/WMV および SWF を受け付け、3840x2160、1920x1080、1280x720、640x380、1080p では 10 から 20 Mbps 程度です。他のどことも異なり、ここではループが MP4 のアップロードオプションです。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="142"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="148"/>
         <source>pixiv (illustration)</source>
         <translation>pixiv（イラスト）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="143"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="149"/>
         <source>32 MB per image, 200 MB per post, JPG or PNG. No pixel cap is published. The 8 MB and 10 MB figures still quoted in guides are obsolete: pixiv raised the per-image limit to 32 MB. A post mixing formats is converted to JPG, so pick one format per post; PNG is the one that keeps transparency.</source>
         <translation>画像 1 枚あたり 32 MB、1 投稿あたり 200 MB、JPG または PNG です。画素数の上限は公開されていません。ガイドで今も引用されている 8 MB と 10 MB の数値は古いものです。pixiv は 1 枚あたりの上限を 32 MB に引き上げました。形式を混在させた投稿は JPG に変換されるため、1 つの投稿では 1 つの形式を選んでください。透明度を保つのは PNG です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="144"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="150"/>
         <source>pixiv (ugoira animation)</source>
         <translation>pixiv（うごイラ）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="145"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="151"/>
         <source>ugoira is a folder of numbered stills, not a video: up to 150 frames, 30 MB in total, 8 MB per frame, and every frame must share one format AND one canvas size. PNG or JPEG only, and pixiv rejects APNG and WebP outright. Frame TIMING is authored on the upload page, so no fps applies here. The alternative route is one animated GIF (16 MB, 500 frames), which costs you the palette. Desktop site only.</source>
         <translation>うごイラは動画ではなく、連番の静止画をまとめたフォルダです。最大 150 フレーム、合計 30 MB、1 フレームあたり 8 MB で、すべてのフレームが同一の形式であり、かつ同一のキャンバスサイズでなければなりません。PNG または JPEG のみで、pixiv は APNG と WebP を明確に拒否します。フレームのタイミングはアップロードページで作成するため、ここでは fps は関係しません。別の方法としてアニメーションGIF 1 つ（16 MB、500 フレーム）がありますが、パレットを失うことになります。デスクトップ版サイトのみです。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="146"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="152"/>
         <source>Nico Nico Seiga (ニコニコ静画)</source>
         <translation>Nico Nico Seiga（ニコニコ静画）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="147"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="153"/>
         <source>UNVERIFIED (partial): 10 MB per image, PNG or JPEG or GIF, no pixel cap published. Whether a posted illustration is re-encoded, whether PNG alpha survives, and whether an animated GIF animates on Seiga are all undocumented, so transparency is exported but not promised. Seiga is the still-image half of Nico Nico; videos go to Nico Nico Douga.</source>
         <translation>未確認（一部のみ）：画像 1 枚あたり 10 MB、PNG または JPEG または GIF で、画素数の上限は公開されていません。投稿したイラストが再エンコードされるかどうか、PNG のアルファが保持されるかどうか、アニメーションGIF が Seiga 上で動くかどうかは、いずれも文書化されていないため、透明度はエクスポートされますが保証はされません。Seiga は Nico Nico の静止画側で、動画は Nico Nico Douga に投稿します。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="148"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="154"/>
         <source>Instagram (photo)</source>
         <translation>Instagram（写真）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="149"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="155"/>
         <source>8 MB, JPEG ONLY, width between 320 and 1440 px, and an aspect ratio from 4:5 to 1.91:1. Transparency cannot survive a JPEG: a transparent background is written as solid black, so flatten the art first. Reels are a separate destination and do take video.</source>
         <translation>8 MB、JPEG のみで、幅は 320 から 1440 px、アスペクト比は 4:5 から 1.91:1 です。透明度は JPEG では残せません。透明な背景は黒一色として書き出されるため、先にアートを統合してください。リールは別の出力先で、動画を扱えます。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="150"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="156"/>
         <source>Facebook (photo)</source>
         <translation>Facebook（写真）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="151"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="157"/>
         <source>UNVERIFIED (conflicting): Meta&apos;s Graph API says a photo must be under 10 MB and that animated photos are not supported, while their help centre recommends below 15 MB and lists GIF as a photo format. The stricter API figure is used. PNG is accepted but Meta warns that a PNG above 1 MB may be shown pixelated, because it is re-compressed.</source>
         <translation>未確認（情報源が矛盾）：Meta の Graph API では、写真は 10 MB 未満でなければならず、アニメーション写真はサポートされないとされていますが、同社のヘルプセンターでは 15 MB 未満を推奨し、写真形式として GIF を挙げています。より厳しい API 側の数値を採用しています。PNG は受け付けられますが、Meta は 1 MB を超える PNG は再圧縮されるためピクセルが粗く表示される可能性があると警告しています。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="152"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="158"/>
         <source>Tumblr (photo)</source>
         <translation>Tumblr（写真）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="153"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="159"/>
         <source>20 MB for a static image. 540x810 is the recommended size and 2048x3072 is the largest view served. ANIMATION IS A DIFFERENT LIMIT: a GIF is only served up to about 5 MB, and above that Tumblr shows its first frame instead of animating, so a long animation should go out as a video.</source>
         <translation>静止画は 20 MB です。推奨サイズは 540x810 で、配信される最大の表示サイズは 2048x3072 です。アニメーションは別の上限が適用されます。GIF は約 5 MB までしか配信されず、それを超えると Tumblr はアニメーションさせずに最初のフレームを表示するため、長いアニメーションは動画として出すべきです。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="154"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="160"/>
         <source>Pinterest (image Pin)</source>
         <translation>Pinterest（画像ピン）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="155"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="161"/>
         <source>20 MB on the web. PNG, JPEG, BMP, TIFF or WEBP; GIF is not accepted as an organic Pin, so animation belongs on a video Pin. 2:3 is the recommended shape (1000x1500) and 9:16 also works; keep the art out of the bottom safe zone, where the interface covers it.</source>
         <translation>ウェブでは 20 MB です。PNG、JPEG、BMP、TIFF または WEBP に対応しており、GIF は通常のピンとしては受け付けられないため、アニメーションは動画ピンに載せることになります。推奨のアスペクト比は 2:3（1000x1500）で、9:16 も使えます。下部のセーフゾーンはインターフェースに覆われるため、アートをそこに置かないでください。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="156"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="162"/>
         <source>DeviantArt (image)</source>
         <translation>DeviantArt（画像）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="157"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="163"/>
         <source>UNVERIFIED (conflicting): one DeviantArt help page says images are capped at 80 MB and another says 95 MB; 80 MB is used so a file that passes here passes both. JPEG, PNG or GIF, no pixel cap. An animated GIF counts as an IMAGE and gets this same cap, which is 16x what Tumblr allows a GIF.</source>
         <translation>未確認（情報源が矛盾）：DeviantArt のヘルプページの 1 つは画像の上限を 80 MB とし、別のページは 95 MB としています。ここでは 80 MB を採用しているため、ここを通過したファイルはどちらでも通ります。JPEG、PNG または GIF で、画素数の上限はありません。アニメーションGIF は画像として扱われ、この同じ上限が適用されます。これは Tumblr が GIF に認めている上限の 16 倍です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="158"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="164"/>
         <source>DeviantArt (animation)</source>
         <translation>DeviantArt（アニメーション）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="159"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="165"/>
         <source>UNVERIFIED (conflicting): see the image row: 80 MB versus 95 MB on two official pages, and an animated GIF is submitted as an image rather than a video, so it gets that cap instead of the 1 GB video one. GIF means a 256-colour palette, which is a real cost for gradients but nothing else here animates on a free account.</source>
         <translation>未確認（情報源が矛盾）：画像の行を参照してください。2 つの公式ページで 80 MB と 95 MB が示されており、アニメーションGIF は動画ではなく画像として投稿されるため、1 GB の動画の上限ではなくこの上限が適用されます。GIF は 256 色のパレットを意味し、グラデーションには実際に大きな代償となりますが、無料アカウントではここでほかにアニメーションできるものはありません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="160"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="166"/>
         <source>Stream overlay (OBS)</source>
         <translation>配信オーバーレイ（OBS）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="161"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="167"/>
         <source>VP9 WebM is native in OBS; no chroma-key. WebKit CANNOT decode alpha in WebM.</source>
         <translation>VP9 WebM は OBS でネイティブに対応しており、クロマキーは不要です。WebKit は WebM のアルファをデコードできません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="162"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="168"/>
         <source>Transparent video (Safari / iOS)</source>
         <translation>透明動画（Safari / iOS）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="163"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="169"/>
         <source>HEVC+alpha needs Apple&apos;s VideoToolbox encoder; libx265 ADVERTISES yuva420p and then refuses it at open. hvc1 is mandatory: Safari rejects untagged hev1. Where VideoToolbox is unavailable, use the WebM/VP9 overlay destination instead.</source>
         <translation>HEVC+アルファには Apple の VideoToolbox エンコーダーが必要です。libx265 は yuva420p を標榜しておきながら、実際に開く段階で拒否します。hvc1 は必須です。Safari はタグのない hev1 を拒否します。VideoToolbox を利用できない場合は、代わりに WebM/VP9 の配信オーバーレイ出力先を使用してください。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="164"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="170"/>
         <source>YouTube re-encodes every upload. Official docs still recommend H.264/AAC; AV1/H.265 give more quality per bit. Codec is resolved by the ladder.</source>
         <translation>YouTube はアップロードのたびに再エンコードします。公式ドキュメントは今も H.264/AAC を推奨していますが、AV1/H.265 のほうがビットあたりの品質が高くなります。コーデックはラダーによって決まります。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="165"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="171"/>
+        <source>Video</source>
+        <translation>動画</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="172"/>
+        <source>The generic video: MP4 with H.264 (HEVC or AV1 where the destination takes one) and AAC, at the project&apos;s own resolution, with no size, duration or frame-rate ceiling of its own. Pick it when the destination is not one of the platforms below; when it is, take that platform&apos;s row, because the ceiling on it is the reason that row exists.</source>
+        <translation>汎用の動画: MP4、H.264（出力先が対応する場合は HEVC または AV1）と AAC、プロジェクト自身の解像度で、独自のサイズ・長さ・フレームレートの上限はありません。出力先が以下のプラットフォームのいずれでもない場合に選んでください。該当する場合はそのプラットフォームの行を選んでください。その行に上限があるからこそ、その行が存在するのです。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="173"/>
+        <source>Animated image</source>
+        <translation>アニメーション画像</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="174"/>
+        <source>An animated image, not a video: WebP, which keeps the transparency a GIF&apos;s palette cannot carry and is the format the chat apps&apos; own pipelines produce for an animation. One frame gives a still WebP, so this row carries an illustration as well as an animation. No upload cap of its own: take a platform row when that platform&apos;s cap is what you are up against.</source>
+        <translation>動画ではないアニメーション画像: WebP です。GIF のパレットでは運べない透明度を保持でき、チャットアプリ自身のパイプラインがアニメーションに対して生成する形式でもあります。1 フレームだけでも静止画 WebP になるので、この行はアニメーションだけでなくイラストも運びます。独自のアップロード上限はありません。プラットフォームの上限が問題になっているときは、そのプラットフォームの行を選んでください。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="175"/>
+        <source>Image sequence</source>
+        <translation>画像シーケンス</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="176"/>
+        <source>A folder of numbered stills, not a video: PNG keeps the transparency, every frame shares one format and one canvas size, and frame TIMING is authored where the sequence is uploaded, so no frame rate applies. No frame or byte cap of its own: take a platform row when that platform&apos;s limit is what you are up against.</source>
+        <translation>連番の静止画フォルダーであり、動画ではありません: PNG は透明度を保持し、すべてのフレームが同じ形式と同じキャンバスサイズを共有し、フレームのタイミングはシーケンスをアップロードする先で設定するものなので、フレームレートは適用されません。独自のフレーム数やバイト数の上限はありません。プラットフォームの上限が問題になっているときは、そのプラットフォームの行を選んでください。</translation>
+    </message>
+    <message>
         <source>Website</source>
-        <translation>ウェブサイト</translation>
+        <translation type="vanished">ウェブサイト</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="166"/>
         <source>Direct playback: decode compatibility dominates, so H.264 at every bucket. For transparency on the web, ship BOTH .webm (VP9) and .mov (HEVC hvc1).</source>
-        <translation>直接再生：デコードの互換性が最優先されるため、どの品質段階でも H.264 です。ウェブで透明度を扱うには、.webm（VP9）と .mov（HEVC hvc1）の両方を書き出してください。</translation>
+        <translation type="vanished">直接再生：デコードの互換性が最優先されるため、どの品質段階でも H.264 です。ウェブで透明度を扱うには、.webm（VP9）と .mov（HEVC hvc1）の両方を書き出してください。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="167"/>
         <source>Just a file (not sure yet)</source>
-        <translation>ファイルとして保存（未定）</translation>
+        <translation type="vanished">ファイルとして保存（未定）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="168"/>
         <source>The fallback when the destination is unknown: maximum compatibility.</source>
-        <translation>出力先が不明なときのフォールバックです。最大限の互換性を重視します。</translation>
+        <translation type="vanished">出力先が不明なときのフォールバックです。最大限の互換性を重視します。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="169"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="177"/>
         <source>Archive file (highest quality)</source>
         <translation>アーカイブ用ファイル（最高品質）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTargetStrings.h" line="170"/>
+        <location filename="../../src/ctrl/ExportTargetStrings.h" line="178"/>
         <source>Lossless quality always writes FFV1, which carries transparency. With transparency ON the other quality buckets use VP9, the lossy codec that keeps the alpha channel here (AV1 drops it silently and H.265 refuses it). With transparency OFF AV1 is used at every quality bucket — Best, Balanced and Smaller file alike; H.265 is only the fallback for a build with no usable AV1 encoder.</source>
         <translation>ロスレス品質では常に FFV1 を書き出し、これは透明度を保持します。透明度がオンの場合、ほかの品質段階では VP9 を使います。これはここでアルファチャンネルを保持できる非可逆コーデックです（AV1 はアルファを黙って捨て、H.265 は受け付けません）。透明度がオフの場合は、どの品質段階でも AV1 を使います。最高品質、バランス、小さいファイルのいずれも同じです。H.265 は、使用できる AV1 エンコーダーがないビルドでのフォールバックにすぎません。</translation>
     </message>
@@ -1620,17 +1967,17 @@
         <translation type="vanished">ソフトウェア</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="217"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="262"/>
         <source>%1. This site re-encodes uploads, so source quality matters more than compatibility</source>
         <translation>%1。このサイトはアップロードを再エンコードするため、互換性よりも元の画質が優先されます</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="223"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="268"/>
         <source>%1. This plays your file directly, so decode compatibility matters most</source>
         <translation>%1。このファイルは直接再生されるため、デコードの互換性が最も重要です</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="228"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="273"/>
         <source>%1. A master copy, so fidelity matters most</source>
         <translation>%1。マスター保存用のため、忠実さが最も重要です</translation>
     </message>
@@ -1639,72 +1986,72 @@
         <translation type="vanished">%1、ここでは約 %2 秒</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="269"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="333"/>
         <source>Quality intent not applied: the destination table declares no &lt;bucket_positions&gt;, so &apos;%1&apos; was left at its own default.</source>
         <translation>品質の指定を適用できません: 出力先テーブルに &lt;bucket_positions&gt; の宣言がないため、&apos;%1&apos; は既定のままです。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="284"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="348"/>
         <source>&apos;%1&apos; is a lossy codec, so Lossless here means its highest quality, not a lossless file.</source>
         <translation>&apos;%1&apos; は非可逆コーデックのため、ここでの「ロスレス」は最高品質を意味し、可逆ファイルになるわけではありません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="354"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="427"/>
         <source>cannot open %1</source>
         <translation>%1 を開けません</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="375"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="448"/>
         <source>%1: missing &lt;export_targets&gt; root</source>
         <translation>%1: &lt;export_targets&gt; ルート要素がありません</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="598"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="676"/>
         <source>no frames selected</source>
         <translation>フレームが選択されていません</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="609"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="687"/>
         <source>%1 frames from %2 separate ranges</source>
         <translation>%2 個の離れた範囲から %1 フレーム</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="639"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="717"/>
         <source>Size forced to %1x%2 (required by this destination); the art is %3.</source>
         <translation>サイズは %1x%2 に固定されます（この出力先の要件）。元の絵は %3。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="645"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="723"/>
         <source>cropped to fill it</source>
         <translation>切り取って合わせます</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="646"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="724"/>
         <source>padded to fit it</source>
         <translation>余白を加えて合わせます</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="686"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="764"/>
         <source>Frame rate reduced %1 -&gt; %2 fps (destination limit).</source>
         <translation>フレームレートを %1 から %2 fps に下げました（出力先の上限）。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="698"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="776"/>
         <source>Trimmed %1 -&gt; %2 frames (%3s limit).</source>
         <translation>%1 フレームから %2 フレームに切り詰めました（%3 秒の上限）。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="710"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="788"/>
         <source>Trimmed %1 -&gt; %2 frames (destination limit).</source>
         <translation>%1 フレームから %2 フレームに切り詰めました（出力先の上限）。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="719"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="797"/>
         <source>WARNING: destination needs at least %1 frames but only %2 are available, so the upload will likely be rejected.</source>
         <translation>警告: この出力先は %1 フレーム以上が必要ですが %2 しかないため、アップロードは拒否される可能性が高いです。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="737"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="815"/>
         <source>WARNING: destination needs at least %1 s but this export is %2 s, so the upload will likely be rejected. Select a longer frame range.</source>
         <translation>警告: この出力先は %1 秒以上が必要ですが、このエクスポートは %2 秒のため、アップロードは拒否される可能性が高いです。フレーム範囲を長くしてください。</translation>
     </message>
@@ -1725,129 +2072,142 @@
         <translation type="vanished">%1: この時間の上限（%2）に間に合うものがないため、利用できる中で最速です</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="804"/>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="866"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="885"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="947"/>
         <source>no suitable encoder found in this build</source>
         <translation>このビルドに適したエンコーダーがありません</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="947"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1037"/>
         <source>no destination selected</source>
         <translation>出力先が選択されていません</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="951"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1041"/>
         <source>invalid source size</source>
         <translation>元のサイズが不正です</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="963"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1058"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1075"/>
         <source>%1 is required by this destination.</source>
         <translation>この出力先では %1 が必須です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="976"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1060"/>
         <source>Transparency</source>
         <translation>透明度</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="978"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1077"/>
         <source>Audio</source>
         <translation>音声</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="988"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1089"/>
         <source>no frames selected for export</source>
         <translation>エクスポートするフレームが選択されていません</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1028"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1129"/>
         <source>%1; the ranges play back to back and the frames between them are not exported.</source>
         <translation>%1。範囲は連続して再生され、範囲の間のフレームはエクスポートされません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1071"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1173"/>
         <source>no encoder available for this destination in this build</source>
         <translation>この出力先で使えるエンコーダーがこのビルドにありません</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1107"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1209"/>
         <source>WARNING: this destination&apos;s limits are UNVERIFIED; re-check before relying on them.</source>
         <translation>警告: この出力先の上限は未確認です。当てにする前に再確認してください。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1134"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1236"/>
         <source>One still image (frame %1), written as %2. The frame range above does not apply.</source>
         <translation>静止画 1 枚（フレーム %1）を %2 として書き出します。上記のフレーム範囲は適用されません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1141"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1243"/>
         <source>%1 frames written as numbered .%2 files.</source>
         <translation>%1 フレームを連番の .%2 ファイルとして書き出します。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1197"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1299"/>
         <source>%1 requires transparency, but &apos;%2&apos; cannot encode an alpha channel in this build (it advertises %3 and then refuses it). Use a destination whose codec carries alpha: WebM/VP9, APNG, or FFV1.</source>
         <translation>%1 は透明度を必要としますが、&apos;%2&apos; はこのビルドでアルファチャンネルをエンコードできません（%3 に対応すると表明しながら拒否します）。アルファを保持できるコーデックの出力先を使用してください: WebM/VP9、APNG、FFV1。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1206"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1308"/>
         <source>%1: %2 could not encode %3 and no fallback worked (%4)</source>
         <translation>%1: %2 は %3 をエンコードできず、代替も機能しませんでした（%4）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1213"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1315"/>
         <source>Transparency dropped: &apos;%1&apos; advertises %2 but cannot encode it here, so %3 is used instead.</source>
         <translation>透明度を破棄しました: &apos;%1&apos; は %2 に対応すると表明していますが、ここではエンコードできないため、代わりに %3 を使用します。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1219"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1321"/>
         <source>the encoder default</source>
         <translation>エンコーダーの既定値</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1295"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1397"/>
         <source>No sound: %1 does not accept an audio track.</source>
         <translation>音声なし: %1 は音声トラックを受け付けません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1300"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1402"/>
         <source>WARNING: %1 expects sound but this project has no audio track.</source>
         <translation>警告: %1 は音声を必要としますが、このプロジェクトに音声トラックがありません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1327"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1467"/>
         <source>no frames left</source>
         <translation>フレームが残っていません</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1365"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1520"/>
         <source>could not write %1</source>
         <translation>%1 を書き出せませんでした</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1373"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1528"/>
         <source>no files produced</source>
         <translation>ファイルが 1 つも生成されませんでした</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1415"/>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1439"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1574"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1672"/>
         <source>no file produced</source>
         <translation>ファイルが生成されませんでした</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1473"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1651"/>
+        <source> (%1 could not be opened here; written with %2)</source>
+        <translation>（%1 はここで開けませんでした。代わりに %2 で書き出しました）</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1659"/>
+        <source>%1
+The %2 encoder could not be opened either (%3).</source>
+        <translation>%1
+%2 エンコーダーも開けませんでした（%3）。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1706"/>
         <source>frames: the plan selected %1, but %2 were supplied</source>
         <translation>フレーム: プランは %1 を選択していますが、%2 が渡されました</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="606"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="684"/>
         <source>%1 frame</source>
         <translation>%1 フレーム</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="607"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="685"/>
         <source>%1 frames</source>
         <translation>%1 フレーム</translation>
     </message>
@@ -1856,7 +2216,7 @@
         <translation type="vanished">フレームの不一致: プランは %1 を選択していますが %2 が渡されました（render plan.selection.indices()）</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/ExportTarget.cpp" line="1542"/>
+        <location filename="../../src/ctrl/ExportTarget.cpp" line="1786"/>
         <source>canceled</source>
         <translation>中止されました</translation>
     </message>
@@ -2019,30 +2379,30 @@
 <context>
     <name>Exporter</name>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="99"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="124"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="157"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="95"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="120"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="193"/>
         <source>Invalid common parameters.</source>
         <translation>共通パラメーターが不正です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="106"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="102"/>
         <source>Invalid directory path.</source>
         <translation>ディレクトリパスが不正です。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="132"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="165"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="128"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="201"/>
         <source>Exporting was canceled.</source>
         <translation>エクスポートを中止しました。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="193"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="229"/>
         <source>No available video encoder can carry the &apos;%1&apos; container.</source>
         <translation>&apos;%1&apos; コンテナを扱える利用可能な動画エンコーダーがありません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="206"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="242"/>
         <source>Encoder not available in this build: %1</source>
         <translation>このビルドで利用できないエンコーダー: %1</translation>
     </message>
@@ -2051,49 +2411,63 @@
         <translation type="vanished">&apos;%1&apos; コンテナは %2 動画コーデックを扱えません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="212"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="248"/>
         <source>The &apos;%1&apos; container cannot carry the %2 video encoder.</source>
         <translation>&apos;%1&apos; コンテナは %2 動画エンコーダーを扱えません。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="225"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="265"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="537"/>
-        <location filename="../../src/ctrl/Exporter.cpp" line="641"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="307"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="323"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="643"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="747"/>
         <source>Video encoder error.
 %1</source>
         <translation>動画エンコーダーエラー。
 %1</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="295"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="346"/>
+        <source>The %1 encoder could not be opened here (%2); exported with the %3 encoder instead.</source>
+        <translation>%1 エンコーダーはここで開けませんでした（%2）。代わりに %3 エンコーダーで書き出しました。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="356"/>
+        <source>Video encoder error.
+%1
+The %2 encoder could not be opened either (%3).</source>
+        <translation>動画エンコーダーのエラー。
+%1
+%2 エンコーダーも開けませんでした（%3）。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/Exporter.cpp" line="389"/>
         <source>Finishing up</source>
         <translation>仕上げに</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="297"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="391"/>
         <source>Rendering</source>
         <translation>描画</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="312"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="406"/>
         <source>Export was canceled.</source>
         <translation>エクスポートは中止されました。</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="347"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="440"/>
         <source>Failed to initialize TextureDrawer</source>
         <translation>TextureDrawer の初期化に失敗しました</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="579"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="685"/>
         <source>GIF encoder error.
 %1</source>
         <translation>GIF エンコーダーエラー。
 %1</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/Exporter.cpp" line="619"/>
+        <location filename="../../src/ctrl/Exporter.cpp" line="725"/>
         <source>Audio mixing error.
 %1</source>
         <translation>音声ミックスエラー。
@@ -2185,85 +2559,91 @@
         <translation type="vanished">バウンス</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="94"/>
         <source>In</source>
-        <translation>イン</translation>
+        <translation type="vanished">イン</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="96"/>
         <source>Out</source>
-        <translation>アウト</translation>
+        <translation type="vanished">アウト</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="98"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="100"/>
         <source>All</source>
-        <translation>オール</translation>
+        <translation type="vanished">オール</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="119"/>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="133"/>
         <source>Auto</source>
-        <translation>オートマチック</translation>
+        <translation type="vanished">オートマチック</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="121"/>
         <source>English</source>
-        <translation>英語</translation>
+        <translation type="vanished">英語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="123"/>
         <source>Japanese</source>
-        <translation>日本語</translation>
+        <translation type="vanished">日本語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="125"/>
         <source>Chinese</source>
-        <translation>中国語</translation>
+        <translation type="vanished">中国語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="127"/>
         <source>Spanish</source>
-        <translation>スペイン語</translation>
+        <translation type="vanished">スペイン語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="129"/>
         <source>Russian</source>
-        <translation>ロシア語</translation>
+        <translation type="vanished">ロシア語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="131"/>
         <source>Korean</source>
-        <translation>韓国語</translation>
+        <translation type="vanished">韓国語</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="160"/>
         <source>Frame number</source>
-        <translation>フレーム番号</translation>
+        <translation type="vanished">フレーム番号</translation>
     </message>
     <message>
         <source>Frame number (from 1)</source>
         <translation type="vanished">フレーム番号（1から）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="163"/>
         <source>Seconds</source>
-        <translation>秒数</translation>
+        <translation type="vanished">秒数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="166"/>
         <source>Seconds + Frame (SS+FF)</source>
-        <translation>秒数 + フレーム (SS+FF)</translation>
+        <translation type="vanished">秒数 + フレーム (SS+FF)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="168"/>
         <source>Timecode (SMPTE) (HH:MM:SS+FF)</source>
-        <translation>タイムコード(SMPTE) (時:分:秒+フレーム)</translation>
+        <translation type="vanished">タイムコード(SMPTE) (時:分:秒+フレーム)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="170"/>
         <source>Timecode (HH:MM:SS:mmm)</source>
-        <translation>タイムコード(時:分:秒:ミリ秒)</translation>
+        <translation type="vanished">タイムコード(時:分:秒:ミリ秒)</translation>
+    </message>
+</context>
+<context>
+    <name>GraphPanel</name>
+    <message>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="317"/>
+        <source>No keys on the selected layers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="318"/>
+        <source>Select a layer to show its curves</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="321"/>
+        <source>All channels of the selected layers are hidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="369"/>
+        <source>No room for the graph in this viewport</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2430,7 +2810,12 @@
         <translation>透明度:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="202"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="193"/>
+        <source>max %1 x %2</source>
+        <translation>最大 %1 x %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ExportFacts.cpp" line="209"/>
         <source>Limits:</source>
         <translation>上限:</translation>
     </message>
@@ -2475,22 +2860,22 @@
         <translation>最大 %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="189"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="196"/>
         <source>max %1 s</source>
         <translation>最大 %1 秒</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="191"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="198"/>
         <source>min %1 s</source>
         <translation>最小 %1 秒</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="193"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="200"/>
         <source>max %1 frames</source>
         <translation>最大 %1 フレーム</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="195"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="202"/>
         <source>max %1 fps</source>
         <translation>最大 %1 fps</translation>
     </message>
@@ -2499,7 +2884,7 @@
         <translation type="vanished">上限: %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ExportFacts.cpp" line="203"/>
+        <location filename="../../src/gui/ExportFacts.cpp" line="210"/>
         <source>, </source>
         <translation>、</translation>
     </message>
@@ -2597,68 +2982,130 @@
         <translation type="vanished">%1 が必要</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1357"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1409"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1488"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1526"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1576"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1599"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1630"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1421"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1484"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1584"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1629"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1679"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1706"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1737"/>
         <source>Export Error</source>
         <translation>エクスポートエラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1358"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1422"/>
         <source>Unknown export destination: %1</source>
         <translation>不明な出力先: %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1428"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1513"/>
         <source>File exists</source>
         <translation>ファイルが存在します</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1429"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1514"/>
         <source>The file &quot;%1&quot; already exists. Overwrite?</source>
         <translation>ファイル &quot;%1&quot; はすでに存在します。上書きしますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1489"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1585"/>
         <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
         <translation>%1 はファイルサイズに上限を設けているため、エンコードを複数回行う必要があり、そのためには %2 フレームすべてをメモリに保持する必要があります（約 %3 MB）。フレーム数を減らすか、サイズ制限のない出力先を選んでください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1504"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1603"/>
         <source>Fitting under %1&apos;s %2 KB limit...</source>
         <translation>%1 の %2 KB の上限に収まるよう調整中...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1517"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1616"/>
         <source>Export Canceled</source>
         <translation>エクスポート中止</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1518"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1617"/>
         <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
         <translation>%1 のサイズ上限に収める処理の途中でエクスポートが中止されました。すでに書き出されたファイルは最後の試行の結果であり、上限を超えている可能性があります。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1527"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1630"/>
         <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
 %4</source>
         <translation>%1 はファイルを %2 KB に制限していますが、最小の設定でも収まりませんでした（%3 KB）。
 %4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1535"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1638"/>
         <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
         <translation>%1 バイトに収まりました（%2 回の試行、%3x%4）。</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="132"/>
+        <source>Y</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="132"/>
+        <source>X</source>
+        <translation type="unfinished">X</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="134"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="142"/>
+        <source>Angle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="136"/>
+        <source>Depth</source>
+        <translation type="unfinished">深度</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="138"/>
+        <source>Opacity</source>
+        <translation type="unfinished">不透明度</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="141"/>
+        <source>Radius Y</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="143"/>
+        <source>Radius X</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="147"/>
+        <source>Saturation</source>
+        <translation type="unfinished">彩度</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="148"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="154"/>
+        <source>Value</source>
+        <translation type="unfinished">明度 : </translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="149"/>
+        <source>Hue</source>
+        <translation type="unfinished">色相</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1020"/>
+        <source>The animation graph stopped moving: the dragged key changed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1123"/>
+        <source>The animation graph stopped editing: the dragged key changed.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>QPlatformTheme</name>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="327"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="412"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
@@ -3225,32 +3672,32 @@
 <context>
     <name>gui</name>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="49"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="65"/>
         <source>Send in a chat</source>
         <translation>チャットで送る</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="50"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="66"/>
         <source>Post to a platform</source>
         <translation>プラットフォームに投稿</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="51"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="67"/>
         <source>Stickers and emoji</source>
         <translation>スタンプと絵文字</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="52"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="68"/>
         <source>Overlays and transparency</source>
         <translation>オーバーレイと透明度</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="53"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="69"/>
         <source>A file</source>
         <translation>ファイル</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="54"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="70"/>
         <source>Archive</source>
         <translation>アーカイブ</translation>
     </message>
@@ -3289,39 +3736,49 @@
 <context>
     <name>gui::DestinationPicker</name>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="309"/>
         <source>Where are you posting this?</source>
-        <translation>どこに投稿しますか？</translation>
+        <translation type="vanished">どこに投稿しますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="313"/>
         <source>Search: telegram, sticker, reels, illustration, 微信...</source>
-        <translation>検索: telegram, sticker, reels, illustration, 微信...</translation>
+        <translation type="vanished">検索: telegram, sticker, reels, illustration, 微信...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="317"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="393"/>
+        <source>Destination</source>
+        <translation>出力先</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="397"/>
+        <source>Search: telegram, sticker, reels, illustration, wechat...</source>
+        <translation>検索: telegram, sticker, reels, illustration, wechat...</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="402"/>
         <source>Search destinations</source>
         <translation>出力先を検索</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="258"/>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="406"/>
+        <source>Continue</source>
+        <translation>続行</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="326"/>
         <source>%1 destinations</source>
         <translation>%1 件の出力先</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="331"/>
         <source>My platform isn&apos;t listed (I&apos;ll choose the format)</source>
-        <translation>自分のプラットフォームが一覧にない（形式を自分で選ぶ）</translation>
+        <translation type="vanished">自分のプラットフォームが一覧にない（形式を自分で選ぶ）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="335"/>
         <source>Everything above is a destination we know the rules for. This one lets you state the format and codec yourself.</source>
-        <translation>上に挙げたものはすべて、ルールが判明している出力先です。これは形式とコーデックを自分で指定できる選択肢です。</translation>
+        <translation type="vanished">上に挙げたものはすべて、ルールが判明している出力先です。これは形式とコーデックを自分で指定できる選択肢です。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/DestinationPickerModel.cpp" line="321"/>
         <source>Use this destination</source>
-        <translation>この出力先を使う</translation>
+        <translation type="vanished">この出力先を使う</translation>
     </message>
 </context>
 <context>
@@ -3402,37 +3859,41 @@
 <context>
     <name>gui::ExportViewModel</name>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="306"/>
         <source>My platform isn&apos;t listed (I&apos;ll choose the format)</source>
-        <translation>自分のプラットフォームが一覧にない（形式を自分で選ぶ）</translation>
+        <translation type="vanished">自分のプラットフォームが一覧にない（形式を自分で選ぶ）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="336"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="359"/>
         <source>Output:</source>
         <translation>出力:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="337"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="360"/>
         <source>%1 x %2, %3 fps</source>
         <translation>%1 x %2, %3 fps</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="347"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="370"/>
         <source>%1 fps</source>
         <translation>%1 fps</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="346"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="369"/>
         <source>Frame rate:</source>
         <translation>フレームレート:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="352"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="329"/>
+        <source>Manual</source>
+        <translation>手動</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="375"/>
         <source>Format:</source>
         <translation>形式:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="358"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="381"/>
         <source>%1 numbered %2 files</source>
         <translation>%1 枚の %2 連番ファイル</translation>
     </message>
@@ -3441,120 +3902,125 @@
         <translation type="vanished">%2 の %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="378"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="401"/>
         <source>Audio:</source>
         <translation>音声:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="379"/>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="394"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="402"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="417"/>
         <source>yes</source>
         <translation>あり</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="379"/>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="394"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="402"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="417"/>
         <source>no</source>
         <translation>なし</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="386"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="409"/>
         <source>none in this project</source>
         <translation>このプロジェクトに音声がありません</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="388"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="411"/>
         <source>off in this dialog</source>
         <translation>このダイアログでオフにしています</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="393"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="416"/>
         <source>Transparency:</source>
         <translation>透明度:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="403"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="426"/>
         <source>%1 cannot carry transparency, so this export will be opaque.</source>
         <translation>%1 は透明度を保持できないため、このエクスポートは不透明になります。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="411"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="434"/>
         <source>A GIF loops forever, so the Loop animation box is fixed on.</source>
         <translation>GIF は永久にループするため、「ループ再生」は常にオンになります。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="432"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="455"/>
         <source>PNG sequence</source>
         <translation>PNG 連番</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="433"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="456"/>
         <source>JPEG sequence</source>
         <translation>JPEG 連番</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="619"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="635"/>
         <source>CRF</source>
         <translation>CRF</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="619"/>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="848"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="635"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="952"/>
         <source>Quality</source>
         <translation>品質</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="800"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="897"/>
         <source>Smaller file</source>
         <translation>小さいファイル</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="800"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="897"/>
         <source>Balanced</source>
         <translation>バランス</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="800"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="897"/>
         <source>Best quality</source>
         <translation>最高品質</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="800"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="897"/>
         <source>Lossless</source>
         <translation>ロスレス</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="844"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="944"/>
+        <source>Custom</source>
+        <translation>カスタム</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="948"/>
         <source>Auto</source>
         <translation>自動</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1208"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1354"/>
         <source>%1 sequence</source>
         <translation>%1 連番</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1210"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1356"/>
         <source>animated GIF</source>
         <translation>アニメーションGIF</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1288"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1434"/>
         <source>Export with transparency</source>
         <translation>透明度付きエクスポート</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1289"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1435"/>
         <source>Loop animation</source>
         <translation>ループ再生</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1290"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1436"/>
         <source>Export with audio</source>
         <translation>音声付きでエクスポート</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1291"/>
+        <location filename="../../src/gui/qml/ExportViewModel.cpp" line="1437"/>
         <source>Custom palette</source>
         <translation>カスタムパレット</translation>
     </message>
@@ -3570,122 +4036,105 @@
         <translation type="vanished">言語（要リブート） :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="288"/>
         <source>Default keyframe easing</source>
-        <translation>デフォルトのキーフレームイージング</translation>
+        <translation type="vanished">デフォルトのキーフレームイージング</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="295"/>
         <source>Default keyframe range</source>
-        <translation>デフォルトのキーフレーム範囲</translation>
+        <translation type="vanished">デフォルトのキーフレーム範囲</translation>
     </message>
     <message>
         <source>Timeline format :</source>
         <translation type="vanished">タイムライン形式 :</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="281"/>
         <source>Language (needs restart)</source>
-        <translation>言語（要リブート）</translation>
+        <translation type="vanished">言語（要リブート）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="302"/>
         <source>Timeline format</source>
-        <translation>タイムライン形式</translation>
+        <translation type="vanished">タイムライン形式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
         <source>System</source>
         <translation>システム</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
         <source>Light</source>
         <translation>ライト</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="318"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="217"/>
         <source>Dark</source>
         <translation>ダーク</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="333"/>
         <source>Theme</source>
-        <translation>テーマ</translation>
+        <translation type="vanished">テーマ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="367"/>
         <source>Accent color</source>
-        <translation>アクセントカラー</translation>
+        <translation type="vanished">アクセントカラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="375"/>
         <source>Automatically save your project</source>
-        <translation>プロジェクトを自動で保存する</translation>
+        <translation type="vanished">プロジェクトを自動で保存する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="380"/>
         <source>Time (in minutes) between autosaves</source>
-        <translation>オートセーブまでの時間（分）</translation>
+        <translation type="vanished">オートセーブまでの時間（分）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="388"/>
         <source>Show mesh when selecting FFD</source>
-        <translation>FFD選択時にメッシュを自動で表示する</translation>
+        <translation type="vanished">FFD選択時にメッシュを自動で表示する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="392"/>
         <source>On copy send keys to the clipboard</source>
-        <translation>キーをクリップボードに自動でコピーする</translation>
+        <translation type="vanished">キーをクリップボードに自動でコピーする</translation>
     </message>
     <message>
         <source>Always check for FFmpeg on export</source>
         <translation type="vanished">エクスポート時にFFmpegをチェックする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="397"/>
         <source>Enforce ID check on asset download</source>
-        <translation>アセットダウンロード時のIDチェックを強制する</translation>
+        <translation type="vanished">アセットダウンロード時のIDチェックを強制する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="401"/>
         <source>Ignore export warnings</source>
-        <translation>エクスポート警告を無視</translation>
+        <translation type="vanished">エクスポート警告を無視</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="405"/>
         <source>Allow donation menu</source>
-        <translation>寄付メニューを許可する</translation>
+        <translation type="vanished">寄付メニューを許可する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="409"/>
         <source>Force project to load</source>
-        <translation>強制的にプロジェクトをロードする</translation>
+        <translation type="vanished">強制的にプロジェクトをロードする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="411"/>
         <source>Reset recent files list</source>
-        <translation>最近使ったファイル一覧をリセットする</translation>
+        <translation type="vanished">最近使ったファイル一覧をリセットする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="412"/>
         <source>Deletes all project entries from your recents</source>
-        <translation>すべてのプロジェクトのエントリーを履歴から削除します</translation>
+        <translation type="vanished">すべてのプロジェクトのエントリーを履歴から削除します</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="290"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="416"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="290"/>
         <source>All entries have been successfully removed</source>
         <translation>すべてのエントリーが正常に削除されました</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="426"/>
         <source>Global keybind delay (ms)</source>
-        <translation>グローバルキーバインドディレイ(ミリ秒)</translation>
+        <translation type="vanished">グローバルキーバインドディレイ(ミリ秒)</translation>
     </message>
     <message>
         <source>Reset keybinds</source>
@@ -3864,14 +4313,12 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation type="vanished">FFmpeg の設定中に予期しないエラーが発生しました。以下の情報を弊社の開発者に送信してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="444"/>
         <source>General</source>
-        <translation>一般</translation>
+        <translation type="vanished">一般</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="445"/>
         <source>QoL</source>
-        <translation>使いやすさ</translation>
+        <translation type="vanished">使いやすさ</translation>
     </message>
     <message>
         <source>FFmpeg</source>
@@ -3882,34 +4329,29 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation type="vanished">キーバインド</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="433"/>
         <source>Inverse canvas scrolling</source>
-        <translation>タイムラインの拡縮を逆にする</translation>
+        <translation type="vanished">タイムラインの拡縮を逆にする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="437"/>
         <source>Inverse timeline scrolling</source>
-        <translation>タイムラインの拡縮を逆にする</translation>
+        <translation type="vanished">タイムラインの拡縮を逆にする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="441"/>
         <source>Middle mouse moves canvas</source>
-        <translation>マウス中ボタンでキャンバスを移動</translation>
+        <translation type="vanished">マウス中ボタンでキャンバスを移動</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="180"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="116"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="446"/>
         <source>Keyboard</source>
-        <translation>キーボード</translation>
+        <translation type="vanished">キーボード</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="447"/>
         <source>Mouse</source>
-        <translation>マウス</translation>
+        <translation type="vanished">マウス</translation>
     </message>
 </context>
 <context>
@@ -3921,6 +4363,48 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
     <message>
         <source>Relay bit rate (Kbps)</source>
         <translation type="vanished">中継ビットレート(Kbps)</translation>
+    </message>
+</context>
+<context>
+    <name>gui::ImGuiOverlay</name>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="810"/>
+        <source>shown</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="811"/>
+        <source>hidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="825"/>
+        <source>%n channel(s) shown</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="829"/>
+        <source>%1, focused: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="837"/>
+        <source>%1 (%n more channel(s) not listed: no room in the panel)</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="860"/>
+        <source>Fit graph</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ImGuiOverlay.cpp" line="861"/>
+        <source>double-click the plot</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3937,27 +4421,25 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
 <context>
     <name>gui::KeyBindingDialog</name>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="80"/>
+        <location filename="../../src/gui/KeyBindingDialog.cpp" line="33"/>
         <source>Key Bindings</source>
         <translation>ショートカットキー設定</translation>
     </message>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="108"/>
         <source>Reset keybinds</source>
-        <translation>キーバインドをリセットする</translation>
+        <translation type="vanished">キーバインドをリセットする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="109"/>
         <source>Reset all keybindings to their default values.</source>
-        <translation>すべてのキーバインドを既定値にリセットします。</translation>
+        <translation type="vanished">すべてのキーバインドを既定値にリセットします。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="113"/>
+        <location filename="../../src/gui/KeyBindingDialog.cpp" line="100"/>
         <source>Reset keybindings</source>
         <translation>キーバインドをリセット</translation>
     </message>
     <message>
-        <location filename="../../src/gui/KeyBindingDialog.cpp" line="114"/>
+        <location filename="../../src/gui/KeyBindingDialog.cpp" line="101"/>
         <source>Reset all keybindings to their default values? This will discard any custom bindings.</source>
         <translation>すべてのキーバインドを既定値にリセットしますか？カスタムのバインドは破棄されます。</translation>
     </message>
@@ -4478,90 +4960,90 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">ツールドック</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="571"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="623"/>
         <source>Theme changed</source>
         <translation>テーマ変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="573"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="625"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>テーマを変更した後、視覚的な不具合が発生する可能性があります。アプリケーションを再起動することをお勧めします。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="794"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="846"/>
         <source> has been modified. Save changes?</source>
         <translation> は変更が加えられてます。変更を保存しますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="796"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="848"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>いくつかのプロジェクトは変更が加えられてます。変更を保存しますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="804"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="856"/>
         <source>Save Changes</source>
         <translation>変更を保存する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="805"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="857"/>
         <source>Discard Changes</source>
         <translation>変更を破棄する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="806"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="858"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="827"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="879"/>
         <source>Undone : </source>
         <translation>元に戻す : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="890"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="942"/>
         <source>Redone : </source>
         <translation>やり直す : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="933"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="993"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1022"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1091"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="994"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1054"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1083"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1152"/>
         <source>Loading Error</source>
         <translation>読み込みエラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="970"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1031"/>
         <source>Open File</source>
         <translation>ファイルを開く</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1105"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1166"/>
         <source>Save File</source>
         <translation>ファイルを保存する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1708"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1815"/>
         <source>Exported %1 (%2 KB)</source>
         <translation>%1 をエクスポートしました（%2 KB）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1718"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1825"/>
         <source> (%1 of %2 KB allowed for %3)</source>
         <translation>（%3 に許される %2 KB のうち %1）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1723"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1830"/>
         <source>; OVER THE LIMIT, it will be rejected</source>
         <translation>。上限を超えているため拒否されます</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1762"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1869"/>
         <source>All files (*)</source>
         <translation>すべてのファイル (*)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1763"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1870"/>
         <source>%1 files (*.%2)</source>
         <translation>%1 ファイル (*.%2)</translation>
     </message>
@@ -4620,27 +5102,27 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">FFmpegはパレットを生成できませんでした、トラブルシューティングしてください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="159"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="161"/>
         <source>Animation</source>
         <translation>アニメーション</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="172"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="177"/>
         <source>Properties</source>
         <translation>プロパティ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="218"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="223"/>
         <source>Tools</source>
         <translation>ツール</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1042"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1103"/>
         <source>Recover unsaved project?</source>
         <translation>未保存のプロジェクトを復元しますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1043"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1104"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -4731,8 +5213,8 @@ Open it?</source>
         <translation type="vanished">タグ画像</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1756"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1831"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1942"/>
         <source>Export Folder</source>
         <translation>出力フォルダ</translation>
     </message>
@@ -4749,7 +5231,7 @@ Open it?</source>
         <translation type="vanished">出力エラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1764"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1871"/>
         <source>Export File</source>
         <translation>出力ファイル</translation>
     </message>
@@ -4773,60 +5255,58 @@ Open it?</source>
 <context>
     <name>gui::NewProjectDialog</name>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="16"/>
         <source>New Project Dialog</source>
-        <translation>新規プロジェクトダイアログ</translation>
+        <translation type="vanished">新規プロジェクトダイアログ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="47"/>
+        <location filename="../../src/gui/NewProjectDialog.cpp" line="30"/>
+        <source>New Project</source>
+        <translation>新規プロジェクト</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/NewProjectDialog.cpp" line="85"/>
         <source>Open File</source>
         <translation>ファイルを開く</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="56"/>
         <source>Initial asset</source>
-        <translation>初期アセット</translation>
+        <translation type="vanished">初期アセット</translation>
     </message>
     <message>
         <source>Maximum frame count</source>
         <translation type="vanished">最大フレーム数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="70"/>
         <source>Frame count</source>
-        <translation>フレーム数</translation>
+        <translation type="vanished">フレーム数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="80"/>
         <source>Frames per second</source>
-        <translation>フレーム毎秒</translation>
+        <translation type="vanished">フレーム毎秒</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="112"/>
         <source>Specify canvas size</source>
-        <translation>キャンバスサイズを指定する</translation>
+        <translation type="vanished">キャンバスサイズを指定する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="113"/>
         <source>Canvas width</source>
-        <translation>キャンバス幅</translation>
+        <translation type="vanished">キャンバス幅</translation>
     </message>
     <message>
-        <location filename="../../src/gui/NewProjectDialog.cpp" line="114"/>
         <source>Canvas height</source>
-        <translation>キャンバス高さ</translation>
+        <translation type="vanished">キャンバス高さ</translation>
     </message>
 </context>
 <context>
     <name>gui::ObjectTreeWidget</name>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="145"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="608"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="147"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="701"/>
         <source>Contract</source>
         <translation>契約</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="148"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="150"/>
         <source>Add missing assets</source>
         <translation>不足しているアセットを追加する</translation>
     </message>
@@ -4835,47 +5315,47 @@ Open it?</source>
         <translation type="vanished">新しいPSDを追加</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="151"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="153"/>
         <source>Add new assets</source>
         <translation>新しいアセットを追加</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="154"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="156"/>
         <source>Rename</source>
         <translation>名前を変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="157"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="159"/>
         <source>Paste from clipboard</source>
         <translation>クリップボードから貼り付ける</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="160"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="162"/>
         <source>Create layer</source>
         <translation>レイヤーを作成</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="163"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="165"/>
         <source>Duplicate node</source>
         <translation>ノードを複製</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="166"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="168"/>
         <source>Add default keys</source>
         <translation>デフォルトキーを追加</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="169"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="171"/>
         <source>Create folder</source>
         <translation>フォルダを作成</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="172"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="174"/>
         <source>Delete</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="608"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="701"/>
         <source>Enlarge</source>
         <translation>拡大</translation>
     </message>
@@ -4884,86 +5364,86 @@ Open it?</source>
         <translation type="vanished">ファイルツリーが見つかりません</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="730"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="823"/>
         <source>File tree not found</source>
         <translation>ファイルツリーが見つかりません</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="772"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="865"/>
         <source>Add</source>
         <translation>追加</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="778"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="871"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="815"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="908"/>
         <source>No trees selected</source>
         <translation>木が選択されていません</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="816"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="909"/>
         <source>Please select at least one tree.</source>
         <translation>少なくとも1本の木を選択してください.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="821"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="914"/>
         <source>Done</source>
         <translation>終わり</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="821"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="914"/>
         <source>Tree addition was attempted, layers with duplicate names have been suppressed.</source>
         <translation>ツリーの追加が試行されましたが、重複した名前を持つレイヤーは抑制されました。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="916"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1009"/>
         <source>The requested FFD key mesh (at frame %1) has %2 vertices, but the parent mesh of the targeted node has %3 vertices, artifacts may be present.</source>
         <translation>要求された FFD キーのメッシュ（フレーム %1）には頂点が %2 個ありますが、対象ノードの親メッシュには頂点が %3 個あります。アーティファクトが発生する可能性があります。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="942"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="949"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1035"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1042"/>
         <source>Successfully pasted </source>
         <translation>貼り付けに成功しました</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="942"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1035"/>
         <source> keys.</source>
         <translation> キー。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="944"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1037"/>
         <source> keys. The log is available below.</source>
         <translation> 個のキー。ログは以下よりご覧いただけます。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="944"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1037"/>
         <source>Warnings present for </source>
         <translation>警告: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="949"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1042"/>
         <source> keys.
 </source>
         <translation> キー。\n</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="950"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1043"/>
         <source> error(s) have been detected.
 The log is available below.</source>
         <translation> エラーが検出されました。\nログは以下よりご覧いただけます。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="955"/>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="975"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1048"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1068"/>
         <source>Failed to paste key(s)</source>
         <translation>キーの貼り付けに失敗しました</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="958"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1051"/>
         <source>Clipboard does not contain valid JSON information or the timeline already has a key in the same frame.</source>
         <translation>クリップボードに有効なJSON情報が含まれていないか、タイムラインが同じフレームにすでにキーを持っています。</translation>
     </message>
@@ -4972,7 +5452,7 @@ The log is available below.</source>
         <translation type="vanished">クリップボードに有効なJSON情報が含まれていないか、タイムラインが同じフレームにすでにキーを持っています。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="978"/>
+        <location filename="../../src/gui/ObjectTreeWidget.cpp" line="1071"/>
         <source>Timeline has a key in the same frame.</source>
         <translation>タイムラインは、同じフレームにキーがあります。</translation>
     </message>
@@ -5075,33 +5555,34 @@ The log is available below.</source>
 <context>
     <name>gui::ProjectSettingDialog</name>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="554"/>
+        <location filename="../../src/gui/ProjectSettingDialog.cpp" line="34"/>
         <source>Project settings</source>
         <translation>プロジェクト設定</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="591"/>
-        <source>Canvas size</source>
-        <translation>キャンバスサイズ</translation>
+        <location filename="../../src/gui/ProjectSettingDialog.cpp" line="164"/>
+        <source>Viewport background</source>
+        <translation>ビューポートの背景</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="615"/>
+        <source>Canvas size</source>
+        <translation type="vanished">キャンバスサイズ</translation>
+    </message>
+    <message>
         <source>Frame range</source>
-        <translation>フレーム範囲</translation>
+        <translation type="vanished">フレーム範囲</translation>
     </message>
     <message>
         <source>Max frame count</source>
         <translation type="vanished">最大フレーム数</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="621"/>
         <source>Loop animation</source>
-        <translation>ループ再生</translation>
+        <translation type="vanished">ループ再生</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="627"/>
         <source>Frames per second</source>
-        <translation>フレーム毎秒</translation>
+        <translation type="vanished">フレーム毎秒</translation>
     </message>
 </context>
 <context>
@@ -5145,103 +5626,134 @@ The log is available below.</source>
 <context>
     <name>gui::ResourceDialog</name>
     <message>
-        <location filename="../../src/gui/ResourceDialog.cpp" line="16"/>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="17"/>
         <source>Project assets</source>
         <translation>プロジェクトアセット</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceDialog.cpp" line="22"/>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="23"/>
         <source>Add Assets</source>
         <translation>アセットを追加</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceDialog.cpp" line="80"/>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="25"/>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="104"/>
+        <source>Delete unused</source>
+        <translation>未使用のアセットを削除</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="86"/>
         <source>Open Files</source>
         <translation>ファイルを開く</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceDialog.cpp" line="104"/>
+        <source>No unused assets to delete</source>
+        <translation>削除する未使用のアセットはありません</translation>
     </message>
 </context>
 <context>
     <name>gui::ResourceTreeWidget</name>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="58"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="56"/>
         <source>Change file path</source>
         <translation>ファイルパスの変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="63"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="61"/>
         <source>Rename</source>
         <translation>リネーム</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="66"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="64"/>
         <source>Reload images from file</source>
         <translation>ファイルから画像を再読み込み</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="69"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="67"/>
         <source>Monitor for changes</source>
         <translation>変化に対するモニター</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="72"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="70"/>
         <source>Stop monitoring for changes</source>
         <translation>変更の監視を停止する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="75"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="73"/>
         <source>Delete</source>
         <translation>デリートs</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="218"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="216"/>
         <source>Open File</source>
         <translation>ファイルを開く</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="320"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="326"/>
         <source>File not found</source>
         <translation>ファイルが見つからない</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="321"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="327"/>
         <source>The file couldn&apos;t be found, please change its file path using the button above.</source>
         <translation>ファイルが見つからなかったので、上のボタンでファイルパスを変更してください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="331"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="338"/>
         <source>Invalid Selection</source>
         <translation>無効な選択</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="331"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="338"/>
         <source>Already watching for changes in this file</source>
         <translation>すでにこのファイルの変更を監視している</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="343"/>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="360"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="395"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="447"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="343"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="395"/>
         <source>This file will be monitored for changes.</source>
         <translation>このファイルは変更を監視されます。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="360"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="447"/>
         <source>The file will no longer be monitored</source>
         <translation>このファイルは監視されなくなります</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="363"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="450"/>
         <source>File not monitored</source>
         <translation>監視対象外ファイル</translation>
     </message>
     <message>
-        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="363"/>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="450"/>
         <source>The file is not being currently monitored</source>
         <translation>このファイルは現在監視されていません</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="513"/>
+        <source>Delete asset</source>
+        <translation>アセットを削除</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="514"/>
+        <source>Some layers use this asset.</source>
+        <translation>このアセットを使用しているレイヤーがあります。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="516"/>
+        <source>Delete the layer that uses it as well?</source>
+        <translation>使用しているレイヤーも一緒に削除しますか？</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ResourceTreeWidget.cpp" line="517"/>
+        <source>Delete the %1 layers that use it as well?</source>
+        <translation>使用している%1個のレイヤーも一緒に削除しますか？</translation>
     </message>
 </context>
 <context>
@@ -5460,6 +5972,12 @@ The log is available below.</source>
         <location filename="../../src/gui/ToolWidget.cpp" line="157"/>
         <source>Flip canvas</source>
         <translation>キャンバスを反転</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/ToolWidget.cpp" line="164"/>
+        <location filename="../../src/gui/ToolWidget.cpp" line="176"/>
+        <source>Show animation graph</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5852,36 +6370,36 @@ The log is available below.</source>
 <context>
     <name>gui::res::ResourceUpdater</name>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="291"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="293"/>
         <source>QImage Error</source>
         <translation>QImageエラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="291"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="293"/>
         <source>Failed to load image file.</source>
         <translation>画像ファイルの読み込みに失敗しました。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="301"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="303"/>
         <source>FileIO Error</source>
         <translation>ファイル入出力エラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="301"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="303"/>
         <source>PSD file not found.</source>
         <translation>PSD ファイルが見つかりません。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="310"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="312"/>
         <source>PSD parse error</source>
         <translation>PSD パースエラーです</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="339"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="330"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="335"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="341"/>
         <source>ORA parse error</source>
-        <translation>ORA parse error</translation>
+        <translation>ORA パースエラーです</translation>
     </message>
     <message>
         <source>Unable to find the mimetype of the solicited file.</source>
@@ -5892,7 +6410,7 @@ The log is available below.</source>
         <translation type="vanished">MIME タイプが無効です。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="339"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="341"/>
         <source>The file could not be read.</source>
         <translation>ファイルを読み取ることができませんでした。</translation>
     </message>
@@ -5905,69 +6423,96 @@ The log is available below.</source>
         <translation type="vanished">この「oraFile」ファイルをどのようにロードしますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="328"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="330"/>
         <source>Unable to find the MIME type of the selected file.</source>
         <translation>要求されたファイルの MIME タイプが見つかりません。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="333"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="335"/>
         <source>The MIME type is not valid.</source>
         <translation>MIME タイプが無効です。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="345"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="347"/>
         <source>Select ORA type</source>
         <translation>「ORA」タイプを選択</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="346"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="348"/>
         <source>How do you wish to load this ORA file?</source>
         <translation>この「oraFile」ファイルをどのようにロードしますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="347"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="349"/>
         <source>Load layered</source>
         <translation>レイヤーをロードする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="348"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="350"/>
         <source>Load merged</source>
         <translation>イメージをロードする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="349"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="351"/>
         <source>Cancel file load</source>
         <translation>ファイルの読み込みをキャンセル</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="473"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="594"/>
+        <source>Relink: layer &quot;%1&quot; is not in the source file. It stays, because the project still renders from it; remove the layer in AnimeEffects to delete it.</source>
+        <translation>再リンク: レイヤー「%1」はソースファイルにありません。プロジェクトはまだそこから描画しているため保持されます。削除するには AnimeEffects でレイヤーを削除してください。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="600"/>
+        <source>This layer is not in the source file. The project keeps the last version it read.</source>
+        <translation>このレイヤーはソースファイルにありません。プロジェクトは最後に読み込んだバージョンを保持します。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="818"/>
         <source>Expected layer not found, if you wish to remove a layer or change its name, please do so from within AnimeEffects.</source>
         <translation>期待されるレイヤーが見つかりません。レイヤーを削除したり、名前を変更したりする場合は、AnimeEffectsから行ってください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="476"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="821"/>
         <source>Import Error: Unable to find layer</source>
         <translation>インポートエラーです: レイヤーを見つけることができません</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="596"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="786"/>
         <source>Failed to find a corresponding node.</source>
         <translation>一致する名前のノードが見つかりませんでした。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="597"/>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="611"/>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="671"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="787"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="801"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="906"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="921"/>
         <source>Operation Error</source>
         <translation>操作エラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="607"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="797"/>
         <source>Failed to identify nodes due to the following duplicates.</source>
         <translation>以下の重複があるため、ノードの特定に失敗しました。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="671"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="834"/>
+        <source>Relink: the source file renamed a layer onto a name the project already uses, which would put that layer&apos;s pixels on another layer:</source>
+        <translation>再リンク: ソースファイルがレイヤーをプロジェクトで既に使われている名前に改名したため、そのレイヤーのピクセルが別のレイヤーに載ってしまいます:</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="839"/>
+        <source>Nothing was changed. Rename the layer inside AnimeEffects, then reload again.</source>
+        <translation>何も変更されませんでした。AnimeEffects 内でレイヤーの名前を変更してから、もう一度再読み込みしてください。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="850"/>
+        <source>Relink: a layer of the source file could not be read, so nothing was changed.</source>
+        <translation>再リンク: ソースファイルのレイヤーを読み込めなかったため、何も変更されませんでした。</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="906"/>
+        <location filename="../../src/gui/res/res_ResourceUpdater.cpp" line="921"/>
         <source>Some layers are still referenced by objects.</source>
         <translation>一部のレイヤーは、オブジェクトから参照されたままです。</translation>
     </message>

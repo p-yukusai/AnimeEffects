@@ -18,6 +18,12 @@
 // currently blended pose, so both the "pose key already at this frame" and the
 // "create a new pose key" paths are exercised.
 //
+// "Erase pose" (ctrl::PoseEditMode_Erase -> pose::ErasePoseMode) has no
+// focuser: its edit is a brush multiply, so a bone drag is not its hit test and
+// a rest pose hides the edit even though the paint path ran. Its hit rule is
+// therefore "the brush covers a bone joint AND the paint path emitted its
+// TimeLineEvent"; see "the erase hit rule" in main().
+//
 // Usage:
 //   pose_pull_crash <file.anie> [options]
 //     --mode draw|move|erase   tool sub-mode (default draw)
@@ -269,7 +275,7 @@ int main(int argc, char** argv) {
             opt.path = arg;
     }
     if (opt.path.isEmpty()) {
-        std::fprintf(stderr, "usage: %s <file.anie> [--mode draw|move] [--frame N] [--node NAME]\n", argv[0]);
+        std::fprintf(stderr, "usage: %s <file.anie> [--mode draw|move|erase] [--frame N] [--node NAME]\n", argv[0]);
         return 2;
     }
 
@@ -473,6 +479,62 @@ int main(int argc, char** argv) {
     }
     std::fflush(stdout);
 
+    // ---- the erase hit rule ----
+    // ErasePoseMode has no bone::Focuser, so a bone drag means nothing to it: its
+    // edit is a brush multiply (src/ctrl/pose/pose_ErasePoseMode.cpp,
+    // updatePaint). The brush centre is the cursor's world position (set in
+    // updateCursor) and every bone joint of the walked tree whose world position
+    // is inside Circle(eiRadius) gets rotate() *= eraseRate, eraseRate =
+    // 1 - eiPressure. With the PoseParam defaults the harness passes (eiRadius
+    // 200, eiPressure 1.0, src/ctrl/PoseParam.cpp:5) that eraseRate is 0, so on a
+    // rest pose the edit multiplies zeros: a real pass through updatePaint that
+    // moves no key value, which the pose-key delta the other modes use can never
+    // report. Erase therefore gets its own rule:
+    //  (1) the brush covers at least one joint of the tree updatePaint walks,
+    //      tested exactly like the mode tests it (cursor world position from the
+    //      same CameraInfo, targetMtx * bone->worldPos(), PoseParam::eiRadius),
+    //  (2) the paint path really ran, observed as the TimeLineEvents the erase
+    //      command emits: the first commit's macro fires the grabbed
+    //      TimeLineUtil::Notifier when it closes and each coalesced commit
+    //      notifies explicitly, so every updatePaint leaves one event. Both
+    //      halves of the gesture are required -- an event from the PRESS (erase
+    //      paints on press; draw and move only select a bone there, so an event
+    //      at the press can only come from erase) and an event from a DRAG, i.e.
+    //      updatePaint re-entered while the gate mGesture.continues() decides
+    //      whether the drag coalesces into the open erase command.
+    int eraseEvents = 0;
+    const util::SlotId eraseSlot = project.onTimeLineModified.connect([&](core::TimeLineEvent&, bool) {
+        ++eraseEvents;
+    });
+
+    auto eraseBrushJointCount = [&](QPoint aPress) {
+        const QVector2D center = camera.toWorldPos(QVector2D(aPress));
+        const float radius = param.eiRadius;
+        int covered = 0;
+        auto countTree = [&](const auto& aTopBones) {
+            for (const core::Bone2* top : aTopBones) {
+                core::Bone2::ConstIterator itr(top);
+                while (itr.hasNext()) {
+                    const QVector2D joint = targetMtx.map(QVector3D(itr.next()->worldPos())).toVector2D();
+                    if ((joint - center).lengthSquared() <= radius * radius)
+                        ++covered;
+                }
+            }
+        };
+        // the tree updatePaint walks: the pose key at this frame when one exists
+        // (PoseEditor::initializeKey), else the area key a new key is built from
+        if (core::TimeKey* poseKey = lastKeyAt(target, core::TimeKeyType_Pose, frame))
+            countTree(static_cast<core::PoseKey*>(poseKey)->data().topBones());
+        else
+            countTree(areaKey->data().topBones());
+        return covered;
+    };
+
+    // (2) of the erase hit rule: the press painted and a drag re-entered paint.
+    auto erasePaintReached = [&](int aEventsBefore, int aEventsAtPress) {
+        return aEventsAtPress > aEventsBefore && eraseEvents > aEventsAtPress;
+    };
+
     Gesture gesture(camera);
     auto dispatch = [&](Gesture& g) {
         // Driver::updateCursor is what MainDisplayWidget calls; --direct drives
@@ -483,11 +545,16 @@ int main(int argc, char** argv) {
             (void)driver.updateCursor(g.cursor, camera);
     };
 
+    // One deterministic left-button gesture. Returns the erase-event count right
+    // after the press: ErasePoseMode paints (and so notifies) on the press itself
+    // (updateCursor), while draw/move only select a bone there, so a non-zero
+    // delta at that point is erase-specific evidence (always 0 in the other two).
     auto runGesture = [&](QPoint press, int moves) {
         const float angle = 0.6f;
         const QPoint dir(int(60.0f * std::cos(angle)), int(60.0f * std::sin(angle)));
         gesture.press(press);
         dispatch(gesture);
+        const int eventsAtPress = eraseEvents;
         for (int i = 1; i <= moves; ++i) {
             const QPoint p = press + (dir * i) / moves;
             gesture.move(p);
@@ -495,6 +562,7 @@ int main(int argc, char** argv) {
         }
         gesture.release(press + dir);
         dispatch(gesture);
+        return eventsAtPress;
     };
 
     int hits = 0;
@@ -506,9 +574,14 @@ int main(int argc, char** argv) {
             for (int x = 0; x < camera.screenWidth() && !hits; x += opt.grid) {
                 const int countBefore = int(poseMap.size());
                 const float rotBefore = rotateSum(static_cast<core::PoseKey*>(poseBefore));
-                runGesture(QPoint(x, y), opt.moves);
+                const int jointsCovered =
+                    mode == ctrl::PoseEditMode_Erase ? eraseBrushJointCount(QPoint(x, y)) : 0;
+                const int eventsBefore = eraseEvents;
+                const int eventsAtPress = runGesture(QPoint(x, y), opt.moves);
                 const bool changed = int(poseMap.size()) != countBefore ||
-                    rotateSum(static_cast<core::PoseKey*>(lastKeyAt(target, core::TimeKeyType_Pose, frame))) != rotBefore;
+                    rotateSum(static_cast<core::PoseKey*>(lastKeyAt(target, core::TimeKeyType_Pose, frame))) != rotBefore ||
+                    (mode == ctrl::PoseEditMode_Erase && jointsCovered > 0 &&
+                     erasePaintReached(eventsBefore, eventsAtPress));
                 if (changed) {
                     std::printf("HIT at screen(%d,%d)\n", x, y);
                     std::fflush(stdout);
@@ -523,11 +596,16 @@ int main(int argc, char** argv) {
             for (int rep = 0; rep < opt.repeat; ++rep) {
                 const int countBefore = int(target->timeLine()->map(core::TimeKeyType_Pose).size());
                 const float rotBefore = rotateSum(static_cast<core::PoseKey*>(poseBefore));
-                runGesture(press, opt.moves);
+                const int jointsCovered = mode == ctrl::PoseEditMode_Erase ? eraseBrushJointCount(press) : 0;
+                const int eventsBefore = eraseEvents;
+                const int eventsAtPress = runGesture(press, opt.moves);
                 const float rotAfter =
                     rotateSum(static_cast<core::PoseKey*>(lastKeyAt(target, core::TimeKeyType_Pose, frame)));
-                const bool changed =
-                    int(target->timeLine()->map(core::TimeKeyType_Pose).size()) != countBefore || rotAfter != rotBefore;
+                // erase hit rule above: brush covers a joint and the paint path ran
+                const bool eraseHit = mode == ctrl::PoseEditMode_Erase && jointsCovered > 0 &&
+                    erasePaintReached(eventsBefore, eventsAtPress);
+                const bool changed = int(target->timeLine()->map(core::TimeKeyType_Pose).size()) != countBefore ||
+                    rotAfter != rotBefore || eraseHit;
                 std::printf(
                     "gesture bone[%d] %s at (%d,%d) rep %d -> %s\n",
                     int(i),
@@ -551,6 +629,7 @@ int main(int argc, char** argv) {
     }
 
     project.onTimeLineModified.disconnect(timeLineSlot);
+    project.onTimeLineModified.disconnect(eraseSlot);
     std::printf("DONE hits=%d (no crash)\n", hits);
     std::fflush(stdout);
     return hits > 0 ? 0 : 1;

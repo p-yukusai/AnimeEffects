@@ -1,4 +1,5 @@
 #include "Project.h"
+#include <functional>
 #include "img/ResourceNode.h"
 #include "img/BlendMode.h"
 #include "core/ImageKey.h"
@@ -112,6 +113,12 @@ void ImageKey::awake() {
 QJsonObject ImageKey::serializeToJson() const {
     QJsonObject image;
     image["Identifier"] = mData.resource()->serialAddress()->handle()->identifier();
+    // The stable layer id, so a paste can tell two layers apart that were renamed
+    // to the same name. It equals "Identifier" for sources that carry no stable
+    // id (ORA, older PSDs, non-Photoshop writers) -- the name is all they have.
+    // Files written before this key existed omit it, and reading those falls back
+    // to the name.
+    image["LayerId"] = mData.resource()->serialAddress()->handle()->identityId();
     image["BlendMode"] = getBlendNameFromBlendMode(mData.blendMode());
     image["OffsetX"] = mData.imageOffset().x();
     image["OffsetY"] = mData.imageOffset().y();
@@ -119,88 +126,56 @@ QJsonObject ImageKey::serializeToJson() const {
     return image;
 }
 
-img::ResourceNode* returnMatch(img::ResourceNode* image, QString match) {
-    // Get main
-    if (image->data().identifier() == match) {
-        return image;
+namespace {
+// Records every node the predicate accepts, in document order.
+//
+// The matcher this replaces walked the sibling list, then the children of every
+// sibling, then "Get children" walked the whole child list again -- so a key
+// pasted into a PSD with nested folders re-traversed the same nodes once per
+// nesting level, which is exponential in the folder depth. This is one pass over
+// the tree.
+void findResourceMatches(
+    img::ResourceNode* aNode, const std::function<bool(const img::ResourceData&)>& aAccepts,
+    img::ResourceNode** aDst, int* aCount)
+{
+    if (aAccepts(aNode->data())) {
+        ++(*aCount);
+        *aDst = aNode;
     }
-    // Get siblings
-    img::ResourceNode* current = image;
-    while (current->nextSib()) {
-        if (current->data().identifier() == match) {
-            return current;
-        }
-        if (!current->children().empty()) {
-            for (auto child : current->children()) {
-                auto recMatch = returnMatch(child, match);
-                if (recMatch != nullptr) {
-                    return recMatch;
-                };
-            }
-        }
-        current = current->nextSib();
+    for (auto child : aNode->children()) {
+        findResourceMatches(child, aAccepts, aDst, aCount);
     }
-    // Get last sibling
-    if (current->data().identifier() == match) {
-        return current;
-    }
-    if (!current->children().empty()) {
-        for (auto child : current->children()) {
-            auto recMatch = returnMatch(child, match);
-            if (recMatch != nullptr) {
-                return recMatch;
-            };
-        }
-    }
-    // Get children
-    for (auto child : image->children()) {
-        current = child;
-        while (current->nextSib()) {
-            if (current->data().identifier() == match) {
-                return current;
-            }
-            if (!current->children().empty()) {
-                for (auto child : current->children()) {
-                    auto recMatch = returnMatch(child, match);
-                    if (recMatch != nullptr) {
-                        return recMatch;
-                    };
-                }
-            }
-            current = current->nextSib();
-        }
-    }
-    // Get last child
-    if (current->data().identifier() == match) {
-        return current;
-    }
-    if (!current->children().empty()) {
-        for (auto child : current->children()) {
-            auto recMatch = returnMatch(child, match);
-            if (recMatch != nullptr) {
-                return recMatch;
-            };
-        }
-    }
-    return nullptr;
 }
+} // unnamed
 
 bool ImageKey::deserializeFromJson(QJsonObject json, util::LifeLink::Pointee<Project> project) {
     mData.resource().reset();
     // image id
     json = json["Image"].toObject();
     QString identifier = json["Identifier"].toString();
+    const QString layerId = json["LayerId"].toString();
+
+    // What to resolve by. The stable layer id distinguishes layers that were
+    // renamed to the same name; a file with no "LayerId" was written before the
+    // key existed, and those resolve by display name, exactly as they always
+    // have -- with the difference that an ambiguous answer is now a refusal.
+    std::function<bool(const img::ResourceData&)> accepts;
+    if (layerId.isEmpty()) {
+        accepts = [&identifier](const img::ResourceData& aData) { return aData.identifier() == identifier; };
+    } else {
+        accepts = [&layerId](const img::ResourceData& aData) { return aData.identityId() == layerId; };
+    }
+
+    int matchCount = 0;
     img::ResourceNode* nodePtr = nullptr;
     for (const ResourceHolder::ImageTree& image : project.address->resourceHolder().imageTrees()) {
-        auto match = returnMatch(image.topNode, identifier);
-        // qDebug("-------");
-        if (match != nullptr) {
-            // qDebug() << match->data().identifier();
-            nodePtr = match;
-        }
-        // qDebug("-------");
+        findResourceMatches(image.topNode, accepts, &nodePtr, &matchCount);
     }
-    if (nodePtr == nullptr) {
+    // Refuse anything that is not exactly one answer. The old loop kept the last
+    // tree's match, so a paste whose layer name existed in two image trees bound
+    // the key to whichever tree happened to be visited last -- silently, with the
+    // wrong pixels under a right-looking name.
+    if (nodePtr == nullptr || matchCount != 1) {
         return false;
     }
     this->mData.resource() = nodePtr->handle();

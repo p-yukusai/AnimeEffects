@@ -13,9 +13,9 @@
 // a value the user's edit never saw. The decided semantics name the moment - edit
 // start - so the control must REMEMBER it.
 //
-// The sentinel ("Auto") is part of the same line: AeNumberField shows a word when
-// the value is the sentinel (placeholderValue), and an undone edit must come back
-// to the sentinel state, not to some number underneath the word.
+// The word ("Auto") is part of the same line: AeNumberField draws it from the `auto`
+// property its owner sets, and a cancelled edit must report the restored value back to
+// that owner - the field never decides for itself what the word means.
 //
 // Routing facts measured before writing this (scratch: escape-spike/):
 //   * a key sent straight to an item reaches THAT item's Keys filters and its
@@ -134,11 +134,17 @@ int main(int argc, char** argv) {
         qml += "        width: 140\n";
         qml += "        label: \"Width\"\n";
         qml += "        placeholder: \"Auto\"\n";
-        qml += "        placeholderValue: -1\n";
+        // The scene's owner keeps its own rule - its Auto IS the negative value - which
+        // is deliberately NOT the dialog's rule (ExportViewModel::qualityOverrideAuto is
+        // a state, because a number must never MEAN the word). What this scenario pins
+        // is the FIELD's half: the word is drawn from `auto`, and a cancelled edit
+        // reports the restored value so the owner can put its state back.
+        qml += "        property bool externalAuto: true\n";
+        qml += "        auto: externalAuto\n";
         qml += "        from: -1; to: 4096; step: 1; decimals: 2\n";
         qml += "        property real external: -1\n";
         qml += "        value: external\n";
-        qml += "        onValueEdited: (v) => { external = v }\n";
+        qml += "        onValueEdited: (v) => { external = v; externalAuto = (v < 0) }\n";
         qml += "    }\n";
         qml += "}\n";
         f.write(qml);
@@ -264,31 +270,34 @@ int main(int argc, char** argv) {
               "F34: a cancelled edit reports no live change to anyone");
     }
 
-    // ---- F34 sentinel: the word comes back, not a number underneath ----------
-    // AeNumberField's "Auto" IS the value -1 (placeholderValue). The accessibility
-    // press is the route a probe and a screen reader use to enter the edit; the
-    // restore must come back to the sentinel state INCLUDING the word.
+    // ---- F34 + Auto: the word comes back, not a number underneath ------------
+    // What the field owes its owner on a cancelled edit: the value the edit began
+    // with, reported so the owner can put its own state back - the word is the
+    // OWNER's (see AeNumberField's `auto` and ExportViewModel::qualityOverrideAuto),
+    // so the field can never produce it by itself.
     {
         makeScene();
-        check(scene.found(), "precondition: a fresh scene for the sentinel scenario");
+        check(scene.found(), "precondition: a fresh scene for the Auto scenario");
         check(QMetaObject::invokeMethod(scene.numValueNode, "accessibleBeginEdit"),
               "the edit begins through the accessibility press (the probe route)");
         check(scene.numEdit->property("activeFocus").toBool(),
               "precondition: the number field's editor has focus");
-        check(scene.num->property("atPlaceholder").toBool(),
-              "precondition: the field reads its placeholder word (Auto) before the edit");
+        check(scene.num->property("auto").toBool(),
+              "precondition: the owner has the field in its Auto state before the edit");
 
         typeText(scene.numEdit, QStringLiteral("30"));
-        // A mid-edit re-sync here too: the sentinel restore must beat it.
+        // A mid-edit re-sync here too: the owner names a real number on the same write
+        // path the dialog uses when a re-sync moves a field. The restore must beat it.
+        scene.num->setProperty("externalAuto", false);
         scene.num->setProperty("external", 7.0);
-        check(!scene.num->property("atPlaceholder").toBool(),
-              "precondition: the re-sync moved the field off the sentinel");
+        check(!scene.num->property("auto").toBool(),
+              "precondition: the re-sync moved the owner off Auto (a number is drawn)");
 
         sendKey(scene.numEdit, Qt::Key_Escape);
         check(scene.num->property("value").toReal() == -1.0,
-              "F34: Escape restores the sentinel value (-1), not 7 and not 30");
-        check(scene.num->property("atPlaceholder").toBool(),
-              "F34: and the field is back on its placeholder WORD (Auto), not a number");
+              "F34: Escape restores the value the edit began with (-1), not 7 and not 30");
+        check(scene.num->property("auto").toBool(),
+              "F34: the restored value is reported, so the owner's own Auto state is back");
         check(!scene.numEdit->property("activeFocus").toBool(),
               "F34: the number field's edit exits too");
     }

@@ -13,7 +13,7 @@
 #include "gui/MainWindow.h"
 #include "media/FFmpegHelpers.h"
 #include "gui/ResourceDialog.h"
-#include "gui/EasyDialog.h"
+#include "gui/ProjectSettingDialog.h"
 #include "gui/KeyBindingDialog.h"
 #include "gui/GeneralSettingDialog.h"
 #include "util/NetworkUtil.h"
@@ -548,103 +548,6 @@ void MainMenuBar::setProject(core::Project* aProject) {
 }
 
 
-//-------------------------------------------------------------------------------------------------
-//-------------------------------------------------------------------------------------------------
-ProjectSettingDialog::ProjectSettingDialog(ViaPoint& aViaPoint, core::Project& aProject, QWidget* aParent):
-    EasyDialog(tr("Project settings"), aParent),
-    mViaPoint(aViaPoint),
-    mProject(aProject),
-    mWidthBox(),
-    mHeightBox(),
-    mStartBox(),
-    mEndBox(),
-    mLoopBox(),
-    mFPSBox() {
-    // create inner widgets
-    auto curSize = mProject.attribute().imageSize();
-    auto curRange = mProject.attribute().frameRange();
-    auto curLoop = mProject.attribute().loop();
-    auto curFPS = mProject.attribute().fps();
-
-    {
-        auto devInfo = mViaPoint.glDeviceInfo();
-        const int maxBufferSize = std::min(devInfo.maxTextureSize, devInfo.maxRenderBufferSize);
-        XC_ASSERT(maxBufferSize > 0);
-
-        auto form = new QFormLayout();
-        form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
-        form->setLabelAlignment(Qt::AlignRight);
-
-        // canvas size
-        auto sizeLayout = new QHBoxLayout();
-        {
-            mWidthBox = new QSpinBox();
-            mWidthBox->setRange(1, maxBufferSize);
-            mWidthBox->setValue(curSize.width());
-            sizeLayout->addWidget(mWidthBox);
-
-            mHeightBox = new QSpinBox();
-            mHeightBox->setRange(1, maxBufferSize);
-            mHeightBox->setValue(curSize.height());
-            sizeLayout->addWidget(mHeightBox);
-        }
-        form->addRow(tr("Canvas size"), sizeLayout);
-
-        // frame range: two linked spinboxes (start, end); either bound may
-        // be negative (pre-roll frames before 0 are a valid project extent)
-        {
-            auto layout = new QHBoxLayout();
-            mStartBox = new QSpinBox();
-            mStartBox->setRange(std::numeric_limits<int>::min(), 0x7FFFFFFF);
-            mStartBox->setValue(curRange.min());
-            layout->addWidget(mStartBox);
-
-            mEndBox = new QSpinBox();
-            mEndBox->setRange(std::numeric_limits<int>::min(), 0x7FFFFFFF);
-            mEndBox->setValue(curRange.max());
-            layout->addWidget(mEndBox);
-
-            mStartBox->setMaximum(mEndBox->value());
-            mEndBox->setMinimum(mStartBox->value());
-            mStartBox->connect(mStartBox, &QSpinBox::valueChanged, [=](int aValue) {
-                mEndBox->setMinimum(aValue);
-            });
-            mEndBox->connect(mEndBox, &QSpinBox::valueChanged, [=](int aValue) {
-                mStartBox->setMaximum(aValue);
-            });
-            form->addRow(tr("Frame range"), layout);
-        }
-
-        // loop animation
-        mLoopBox = new QCheckBox();
-        mLoopBox->setChecked(curLoop);
-        form->addRow(tr("Loop animation"), mLoopBox);
-
-        // frames per second
-        mFPSBox = new QSpinBox();
-        mFPSBox->setRange(1, 0x7FFFFFFF);
-        mFPSBox->setValue(curFPS);
-        form->addRow(tr("Frames per second"), mFPSBox);
-
-        this->setMainLayout(form);
-    }
-
-    this->setOkCancel([=](int aIndex) -> bool {
-        if (aIndex == 0) {
-            return this->confirmFrameRangeUpdating(this->frameRange());
-        }
-        return true;
-    });
-    this->fixSize();
-}
-
-bool ProjectSettingDialog::confirmFrameRangeUpdating(const util::Range& aNewRange) const {
-    XC_ASSERT(aNewRange.min() <= aNewRange.max()); // the linked spinboxes keep start <= end
-    // Keys may live outside the frame range — the range is a playback/export
-    // bound, not a constraint on key positions — so every range change is valid.
-    return true;
-}
-
 void MainMenuBar::onProjectSettingsTriggered() {
     if (!mProject)
         return;
@@ -653,6 +556,8 @@ void MainMenuBar::onProjectSettingsTriggered() {
     auto curRange = mProject->attribute().frameRange();
     auto curLoop = mProject->attribute().loop();
     auto curFPS = mProject->attribute().fps();
+    auto curHasViewportBackground = mProject->attribute().hasViewportBackground();
+    auto curViewportBackground = mProject->attribute().viewportBackground();
 
     // create dialog
     QScopedPointer<ProjectSettingDialog> dialog(new ProjectSettingDialog(mViaPoint, *mProject, this));
@@ -743,6 +648,40 @@ void MainMenuBar::onProjectSettingsTriggered() {
                 },
                 [=]() {
                     projectPtr->attribute().setFps(curFPS);
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                }
+            );
+            mProject->commandStack().push(command);
+        }
+
+        // viewport background: its own command so one undo takes the colour back,
+        // separate from the geometry it sits behind. A no-op when the dialog left the
+        // override exactly as it found it (same presence AND, when present, the same
+        // colour).
+        const bool newHasViewportBackground = !dialog->viewportBackgroundIsThemeDefault();
+        const QColor newViewportBackground = dialog->viewportBackground();
+        const bool viewportBackgroundChanged =
+            (curHasViewportBackground != newHasViewportBackground)
+            || (newHasViewportBackground && curViewportBackground != newViewportBackground);
+        if (viewportBackgroundChanged) {
+            cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change the viewport background"));
+
+            core::Project* projectPtr = mProject;
+            auto command = new cmnd::Delegatable(
+                [=]() {
+                    if (newHasViewportBackground)
+                        projectPtr->attribute().setViewportBackground(newViewportBackground);
+                    else
+                        projectPtr->attribute().clearViewportBackground();
+                    this->onProjectAttributeUpdated();
+                    this->onVisualUpdated();
+                },
+                [=]() {
+                    if (curHasViewportBackground)
+                        projectPtr->attribute().setViewportBackground(curViewportBackground);
+                    else
+                        projectPtr->attribute().clearViewportBackground();
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 }

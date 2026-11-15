@@ -53,6 +53,23 @@ Item {
         color: theme.base
     }
 
+    // A3/B11 (contract items 3 and 11): a click on the scene's own empty space
+    // removes the focus from the search field, and the field's TEXT and the list's
+    // SELECTION are unchanged by that click. The picker had no background MouseArea
+    // at all until 2026-10-09, so a click beside the list left the field focused
+    // with a caret in it while the pointer was elsewhere. It sits UNDER the content
+    // in z-order, so it only ever sees the presses the controls, the list and the
+    // buttons do not take - which is what "outside" means here. It clears the focus
+    // and nothing else: the one thing the handler must not do is touch the text or
+    // the model, which is the other half of item 11.
+    MouseArea {
+        anchors.fill: parent
+        onPressed: {
+            const fi = root.Window ? root.Window.activeFocusItem : null;
+            if (fi) fi.focus = false;
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 14
@@ -181,11 +198,31 @@ Item {
                 delegate: ItemDelegate {
                     id: rowItem
                     width: list.width
-                    height: model.onScreen ? 30 : 0
+                    // THREE heights, because there are three kinds of row: the 30 px
+                    // destination/section rhythm, the separator's own band, and 0 for a
+                    // row that is not on screen (which is how expansion and filtering
+                    // avoid renumbering - load-bearing, see the note above).
+                    height: model.onScreen ? (model.isSeparator ? rowItem.separatorHeight : 30) : 0
                     visible: model.onScreen
                     // Off on purpose - see the measured note above. Hover is the
                     // HoverHandler's job; the control supplies activation and focus.
                     hoverEnabled: false
+                    // A RULE IS NOT A ROW: nothing about it can be clicked, hovered,
+                    // focused or announced, so the whole delegate is disabled rather
+                    // than left enabled with three handlers that each have to remember
+                    // to say no. A disabled Control neither emits `clicked` nor lights
+                    // a HoverHandler, so the pointer passes over the rule as if the
+                    // row were not there.
+                    enabled: !model.isSeparator
+
+                    // The separator's band: 12 px, which is the 1 px rule plus ~5 px of
+                    // air on each side. Chosen against the 30 px rhythm it interrupts:
+                    // with no margin the rule reads as an underline of the row above it
+                    // (a claim about that row rather than a boundary after the block),
+                    // and at a full 30 px it reads as one more row in the list. 12 px is
+                    // short enough that the two blocks still run as ONE list - which is
+                    // what they are - and tall enough to separate them at a glance.
+                    readonly property int separatorHeight: 12
 
                     // C18: ONE statement of where this row sits horizontally, and
                     // every lane below is that statement plus a fixed offset. It is
@@ -202,9 +239,14 @@ Item {
                     // The row's own highlight, in this design's terms: the selection
                     // token, or the raised token while hovered - not the style's
                     // background, which draws only for down/highlighted/visualFocus.
+                    // The separator draws its own rule and nothing else, so it has no
+                    // background at all: no selection token (it can never be current)
+                    // and no hover fill (the pointer cannot reach it).
                     background: Rectangle {
                         radius: 4
                         color: {
+                            if (model.isSeparator)
+                                return "transparent";
                             if (model.isSection)
                                 return rowHover.hovered ? theme.raised : "transparent";
                             if (model.selected)
@@ -262,6 +304,42 @@ Item {
                         }
                     }
 
+                    // THE STRUCTURAL RULE ITSELF (model.isSeparator; the `general`
+                    // block's `separatorAfter` in the data table): ONE HAIRLINE ACROSS
+                    // THE LIST.
+                    //
+                    // Spanning the full width is the whole point. The rule states
+                    // something about the list - "everything above is a file with no
+                    // platform of its own; everything below is grouped by platform" -
+                    // which is not a fact about any row's depth: it neither belongs to
+                    // the child lane (which would read it as part of the section below
+                    // it) nor moves the lanes the rows around it draw their caret, badge
+                    // and label in (C18: 0/24/48, +14 per level; all untouched).
+                    //
+                    // theme.hairline is the token every other rule in this design draws
+                    // with (AeSectionHeader's ruled heading, the export form's footer
+                    // hairline), so the picker's rule agrees with the form's by
+                    // construction rather than by a copied literal.
+                    Rectangle {
+                        // What the scene test and a probe-off-the-scene read it by.
+                        objectName: "rowSeparatorRule"
+                        visible: model.isSeparator
+                        x: 0
+                        // Pixel-snapped, not centered with `anchors`: a 1 px rectangle
+                        // on a fractional y lands across two device pixels and draws as
+                        // a 2 px smear, which is what a hairline must not look like.
+                        y: Math.round((rowItem.height - height) / 2)
+                        width: list.width
+                        height: 1
+                        color: theme.hairline
+                    }
+
+                    // A rule has no words and nothing to announce, so it stays OUT of
+                    // the accessibility tree rather than being exposed as a nameless
+                    // list item every screen reader would stop on and have nothing to
+                    // say about; the rows around it already say what the two blocks
+                    // are.
+                    Accessible.ignored: model.isSeparator
                     Accessible.role: model.isSection ? Accessible.Button : Accessible.ListItem
                     Accessible.name: model.label
                     Accessible.onPressAction: {
@@ -277,6 +355,11 @@ Item {
                     // the handler behaves the way this design's highlight requires.
                     HoverHandler {
                         id: rowHover
+                        // Belt and braces with the delegate's own `enabled: false`
+                        // above: the rule is not hoverable at all, so it can never take
+                        // the raised fill, the pointing-hand cursor or the tooltip (and
+                        // never becomes the row a tooltip would be about).
+                        enabled: !model.isSeparator
                         cursorShape: Qt.PointingHandCursor
                         onHoveredChanged: {
                             if (hovered) {
@@ -299,7 +382,9 @@ Item {
                     }
                     // One click on a platform opens or closes it; one click on a
                     // destination selects it; a double click on a destination is the
-                    // answer. A platform never answers, whatever is clicked.
+                    // answer. A platform never answers, whatever is clicked - and the
+                    // separator never gets here at all (the delegate is disabled, and
+                    // select() refuses it anyway).
                     onClicked: {
                         if (model.isSection) picker.toggleSection(index);
                         else picker.select(index);
@@ -370,34 +455,35 @@ Item {
             // and it sits on the ROW rect passed as ownerX/Y/W/H - AeToolTip
             // does the rest: below-first, flipping above at the bottom edge, and
             // shifted inside the window so it is never clipped (E27/E28).
+            //
+            // The rect is the delegate's own, in this item's coordinates - which is
+            // why it must be re-read rather than captured once. A ListView scrolls
+            // its CONTENT under a clip window that does not move, so the
+            // delegate's y is a coordinate in the content, not on screen: without
+            // subtracting the view's contentY a wheel under a stationary hovered
+            // pointer left the tooltip anchored at the row's PRE-SCROLL position
+            // (E27 violated in that one case; E28's clamp still held, because it
+            // re-reads every ancestor's contentY on purpose - see AeToolTip's own
+            // note). The read is in the binding itself, so the dependency is on
+            // contentY and every scroll re-evaluates it.
             AeToolTip {
                 text: listArea.hoveredTooltip
                 shown: listArea.hoveredRow >= 0 && text !== ""
                 ownerX: { const item = list.itemAtIndex(listArea.hoveredRow); return item ? list.x + item.x : 0 }
-                ownerY: { const item = list.itemAtIndex(listArea.hoveredRow); return item ? list.y + item.y : 0 }
+                ownerY: { const item = list.itemAtIndex(listArea.hoveredRow); return item ? list.y + item.y - list.contentY : 0 }
                 ownerW: { const item = list.itemAtIndex(listArea.hoveredRow); return item ? item.width : 0 }
                 ownerH: { const item = list.itemAtIndex(listArea.hoveredRow); return item ? item.height : 0 }
             }
         }
 
-        // ---- "My platform isn't listed" ----
-        // The escape hatch for a platform the tree does not know is a button, not a
-        // destination, so no search can filter it away.
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: manual.implicitHeight
-            AeButton {
-                id: manual
-                anchors.fill: parent
-                text: picker.manualText
-                onClicked: picker.acceptManually()
-            }
-            // No tooltip here (E29, decided 2026-09-30): the button's own text
-            // states what it is and cannot elide, and the explanatory prose that
-            // used to hover above it is neither kept kind. picker.manualTooltip
-            // stays in the model - untranslated strings belong to lupdate - in
-            // case the design ever asks for explanation tooltips back.
-        }
+        // ---- manual mode has no button (decided 2026-10-08) ----
+        // "My platform isn't listed" is gone from the footer. It read as a fourth
+        // kind of answer standing beside the destinations, and the generic rows at
+        // the top of the list are what it was there for. The way in is unchanged
+        // underneath it: a query that matches nothing plus "Continue"
+        // is the model's own empty-id fallback (activateCurrent() -> activate()
+        // with no match -> chosenId cleared), so the dialog still hands the export
+        // form no destination, which is what manual mode means.
 
         // ---- OK / Cancel ----
         RowLayout {

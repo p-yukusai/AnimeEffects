@@ -121,6 +121,16 @@ Item {
         enabled: !editInput.activeFocus && root.enabled
         cursorShape: editInput.activeFocus ? Qt.IBeamCursor : Qt.SizeHorCursor
         hoverEnabled: true
+        // A scrub IS a drag, and the form it usually sits in is a Flickable whose own
+        // drag scrolls the page. A Flickable steals the mouse from a child MouseArea
+        // once the drag passes its threshold, which is how editing a value also moved
+        // the view (reported 2026-10-08: "when dragging the scrubbers, the drag also
+        // propagates to the scroll area. This leads to the user accidentally scrolling
+        // while changing values"). preventStealing is the documented way to say the
+        // control owns the gesture that started on it; the steal was real enough that
+        // the onCanceled handler below exists for it. The wheel still scrolls over this
+        // field, and a drag starting anywhere else still scrolls the page.
+        preventStealing: true
 
         property real pressX: 0
         property real pressValue: 0
@@ -209,6 +219,21 @@ Item {
         // Measured: without this snapshot, "keep the committed value" silently
         // keeps the re-sync.
         property real editStartValue: 0
+        // The dialog's Escape Shortcut (ExportDialog.qml:77) is matched
+        // by the shortcut map BEFORE the key reaches this editor, and a
+        // Keys handler cannot claim a key from a Shortcut: only an
+        // accepted ShortcutOverride can (QQuickKeyEvent::reset() always
+        // clears the override's acceptance, so nothing else accepts it).
+        // Without this handler, Escape in an edit cancels the WHOLE
+        // dialog instead of ending the edit (F33/F34) - measured
+        // 2026-10-09 by driving the real dialog, and pinned by the
+        // window-route case in tests/form_layout.cpp. This fires only
+        // while THIS editor holds focus, so Escape still cancels the
+        // dialog everywhere else (A2).
+        Keys.onShortcutOverride: (event) => {
+            if (event.key === Qt.Key_Escape)
+                event.accepted = true;
+        }
         Keys.onEscapePressed: {
             cancelEdit = true;
             focus = false;

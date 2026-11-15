@@ -48,6 +48,12 @@ public:
     cmnd::Vector createNodesMover(const QVector<util::TreePos>& aRemoved, const QVector<util::TreePos>& aInserted);
     cmnd::Vector createResourceUpdater(const ResourceEvent& aEvent);
 
+    // Every object node (a layer) whose image keys reference any layer of the
+    // given resource subtree -- an imported asset's whole tree. The caller uses
+    // this to tell which layers must be deleted along with the asset, and to
+    // decide whether to ask the user at all. Pure read: it changes nothing.
+    QVector<ObjectNode*> findNodesUsingResource(const img::ResourceNode& aResourceTop) const;
+
     void onTimeLineModified(TimeLineEvent& aEvent, bool aIsUndo);
     void onTreeRestructured(ObjectTreeEvent& aEvent, bool aIsUndo);
     void onResourceModified(ResourceEvent& aEvent, bool aIsUndo);

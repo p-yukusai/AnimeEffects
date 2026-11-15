@@ -153,8 +153,11 @@ PY
   ae_press "File" "the File menu opens"
   ae_press "Export project as" "the export entry is there"
   require_export_flow
-  ae_activate "Use this destination" "the remembered destination is accepted"
+  ae_activate "Continue" "the remembered destination is accepted"
   ae wait "Advanced" >/dev/null 2>&1 || true
+  # H41: the frame range lives under Advanced, so the section has to be OPEN before
+  # its rows can be addressed by name.
+  ae_activate "Advanced" "the Advanced section opens, adding its rows"
   sleep 1.5
   # Short, so that the first export is seconds and not minutes: this probe is about the
   # repeat, not about the encode. If the range cannot be set, the body stops HERE
@@ -196,7 +199,7 @@ PY
   ae_press "File" "the File menu opens for the repeat"
   ae_press "Export again" "Export again is enabled by the first export"
   sleep 4
-  ae_report /tmp/re_repeat.txt "Search destinations" "Use this destination" "File"
+  ae_report /tmp/re_repeat.txt "Search destinations" "Continue" "File"
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/re_03_name_prompt.png
   xdotool key --clearmodifiers ctrl+a; sleep 0.4
@@ -214,7 +217,7 @@ PY
 
 # THE POINT OF THE PROBE: the repeat did not re-walk the destination flow.
 assert_absent /tmp/re_repeat.txt "Search destinations" "Export again asks for no destination: the picker is not up"
-assert_absent /tmp/re_repeat.txt "Use this destination" "not even its answer button, so the picker was not required"
+assert_absent /tmp/re_repeat.txt "Continue" "not even its answer button, so the picker was not required"
 # ...and both runs reached the export path, which is what the files say. The first one
 # has to have been written for "Export again" to be enabled at all (it stays disabled
 # until an export succeeds), and the second could not exist otherwise.

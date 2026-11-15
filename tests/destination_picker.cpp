@@ -5,9 +5,9 @@
 // destination in (QSettings "export_destination"), and the picker's own header says
 // that id "preselects a destination". It did not, once: the constructor set the
 // current item and then the filter replaced it with the first row, so the picker
-// opened on "A video for a chat app" and Enter exported there whatever the user
-// chose last time. A remembered setting the screen contradicts is worse than no
-// remembered setting.
+// opened on "Video" (the first row, generic.video) and Enter exported there whatever
+// the user chose last time. A remembered setting the screen contradicts is worse than
+// no remembered setting.
 //
 // The rest of this file is about the STRUCTURE, because a tree has three ways to be
 // wrong that a list cannot be: the platforms could be open (which is the flat list
@@ -60,7 +60,10 @@ static QList<int> sections(const Model& aModel) {
     return out;
 }
 
-// Every destination row, on screen or not.
+// Every destination row, on screen or not. A row that is neither a section nor a
+// destination exists now - the structural separator - and it is excluded here by the
+// thing that makes it not a destination: it has NO ID. That is asserted on its own
+// below rather than assumed from this filter.
 static QList<int> destinations(const Model& aModel) {
     QList<int> out;
     for (int i = 0; i < aModel.rowCount(); ++i) {
@@ -72,6 +75,15 @@ static QList<int> destinations(const Model& aModel) {
 static int sectionNamed(const Model& aModel, const QString& aText) {
     for (int row : sections(aModel)) {
         if (aModel.labelOf(row) == aText) return row;
+    }
+    return -1;
+}
+
+// The row holding a destination id, or -1. The search assertions name destinations
+// by id, so this is how they ask "is THIS one on screen".
+static int rowOfId(const Model& aModel, const QString& aId) {
+    for (int row : destinations(aModel)) {
+        if (aModel.idOf(row) == aId) return row;
     }
     return -1;
 }
@@ -266,13 +278,21 @@ int main(int argc, char** argv) {
     }
 
     // 4. A platform is not an answer, and (the reported bug) it is not SELECTABLE:
-    //    the keyboard cannot land on it as a current item, so "Use this destination"
+    //    the keyboard cannot land on it as a current item, so "Continue"
     //    can never be asked what a platform means. Enter on it opens it rather than
     //    exporting something the user never chose.
     {
         Model model(targets, groups, QString());
         check(!model.okText().isEmpty() && !model.cancelText().isEmpty(),
               "the picker has its buttons");
+        // THE APP'S OWN DIALOG VOICE (decided 2026-10-08): a noun-phrase title and an
+        // action verb on the confirm button, not a question aimed at the user. Asserted
+        // HERE, before the translated block below installs a catalog, because this is
+        // the only place the ENGLISH source is what comes back.
+        check(model.windowTitleText() == QStringLiteral("Destination")
+                  && model.okText() == QStringLiteral("Continue"),
+              QStringLiteral("the picker speaks the app's convention (%1 / %2)")
+                  .arg(model.windowTitleText(), model.okText()));
         const int telegram = sectionNamed(model, QStringLiteral("Telegram"));
         check(telegram >= 0, "the Telegram platform is a section");
         if (telegram < 0) return 1;
@@ -359,6 +379,157 @@ int main(int argc, char** argv) {
         const int telegram = sectionNamed(model, QStringLiteral("Telegram"));
         check(telegram >= 0 && !model.isVisible(telegram), "a platform with no match is not shown");
 
+        // ---- fuzzy search (the shape of query the substring test could not answer) ----
+        // The four cases below FAIL on the pre-change code, whose whole search was
+        // `haystack.contains(query)`: "telegram sticker" (two words, never contiguous),
+        // "sticker telegram" (the same words the other way round), "telegrm" (a typo)
+        // and "discord emoji" (two words whose winner is decided by the SCORE, not by
+        // which row a substring test happened to find first) all typed something no
+        // haystack contains verbatim, so the old code answered none of them. The rest
+        // are INVARIANTS that must keep holding: an id typed in full still selects its
+        // row, a query that matches nothing still shows nothing, and a two-character
+        // query still matches only contiguously (as a word or inside one), never as
+        // letters gathered from across a word.
+        //
+        // One part of the SCORE reads the haystack's SHAPE: the phrase bonus is
+        // FIELD-LOCAL, so it fires only for words that are adjacent inside one field
+        // (haystackFor in DestinationPickerModel.cpp separates the row's fields with
+        // 0x1f for exactly this). The two telegram cases below turn on that: a bonus
+        // which crossed a field boundary would reward a coincidence of the layout -
+        // the group title sitting next to the family key - as though the user had
+        // typed the row's own name.
+
+        // Two words the user typed adjacently, and they ARE adjacent inside one field.
+        // The phrase bonus is field-local: telegram.sticker's label "Telegram sticker"
+        // (and its id, whose words join the same way) carries "telegramsticker" inside
+        // a single field, so it earns the bonus. telegram.emoji does NOT: its
+        // "Telegram" is the group title field and its "sticker" is the family key
+        // field, so the two words are adjacent only if that boundary is ignored. Both
+        // rows score the two tokens as whole words alike (1000 + 8L each), so the
+        // bonus is the whole difference and it selects the row whose OWN label is the
+        // phrase - no tie. telegram.emoji still MATCHES (both its tokens match, so it
+        // is revealed); it just scores 400 lower.
+        model.setQuery(QStringLiteral("telegram sticker"));
+        check(model.idOf(model.currentRow()) == QLatin1String("telegram.sticker"),
+              QStringLiteral("'telegram sticker' (never a contiguous substring) selects the row "
+                             "whose own label is that phrase: telegram.sticker, by the field-local "
+                             "phrase bonus (telegram.emoji's 'Telegram' and 'sticker' sit in "
+                             "different fields, so it earns no bonus and loses by 400) (%1)")
+                  .arg(model.idOf(model.currentRow())));
+        check(onScreen(model, model.currentRow()),
+              "'telegram sticker': the winning match is on screen");
+        const int telegramEmoji = rowOfId(model, QStringLiteral("telegram.emoji"));
+        check(telegramEmoji >= 0 && model.isVisible(telegramEmoji),
+              "'telegram sticker' still reveals telegram.emoji (it matches both words too, 400 lower)");
+
+        // The words in the other order. The phrase bonus is field-local, and NO field
+        // of either Telegram sticker row carries "stickertelegram" (that would need a
+        // label reading "sticker telegram"; both rows read the words the other way
+        // round), so neither row earns it. With no bonus the token sums are EQUAL -
+        // each row scores "sticker" and "telegram" as whole words - so this is a tie,
+        // and the tie keeps the EARLIER row, which is row order and not the table.
+        // Assert the platform the tie lands in, not one id.
+        model.setQuery(QStringLiteral("sticker telegram"));
+        const QString reversedMatch = model.idOf(model.currentRow());
+        check(!model.isSection(model.currentRow()) && onScreen(model, model.currentRow())
+                  && reversedMatch.contains(QLatin1String("telegram")),
+              QStringLiteral("'sticker telegram' (words reversed) selects a Telegram destination: "
+                             "the token sums tie (both rows score both words as whole words, and "
+                             "the field-local phrase bonus fires for neither), so the earlier row "
+                             "wins (%1)").arg(reversedMatch));
+
+        // A typo. Several Telegram rows carry the word "telegram" and all score the same
+        // subsequence, so the exact row is decided by row order, not by the table:
+        // assert the platform (the typo found a Telegram destination), not one id.
+        model.setQuery(QStringLiteral("telegrm"));
+        const QString typoMatch = model.idOf(model.currentRow());
+        check(!model.isSection(model.currentRow()) && onScreen(model, model.currentRow())
+                  && typoMatch.contains(QLatin1String("telegram")),
+              QStringLiteral("'telegrm' (a typo) still finds an on-screen Telegram "
+                             "destination (%1)").arg(typoMatch));
+
+        // THE BEST SCORE WINS, asserted rather than assumed. "discord emoji" matches
+        // exactly two rows - discord.emoji and discord.sticker, which share the word
+        // "discord" - and their token sums are identical: discord.sticker carries an
+        // "emoji" whole word too, from its family title "Stickers and emoji". Only the
+        // PHRASE BONUS separates them: discord.emoji's joined words start
+        // "discordemoji" (its label), discord.sticker's never do ("discordsticker...",
+        // "...stickersandemoji"). So the row NAMED by the multi-word query is the one
+        // selected, by 400.
+        model.setQuery(QStringLiteral("discord emoji"));
+        check(model.idOf(model.currentRow()) == QLatin1String("discord.emoji"),
+              QStringLiteral("'discord emoji' selects discord.emoji, the best-scoring of the two "
+                             "rows it matches (discord.sticker shares the word 'discord' and also "
+                             "carries 'emoji', from its family title) (%1)")
+                  .arg(model.idOf(model.currentRow())));
+        const int discordSticker = rowOfId(model, QStringLiteral("discord.sticker"));
+        check(discordSticker >= 0 && model.isVisible(discordSticker),
+              "'discord emoji' still reveals the other discord row (discord.sticker)");
+
+        // An id is still an id: "generic" and "video" are words of the row's own
+        // haystack, and generic.video is a surviving id whose text is stable, which is
+        // what the field matched before the change too.
+        model.setQuery(QStringLiteral("generic.video"));
+        check(model.idOf(model.currentRow()) == QLatin1String("generic.video"),
+              QStringLiteral("typing the id generic.video selects that destination (%1)")
+                  .arg(model.idOf(model.currentRow())));
+
+        // Nothing matches: no destination is on screen (the list collapses rather than
+        // falling back to the whole table).
+        model.setQuery(QStringLiteral("zzqqjj"));
+        check(model.visibleRowCount() == 0,
+              QStringLiteral("'zzqqjj' matches nothing (%1 destinations on screen)")
+                  .arg(model.visibleRowCount()));
+
+        // The manual path. The picker's own bottom button ("My platform isn't listed...")
+        // was removed (decided 2026-10-08), so the model's fallback is now the ONLY route
+        // into manual mode: activateCurrent() on a query that matches nothing accepts with
+        // an EMPTY id, and that empty id IS manual mode (the export form applies no
+        // destination's rules). Both halves are asserted, and non-vacuously: a real match
+        // first answers with its id, so the empty id below is the fallback and not the
+        // model's untouched state.
+        model.setQuery(QStringLiteral("generic.video"));
+        model.activateCurrent();
+        check(!model.chosenId().isEmpty(),
+              "precondition: a query that matches answers with its id");
+        model.setQuery(QStringLiteral("zzqqjj"));
+        int manualAccepted = 0;
+        const QMetaObject::Connection manualConn = QObject::connect(
+            &model, &Model::accepted, [&manualAccepted]() { ++manualAccepted; });
+        model.activateCurrent();
+        check(manualAccepted == 1 && model.chosenId().isEmpty(),
+              QStringLiteral("a query that matches nothing + Enter is manual mode - the only "
+                             "route into it now that the picker's own button is gone: accepted "
+                             "once, chosenId empty (%1)").arg(model.chosenId()));
+        QObject::disconnect(manualConn);
+
+        // Two characters must not match by gathering letters from across a word. The
+        // Facebook video row's words carry no 'a' next to an 'e' (label "Facebook
+        // (video)", id post.facebook.video, group Facebook, family post, title "Post to
+        // a platform", container mp4, artifact words "video clip animation"), so "ae"
+        // must leave it hidden.
+        model.setQuery(QStringLiteral("ae"));
+        const int facebookVideo = rowOfId(model, QStringLiteral("post.facebook.video"));
+        check(facebookVideo >= 0, "precondition: the Facebook video destination is in the list");
+        if (facebookVideo >= 0) {
+            check(!model.haystackOf(facebookVideo).contains(QLatin1String("ae")),
+                  "precondition: no word of post.facebook.video carries the letters 'ae'");
+            check(!model.isVisible(facebookVideo),
+                  QStringLiteral("'ae' does not match post.facebook.video by scattering "
+                                 "letters across its words"));
+        }
+
+        // ...while two characters that ARE a word still match: "qq" is a whole word in
+        // the QQ rows (label "QQ" / "QQ sticker", id chat.qq.video / qq.sticker), so the
+        // query finds one of them. Which one is row order, not the table, so assert the
+        // platform.
+        model.setQuery(QStringLiteral("qq"));
+        const QString qqMatch = model.idOf(model.currentRow());
+        check(!model.isSection(model.currentRow()) && onScreen(model, model.currentRow())
+                  && qqMatch.contains(QLatin1String("qq")),
+              QStringLiteral("'qq' selects an on-screen QQ destination whose word is "
+                             "exactly 'qq' (%1)").arg(qqMatch));
+
         model.setQuery(QString());
         check(model.visibleRowCount() == countOnScreen(model),
               "visibleRowCount counts what is on screen");
@@ -404,7 +575,242 @@ int main(int argc, char** argv) {
               QStringLiteral("and the walk reaches destinations (%1)").arg(model.idOf(model.currentRow())));
     }
 
-    // 7. The dialog in a language that is not English, which is the one question a
+    // 7. THE STRUCTURAL SEPARATOR (decided 2026-10-08): the table asks for a rule after
+    //    the `general` block (`separatorAfter="true"`), and the model inserts it as a
+    //    row of its OWN KIND - not a section, not a destination, not an answer.
+    //
+    //    The three kinds differ in exactly three ways, and all three are asserted here:
+    //    WHERE the row is (immediately after the four general rows, whatever the `order`
+    //    sort did with them, and above every platform section), WHAT it is
+    //    (isSeparator(), and none of the other predicates), and what it is NOT -
+    //    selectable, current, counted, in the keyboard path, or affected by expansion
+    //    state. The drawing rule the model owns is the last part: on screen with an
+    //    EMPTY query, hidden under a query. (That the SCENE draws the hairline, and that
+    //    the row cannot be hovered or clicked there, is a geometry question - asserted
+    //    on the built scene in tests/picker_keyboard.cpp.)
+    //
+    //    NOTE ON THE NUMBERS: this block was APPENDED after the keyboard block, so the
+    //    language block below kept its own numbering and moved to 8. No existing
+    //    assertion in this file had to change for the new row: the three helpers that
+    //    walk rows (destinations(), sections(), and the level loop) select by PREDICATE
+    //    - an id, isSection() - and a row with no id and no section flag is excluded by
+    //    the same facts that make it neither of those things. That is why they are
+    //    asserted here explicitly rather than discovered by a broken count.
+    {
+        // The row kind is DATA, so the test starts where the data does.
+        int requested = 0;
+        QString requestedOn;
+        for (const ctrl::ExportGroup& g : groups) {
+            if (g.separatorAfter) { ++requested; requestedOn = g.id; }
+        }
+        check(requested == 1 && requestedOn == QLatin1String("general"),
+              QStringLiteral("the table asks for one separator and it is after the general "
+                             "block (%1 requested, on '%2')")
+                  .arg(requested).arg(requestedOn));
+
+        Model model(targets, groups, QString());
+        QList<int> separators;
+        for (int i = 0; i < model.rowCount(); ++i) {
+            if (model.isSeparator(i)) separators.push_back(i);
+        }
+        check(separators.size() == 1,
+              QStringLiteral("the model inserts it exactly once (%1)").arg(separators.size()));
+        if (separators.size() != 1) return 1;
+        const int sep = separators.first();
+
+        // WHERE IT IS. The general block is the four rows the table files under
+        // `general` - the ones carrying the explicit `order` - and the rule is the row
+        // directly below the last of them. Read as facts about those ROWS rather than as
+        // "index 4", so a fifth general row moves the assertion with it.
+        QSet<QString> generalIds;
+        for (const ctrl::ExportTarget& t : targets) {
+            if (t.group == QLatin1String("general")) generalIds.insert(t.id);
+        }
+        QList<int> generalRows;
+        for (int row : destinations(model)) {
+            if (generalIds.contains(model.idOf(row))) generalRows.push_back(row);
+        }
+        check(generalRows.size() == 4,
+              QStringLiteral("the general block is four rows (%1)").arg(generalRows.size()));
+        check(generalRows == QList<int>{0, 1, 2, 3},
+              QStringLiteral("and it is the top of the list, in the `order` the rows carry "
+                             "(rows %1..%2)")
+                  .arg(generalRows.isEmpty() ? -1 : generalRows.first())
+                  .arg(generalRows.isEmpty() ? -1 : generalRows.last()));
+        check(sep == generalRows.last() + 1,
+              QStringLiteral("the separator is immediately after the last of them (separator %1, "
+                             "last general row %2)")
+                  .arg(sep).arg(generalRows.isEmpty() ? -1 : generalRows.last()));
+        check(model.sectionOf(sep) < 0,
+              "and it is not inside any section (it is a sibling of the blocks, not a child)");
+        const QList<int> heads = sections(model);
+        check(!heads.isEmpty() && heads.first() > sep,
+              QStringLiteral("with every platform section below it (first section %1, separator %2)")
+                  .arg(heads.isEmpty() ? -1 : heads.first()).arg(sep));
+
+        // WHAT IT IS, and what it is not. No id, no label, no tooltip, no haystack, no
+        // children: none of the things a row can be asked about, so nothing downstream
+        // can mistake it for a destination ("which destination is this" has no answer it
+        // could give) or for a section (there is nothing to disclose).
+        check(!model.isSection(sep) && !model.isSeparator(-1) && !model.isSeparator(model.rowCount()),
+              "isSeparator() is the separator's own predicate (and refuses an invalid row)");
+        check(model.idOf(sep).isEmpty() && model.labelOf(sep).isEmpty(),
+              "it has no id and no label");
+        check(model.haystackOf(sep).isEmpty(),
+              "and no haystack, so no query can match it");
+        check(model.data(model.index(sep, 0), gui::DestinationPickerModel::TooltipRole).toString().isEmpty(),
+              "and no tooltip to hover for");
+        check(model.data(model.index(sep, 0), gui::DestinationPickerModel::IsSeparatorRole).toBool(),
+              "and the role the scene binds ('isSeparator') reports it");
+        check(model.childCount(sep) == 0 && !model.isExpanded(sep),
+              "it has no children and no expansion state");
+
+        // NOT SELECTABLE AND NEVER CURRENT - the same two facts the section row is held
+        // to, for the same reason: nothing may land on a row that is not an answer.
+        check(!(model.flags(model.index(sep, 0)) & Qt::ItemIsSelectable),
+              "the separator is not selectable");
+        const int beforeSelect = model.currentRow();
+        model.select(sep);
+        check(model.currentRow() == beforeSelect && !model.isSeparator(model.currentRow()),
+              "and the selection never lands on it");
+
+        // Enter on it does NOTHING - not even the manual escape hatch a row that matched
+        // nothing falls back to, which would end the dialog on a keystroke aimed at the
+        // gap between two blocks.
+        int accepted = 0;
+        const QMetaObject::Connection conn = QObject::connect(
+            &model, &Model::accepted, [&accepted]() { ++accepted; });
+        const QString chosenBefore = model.chosenId();
+        model.activate(sep);
+        check(accepted == 0 && model.chosenId() == chosenBefore,
+              QStringLiteral("activate() on the separator is refused: no answer, no fallback "
+                             "into manual mode (accepted %1 times, id '%2')")
+                  .arg(accepted).arg(model.chosenId()));
+
+        // The kernel of the keyboard contract: step() moves among DESTINATIONS, so the
+        // rule is stepped over rather than landed on. The neighbours are named by id, so
+        // the assertion is about where the walk went and not about row numbers.
+        const int bilibili = rowOfId(model, QStringLiteral("post.bilibili.video"));
+        check(bilibili > sep,
+              "precondition: the flat destination listed right below the rule is in the list");
+        model.select(sep - 1);
+        check(model.currentRow() == sep - 1,
+              "precondition: the selection is on the last general row, directly above the rule");
+        model.step(1);
+        check(model.currentRow() == bilibili,
+              QStringLiteral("step(1) steps OVER the separator to the next destination (%1, "
+                             "expected %2, separator %3)")
+                  .arg(model.currentRow()).arg(bilibili).arg(sep));
+        model.step(-1);
+        check(model.currentRow() == sep - 1, "and step(-1) steps back over it");
+        int landedOnSeparator = 0;
+        model.select(0);
+        for (int i = 0; i < model.rowCount() * 2; ++i) {
+            model.step(1);
+            if (model.isSeparator(model.currentRow())) ++landedOnSeparator;
+        }
+        check(landedOnSeparator == 0,
+              QStringLiteral("and no walk of the whole list ever lands on it (%1 times)")
+                  .arg(landedOnSeparator));
+
+        // COUNTS. destinationCount() is what the dialog's broken-table check reads and
+        // visibleRowCount() is what the form's own label reads, so a decorative row
+        // leaking into either would be a lie about how many destinations there are.
+        check(model.destinationCount() == targets.size(),
+              QStringLiteral("destinationCount() does not count it (%1, table has %2)")
+                  .arg(model.destinationCount()).arg(targets.size()));
+        check(model.visibleRowCount() == countOnScreen(model),
+              QStringLiteral("visibleRowCount() does not count it either: it equals the number of "
+                             "destinations on screen (%1 vs %2)")
+                  .arg(model.visibleRowCount()).arg(countOnScreen(model)));
+
+        // DRAWING, the one part of the rule the model owns: shown while the list shows
+        // its structure (an empty query), hidden the moment there is a query - a
+        // filtered list is a list of MATCHES, and a rule about the structure says
+        // nothing about them.
+        check(model.isVisible(sep) && model.isOnScreen(sep),
+              "with no query the rule is drawn (the list is showing its structure)");
+        model.setQuery(QStringLiteral("telegram"));
+        check(!model.isVisible(sep) && !model.isOnScreen(sep),
+              "a query hides it: a filtered list is a list of matches");
+        check(model.visibleRowCount() == countOnScreen(model),
+              "and the counts still exclude it under a query");
+        model.setQuery(QString());
+        check(model.isOnScreen(sep), "clearing the query draws it again");
+
+        // The manual fallback is not reachable THROUGH it, which is the difference
+        // between "this row is not an answer" and "this row is not here": on a query that
+        // matches nothing, Enter still has to be the escape hatch, but Enter on the rule
+        // is nothing at all.
+        model.setQuery(QStringLiteral("zzqqjj"));
+        const int acceptedBefore = accepted;
+        model.activate(sep);
+        check(accepted == acceptedBefore,
+              "a query that matches nothing + Enter on the RULE is not the manual fallback");
+        model.setQuery(QString());
+        QObject::disconnect(conn);
+
+        // EXPANSION STATE, the model's only other persisted fact: the rule is not a
+        // section, so a toggle is refused, it never appears among the expanded ids (which
+        // are sections' stable keys), and restoring a state leaves it exactly as it was.
+        model.toggleSection(sep);
+        check(!model.isExpanded(sep), "toggleSection() refuses the separator");
+        check(!model.expandedIds().contains(QString()),
+              "expandedIds() carries no entry for a row with no id");
+        model.applyExpandedIds(QStringList() << QStringLiteral("telegram"));
+        check(model.isOnScreen(sep),
+              "applyExpandedIds() leaves it alone (there is no expansion of its own to restore)");
+
+        // AND THE INSERTION IS INDEPENDENT OF THE RANK SORT. The real table cannot show
+        // this: its general rows are in `order` 1..4 in the FILE too, so file order and
+        // rank order agree and either implementation passes. So the question is asked of
+        // a synthetic table whose file order is deliberately the reverse of its rank
+        // order - a group with `separatorAfter` whose second-in-file row is the ranked
+        // one - and the rule must still land AFTER both of them (a rule inserted at the
+        // group's file position, or inside the loop that appends rows, would land
+        // between them).
+        {
+            ctrl::ExportGroup flat;
+            flat.id = QStringLiteral("g");
+            flat.title = QStringLiteral("G");
+            flat.variants = false;
+            flat.separatorAfter = true;
+            ctrl::ExportGroup platform;
+            platform.id = QStringLiteral("p");
+            platform.title = QStringLiteral("P"); // one row, so it is listed flat too
+
+            auto makeRow = [](const QString& aId, const QString& aGroup, const QString& aLabel,
+                              int aOrder) {
+                ctrl::ExportTarget t;
+                t.id = aId;
+                t.label = aLabel;
+                t.group = aGroup;
+                t.order = aOrder;
+                return t;
+            };
+            const QList<ctrl::ExportTarget> table = {
+                makeRow(QStringLiteral("g.second"), QStringLiteral("g"), QStringLiteral("second"), 1),
+                makeRow(QStringLiteral("g.first"), QStringLiteral("g"), QStringLiteral("first"), 2),
+                makeRow(QStringLiteral("p.only"), QStringLiteral("p"), QStringLiteral("only"), 0),
+            };
+            Model synthetic(table, QList<ctrl::ExportGroup>{flat, platform}, QString());
+            check(synthetic.rowCount() == 4,
+                  QStringLiteral("a synthetic table of three destinations and one rule is four rows "
+                                 "(%1)").arg(synthetic.rowCount()));
+            check(synthetic.idOf(0) == QLatin1String("g.second")
+                      && synthetic.idOf(1) == QLatin1String("g.first"),
+                  QStringLiteral("precondition: the group's rows are listed by RANK, not by file "
+                                 "order (%1 then %2)")
+                      .arg(synthetic.idOf(0)).arg(synthetic.idOf(1)));
+            check(synthetic.isSeparator(2) && synthetic.idOf(3) == QLatin1String("p.only"),
+                  QStringLiteral("the rule follows the group's rows whatever the rank sort did, and "
+                                 "the next group starts after it (row 2 is the separator: %1, row 3 "
+                                 "is '%2')")
+                      .arg(synthetic.isSeparator(2) ? 1 : 0).arg(synthetic.idOf(3)));
+        }
+    }
+
+    // 8. The dialog in a language that is not English, which is the one question a
     //    catalog full of translations cannot answer by itself.
     //
     //    The strings are looked up in the "gui::DestinationPicker" context, which is
@@ -425,13 +831,15 @@ int main(int argc, char** argv) {
         if (loaded) {
             QApplication::installTranslator(&translator);
             Model model(targets, groups, QString());
-            const QString title = model.windowTitleText();
-            check(title != QStringLiteral("Where are you posting this?"),
-                  QStringLiteral("the picker title is translated, not the English source (%1)")
-                      .arg(title));
-            const QString ok = model.okText();
-            check(ok != QStringLiteral("Use this destination") && !ok.isEmpty(),
-                  QStringLiteral("and so is its confirm button (%1)").arg(ok));
+            // The copy itself is pinned in block 4 above, where no catalog is installed
+            // (the English source is the only thing that comes back there). What THIS
+            // block exists for is the MECHANISM: that the context the picker asks is the
+            // one translators FILLED. It is asserted on a string that has been in that
+            // context all along, so it does not go quiet the next time the copy moves.
+            const QString field = model.searchAccessibleName();
+            check(field != QStringLiteral("Search destinations") && !field.isEmpty(),
+                  QStringLiteral("and the picker's own context reaches the catalog (%1)")
+                      .arg(field));
             // The export dialog answers through its own context, and it was unreachable
             // for a different reason: a hand rolled tr() that forwarded to "ExportDiag",
             // a context no catalog has. Both are asked here so the pair cannot regress

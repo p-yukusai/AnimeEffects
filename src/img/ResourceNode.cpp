@@ -3,16 +3,17 @@
 
 namespace img {
 
-ResourceNode::ResourceNode(const QString& aIdentifier):
-    TreeNodeBase(this), mHandle(new ResourceData(aIdentifier, this), new int(0)), mIsAbandoned() {}
+ResourceNode::ResourceNode(const QString& aIdentifier, const QString& aIdentityId):
+    TreeNodeBase(this), mHandle(new ResourceData(aIdentifier, aIdentityId, this), new int(0)), mIsAbandoned() {}
 
 ResourceNode::~ResourceNode() { qDeleteAll(children()); }
 
 ResourceHandle ResourceNode::updateHandle(XCMemBlock aGrabbedImage, const QRect& aRect) {
     ResourceHandle oldHandle = mHandle;
     auto id = mHandle->identifier();
+    auto identityId = mHandle->identityId();
 
-    mHandle = ResourceHandle(new ResourceData(id, this), new int(0));
+    mHandle = ResourceHandle(new ResourceData(id, identityId, this), new int(0));
     *mHandle = *oldHandle;
     mHandle->setPos(aRect.topLeft());
     mHandle->grabImage(aGrabbedImage, aRect.size(), img::Format_RGBA8);

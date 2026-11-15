@@ -103,6 +103,13 @@ add_library(${PROJECT_NAME}
     time/time_Selection.cpp time/time_Selection.h
     time/time_Renderer.cpp time/time_Renderer.h
     time/time_Scaler.cpp time/time_Scaler.h
+    # The animation graph overlay: a widget-free geometry/sampling model
+    # (ctrl/graph) with the editor object the Driver draws and drives.
+    graph/graph_Channel.cpp graph/graph_Channel.h
+    graph/graph_Scaler.cpp graph/graph_Scaler.h
+    graph/graph_Geometry.h
+    graph/graph_Curve.cpp graph/graph_Curve.h
+    GraphEditor.cpp GraphEditor.h
         ExportParams.h
 )
 target_include_directories(${PROJECT_NAME} PUBLIC

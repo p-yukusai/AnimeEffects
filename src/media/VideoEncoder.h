@@ -5,6 +5,7 @@
 #include <QSize>
 #include <QImage>
 #include <QMap>
+#include <QColor>
 
 // In-process video encoder on top of the linked libav* (avformat + avcodec +
 // swscale). This is the library-side replacement for the removed `ffmpeg` CLI
@@ -27,11 +28,19 @@ enum class FitMode {
 
 
 // Reconcile a frame's aspect ratio with a required output size: Pad fits the art
-// inside and fills the remainder with transparency, Crop fills the frame and
-// discards the overflow. Shared by the encoder (which pads a rendered frame) and
-// by callers that must produce an exactly-sized image themselves (e.g. the GIF
-// collector) — one implementation, so the two cannot drift.
-QImage fitImage(const QImage& aImage, const QSize& aTarget, FitMode aFit);
+// inside and fills the remainder, Crop fills the frame and discards the overflow.
+// Shared by the encoder (which pads a rendered frame) and by callers that must
+// produce an exactly-sized image themselves (e.g. the GIF collector) — one
+// implementation, so the two cannot drift.
+//
+// `aFill` is the colour the Pad margin is filled with. An INVALID colour (the
+// default) is the historical behaviour: fully transparent, which is what a
+// sticker wants. A valid one — the export's background, when transparency is off
+// — is painted opaque (alpha forced to 255), so an alpha-less artifact shows the
+// canvas colour in its margins rather than black. Ignored by Crop and by a
+// no-op (None / matching size), which have no margin.
+QImage fitImage(const QImage& aImage, const QSize& aTarget, FitMode aFit,
+                const QColor& aFill = QColor());
 
 class VideoEncoder {
 public:
@@ -49,6 +58,12 @@ public:
         // None distorts and exists only for callers that have already matched
         // the aspect themselves.
         FitMode fit = FitMode::None;
+
+        // The colour the pad/crop margins are filled with (see fitImage). Invalid
+        // (the default) = transparent margins, the historical behaviour. An
+        // opaque export sets this to the effective viewport colour so a padded
+        // frame has no black border.
+        QColor fill;
 
         bool transparent = false; // hint to prefer an alpha-capable pixel format
         int quality = -1;      // optional encoder quality hint (e.g. libx264 -crf); -1 = default

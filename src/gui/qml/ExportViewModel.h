@@ -220,22 +220,30 @@ class ExportViewModel : public QObject {
     Q_PROPERTY(int qualityOverrideValue READ qualityOverrideValue WRITE setQualityOverrideValue NOTIFY qualityOverrideChanged)
     Q_PROPERTY(int qualityOverrideMinimum READ qualityOverrideMinimum NOTIFY qualityOverrideChanged)
     Q_PROPERTY(int qualityOverrideMaximum READ qualityOverrideMaximum NOTIFY qualityOverrideChanged)
-    // The value that means "let the Quality setting decide". It is the BOTTOM of the
-    // control's own range (one below the codec's span), which is why it moves when
-    // the codec does: a leftover from another codec's range is an ordinary number
-    // inside this one and would silently stop being Auto.
-    Q_PROPERTY(int qualityOverrideAutoValue READ qualityOverrideAutoValue NOTIFY qualityOverrideChanged)
+    // "Auto" is a STATE of this control, not a number inside its range (ruled
+    // 2026-10-08: "Auto needs to be a special value, not just a visual thing").
+    // While it holds, the request lets the quality intent decide and the field draws
+    // the word INSTEAD of a number; `qualityOverrideValue` is then only the number an
+    // edit out of Auto starts from. The range is the codec's own span, so the value
+    // that used to MEAN Auto (one below the span) is no longer reachable as a number.
+    Q_PROPERTY(bool qualityOverrideAuto READ qualityOverrideAuto NOTIFY qualityOverrideChanged)
     Q_PROPERTY(QString qualityOverrideAutoText READ qualityOverrideAutoText NOTIFY languageChanged)
     Q_PROPERTY(QString qualityOverrideLabel READ qualityOverrideLabel NOTIFY qualityOverrideChanged)
     Q_PROPERTY(bool qualityOverrideVisible READ qualityOverrideVisible NOTIFY constraintsChanged)
-    // False while the user has named the codec's own value: the intent is then not in
-    // charge, and a combo still reading "Balanced" beside "CRF 18" is the form
-    // contradicting itself.
-    Q_PROPERTY(bool qualityInCharge READ qualityInCharge NOTIFY qualityOverrideChanged)
+    // The Quality combo's fourth answer (the same ruling: "when CRF is used Quality
+    // should change to Custom instead of disabling, this is established UI
+    // convention"). True while the user has named the codec's own number, which is
+    // exactly when the intent is NOT in charge.
+    Q_PROPERTY(bool qualityCustom READ qualityCustom NOTIFY qualityOverrideChanged)
+    Q_PROPERTY(QString qualityCustomLabel READ qualityCustomLabel NOTIFY languageChanged)
     Q_PROPERTY(QString bitrate READ bitrate WRITE setBitrate NOTIFY bitrateChanged)
     Q_PROPERTY(bool bitrateVisible READ bitrateVisible NOTIFY constraintsChanged)
     Q_PROPERTY(bool bitrateEnabled READ bitrateEnabled NOTIFY constraintsChanged)
     Q_PROPERTY(int imageQuality READ imageQuality WRITE setImageQuality NOTIFY imageQualityChanged)
+    // Same ruling as the CRF's: "Auto" (-1 at the request boundary: the writer's own
+    // default) is a state, and the field draws the word instead of a number whose
+    // value happens to be the sentinel.
+    Q_PROPERTY(bool imageQualityAuto READ imageQualityAuto NOTIFY imageQualityChanged)
     Q_PROPERTY(bool imageQualityVisible READ imageQualityVisible NOTIFY constraintsChanged)
     // K46 (ruled 2026-10-01): the Quality row belongs to the encoder that writes the
     // file, so it is exactly the complement of the image-quality row - one predicate,
@@ -245,14 +253,17 @@ class ExportViewModel : public QObject {
     Q_PROPERTY(bool qualityVisible READ qualityVisible NOTIFY constraintsChanged)
     Q_PROPERTY(bool imageQualityEnabled READ imageQualityEnabled NOTIFY constraintsChanged)
 
-    // I43 (decided 2026-09-30): the size cap, in MB. The value 0 is the
-    // sentinel = "Auto" = NO cap enforced (the destination's own cap stays a
-    // stated fact). Opt-in and settable; GeneralParams::sizeCapBytes is the
-    // bytes side of the same setting.
+    // I43 (decided 2026-09-30): the size cap, in MB. Opt-in and settable;
+    // GeneralParams::sizeCapBytes is the bytes side of the same setting, where 0
+    // still means "no cap" - the request boundary was already honest. What the
+    // ruling of 2026-10-08 changed is the CONTROL: "no cap" is a state
+    // (`sizeCapAuto`), not the bottom of the field's own range, and the field draws
+    // the word "Auto" for that state rather than comparing a number to a magic one
+    // (the comparison rounded, so a 0.25 MB cap read as "Auto" - measured).
     Q_PROPERTY(double sizeCapValue READ sizeCapValue WRITE setSizeCap NOTIFY sizeCapChanged)
     Q_PROPERTY(double sizeCapMinimum READ sizeCapMinimum CONSTANT)
     Q_PROPERTY(double sizeCapMaximum READ sizeCapMaximum CONSTANT)
-    Q_PROPERTY(double sizeCapAutoValue READ sizeCapAutoValue CONSTANT)
+    Q_PROPERTY(bool sizeCapAuto READ sizeCapAuto NOTIFY sizeCapChanged)
     Q_PROPERTY(bool sizeCapVisible READ sizeCapVisible NOTIFY constraintsChanged)
 
     // ---- the disclosure ----------------------------------------------------
@@ -282,7 +293,10 @@ public:
         QString destinationId;
         int qualityIndex = 1;
         bool keepAspectRatio = true;
-        bool transparency = true;
+        // Off unless a saved preference or a destination default says otherwise
+        // (ruled 2026-10-03: transparency moves the encoder off its own best pick,
+        // so it is an opt-in on the regular surface, not a default).
+        bool transparency = false;
         bool loop = false;
         bool audio = false;
         bool customPalette = false;
@@ -305,7 +319,6 @@ public:
 
     // ---- facts -------------------------------------------------------------
     ExportFactsModel* facts() const { return const_cast<ExportFactsModel*>(&mFacts); }
-    QObject* factsObject() { return &mFacts; }
     QString factsText() const { return exportFactsText(mFacts.facts()).join(QLatin1Char('\n')); }
 
     // ---- quality intent ----------------------------------------------------
@@ -344,7 +357,6 @@ public:
 
     // ---- frames ------------------------------------------------------------
     ExportRangeModel* ranges() const { return const_cast<ExportRangeModel*>(&mRanges); }
-    QObject* rangesObject() { return &mRanges; }
     bool rangeVisible() const { return !mArtifactIsStill; }
     bool canRemoveRange() const { return mRanges.canRemove(); }
     Q_INVOKABLE void addRange();
@@ -384,14 +396,17 @@ public:
     // ---- the encoder's own numbers ----------------------------------------
     int qualityOverrideValue() const { return mQualityOverrideValue; }
     void setQualityOverrideValue(int aValue);
-    int qualityOverrideMinimum() const { return qualityOverrideAutoValue(); }
+    int qualityOverrideMinimum() const { return mQualityOverrideMinimum; }
     int qualityOverrideMaximum() const { return mQualityOverrideMaximum; }
-    int qualityOverrideAutoValue() const;
+    bool qualityOverrideAuto() const { return mQualityOverrideAuto; }
     QString qualityOverrideAutoText() const;
     QString qualityOverrideLabel() const;
     bool qualityOverrideVisible() const { return mQualityOverrideVisible; }
     Q_INVOKABLE void setQualityOverrideToAuto();
-    bool qualityInCharge() const;
+    // The Quality combo's own state: the intent is in charge exactly while the user
+    // has NOT named the codec's own number.
+    bool qualityCustom() const { return mQualityOverrideVisible && !mQualityOverrideAuto; }
+    QString qualityCustomLabel() const;
     QString bitrate() const { return mBitrate; }
     void setBitrate(const QString& aValue);
     bool bitrateVisible() const { return mBitrateVisible; }
@@ -399,6 +414,7 @@ public:
     int bitrateValue() const;
     int imageQuality() const { return mImageQuality; }
     void setImageQuality(int aValue);
+    bool imageQualityAuto() const { return mImageQualityAuto; }
     bool imageQualityVisible() const { return mImageQualityVisible; }
     // The writer that owns the file gets its own number, and only it: see the
     // Q_PROPERTY above.
@@ -410,7 +426,7 @@ public:
     double sizeCapMinimum() const { return 0.0; }
     // Above every guidance tier the facts state (500 MB Nitro is the largest).
     double sizeCapMaximum() const { return 1024.0; }
-    double sizeCapAutoValue() const { return 0.0; }
+    bool sizeCapAuto() const { return mSizeCapAuto; }
     // A byte cap needs ONE file to fit: hidden only for a directory of numbered
     // stills. Stills keep the row (a single image has one size — Weibo's 20 MB
     // fact is exactly such a cap); video and GIF keep it too. (The image-quality
@@ -546,6 +562,9 @@ private:
     QString qualityKnob() const;
 
     void writeSize(const QSize& aSize);
+    // The ratio the aspect lock holds: the pair on screen when the lock was last
+    // switched on (or when Reset re-based it), never re-derived from anything else.
+    void captureLockRatio();
     void setSizeEditable(bool aOn);
     void stashManualState();
     void restoreManualState();
@@ -610,6 +629,9 @@ private:
     bool mUserSizeKnown = false;
     bool mLastSizeDictated = false;
     bool mKeepAspectRatio = true;
+    // The locked ratio, as the PAIR it was captured from: integer arithmetic, so the
+    // numbers a user has seen for years do not move, and no float to drift.
+    QSize mLockRatio;
     int mWidth = 0;
     int mHeight = 0;
     int mWidthMaximum = INT32_MAX;
@@ -652,23 +674,30 @@ private:
     };
     ArtifactState mPreArtifact;
 
-    int mQualityOverrideValue = -1;
+    int mQualityOverrideValue = 0;
+    int mQualityOverrideMinimum = 0;
     int mQualityOverrideMaximum = 0;
-    // The Auto value of the codec mQualityOverrideValue belongs to. The field's own
-    // MINIMUM is the current codec's Auto, so any value above it is indistinguishable
-    // from a value the user named - unless the value is remembered as "this encoder's
-    // Auto", which is how a CRF left behind by a manual WebM export must not become a
-    // fixed number for the H.264 destination the user picked next.
-    int mQualityOverrideSentinel = -1;
+    // Auto is a STATE (ruled 2026-10-08: "Auto needs to be a special value, not just
+    // a visual thing"). It used to be a NUMBER - one below the codec's span - that
+    // every consumer had to compare against, which made the sentinel an ordinary
+    // value wherever two codecs' spans overlapped and made the field's own range show
+    // "Auto" for a number the user had chosen.
+    bool mQualityOverrideAuto = true;
     bool mQualityOverrideVisible = false;
     QString mQualityOverrideLabelOverride;
     QString mBitrate = QStringLiteral("Auto");
     bool mBitrateVisible = false;
     bool mBitrateEnabled = false;
-    int mImageQuality = -1;
+    int mImageQuality = 75;
+    // Where an edit out of Auto starts: a real number in the range, so the first step
+    // lands beside Auto instead of at the bottom of the scale. The number is not a
+    // claim about the writer's own default - Auto means exactly that, and -1 is what
+    // the request carries while this is true.
+    bool mImageQualityAuto = true;
     bool mImageQualityVisible = false;
     bool mImageQualityEnabled = true;
-    double mSizeCapValue = 0.0; // MB; 0 = the "Auto" sentinel = no cap
+    double mSizeCapValue = 0.0; // MB; read only while !mSizeCapAuto
+    bool mSizeCapAuto = true;   // "Auto" = no cap enforced (I43)
 
     bool mAdvancedVisible = false;
     bool mAdvancedOpen = false;

@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QList>
+#include <QColor>
 // For UI
 #include <QtCore/QVariant>
 #include <QtWidgets/QApplication>
@@ -80,6 +81,17 @@ struct GeneralParams {
     // level decides". The dialog's Advanced section is the only writer.
     int qualityOverride = -1;
     bool allowTransparency = true;
+    // The colour the viewport shows behind the art: the project's own override
+    // when it has one, the theme's recessed canvas token otherwise. Resolved by
+    // the GUI, because the theme is a GUI concept, and carried down as a plain
+    // QColor — neither ctrl:: nor media:: may read the theme.
+    //
+    // When transparency is OFF this IS the export's background: the render
+    // clears to it and any pad/crop margin fills with it, so the artifact shows
+    // the canvas colour where the art does not paint instead of the black an
+    // empty alpha-less frame would carry. When transparency is ON it is ignored
+    // and the canvas stays transparent, exactly as before.
+    QColor viewportBackground;
     bool loop = true;
     bool exportWithAudio = false;
     bool useCustomPalette = false;

@@ -15,8 +15,11 @@
 //   0.10 -> 0.11 the global block carries the frame range start (the first 4
 //                bytes of its reserve region; older files default to 0, so
 //                they load as [0, maxFrame])
+//   0.11 -> 0.12 the global block's reserve also carries the optional viewport
+//                background (a presence byte then an ARGB word, after the
+//                frame range start); older files load as no override
 #define AE_PROJECT_FORMAT_MAJOR_VERSION 0
-#define AE_PROJECT_FORMAT_MINOR_VERSION 11
+#define AE_PROJECT_FORMAT_MINOR_VERSION 12
 
 #define AE_PROJECT_FORMAT_OLDEST_MAJOR_VERSION 0
 #define AE_PROJECT_FORMAT_OLDEST_MINOR_VERSION 4

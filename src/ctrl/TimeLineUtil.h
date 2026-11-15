@@ -44,6 +44,49 @@ namespace TimeLineUtil {
     };
 
     //-------------------------------------------------------------------------------------------------
+    // The VALUE half of the graph's 2-axis key move: rewrites ONE numeric
+    // component of ONE key, in place, and puts it back on undo.
+    //
+    // It is a cmnd::Stable carrying both values, so undo and redo rebuild the
+    // document from the command alone (the requirement cmnd/Stable.h states) and
+    // a whole drag stays ONE history entry when this command is pushed inside the
+    // same cmnd::ScopedMacro as the frame half (MoveFrameOfKey above) - which is
+    // the only reason the graph splits one key move into two commands rather than
+    // one: the frame is a map operation and the value is a field write, and each
+    // already has a command that knows how to replay it.
+    //
+    // The component is named by (type, component) - the graph's own Channel
+    // vocabulary - and the write goes through graph::Channel::writeValue, the one
+    // place that knows which field of which key type a component is. The key is
+    // held by POINTER, like the easing gesture's cmnd::ModifiableAssign, which is
+    // safe here because TimeLine::move re-keys the same key OBJECT: the frame half
+    // of the gesture moves the map entry, never the key this command writes.
+    class AssignKeyValue: public cmnd::Stable {
+    public:
+        AssignKeyValue(core::TimeKey& aKey, core::TimeKeyType aType, int aComponent, float aValue);
+
+        // A later step of the same gesture rewrites this command, which is what
+        // makes a whole drag one undo step. Mirrors cmnd::ModifiableAssign's own
+        // modifyValue, including applying the new value at once while the command
+        // is the stack's executed one.
+        void modifyValue(float aValue);
+
+        // Captures the value the key holds NOW as the one undo restores, then
+        // applies the new value - cmnd::ModifiableAssign's own exec.
+        virtual void exec();
+        virtual void undo();
+        virtual void redo();
+
+    private:
+        core::TimeKey* mKey;
+        core::TimeKeyType mType;
+        int mComponent;
+        float mPrev;
+        float mNext;
+        bool mDone;
+    };
+
+    //-------------------------------------------------------------------------------------------------
     class Notifier: public cmnd::Listener {
     public:
         Notifier(core::Project& aProject): mProject(aProject), mEvent() {}

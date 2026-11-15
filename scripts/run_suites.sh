@@ -24,7 +24,21 @@ declare -A SKIP=(
   [picker_pos_probe]=1
   [media_link_probe]=1
 )
-targets=$(grep -oP '^add_executable\(\K[A-Za-z0-9_]+' tests/CMakeLists.txt | sort -u)
+# The pattern must allow leading whitespace: targets registered inside an `if()`
+# block (the overlay's, behind AE_ENABLE_IMGUI) are indented, and the anchored form
+# silently dropped three of them - a test that is never run is worse than one that
+# fails, because the suite still reports success.
+targets=$(grep -oP '^\s*add_executable\(\K[A-Za-z0-9_]+' tests/CMakeLists.txt | sort -u)
+
+# Targets that only EXIST when the overlay's ImGui dependency is enabled
+# (AE_ENABLE_IMGUI, default ON). The list above is read out of the CMakeLists text,
+# which says nothing about the option, so a configure with it OFF would otherwise
+# report these as MISSING and fail the suite for a build that is legitimately lean.
+if ! grep -q '^AE_ENABLE_IMGUI:BOOL=ON' build/CMakeCache.txt 2>/dev/null; then
+  SKIP[imgui_qt_font_loader]=1
+  SKIP[imgui_input_bridge]=1
+  SKIP[graph_panel_pixels]=1
+fi
 
 # Source level checks that are not C++ programs. They run first because they cost about
 # a second, and they answer a question no test binary can: is every catalog context
@@ -46,7 +60,21 @@ for n in $targets; do
   [ -n "${SKIP[$n]:-}" ] && continue
   bin=build/tests/$CFG/$n
   if [ ! -x "$bin" ]; then echo "MISSING $n"; fail=$((fail+1)); failed="$failed $n(missing)"; continue; fi
-  if [ "$n" = media_exporter_e2e ]; then
+  # export_encoder_fallback renders too (a real export writes pixels), and takes
+  # the same optional project argument or its own fixture default. The same GL
+  # requirement puts psd_layer_identity here: it drives core::ImageKey's image
+  # tree, which needs a live context to build its textures. asset_remove_layers
+  # builds core::LayerNode default ImageKeys the same way.
+  # overlay_engine_primitives draws through the viewport's own paint engine
+  # (ctrl::PainterHandle) and reads an offscreen FBO back: the GL context IS the
+  # subject under test. graph_image_step needs the context only to construct
+  # core::ImageKey - the one channel whose step-hold is unobservable without one,
+  # which is why graph_curve (headless, offscreen) reports it as a skip. Both
+  # ignore the project argument they are handed.
+  if [ "$n" = media_exporter_e2e ] || [ "$n" = export_encoder_fallback ] ||
+     [ "$n" = psd_layer_identity ] || [ "$n" = asset_remove_layers ] ||
+     [ "$n" = overlay_engine_primitives ] || [ "$n" = graph_image_step ] ||
+     [ "$n" = graph_panel_pixels ]; then
     # The end-to-end export harness needs a real GL context and a loaded project, so it
     # runs under Xvfb against the COMMITTED fixture (tests/fixtures/e2e_stage.png) rather
     # than being skipped for want of artwork on the machine. It used to be in the SKIP
@@ -78,7 +106,13 @@ for n in $targets; do
     out=$(env -u WAYLAND_DISPLAY QT_QPA_PLATFORM=xcb timeout 600 \
               $lock xvfb-run -a "$bin" "$proj" 2>&1); rc=$?
   else
-    out=$(QT_QPA_PLATFORM=offscreen timeout 180 "$bin" 2>&1); rc=$?
+    # The ambient platform theme is dropped on this branch for a MEASURED reason:
+    # with QT_QPA_PLATFORMTHEME=cosmic exported, libcutecosmictheme.so's watcher
+    # thread calls back into Qt after teardown, and an offscreen test can exit
+    # 134/139 having already printed its PASS (measured on 2026-10-12: 16 of 60
+    # runs of one such test, while a pure-Qt control crashed 2 of 30). A test that
+    # never maps a window has no use for a platform theme either way.
+    out=$(env -u QT_QPA_PLATFORMTHEME QT_QPA_PLATFORM=offscreen timeout 180 "$bin" 2>&1); rc=$?
   fi
   if [ $rc -eq 0 ]; then pass=$((pass+1)); echo "PASS $n";
   else fail=$((fail+1)); failed="$failed $n"; echo "FAIL($rc) $n"; echo "$out" | tail -10; fi

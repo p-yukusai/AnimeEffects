@@ -25,6 +25,12 @@
 # it drove a flow that no longer existed and still called itself a cap check. The
 # destination is chosen in the picker by its own id now, the frame range is set by name,
 # and the export goes through the form the destination dictates.
+# RUN IT WITH A PROJECT THAT IS OVER THE CAP. Its premise is that the NATURAL export
+# exceeds the destination's declared cap; a source light enough to be the default for the
+# other probes (425-1800 KB) produces 246/232/13 KB against WeChat sticker's 500 KB and
+# makes the not-fitted case vacuous. run_probes.sh hands it one that was measured to hold
+# (see the name list there); a direct run needs the same, or the premise assertions fail
+# loudly by design.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR/_lib.sh" "$@"
 # The revision of the export flow this probe's navigation was recorded against. See
@@ -230,8 +236,11 @@ PY
       require_export_flow
       ae set "Search destinations" "'"$dest"'" >/dev/null
       sleep 1.2
-      ae_activate "Use this destination" "the '"$dest"' destination is accepted"
+      ae_activate "Continue" "the '"$dest"' destination is accepted"
       ae wait "Advanced" >/dev/null 2>&1 || true
+      # H41: the frame range lives under Advanced, so the section has to be OPEN
+      # before its rows can be addressed by name.
+      ae_activate "Advanced" "the Advanced section opens, adding its rows"
       sleep 1.5
 
       # 2. A SHORT RANGE, BY NAME, with both ends given: the fit loop is what this case

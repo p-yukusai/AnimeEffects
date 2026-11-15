@@ -46,7 +46,15 @@ Item {
         // Projects may start before frame 0: a negative start is a normal frame in
         // this codebase, not an error to reject.
         from: -2147483648
-        to: 2147483647
+        // F36: the frame-range fields clamp against each other so a range can never
+        // invert. The RULE belongs to the model - ExportRangeModel::setRangeFirst/
+        // setRangeLast refuse a value that would pass the partner - and this row
+        // owns only what it OFFERS: First stops at Last, so the edit that would
+        // invert is never offered in the first place, and the pair stays consistent
+        // because `to` follows root.lastFrame, which follows the model role, whatever
+        // changed it. The two are not two implementations of the clamp; one clamps,
+        // the other hides the values it would refuse.
+        to: root.lastFrame
         value: root.firstFrame
         label: root.firstLabel
         onValueEdited: (value) => root.firstEdited(value)
@@ -57,7 +65,9 @@ Item {
         anchors.leftMargin: 10
         anchors.verticalCenter: parent.verticalCenter
         width: firstField.width
-        from: -2147483648
+        // Last starts at First - the other half of F36, stated once here and
+        // clamped once in the model (see firstField's note).
+        from: root.firstFrame
         to: 2147483647
         value: root.lastFrame
         label: root.lastLabel

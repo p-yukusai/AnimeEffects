@@ -80,6 +80,25 @@ int run() {
     project.attribute().setFps(30);
     CHECK(seen.size() == 4);
 
+    // ---- the optional viewport background notifies on set and on clear ----
+    project.attribute().setViewportBackground(QColor(10, 20, 30));
+    CHECK(seen.size() == 5 && seen.last() == core::ProjectEvent::Type_ChangeViewportBackground);
+    CHECK(project.attribute().hasViewportBackground());
+    CHECK(project.attribute().viewportBackground() == QColor(10, 20, 30));
+
+    // setViewportBackground is observable as unset -> set, so an equal colour
+    // over an already-set override does NOT notify
+    project.attribute().setViewportBackground(QColor(10, 20, 30));
+    CHECK(seen.size() == 5);
+
+    project.attribute().clearViewportBackground();
+    CHECK(seen.size() == 6 && seen.last() == core::ProjectEvent::Type_ChangeViewportBackground);
+    CHECK(!project.attribute().hasViewportBackground());
+
+    // clearing an already-cleared attribute does NOT notify
+    project.attribute().clearViewportBackground();
+    CHECK(seen.size() == 6);
+
     // ---- command exec and undo both notify through the setter ----
     cmnd::Stack stack;
     core::Project* projectPtr = &project;

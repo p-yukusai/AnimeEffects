@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <functional>
+#include <QSet>
 #include "util/LinkPointer.h"
 #include "util/TreeUtil.h"
 #include "cmnd/Stable.h"
@@ -8,6 +9,7 @@
 #include "core/ObjectTree.h"
 #include "core/LayerNode.h"
 #include "core/FolderNode.h"
+#include "core/ImageKey.h"
 #include "core/ObjectNodeUtil.h"
 #include "core/ObjectTreeEvent.h"
 #include "core/TimeCacheAccessor.h"
@@ -271,6 +273,56 @@ cmnd::Vector ObjectTree::createResourceUpdater(const ResourceEvent& aEvent) {
             result.push(itr.next()->createResourceUpdater(aEvent));
         }
     }
+    return result;
+}
+
+QVector<ObjectNode*> ObjectTree::findNodesUsingResource(const img::ResourceNode& aResourceTop) const {
+    QVector<ObjectNode*> result;
+    if (!mTopNode)
+        return result;
+
+    // Match against every layer the asset is made of, not just its top node: an
+    // object renders from the layer node its ImageKey serializes the address of,
+    // and that layer need not be the asset's root.
+    QSet<const img::ResourceNode*> resourceNodes;
+    {
+        img::ResourceNode::ConstIterator itr(&aResourceTop);
+        while (itr.hasNext()) {
+            resourceNodes.insert(itr.next());
+        }
+    }
+
+    ObjectNode::ConstIterator itr(mTopNode.data());
+    while (itr.hasNext()) {
+        const ObjectNode* node = itr.next();
+        const TimeLine* timeLine = node->timeLine();
+        if (!timeLine)
+            continue; // a folder holds no image key
+
+        // Both the default key and every key on the timeline hold a resource
+        // handle; the object references the asset if any of them points into it.
+        const auto usesTarget = [&resourceNodes](const TimeKey* aKey) {
+            if (!aKey || aKey->type() != TimeKeyType_Image)
+                return false;
+            const auto& handle = static_cast<const ImageKey*>(aKey)->data().resource();
+            return handle && resourceNodes.contains(handle->serialAddress());
+        };
+
+        bool uses = usesTarget(timeLine->defaultKey(TimeKeyType_Image));
+        if (!uses) {
+            const auto& map = timeLine->map(TimeKeyType_Image);
+            for (auto it = map.begin(); it != map.end(); ++it) {
+                if (usesTarget(it.value())) {
+                    uses = true;
+                    break;
+                }
+            }
+        }
+
+        if (uses)
+            result.push_back(const_cast<ObjectNode*>(node));
+    }
+
     return result;
 }
 

@@ -65,6 +65,17 @@ int attrInt(const QDomElement& aElem, const QString& aName, int aDefault = 0) {
     return ok ? v : aDefault;
 }
 
+// A byte cap is a qint64 (Caps::maxBytes): a file limit is routinely gigabytes, and
+// toInt() FAILS the moment a value passes INT_MAX and returns the default instead.
+// Telegram's 2 GB (2147483648) is exactly one past it, so it parsed as "no cap" and
+// the destination silently lost its limits row. Same shape as attrInt, same
+// default-on-failure, only the width differs.
+qint64 attrLongLong(const QDomElement& aElem, const QString& aName, qint64 aDefault = 0) {
+    bool ok = false;
+    const qint64 v = aElem.attribute(aName).toLongLong(&ok);
+    return ok ? v : aDefault;
+}
+
 double attrDouble(const QDomElement& aElem, const QString& aName, double aDefault = 0.0) {
     bool ok = false;
     const double v = aElem.attribute(aName).toDouble(&ok);
@@ -120,6 +131,34 @@ QStringList familyEncoders(const QString& aFamily) {
     return {};
 }
 
+// The <quality_control> entry that governs a codec FAMILY
+// (assets/export/ExportTargets.txt:1221-1231). The table names SOFTWARE
+// encoders: the span and the option are properties of the format's rate
+// control, and the plan resolves the ENCODER, which on a machine with a usable
+// hardware encoder is h264_nvenc / hevc_vaapi / av1_qsv ... — no entry of its
+// own, so a lookup keyed on the resolved encoder missed the table and dropped
+// the user's quality intent on every hardware-resolved row, silently. ONE
+// mapping, consulted by every caller that turns a resolved encoder into a
+// quality knob (qualityControlFor(), hence applyQualityIntent() and
+// qualityKnobFor()), so the dialog and the plan cannot disagree about which
+// knob a codec has, or over what span.
+//
+// MEASURED against the linked libavcodec (`ffmpeg -h encoder=h264_nvenc` on the
+// same libavcodec.so.62 the build links): the hardware encoders of these
+// families name their quality option differently — `cq` on NVENC, `qp` on
+// VAAPI, and QSV and AMF expose none — so the family's option name is what the
+// plan writes, and media::VideoEncoder::open's own "unknown encoder option"
+// check is what answers a refusal (Exporter::execute then steps the export down
+// to the family's software encoder, which does take the name). Renaming per
+// backend is a data decision, not this function's.
+QString qualityTableNameForFamily(const QString& aFamily) {
+    if (aFamily == QLatin1String("av1")) return QStringLiteral("libsvtav1");
+    if (aFamily == QLatin1String("hevc")) return QStringLiteral("libx265");
+    if (aFamily == QLatin1String("h264")) return QStringLiteral("libx264");
+    if (aFamily == QLatin1String("vp9")) return QStringLiteral("libvpx-vp9");
+    return QString();
+}
+
 // ---------- I44: format keys (what the facts and the schema name) ----------
 //
 // The schema's `codecs` list names FORMATS ("Discord accepts AV1/H.265/H.264"),
@@ -171,7 +210,8 @@ bool isHardwareEncoder(const QString& aName) {
 //
 // A FACT ABOUT THE FORMAT, not a measurement: a hardware encoder of the same format is
 // built for speed and a software one for rate control, so the time-sensitive buckets
-// take hardware first and the fidelity buckets keep the declared (software) order.
+// (Smaller, Balanced) take hardware first and the fidelity buckets (Best, Lossless) keep
+// the declared (software) order.
 
 struct Ladder {
     QStringList families; // codec families, most efficient first
@@ -196,10 +236,15 @@ Ladder ladderFor(DestClass aClass, QualityBucket aBucket) {
                                      QStringLiteral("av1"), QStringLiteral("h264")}
                        : QStringList{QStringLiteral("av1"), QStringLiteral("hevc"),
                                      QStringLiteral("h264")};
-    // One rule for every non-lossless bucket, and the only thing a bucket changes:
-    // whether quality per bit or time wins when both encoders of a family run here.
-    // "Best" has room to be slow; "Balanced" and "Smaller" do not.
-    out.fastFirst = (aBucket != QualityBucket::Best);
+    // One rule for every bucket, and the only thing a bucket changes: whether
+    // quality per bit or time wins when both encoders of a family run here.
+    // The buckets that pay for speed are Smaller and Balanced, and no others:
+    // "Best" has room to be slow, and Lossless is a master copy where the software
+    // encoder's rate control is the whole point of the bucket. `!= Best` alone let
+    // Lossless take the hardware encoder first, contradicting the comment this
+    // struct carries.
+    out.fastFirst = (aBucket == QualityBucket::Smaller
+                     || aBucket == QualityBucket::Balanced);
     return out;
 }
 
@@ -256,9 +301,28 @@ QString formatKeyForEncoder(const QString& aEncoder) {
     return QString();
 }
 
+namespace {
+
+// The <quality_control> entry that governs a RESOLVED encoder: the encoder's own
+// entry where the table names it, else its FAMILY's (see
+// qualityTableNameForFamily). The table names software encoders, and the plan
+// resolves the ENCODER, which on a machine with a usable hardware encoder is
+// h264_nvenc / hevc_vaapi / av1_qsv ... — so a lookup keyed on the resolved
+// encoder alone missed the table and dropped the user's quality intent on every
+// hardware-resolved row, for exactly the inert-control reason this knob exists
+// to fix. ONE function for both callers that turn a resolved encoder into a
+// quality knob (applyQualityIntent and qualityKnobFor), so the dialog's quality
+// control and the plan cannot disagree about which knob a codec has.
+QualityControl qualityControlFor(const QString& aCodec) {
+    const QString tableName = qualityTableNameForFamily(formatKeyForEncoder(aCodec));
+    return ExportTargets::loadQualityControl().value(tableName.isEmpty() ? aCodec : tableName);
+}
+
+} // namespace
+
 bool applyQualityIntent(const QString& aCodec, QualityBucket aBucket,
                         QMap<QString, QString>& aEncOptions, QStringList* aNotes) {
-    const QualityControl control = ExportTargets::loadQualityControl().value(aCodec);
+    const QualityControl control = qualityControlFor(aCodec);
     if (control.option.isEmpty()) return false; // no knob: nothing to trade
     const QHash<QString, double> positions = ExportTargets::loadBucketPositions();
     const QString bucket = QString::fromUtf8(bucketName(aBucket));
@@ -292,7 +356,10 @@ bool applyQualityIntent(const QString& aCodec, QualityBucket aBucket,
 
 
 QString qualityKnobFor(const QString& aCodec) {
-    return ExportTargets::loadQualityControl().value(aCodec).option;
+    // The family's entry when the codec has none of its own: the dialog must name
+    // the same knob the plan applies through the encoder (ONE mapping,
+    // qualityControlFor).
+    return qualityControlFor(aCodec).option;
 }
 
 // ---------------------------------------------------------------------------
@@ -340,6 +407,12 @@ QList<ExportGroup> ExportTargets::loadGroups(const QString& aPath) {
         // Absent means "these rows are variants of one platform", which is what most
         // sections are; a section has to say so to be listed flat.
         group.variants = g.attribute(QStringLiteral("variants")) != QLatin1String("false");
+        // Absent means "no rule after this block", which is every block but one. Read
+        // the same way `variants` is: only the exact attribute the table documents
+        // asks for the rule, so a typo leaves the list as it was rather than drawing
+        // a boundary the table never asked for.
+        group.separatorAfter =
+            g.attribute(QStringLiteral("separatorAfter")) == QLatin1String("true");
         out.push_back(group);
     }
     return out;
@@ -387,6 +460,11 @@ QList<ExportTarget> ExportTargets::load(const QString& aPath, QString* aError) {
 
         t.icon = d.attribute(QStringLiteral("icon"));
         t.group = d.attribute(QStringLiteral("group"));
+        // The row's rank inside its section, where the section's order is a design
+        // decision rather than an alphabet (see ExportTarget::order). Absent = 0 =
+        // unranked, and attrInt's default-on-failure applies: a typo'd rank makes
+        // the row unranked rather than throwing it out of the table.
+        t.order = attrInt(d, QStringLiteral("order"));
         t.family = d.attribute(QStringLiteral("family"));
         t.klass = parseClass(d.attribute(QStringLiteral("class")));
         // I44: accepted codecs as a LIST plus the declared default. The old
@@ -436,7 +514,7 @@ QList<ExportTarget> ExportTargets::load(const QString& aPath, QString* aError) {
 
         const QDomElement capsElem = d.firstChildElement(QStringLiteral("caps"));
         if (!capsElem.isNull()) {
-            t.caps.maxBytes = attrInt(capsElem, QStringLiteral("maxBytes"));
+            t.caps.maxBytes = attrLongLong(capsElem, QStringLiteral("maxBytes"));
             t.caps.maxDurationSec = attrDouble(capsElem, QStringLiteral("maxDurationSec"));
             t.caps.minDurationSec = attrDouble(capsElem, QStringLiteral("minDurationSec"));
             t.caps.maxFps = attrInt(capsElem, QStringLiteral("maxFps"));
@@ -786,16 +864,19 @@ QString resolveLadderCodec(DestClass aClass, QualityBucket aBucket, QString* aWh
         // Which of this family's encoders actually run here, in the order this bucket
         // wants them: the declared order is software first (better rate control, which
         // is what Best and Lossless are paying for), and the time-sensitive buckets
-        // take a hardware encoder first when one runs.
-        QStringList order;
+        // take a hardware encoder first when one runs. Two groups, each in DECLARED
+        // order — `prepend` reversed the hardware subsequence, so the last-declared
+        // one won and an Intel+NVIDIA laptop took QSV over NVENC.
+        QStringList hardware, software;
         for (const QString& name : familyEncoders(family)) {
             if (!media::ffmpeg::encoderUsable(name.toUtf8().constData())) continue;
-            if (ladder.fastFirst && isHardwareEncoder(name)) {
-                order.prepend(name);
-            } else {
-                order.append(name);
-            }
+            if (isHardwareEncoder(name))
+                hardware.append(name);
+            else
+                software.append(name);
         }
+        const QStringList order = ladder.fastFirst ? (hardware + software)
+                                                   : (software + hardware);
         if (order.isEmpty()) continue;
         if (aWhy) *aWhy = classReason(aClass, familyLabel(family));
         return order.first();
@@ -899,8 +980,9 @@ CodecChoice resolveDefaultCodec(const ExportTarget& aTarget, QualityBucket aBuck
         //
         // The ladder's fastFirst split does NOT order this row's families any
         // more; it still governs hardware-encoder preference WITHIN a family
-        // (the per-family loop below prepends hardware when fastFirst is set),
-        // exactly as it does for every other class.
+        // (the per-family ordering below puts the family's hardware encoders
+        // ahead of its software ones when fastFirst is set), exactly as it does
+        // for every other class.
         if (aAlphaOn) {
             families = QStringList{QStringLiteral("vp9")};
         }
@@ -916,15 +998,23 @@ CodecChoice resolveDefaultCodec(const ExportTarget& aTarget, QualityBucket aBuck
             }
         }
         if (!here) continue; // the row does not accept this family — policy yields
-        QStringList order;
+        // The family's own encoders in DECLARED order, hardware ahead of software
+        // when this bucket asks for speed. NOT by prepending each hardware encoder
+        // as it is met, which reversed the hardware subsequence: the LAST-declared
+        // usable hardware encoder won (amf > vaapi > qsv > nvenc), so an
+        // Intel+NVIDIA laptop took QSV over NVENC — the opposite of the order
+        // familyEncoders() declares. Two groups, each in declared order, so the
+        // first declared hardware encoder of the family is the one that wins.
+        QStringList hardware, software;
         for (const QString& name : familyEncoders(family)) {
             if (!media::ffmpeg::encoderUsable(name.toUtf8().constData())) continue;
-            if (ladder.fastFirst && isHardwareEncoder(name)) {
-                order.prepend(name);
-            } else {
-                order.append(name);
-            }
+            if (isHardwareEncoder(name))
+                hardware.append(name);
+            else
+                software.append(name);
         }
+        const QStringList order = ladder.fastFirst ? (hardware + software)
+                                                   : (software + hardware);
         if (order.isEmpty()) continue;
         CodecChoice c = *here;
         c.encoder = order.first();
@@ -953,30 +1043,41 @@ ExportPlan planExport(const ExportTarget& aTarget, const ExportRequest& aRequest
     }
 
     // --- capabilities: declared per row, only ever a control when Choice -----
-    // aName is user-visible text, so it is a QString: a `const char*` holding
-    // source-encoded bytes is the same decoding trap that mangled the em dashes
-    // in describeGroup()/classClause().
-    auto resolveCapability = [&](Capability aCap, const QString& aName, bool* aOut) {
-        switch (aCap) {
-        case Capability::Required:
-            *aOut = true;
-            plan.notes << QCoreApplication::translate("ExportTargets",
-                                                      "%1 is required by this destination.")
-                              .arg(aName);
-            break;
-        case Capability::Forbidden:
-            *aOut = false;
-            break;
-        case Capability::DefaultOn: *aOut = true; break;
-        case Capability::DefaultOff: *aOut = false; break;
-        case Capability::Choice: *aOut = false; break; // real dialog carries the user's choice
-        }
-    };
-
-    resolveCapability(aTarget.alpha, QCoreApplication::translate("ExportTargets", "Transparency"),
-                      &plan.alphaEnabled);
-    resolveCapability(aTarget.audio, QCoreApplication::translate("ExportTargets", "Audio"),
-                      &plan.audioEnabled);
+    //
+    // ALPHA. Required and Forbidden are the DESTINATION's decision and the plan
+    // honours them as they stand. The other three classes are the user's control
+    // and differ only in what the checkbox STARTS at — DefaultOn pre-checks it,
+    // DefaultOff leaves it clear — so what they resolve to is the answer the
+    // caller carries, ExportRequest::allowTransparency. Hardcoding the class's
+    // answer here was why the dialog's box lied: the user cleared it on a
+    // default-on row and the export still wrote alpha (H42's core half). The
+    // struct default stays true, so a bare request still answers "on".
+    switch (aTarget.alpha) {
+    case Capability::Required:
+        plan.alphaEnabled = true;
+        plan.notes << QCoreApplication::translate("ExportTargets",
+                                                  "%1 is required by this destination.")
+                          .arg(QCoreApplication::translate("ExportTargets", "Transparency"));
+        break;
+    case Capability::Forbidden:
+        plan.alphaEnabled = false;
+        break;
+    default:
+        plan.alphaEnabled = aRequest.allowTransparency;
+        break;
+    }
+    // AUDIO is DERIVED, not requested (project has it, the user did not mute, the
+    // destination permits it — see the includeAudio computation further down), so
+    // the capability's only job at this point is the "forbidden" answer; the
+    // non-forbidden classes resolve to their default and every path below
+    // overwrites this with the derived decision.
+    if (aTarget.audio == Capability::Required) {
+        plan.notes << QCoreApplication::translate("ExportTargets",
+                                                  "%1 is required by this destination.")
+                          .arg(QCoreApplication::translate("ExportTargets", "Audio"));
+    }
+    plan.audioEnabled = (aTarget.audio == Capability::Required
+                         || aTarget.audio == Capability::DefaultOn);
 
     // --- size, rate and frames: the deterministic, pre-encode half -----------
     //
@@ -1061,12 +1162,13 @@ ExportPlan planExport(const ExportTarget& aTarget, const ExportRequest& aRequest
         }
         if (codec.isEmpty()) {
             QString why;
-            // The archive codec rule follows the user's transparency toggle
-            // (the row's Capability can force or veto it).
-            const bool alphaOn = (aTarget.alpha == Capability::Required)
-                                 || (aTarget.alpha != Capability::Forbidden
-                                     && aRequest.allowTransparency);
-            const CodecChoice def = resolveDefaultCodec(aTarget, aBucket, alphaOn, &why);
+            // The archive codec rule follows the user's transparency toggle (the row's
+            // Capability can force or veto it). Read plan.alphaEnabled, resolved by
+            // the alpha capability above, and do NOT recompute it from the target and
+            // the request here: the ladder's VP9/AV1 branch and the capability's
+            // answer are one question, and two implementations of it is how the plan
+            // could pick a codec that contradicts the alpha state it reports.
+            const CodecChoice def = resolveDefaultCodec(aTarget, aBucket, plan.alphaEnabled, &why);
             if (def.encoder.isEmpty()) {
                 plan.error = QCoreApplication::translate(
                     "ExportTargets", "no encoder available for this destination in this build");
@@ -1308,11 +1410,49 @@ ExportPlan planExport(const ExportTarget& aTarget, const ExportRequest& aRequest
 
 namespace {
 
+// The frame rate the frames that SURVIVE a stride are written at.
+//
+// The stride is how the fit's last phase buys bytes: keep every stride-th frame.
+// Writing the survivors at the PLAN's rate does not make the animation lighter,
+// it makes it SHORTER — a 3-second Telegram sticker capped at stride 2 wrote 45
+// of its 90 frames at 30 fps and played 1.5 seconds. The running time the plan
+// described is frames/fps, and the only lever on frames/(fps/stride) is the
+// RATE, so the survivors are written at fps/stride and the duration stays the
+// plan's to within the rounding of that rate.
+//
+// Both encoders take an INTEGER fps and refuse anything under 1
+// (VideoEncoder: time_base {1, fps} and a hard "must be > 0" check;
+// GifEncoder: the frame delay is 100/fps centiseconds), so:
+//  - stride 1 — the un-degraded case — returns the plan's rate UNCHANGED, not
+//    a rounded copy of it: no existing output may move;
+//  - a plan rate that is not positive stays what it was (the GIF branch has its
+//    own default of 15 for a row that carries no rate);
+//  - otherwise the rate is fps/stride, rounded to the nearest integer: at most
+//    half a frame of duration error;
+//  - a rate that rounds BELOW the format floor of 1 is clamped to 1 and
+//    *aBelowFloor says so — the duration is then NOT preserved, which the caller
+//    must state rather than let a shorter animation pass silently.
+int effectiveFpsForStride(int aPlanFps, int aStride, bool* aBelowFloor = nullptr) {
+    if (aBelowFloor) *aBelowFloor = false;
+    if (aStride <= 1 || aPlanFps <= 0) return aPlanFps;
+    const double exact = double(aPlanFps) / double(aStride);
+    if (exact < 1.0) {
+        if (aBelowFloor) *aBelowFloor = true;
+        return 1; // the format floor; a rate of 0 is refused outright
+    }
+    const int rounded = int(qRound(exact));
+    return rounded < 1 ? 1 : rounded;
+}
+
 // One encode attempt at a given degradation, returning the written byte count.
 struct Attempt {
     bool wrote = false;
     qint64 bytes = 0;
     QString error;
+    // Set when the encoder the plan named could not be opened here and this
+    // attempt ran on the family's software encoder instead (see the one-step
+    // fallback in encodeAttempt). Empty when no step-down happened.
+    QString steppedTo;
 };
 
 Attempt encodeAttempt(const ExportPlan& aPlan, const QList<QImage>& aFrames,
@@ -1327,6 +1467,21 @@ Attempt encodeAttempt(const ExportPlan& aPlan, const QList<QImage>& aFrames,
         out.error = QCoreApplication::translate("ExportTargets", "no frames left");
         return out;
     }
+
+    // The colour the pad/crop margins take. Transparent while the plan keeps alpha
+    // (the artifact has an alpha plane for the margin to live in); when the plan
+    // resolved alpha OFF the margins are the effective viewport colour, so a
+    // padded opaque artifact shows the canvas colour instead of black. The PLAN
+    // resolves the transparency (the per-target rule), not the raw request field.
+    const QColor marginFill = aPlan.alphaEnabled ? QColor() : aRequest.viewportBackground;
+
+    // The rate the SURVIVING frames are written at (see effectiveFpsForStride):
+    // fps/stride, so frames/(fps/stride) — the running time — is what the plan
+    // described. Computed ONCE here and fed to every branch below, because the
+    // image branch (no rate at all), the GIF branch (GifEncoder's fps) and the
+    // video branch (VideoEncoder's fps, and the software retry's makeConfig)
+    // must not be able to disagree. At stride 1 it is the plan's own rate.
+    const int effectiveFps = effectiveFpsForStride(aPlan.config.fps, aFrameStride);
 
     // An image artifact is written by Qt's image writers, so "encode an attempt"
     // means "write the file(s) this attempt describes and measure them". Without
@@ -1350,7 +1505,7 @@ Attempt encodeAttempt(const ExportPlan& aPlan, const QList<QImage>& aFrames,
             const QImage frame =
                 frames[i].size() == canvasSize
                     ? frames[i]
-                    : media::fitImage(frames[i], canvasSize, aPlan.config.fit);
+                    : media::fitImage(frames[i], canvasSize, aPlan.config.fit, marginFill);
             const QString path =
                 aPlan.artifact == ArtifactKind::Still
                     ? aPlan.config.outputPath
@@ -1390,11 +1545,15 @@ Attempt encodeAttempt(const ExportPlan& aPlan, const QList<QImage>& aFrames,
         canvas.reserve(frames.size());
         for (const QImage& f : frames) {
             canvas.append(f.size() == canvasSize ? f
-                                                 : media::fitImage(f, canvasSize, aPlan.config.fit));
+                                                 : media::fitImage(f, canvasSize, aPlan.config.fit,
+                                                                   marginFill));
         }
         media::GifEncoder::Config gcfg;
         gcfg.outputPath = aPlan.config.outputPath;
-        gcfg.fps = aPlan.config.fps > 0 ? aPlan.config.fps : 15;
+        // The stride's survivors play for the plan's duration only because they
+        // go out at fps/stride; the row's own default (15) stands for a plan
+        // that carries no rate at all.
+        gcfg.fps = effectiveFps > 0 ? effectiveFps : 15;
         gcfg.transparent = aPlan.alphaEnabled;
         gcfg.loop = aRequest.gifLoop;
         gcfg.palettePath = aRequest.gifPalettePath;
@@ -1421,14 +1580,88 @@ Attempt encodeAttempt(const ExportPlan& aPlan, const QList<QImage>& aFrames,
     }
 
     media::VideoEncoder::Config cfg = aPlan.config;
+    // The stride's survivors play for the plan's duration because they go out at
+    // fps/stride. Every later use of cfg inherits this rate: the open below and
+    // the software fallback's makeConfig call alike.
+    cfg.fps = effectiveFps;
     cfg.width = aSize.width();
     cfg.height = aSize.height();
+    // The encoder pads/crops the rendered frame to the output size itself; its
+    // margins take the export's background (see marginFill).
+    cfg.fill = marginFill;
     if (aQuality && aQualityValue >= 0) {
         cfg.encOptions.insert(aQuality->option, QString::number(aQualityValue));
     }
 
     media::VideoEncoder enc;
-    if (!enc.open(cfg)) { out.error = enc.error(); return out; }
+    if (!enc.open(cfg)) {
+        // Step down ONCE, to the same family's software encoder, exactly as
+        // Exporter::execute does for a plain export. The capability probe that
+        // offered this codec is a 64x64 one-frame encode, which a hardware
+        // backend can pass while avcodec_open2 still refuses the real
+        // resolution and option set — NVENC on a machine with no capable
+        // device, a QSV/VAAPI profile without the residency the resolution
+        // needs, an AMF driver that reports the codec and not the profile, or
+        // (measured against the linked libavcodec) the family's quality option
+        // name, which the hardware encoders spell differently: cq on NVENC, qp
+        // on VAAPI, and none on QSV/AMF. Without this the fit loop aborted on
+        // exactly the machine whose ladder has just resolved to the GPU.
+        //
+        // The family mapping is qualityTableNameForFamily() — the SAME one the
+        // quality knob is looked up through — so this can never step down to a
+        // different family. It is empty when the codec is already software (a
+        // software encoder that fails has nothing to step down to, and retrying
+        // the same library would only repeat the failure) or when the family has
+        // no software encoder of its own (lossless: ffv1). Either way the failure
+        // stands exactly as it was reported. There is no second retry.
+        const QString softwareCodec =
+            isHardwareEncoder(cfg.codec)
+                ? qualityTableNameForFamily(formatKeyForEncoder(cfg.codec))
+                : QString();
+        if (softwareCodec.isEmpty()) {
+            out.error = enc.error();
+            return out;
+        }
+        const QString hardwareError = enc.error();
+        QString rebuildError;
+        media::VideoEncoder::Config retry = media::VideoEncoder::makeConfig(
+            cfg.container, softwareCodec, cfg.pixFmt, cfg.transparent, cfg.width,
+            cfg.height, cfg.fps, cfg.bitrate > 0 ? cfg.bitrate / 1000 : 0, &rebuildError);
+        // Everything encoder-independent carries over untouched, so the retry
+        // is the same file with a different library — the private options (the
+        // plan's quality knob among them, which the software encoder DOES take),
+        // the muxer options, the stream codec tag, the fit mode and the audio
+        // stream all survive the swap.
+        retry.outputPath = cfg.outputPath;
+        retry.encOptions = cfg.encOptions;
+        retry.muxerOptions = cfg.muxerOptions;
+        retry.codecTag = cfg.codecTag;
+        retry.fit = cfg.fit;
+        retry.fill = cfg.fill; // the pad margin colour, same as the first attempt
+        retry.audioCodec = cfg.audioCodec;
+        retry.audioChannels = cfg.audioChannels;
+        retry.audioSampleRate = cfg.audioSampleRate;
+        retry.audioBitrate = cfg.audioBitrate;
+        retry.quality = cfg.quality; // the encoder's own hint, dropped by makeConfig
+        if (!retry.codec.isEmpty() && enc.open(retry)) {
+            // Not an error: the export is going ahead. The step lines are the
+            // user's record of what the loop actually did, so they name the
+            // swap rather than leaving a file encoded by a library other than
+            // the one the plan resolved.
+            out.steppedTo = QCoreApplication::translate(
+                                "ExportTargets", " (%1 could not be opened here; written with %2)")
+                                .arg(cfg.codec, softwareCodec);
+        } else {
+            // Both candidates failed. Keep the hardware reason first (it is the
+            // one describing the codec the plan resolved) and append the
+            // software one, so a genuine failure still reports a reason for each.
+            const QString softwareError = retry.codec.isEmpty() ? rebuildError : enc.error();
+            out.error = QCoreApplication::translate(
+                            "ExportTargets", "%1\nThe %2 encoder could not be opened either (%3).")
+                            .arg(hardwareError, softwareCodec, softwareError);
+            return out;
+        }
+    }
     for (const QImage& f : frames) {
         if (!enc.write(f)) { out.error = enc.error(); return out; }
     }
@@ -1489,8 +1722,14 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
     // much detail the art carries and leaves the size alone. On a Max row the
     // opposite is true and shrinking is the better trade, because a smaller canvas
     // is sharper per byte and the platform accepts anything under its maximum.
+    //
+    // MaxMinSide belongs with them: it is a FLOOR as well as a ceiling
+    // (line.sticker's declared 270 px minimum side, which applySizeRule already
+    // grew the output to), so scaling below it is not "smaller", it is below the
+    // rule the destination published.
     const bool requiredSize = (aTarget.size.mode == SizeMode::Exact
-                                || aTarget.size.mode == SizeMode::MaxExactSide);
+                               || aTarget.size.mode == SizeMode::MaxExactSide
+                               || aTarget.size.mode == SizeMode::MaxMinSide);
 
     QList<QImage> base;
     for (const QImage& f : aFrames) {
@@ -1502,9 +1741,14 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
     // The files the last image attempt wrote, so a later attempt can clear them.
     QStringList writtenByLastAttempt;
 
-    const QHash<QString, QualityControl> qc = ExportTargets::loadQualityControl();
-    const auto qit = qc.constFind(plan.config.codec);
-    const QualityControl* quality = (qit != qc.constEnd()) ? &(*qit) : nullptr;
+    // The knob the plan already applied its intent through — looked up the same
+    // way applyQualityIntent() looked it up, so a hardware-resolved codec still
+    // has one and the loop can degrade quality on a machine whose export the
+    // ladder resolved to h264_nvenc/hevc_vaapi/av1_qsv. Null = no knob: this
+    // codec trades no quality for bytes (FFV1, ProRes), so the fit loop goes
+    // straight to scale and frames.
+    const QualityControl quality = qualityControlFor(plan.config.codec);
+    const QualityControl* qualityKnob = quality.option.isEmpty() ? nullptr : &quality;
 
     // No cap: one encode, no loop.
     qint64 smallest = 0; // smallest file seen (only used in the give-up message)
@@ -1572,7 +1816,7 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
             }
         }
         const Attempt a =
-            encodeAttempt(plan, frames, attemptSize, aStride, aCrf, quality, aRequest,
+            encodeAttempt(plan, frames, attemptSize, aStride, aCrf, qualityKnob, aRequest,
                           &writtenByLastAttempt);
         ++result.attempts;
         QString step = QStringLiteral("%1: crf=%2 %3x%4 stride=%5 -> %6 bytes")
@@ -1591,6 +1835,13 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
             // The percent is not a pixel count, and the file's size is.
             step += QStringLiteral(" (art drawn at %1x%2)").arg(artSize.width()).arg(artSize.height());
         }
+        if (!a.steppedTo.isEmpty()) {
+            // The encoder the plan resolved could not be opened here, so this
+            // attempt was written by the family's software encoder. The step
+            // line is the record of what the loop actually did: a file encoded
+            // by a library other than the one the plan named must say so.
+            step += a.steppedTo;
+        }
         result.steps << step;
         if (aOnStep) aOnStep(step);
         if (!a.wrote) { result.error = a.error; return -1; }
@@ -1603,7 +1854,7 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
     };
 
     if (cap <= 0) {
-        if (encodeOnce(quality ? quality->best : -1, 1.0, 1, QStringLiteral("initial")) < 0)
+        if (encodeOnce(qualityKnob ? qualityKnob->best : -1, 1.0, 1, QStringLiteral("initial")) < 0)
             return result;
         result.ok = true;
         return result;
@@ -1622,7 +1873,7 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
     // animation itself.
     double scale = 1.0;
     int stride = 1;
-    int crf = quality ? quality->best : -1;
+    int crf = qualityKnob ? qualityKnob->best : -1;
 
     int bytes = encodeOnce(crf, scale, stride, QStringLiteral("initial"));
     if (bytes < 0) return result;
@@ -1735,7 +1986,7 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
 
     for (const QString& phase : aTarget.degradeOrder) {
         if (result.ok || result.canceled) break;
-        if (phase == QLatin1String("quality") && quality) {
+        if (phase == QLatin1String("quality") && qualityKnob) {
             // The knob's OWN values, indexed from the table's `best` (index 0, the
             // largest file) to its `worst` (the last index). This used to bisect
             // straight between best and worst, which assumes the range RISES from
@@ -1745,8 +1996,8 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
             // at once, so a capped WebP destination silently took the WORST quality
             // even when a middling one fitted. An index has no direction, so that
             // class of mistake is gone rather than guarded against.
-            const int best = quality->best;
-            const int worst = quality->worst;
+            const int best = qualityKnob->best;
+            const int worst = qualityKnob->worst;
             const int n = std::abs(worst - best) + 1;
             auto valueAt = [best, worst, n](int aIndex) {
                 if (n <= 1) return best;
@@ -1869,6 +2120,41 @@ FitResult exportWithFit(const ExportTarget& aTarget, const ExportRequest& aReque
         result.steps << QStringLiteral("fit under the %1 byte cap in %2 attempts")
                             .arg((qlonglong)cap)
                             .arg(result.attempts);
+        if (stride > 1) {
+            // A stride over 1 means the frames phase won, and that phase is the
+            // one knob that changes the animation itself: the file holds every
+            // stride-th frame and nothing else. Its running time is preserved
+            // all the same — the survivors are written at fps/stride
+            // (encodeAttempt's effective rate), so frames/(fps/stride) is the
+            // duration the plan described — and this line is where the user
+            // learns that, because a reduced frame count on its own would read
+            // as "the animation got shorter".
+            const int kept = (plan.frames() + stride - 1) / stride;
+            bool belowFloor = false;
+            const int rate = effectiveFpsForStride(plan.fps, stride, &belowFloor);
+            if (belowFloor) {
+                // fps/stride is under the format floor of 1 fps, so the rate was
+                // clamped there and the animation really is SHORTER than the
+                // plan's. This is the one case where dropping frames still costs
+                // running time, and it is said out loud rather than passed off
+                // as a lighter animation.
+                result.steps << QStringLiteral(
+                                    "fit kept every %1 frames: %2 of %3 frames at %4 fps, "
+                                    "less time than the plan (the format's 1 fps floor)")
+                                    .arg(stride)
+                                    .arg(kept)
+                                    .arg(plan.frames())
+                                    .arg(rate);
+            } else {
+                result.steps << QStringLiteral(
+                                    "fit kept every %1 frames: %2 of %3 frames at %4 fps, "
+                                    "the same playing time as the plan")
+                                    .arg(stride)
+                                    .arg(kept)
+                                    .arg(plan.frames())
+                                    .arg(rate);
+            }
+        }
         return result;
     }
 

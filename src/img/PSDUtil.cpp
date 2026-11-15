@@ -2,6 +2,7 @@
 #include <iostream>
 #include "XC.h"
 #include "img/PSDUtil.h"
+#include "util/PackBits.h"
 
 
 // #define PSDUTIL_DUMP(...) XC_DEBUG_REPORT(__VA_ARGS__)
@@ -43,42 +44,16 @@ PSDUtil::makeClippedImage(const uint8* aTarget, const QRect& aRectT, const uint8
 }
 
 //------------------------------------------------------------//
+// PackBits (coding mode 2) encoding of one raw plane, sharing the algorithm in
+// util::PackBits::encode: it owns the encoder the project file path uses, and a
+// second copy of the bit twiddling here is a second thing to keep correct.
+//------------------------------------------------------------//
 size_t PSDUtil::encodePackBits(const uint8* aSrc, uint8* aDst, size_t aLength) {
-    const uint8* end = aSrc + aLength;
-
-    const uint8* p = aSrc;
-    uint8* dp = aDst;
-    long long int remains = aLength;
-
-    while (remains > 0) {
-        const uint8* mark = p;
-        const uint8* markMax = mark + (remains < 128 ? remains : 128);
-
-        // found three duplicated value
-        if (mark <= (end - 3) && mark[0] == mark[1] && mark[1] == mark[2]) {
-            // scan
-            p += 3;
-            while (p < markMax && *p == mark[0])
-                ++p;
-
-            const int count = (int)(p - mark);
-            *dp++ = 1 + 256 - count;
-            *dp++ = mark[0];
-            remains -= count;
-        } else {
-            while (p < markMax) {
-                if (p <= (end - 3) && p[0] == p[1] && p[1] == p[2])
-                    break;
-                ++p;
-            }
-            const int count = (int)(p - mark);
-            *dp++ = count - 1;
-            memcpy(dp, mark, count);
-            dp += count;
-            remains -= count;
-        }
-    }
-    return dp - aDst;
+    // aSrc is const and XCMemBlock's constructor is not; encode() reads the block
+    // only, so the cast is safe.
+    util::PackBits encoder;
+    XCMemBlock src(const_cast<uint8*>(aSrc), aLength);
+    return encoder.encode(src, aDst);
 }
 
 //------------------------------------------------------------//
@@ -262,9 +237,14 @@ bool PSDUtil::decodePlanePackBits(
             const char packHead = (char)(*srcData);
 
             if (packHead < 0) {
-                // noop operation
-                if (packHead == -128)
+                // noop operation: the header byte is the whole packet, so
+                // decoding it must consume that byte (same defect as
+                // util::PackBits::decode had: without the step this loop
+                // re-reads it forever and a PSD import never returns).
+                if (packHead == -128) {
+                    ++srcData;
                     continue;
+                }
 
                 // continuos operation
                 const int count = -packHead + 1;

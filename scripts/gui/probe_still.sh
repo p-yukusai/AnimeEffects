@@ -126,13 +126,18 @@ PY
   require_export_flow
   ae set "Search destinations" "still.instagram.feed" >/dev/null
   sleep 1.2
-  ae_activate "Use this destination" "the still destination is accepted"
+  ae_activate "Continue" "the still destination is accepted"
   ae wait "Advanced" >/dev/null 2>&1 || true
   sleep 1.5
 
   # 2. What the form asks a still for: a destination, the image quality the Qt image
   #    writer has, and a size. NOT a frame rate and NOT a frame range - and the
   #    Format row is a fact the destination states, not a control.
+  # No ae_activate "Advanced" here, unlike the sequence flow below: a Still
+  # destination has no frame range, and since H41 (2026-10-09) moved the range
+  # rows into that section, a Still has nothing left inside it - so the section is
+  # not offered at all, which is the item-41 "uncluttered default surface" this
+  # the assert_hidden below is about.
   ae_report /tmp/still_form.txt "Destination" "Image quality" "Width" "Height" \
                                 "Frame rate" "First frame 1" "Last frame 1" "Format" "Quality"
   # Read with a retry: one query against a busy application can come back with an empty
@@ -378,8 +383,11 @@ PY
   require_export_flow
   ae set "Search destinations" "post.pixiv.ugoira" >/dev/null
   sleep 1.2
-  ae_activate "Use this destination" "the sequence destination is accepted"
+  ae_activate "Continue" "the sequence destination is accepted"
   ae wait "Advanced" >/dev/null 2>&1 || true
+  # H41: the frame range lives under Advanced, so the section has to be OPEN before
+  # its rows can be addressed by name.
+  ae_activate "Advanced" "the Advanced section opens, adding its rows"
   sleep 1.5
   # Shrink the frame so the stills render quickly: a sequence is a `free` size
   # destination, so its Width and Height belong to the user. The aspect lock comes off

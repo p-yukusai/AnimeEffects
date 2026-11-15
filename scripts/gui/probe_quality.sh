@@ -5,27 +5,34 @@
 # This probe is about the QUALITY INTENT and the codec s own value, which are two
 # controls for one number: the intent ("Balanced") is the codec knob seen from
 # further away, and the spin box in Advanced is that same knob named as a number.
-# The invariant is one number, one control in charge, and it now holds in BOTH
-# directions: with the codec s own box on Auto the Quality intent is operable, and
-# naming a number there takes the intent out of charge until the box own Set to
-# auto button hands it back.
 #
-# THIS PROBE RECORDED THE DEFECT THAT MADE THE FIRST HALF OF THAT IMPOSSIBLE, and
-# the state it asserted is gone. The override spin was ranged to the codec s own
-# span (VP9 CRF 24..52) while the "no override" sentinel was the fixed value -1,
-# and QSpinBox::setRange CLAMPS the current value: the sentinel was erased the
-# moment the range was applied, the box always held a real number, the Quality
-# intent was disabled as "not in charge", and the export wrote that number over
-# the intent the user had chosen. The sentinel is now the value ONE BELOW the
-# codec span (ctrl::QualityControl::autoValue(): 23 for VP9, drawn as "Auto"), so
-# it survives the range, and the in-charge question is asked after the range is
-# applied. An earlier version of this probe therefore asserted the rule in one
-# direction only (a number stands, so the intent is inert); what is asserted here
-# is the round trip: Auto -> intent in charge, number -> intent out of charge, and
-# the box own button -> Auto and the intent in charge again.
+# BOTH RULES HERE WERE RE-RULED ON 2026-10-08 ("when CRF is used Quality should
+# change to Custom instead of disabling, this is established UI convention" and
+# "Auto needs to be a special value, not just a visual thing"), so what this probe
+# asserts is the new shape:
+#
+#   * Auto is a STATE of the box (ExportViewModel::qualityOverrideAuto), not a number
+#     at the bottom of its range: the box is ranged to the codec s OWN span (VP9
+#     CRF 24..52, so 24..52), and while Auto holds it reports the codec s best value
+#     (24) as the place an edit would start from.
+#   * the Quality combo is NEVER disabled. While the user has named the codec s own
+#     number it READS "Custom" - a fourth answer beside the three buckets - and
+#     choosing a bucket from it hands the decision back.
+#
+# THIS PROBE ONCE RECORDED THE OPPOSITE, and the machinery it asserted is gone. The
+# override spin was ranged to the codec s own span while the "no override" sentinel
+# was a fixed -1, and QSpinBox::setRange CLAMPS the current value: the sentinel was
+# erased the moment the range was applied, the box always held a real number, the
+# Quality intent was disabled as "not in charge", and the export wrote that number
+# over the intent the user had chosen. The first fix moved the sentinel to one below
+# the span (ctrl::QualityControl::autoValue(): 23 for VP9, drawn as "Auto") - which
+# made a number MEAN the word, and made the codec s own best value unpickable. Both
+# are gone: the state says Auto, the range is the codec s, and the combo says Custom.
 #
 # Everything here addresses widgets BY NAME, and the state of the two controls
-# (which one is operable) comes from the accessibility tree, never from a pixel.
+# (operable, and what the combo reads) comes from the accessibility tree, never from
+# a pixel. The combo s accessible NAME is its current text (AeComboBox), which is how
+# "Custom" is read without a screenshot.
 #
 # The BODY only navigates and leaves evidence. The assertions run out here.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -83,8 +90,10 @@ for name, role in [("Quality", "combo box"), ("Quality override", "spin button")
         value = number(iface.get_current_value())
         minimum = number(iface.get_minimum_value())
         maximum = number(iface.get_maximum_value())
-    out.write("%s: enabled=%s value=%s min=%s max=%s\n"
-              % (name, enabled, value, minimum, maximum))
+    # The combo s accessible NAME is the text it SHOWS (AeComboBox), so "Custom" is
+    # readable from the tree without a pixel.
+    out.write("%s: enabled=%s name=%s value=%s min=%s max=%s\n"
+              % (name, enabled, node.get_name(), value, minimum, maximum))
 out.close()
 PY
   }
@@ -97,7 +106,7 @@ PY
   require_export_flow
   ae set "Search destinations" "telegram sticker" >/dev/null
   sleep 1.2
-  ae_activate "Use this destination" "the Telegram sticker destination is chosen"
+  ae_activate "Continue" "the Telegram sticker destination is chosen"
   ae wait "Advanced" >/dev/null 2>&1 || true
   sleep 1.5
   ae_report /tmp/qual_form.txt "Destination" "Quality" "Advanced" "Quality override" "Width"
@@ -150,39 +159,39 @@ fi
 assert_hidden /tmp/qual_form.txt "Quality override" "the codec s own value stays inside the collapsed Advanced section"
 assert_rendered "$SHOTS/qual_01_destination.png" "the form carrying the destination s quality intent"
 
-# ---- Advanced opens on Auto, and Auto is the codec s own sentinel -------------
+# ---- Advanced opens on Auto, which is a STATE over the codec s own span ------
 assert_showing /tmp/qual_advanced.txt "Quality override" "and opening Advanced offers the codec s own value"
 assert_showing /tmp/qual_advanced.txt "Reset to auto" "together with the box s own Set to auto button"
 qoValue=$(state_field /tmp/qual_auto_state.txt "Quality override" value)
 qoMin=$(state_field /tmp/qual_auto_state.txt "Quality override" min)
 qoMax=$(state_field /tmp/qual_auto_state.txt "Quality override" max)
-if [ -n "$qoValue" ] && [ "$qoValue" = "$qoMin" ] && [ "$qoMin" = "23" ] && [ "$qoMax" = "52" ]; then
-    check 0 "the box opens on Auto: its value 23 IS its minimum, one below the codec s best (VP9 CRF 24..52, so the box is ranged 23..52)"
+if [ -n "$qoValue" ] && [ "$qoValue" = "$qoMin" ] && [ "$qoMin" = "24" ] && [ "$qoMax" = "52" ]; then
+    check 0 "the box opens on Auto over the codec s OWN span (VP9 CRF 24..52): it reports the codec s best (24) as where an edit would start, and 24 is its minimum"
 else
-    check 1 "the box opens on Auto: its value should equal its minimum and be one below the codec s best (VP9 CRF 24..52) (got: value=$qoValue min=$qoMin max=$qoMax)"
+    check 1 "the box opens on Auto over the codec s own span (VP9 CRF 24..52) (got: value=$qoValue min=$qoMin max=$qoMax)"
 fi
-if [ "$(value_of /tmp/qual_auto_value.txt)" = "23" ]; then
-    check 0 "and the shared value read agrees about that number (23)"
+if [ "$(value_of /tmp/qual_auto_value.txt)" = "24" ]; then
+    check 0 "and the shared value read agrees about that number (24)"
 else
     check 1 "and the shared value read agrees about that number (got: $(value_of /tmp/qual_auto_value.txt))"
 fi
-if grep -q "Quality: enabled=True" /tmp/qual_auto_state.txt; then
-    check 0 "and the intent stays in charge while that box is on Auto"
+if grep -q "Quality: enabled=True name=Balanced" /tmp/qual_auto_state.txt; then
+    check 0 "and the intent is in charge while the box is in Auto, so the combo reads its bucket"
 else
-    check 1 "and the intent stays in charge while that box is on Auto (got: $(tr '\n' ' ' < /tmp/qual_auto_state.txt 2>/dev/null))"
+    check 1 "and the intent is in charge while the box is in Auto (got: $(tr '\n' ' ' < /tmp/qual_auto_state.txt 2>/dev/null))"
 fi
 assert_rendered "$SHOTS/qual_02_advanced.png" "and its Advanced section, with the codec s own value on Auto"
 
-# ---- naming a number takes the intent out of charge --------------------------
+# ---- naming a number makes the combo read Custom, and it stays usable --------
 if [ "$(value_of /tmp/qual_named_value.txt)" = "40" ]; then
     check 0 "the number the user names reaches the codec s own value (40)"
 else
     check 1 "the number the user names reaches the codec s own value (got: $(value_of /tmp/qual_named_value.txt))"
 fi
-if grep -q "Quality: enabled=False" /tmp/qual_named_state.txt; then
-    check 0 "and naming it takes the Quality intent out of charge (one number, one control in charge)"
+if grep -q "Quality: enabled=True name=Custom" /tmp/qual_named_state.txt; then
+    check 0 "and the Quality row changes to Custom instead of disabling (ruled 2026-10-08: established UI convention)"
 else
-    check 1 "and naming it takes the Quality intent out of charge (got: $(tr '\n' ' ' < /tmp/qual_named_state.txt 2>/dev/null))"
+    check 1 "and the Quality row changes to Custom instead of disabling (got: $(tr '\n' ' ' < /tmp/qual_named_state.txt 2>/dev/null))"
 fi
 assert_rendered "$SHOTS/qual_03_named.png" "the form after the number was named"
 
@@ -194,10 +203,10 @@ if [ -n "$backValue" ] && [ "$backValue" = "$backMin" ] && [ "$(value_of /tmp/qu
 else
     check 1 "the box s own Set to auto button puts the codec s own value back on Auto (got: value=$backValue min=$backMin, read $(value_of /tmp/qual_back_value.txt))"
 fi
-if grep -q "Quality: enabled=True" /tmp/qual_back_state.txt; then
-    check 0 "and the Quality intent is in charge again"
+if grep -q "Quality: enabled=True name=Balanced" /tmp/qual_back_state.txt; then
+    check 0 "and the combo is back on its bucket, still usable"
 else
-    check 1 "and the Quality intent is in charge again (got: $(tr '\n' ' ' < /tmp/qual_back_state.txt 2>/dev/null))"
+    check 1 "and the combo is back on its bucket, still usable (got: $(tr '\n' ' ' < /tmp/qual_back_state.txt 2>/dev/null))"
 fi
 assert_rendered "$SHOTS/qual_04_auto_again.png" "the form once Auto was handed back"
 

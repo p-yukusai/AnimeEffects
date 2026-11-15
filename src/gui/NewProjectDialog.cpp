@@ -1,123 +1,114 @@
-#include <QSpinBox>
-#include <QGroupBox>
-#include <QFormLayout>
-#include <QHBoxLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QFileDialog>
-#include <QCheckBox>
 #include "gui/NewProjectDialog.h"
 
-#include <QMessageBox>
+#include "gui/qml/NewProjectViewModel.h"
+#include "gui/qml/QmlTheme.h"
+#include "gui/theme/Colors.h"
+
+#include <QDir>
+#include <QFileDialog>
+#include <QQuickItem>
+#include <QQuickWidget>
+#include <QQmlContext>
+#include <QScreen>
+#include <QUrl>
+#include <QVBoxLayout>
 
 namespace gui {
 
-NewProjectDialog::NewProjectDialog(QWidget* aParent):
-    EasyDialog(tr("New Project Dialog"), aParent), mFileName(), mAttribute(), mSpecifiesCanvasSize() {
-    // initialize attribute
-    {
-        mAttribute.setFrameRange(util::Range(1, 60 * 10));
-        mAttribute.setImageSize(QSize(512, 512));
-    }
+namespace {
+// The window HUGS the scene: the QML root's implicitHeight is the natural height of
+// the rows plus the footer band, and the constructor sizes the dialog to it. The
+// floor is small for the same reason - the form is a short, fixed set of rows, and a
+// tall fixed default (the old 430) left ~130px of empty space under the last one.
+constexpr int kDefaultWidth = 460;
+constexpr int kMinimumWidth = 400;
+constexpr int kMinimumHeight = 180;
+} // namespace
 
-    this->setMainWidget(createOption(), false);
-    this->setOkCancel([=](int) -> bool { return true; });
-    // this->fixSize();
+NewProjectDialog::NewProjectDialog(QWidget* aParent) : QDialog(aParent) {
+    setObjectName(QStringLiteral("newProjectWidget"));
+    setWindowTitle(tr("New Project"));
+    // A native framed window, not a frameless popup: normal title bar, movable and
+    // resizable by the window manager, and modal over the main window.
+    setModal(true);
+    setSizeGripEnabled(true);
+
+    mModel = new NewProjectViewModel(this);
+    mTheme = new QmlTheme(this);
+
+    mQuick = new QQuickWidget(this);
+    mQuick->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    // The theme and the model are context properties, exactly as the export shell
+    // does it: the scene reads `theme.base` and `newProjectModel.frameCount` with
+    // no C++ type registration. NOT "model": every Repeater and ListView has a
+    // `model` property of its own, so a scene binding would resolve the right-hand
+    // side to that shadowing property.
+    mQuick->rootContext()->setContextProperty(QStringLiteral("newProjectModel"), mModel);
+    mQuick->rootContext()->setContextProperty(QStringLiteral("theme"), mTheme);
+    // The scene's backdrop: the theme's own window colour, so a resize does not
+    // flash white.
+    mQuick->setClearColor(theme::Colors::current().base);
+    mQuick->setSource(QUrl(QStringLiteral("qrc:/AnimeEffects/Dialogs/qml/NewProjectDialog.qml")));
+
+    // Size to the scene, now that it exists: the form is a fixed set of rows, so the
+    // window opens at exactly their height rather than at a guessed default with
+    // empty space below. The scene reports that height through the root's
+    // implicitHeight (see the QML); SizeRootObjectToView does not overwrite it. Both
+    // dimensions yield to the screen, and the scene's own scroll host covers a screen
+    // shorter than the rows.
+    const QRect avail = screen() ? screen()->availableGeometry() : QRect();
+    const int maxW = avail.width() > 0 ? avail.width() : kDefaultWidth;
+    const int maxH = avail.height() > 0 ? avail.height() : kMinimumHeight;
+    int wantedH = kMinimumHeight;
+    if (auto* scene = mQuick->rootObject()) {
+        const int natural = qRound(scene->implicitHeight());
+        if (natural > 0)
+            wantedH = natural;
+    }
+    setMinimumSize(qMin(kMinimumWidth, maxW), qMin(kMinimumHeight, maxH));
+    resize(qMin(kDefaultWidth, maxW), qMin(wantedH, maxH));
+
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(mQuick);
+
+    // The scene's buttons do not know about QDialog, and they should not: the model
+    // carries the outcome, and the shell turns the request into the dialog result.
+    connect(mModel, &NewProjectViewModel::acceptRequested, this, &QDialog::accept);
+    connect(mModel, &NewProjectViewModel::cancelRequested, this, &QDialog::reject);
+    connect(mModel, &NewProjectViewModel::browseRequested, this, [this]() {
+        // The file chooser is a WIDGET dialog (the platform's own) and stays one:
+        // the scene asks for it, the shell answers with a path. The filter is the
+        // same one the widget form had, and the strings are the EXISTING C++ tr()
+        // entries of this class, so no new catalog context is introduced.
+        const QString path = QFileDialog::getOpenFileName(
+            this, tr("Open File"), QDir::homePath(),
+            "ImageFile (*.psd *.ora *.jpg *.jpeg *.png *.gif *.tiff *.tif *.webp)");
+        if (!path.isEmpty())
+            mModel->setFileName(path);
+    });
 }
 
-QWidget* NewProjectDialog::createOption() {
-    auto form = new QFormLayout();
-    form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
-    form->setLabelAlignment(Qt::AlignRight);
-
-    // resource
-    {
-        auto layout = new QHBoxLayout();
-
-        auto line = new QLineEdit(this);
-        // line->setEnabled(false);
-        line->setReadOnly(true);
-        line->setContextMenuPolicy(Qt::NoContextMenu);
-        line->setFocusPolicy(Qt::NoFocus);
-        layout->addWidget(line);
-
-        const auto button = new QPushButton(this);
-        this->connect(button, &QPushButton::clicked, [=] {
-            this->mFileName = QFileDialog::getOpenFileName(
-                this, tr("Open File"), QDir::homePath(), "ImageFile (*.psd *.ora *.jpg *.jpeg *.png *.gif *.tiff *.tif *.webp)"
-            );
-
-            line->setText(mFileName);
-        });
-        button->setObjectName("browser");
-        button->setFocusPolicy(Qt::NoFocus);
-        layout->addWidget(button);
-
-        form->addRow(tr("Initial asset"), layout);
-    }
-
-    // frame
-    {
-        auto frame = new QSpinBox();
-        frame->setRange(1, std::numeric_limits<int>::max());
-        frame->setValue(mAttribute.frameRange().max());
-
-        this->connect(frame, &QSpinBox::editingFinished, [=]() {
-            // 1-indexed: the frame-count value N is frames 1..N.
-            this->mAttribute.setFrameRange(util::Range(1, frame->value()));
-        });
-
-        form->addRow(tr("Frame count"), frame);
-    }
-    // fps
-    {
-        auto fps = new QSpinBox();
-        fps->setRange(1, std::numeric_limits<int>::max());
-        fps->setValue(mAttribute.fps());
-
-        this->connect(fps, &QSpinBox::editingFinished, [=]() { this->mAttribute.setFps(fps->value()); });
-
-        form->addRow(tr("Frames per second"), fps);
-    }
-
-    // canvas size
-    {
-        auto width = new QSpinBox();
-        width->setEnabled(false);
-        width->setRange(1, std::numeric_limits<int>::max());
-        width->setValue(mAttribute.imageSize().width());
-        this->connect(width, &QSpinBox::editingFinished, [=]() {
-            auto size = this->mAttribute.imageSize();
-            size.setWidth(width->value());
-            this->mAttribute.setImageSize(size);
-        });
-
-        auto height = new QSpinBox();
-        height->setEnabled(false);
-        height->setRange(1, std::numeric_limits<int>::max());
-        height->setValue(mAttribute.imageSize().height());
-        this->connect(height, &QSpinBox::editingFinished, [=]() {
-            auto size = this->mAttribute.imageSize();
-            size.setHeight(height->value());
-            this->mAttribute.setImageSize(size);
-        });
-
-        auto check = new QCheckBox();
-        this->connect(check, &QCheckBox::clicked, [=](bool aChecked) {
-            this->mSpecifiesCanvasSize = aChecked;
-            width->setEnabled(aChecked);
-            height->setEnabled(aChecked);
-        });
-
-        form->addRow(tr("Specify canvas size"), check);
-        form->addRow(tr("Canvas width"), width);
-        form->addRow(tr("Canvas height"), height);
-    }
-
-    auto widget = new QWidget(this);
-    widget->setLayout(form);
-
-    return widget;
+NewProjectDialog::~NewProjectDialog() {
+    // Tear the scene down before the model/theme context objects die, so the scene's
+    // binding teardown never re-reads a destroyed context property (the same rule the
+    // export and animation-settings shells follow).
+    delete mQuick;
+    mQuick = nullptr;
 }
+
+QString NewProjectDialog::fileName() const { return mModel->fileName(); }
+
+core::Project::Attribute NewProjectDialog::attribute() const {
+    core::Project::Attribute attribute;
+    attribute.setFrameRange(util::Range(1, mModel->frameCount()));
+    attribute.setFps(mModel->fps());
+    attribute.setImageSize(QSize(mModel->canvasWidth(), mModel->canvasHeight()));
+    return attribute;
+}
+
+bool NewProjectDialog::specifiesCanvasSize() const { return mModel->specifiesCanvasSize(); }
+
+bool NewProjectDialog::liveLink() const { return mModel->liveLink(); }
 
 } // namespace gui

@@ -148,6 +148,21 @@ public:
     bool selectKeysAt(core::TimeLineEvent& aEvent, const QPoint& aPos);
     void endTemporarySelection();
     bool retrieveSelectionTargets(core::TimeLineEvent& aEvent) const;
+    // The LIVE selection, by reference: the one instance this editor writes and
+    // the timeline's renderer highlights. It is handed out rather than copied so
+    // another view of the same keys (the animation graph panel) can SHARE it
+    // instead of keeping a second selection that would have to agree - two
+    // selections that must agree are two selections that eventually do not.
+    // Every mutator here rebuilds the keys' focus (time::Selection::
+    // rebuildFocus), so a write through this reference is highlighted by the
+    // timeline's next paint exactly like one made from the timeline's own
+    // gestures: there is one set and one highlight state.
+    //
+    // The caller must not outlive this editor; an owner that may outlive it
+    // (the panel, which is destroyed with its project while this widget is not)
+    // is expected to drop the reference first.
+    time::Selection& selection() { return mSelection; }
+    const time::Selection& selection() const { return mSelection; }
     static QString pasteCbKeys(gui::obj::Item* objItem, util::LifeLink::Pointee<core::Project> project, bool isFolder);
     static QList<core::TimeKey*> getTypesFromCb(util::LifeLink::Pointee<core::Project> project, core::ObjectNode *node);
     bool pasteCopiedKeys(core::TimeLineEvent& aEvent, const QPoint& aWorldPos);

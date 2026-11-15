@@ -34,6 +34,23 @@ public:
     void setProject(core::Project* aProject);
     core::ObjectNode* findSelectingRepresentNode();
 
+    // Append to the enclosing command macro (opened by the caller) the commands
+    // that delete each node of aNodes and its tree item, together with this
+    // view's update. The caller keeps its own listeners and commands in the same
+    // macro, so an asset removal and the layer removals it forces become ONE
+    // undo step. Nodes with no item in this view are skipped. Siblings are
+    // appended highest index first, which is what makes the removals replay in
+    // order (both cmnd::RemoveTree and obj::RemoveItem restore a node at the
+    // index it was removed from, and undo replays commands in reverse).
+    void pushDeleteObjects(const QVector<core::ObjectNode*>& aNodes, cmnd::ScopedMacro& aMacro);
+
+    // Whether every node of aNodes can be deleted from this view (each has a
+    // tree item). pushDeleteObjects skips a node it cannot resolve, so a caller
+    // that is about to take something out from under those nodes checks this
+    // first: an asset removal that left one of its referencing layers behind
+    // would leave that layer holding a dangling resource.
+    bool canDeleteObjects(const QVector<core::ObjectNode*>& aNodes) const;
+
     // signals
     util::Signaler<void()> onVisibilityUpdated;
     util::Signaler<void(QTreeWidgetItem*)> onTreeViewUpdated;

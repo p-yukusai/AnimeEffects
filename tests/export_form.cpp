@@ -23,10 +23,14 @@
 //
 // Run: QT_QPA_PLATFORM=offscreen ./build/tests/Debug/export_form
 #include <QCoreApplication>
+#include <QDomDocument>
+#include <QFile>
+#include <QHash>
 #include <QTextStream>
 #include <QTranslator>
 
 #include <algorithm>
+#include <cstdint>
 
 #include "ctrl/ExportTarget.h"
 #include "gui/ExportFacts.h"
@@ -102,6 +106,38 @@ static gui::ExportFact factById(const gui::ExportViewModel& aModel, const QStrin
     return gui::ExportFact();
 }
 
+// What a dataChanged() emission ACTUALLY covered: the rows it named and the roles it
+// listed. A test that reads a model's values cannot see the signal a view redraws
+// from, and the F36 clamp's "the view must not show a stale field" guarantee is
+// exactly about that emission - so it is observed here, not inferred from the pair of
+// numbers the test also reads.
+class RangeChangeSpy : public QObject {
+public:
+    explicit RangeChangeSpy(gui::ExportRangeModel* aModel) : QObject(aModel) {
+        // The spy is the connection's CONTEXT and a child of the model, so the
+        // functor dies with it: a connection left capturing a destroyed object is a
+        // crash waiting for the next emission.
+        QObject::connect(aModel, &QAbstractItemModel::dataChanged, this,
+                         [this](const QModelIndex& aTop, const QModelIndex& aBottom,
+                                const QVector<int>& aRoles) {
+                             for (int row = aTop.row(); row <= aBottom.row(); ++row) {
+                                 if (!mRows.contains(row))
+                                     mRows.append(row);
+                             }
+                             if (aRoles.contains(gui::ExportRangeModel::FirstRole))
+                                 mFirst = true;
+                             if (aRoles.contains(gui::ExportRangeModel::LastRole))
+                                 mLast = true;
+                         });
+    }
+    bool sawRow(int aRow) const { return mRows.contains(aRow); }
+    bool sawBothFields() const { return mFirst && mLast; }
+private:
+    QList<int> mRows;
+    bool mFirst = false;
+    bool mLast = false;
+};
+
 int main(int argc, char** argv) {
     qputenv("AE_DEBUG_SIZE", "1");
     QCoreApplication app(argc, argv);
@@ -111,13 +147,54 @@ int main(int argc, char** argv) {
           QStringLiteral("the destination table loads (%1 rows)").arg(targets.size()));
     if (targets.isEmpty()) return 1;
 
+    // The table's own text, keyed by id, so the byte-cap assertion in the walk below
+    // compares the PARSED table against its SOURCE rather than against a number typed
+    // into the test.
+    QHash<QString, QString> declaredMaxBytes;
+    {
+        QFile table(QStringLiteral(AE_EXPORT_TARGETS_PATH));
+        QDomDocument dom;
+        if (table.open(QIODevice::ReadOnly) && dom.setContent(&table)) {
+            const QDomElement root = dom.firstChildElement(QStringLiteral("export_targets"));
+            for (QDomElement d = root.firstChildElement(QStringLiteral("destination"));
+                 !d.isNull(); d = d.nextSiblingElement(QStringLiteral("destination"))) {
+                const QDomElement caps = d.firstChildElement(QStringLiteral("caps"));
+                if (!caps.isNull() && caps.hasAttribute(QStringLiteral("maxBytes")))
+                    declaredMaxBytes.insert(d.attribute(QStringLiteral("id")),
+                                            caps.attribute(QStringLiteral("maxBytes")));
+            }
+        }
+    }
+
     gui::ExportViewModel model(initFor());
 
     int rows = 0, stills = 0, fpsIgnoredRows = 0, capped = 0, unverified = 0, unbuildable = 0;
     int maxRows = 0, sequenceRows = 0, videoRows = 0, adjacentRows = 0;
+    // The ids, not only the count: the assertion below is about WHICH rows ignore the
+    // frame rate, so it names them rather than leaving the reader to trust a number.
+    QStringList fpsIgnoredIds;
     bool capChecked = false;
 
     for (const ctrl::ExportTarget& t : targets) {
+        // The byte cap must survive parsing exactly as the table declares it. It is a
+        // qint64 because a file limit is routinely gigabytes, and reading it with
+        // toInt() silently returns 0 the moment it passes INT_MAX - dropping the cap,
+        // and with it the destination's limits fact and the fit loop's only bound.
+        // Checked against the table's own text for EVERY row, so this catches the class
+        // rather than chat.telegram.video's instance: nine rows declare a cap above
+        // INT_MAX (telegram.video 2 GB, tiktok/bilibili/douyin/dailymotion 4 GB,
+        // niconico 6 GB, x.video 8 GB, weibo 15 GB, vimeo 200 GB) and every one of them
+        // parsed as "no cap" before the qint64 fix.
+        {
+            const QString declared = declaredMaxBytes.value(t.id);
+            const qint64 want = declared.isEmpty() ? 0 : declared.toLongLong();
+            check(t.caps.maxBytes == want,
+                  QStringLiteral("%1: the declared byte cap survives parsing (%2 -> %3)")
+                      .arg(t.id,
+                           declared.isEmpty() ? QStringLiteral("none") : declared)
+                      .arg((qlonglong)t.caps.maxBytes));
+        }
+
         // The order MainWindow uses, and it matters: the destination's defaults go into
         // the controls first because the plan is computed FROM them.
         model.setDestinationId(t.id);
@@ -143,7 +220,10 @@ int main(int argc, char** argv) {
         if (isStill) ++stills;
         if (isSequence) ++sequenceRows;
         if (!isStill && !isSequence) ++videoRows;
-        if (t.fpsIgnored) ++fpsIgnoredRows;
+        if (t.fpsIgnored) {
+            ++fpsIgnoredRows;
+            fpsIgnoredIds.append(t.id);
+        }
         if (t.caps.maxBytes > 0) ++capped;
         if (!t.verified) ++unverified;
         if (t.size.mode == ctrl::SizeMode::Max) ++maxRows;
@@ -290,22 +370,29 @@ int main(int argc, char** argv) {
                   .arg(t.id)
                   .arg(wantSizeCap ? QStringLiteral("offered (opt-in, Auto = no cap)")
                                    : QStringLiteral("hidden (numbered stills, no one size)")));
-        check(model.sizeCapValue() == 0.0 && model.sizeCapAutoValue() == 0.0,
-              QStringLiteral("%1: the size cap starts on Auto = no cap enforced").arg(t.id));
+        check(model.sizeCapAuto() && model.sizeCapValue() == 0.0,
+              QStringLiteral("%1: the size cap starts in Auto = no cap enforced").arg(t.id));
         if (!capChecked) {
             capChecked = true;
             // The MB field reaches the fit loop in BYTES (GeneralParams::
-            // sizeCapBytes); the "Auto" sentinel stays 0 and the loop never runs.
+            // sizeCapBytes); Auto is the STATE with no cap, and the request encodes it
+            // as 0 so the fit loop never runs.
             model.setSizeCap(0.25);
+            check(!model.sizeCapAuto(),
+                  "I43: naming a cap leaves the Auto state (0.25 MB is a cap, not a word)");
             check(model.readBack().sizeCapBytes == 262144,
                   QStringLiteral("I43: 0.25 MB reaches the fit loop as 262144 bytes (got %1)")
                       .arg((qlonglong)model.readBack().sizeCapBytes));
+            // 0 is not a cap anyone means: it CHOOSES Auto, and the state says so.
+            model.setSizeCap(0.0);
+            check(model.sizeCapAuto() && model.readBack().sizeCapBytes == 0,
+                  "I43: 0 in the cap field means Auto (no cap), not a zero-byte cap");
             model.setSizeCap(99999.0);
             check(model.sizeCapValue() == model.sizeCapMaximum(),
                   QStringLiteral("I43: the size cap clamps to its maximum (%1)")
                       .arg(model.sizeCapMaximum()));
             model.setSizeCapToAuto();
-            check(model.readBack().sizeCapBytes == 0 && model.sizeCapValue() == 0.0,
+            check(model.readBack().sizeCapBytes == 0 && model.sizeCapValue() == 0.0 && model.sizeCapAuto(),
                   QStringLiteral("I43: Reset to auto returns to no cap"));
         }
         const bool sizeIsUsers = t.size.mode == ctrl::SizeMode::Free
@@ -317,27 +404,45 @@ int main(int argc, char** argv) {
                   .arg(t.size.mode == ctrl::SizeMode::Free ? QStringLiteral("free")
                        : t.size.mode == ctrl::SizeMode::Max ? QStringLiteral("ceiling")
                                                             : QStringLiteral("pinned")));
-        if (t.size.mode == ctrl::SizeMode::Max) {
-            check(model.widthMaximum() == t.size.w && model.heightMaximum() == t.size.h,
-                  QStringLiteral("%1: and the ceiling is on the control (%2x%3)")
-                      .arg(t.id).arg(model.widthMaximum()).arg(model.heightMaximum()));
+        // A Max rule is a CEILING on the FILE, never a bound on the two fields. The
+        // fields keep the user's own resolution, so "Reset to native" and the aspect
+        // lock work against the PROJECT, and the ceiling is stated in the facts
+        // instead. The superseded rule clamped the fields to the ceiling, which made a
+        // destination's limit look like the project's resolution: a 1080x1080 project
+        // opened on chat.whatsapp.video showing the fitted 720x720, and Reset to native
+        // could not land 1080 because the field clamped it back to 720.
+        check(model.widthMaximum() == INT32_MAX && model.heightMaximum() == INT32_MAX,
+              QStringLiteral("%1: the size fields carry no destination bound (%2x%3)")
+                  .arg(t.id).arg(model.widthMaximum()).arg(model.heightMaximum()));
+        if (t.size.mode == ctrl::SizeMode::Max && t.size.w > 0 && t.size.h > 0) {
+            check(text.contains(QStringLiteral("max %1 x %2").arg(t.size.w).arg(t.size.h)),
+                  QStringLiteral("%1: and the ceiling is stated in the facts instead "
+                                 "(max %2 x %3)")
+                      .arg(t.id).arg(t.size.w).arg(t.size.h));
         }
         check(model.rangeVisible() == !isStill,
               QStringLiteral("%1: the frame range is %2")
                   .arg(t.id).arg(isStill ? QStringLiteral("hidden (one image)")
                                          : QStringLiteral("offered")));
         // The disclosure may not hide a decision, and may not open onto nothing.
-        const bool anythingInside = model.transparency()->visible()
+        // What lives inside it is what ExportDialog.qml puts in the Advanced
+        // subtree: the FRAME-RANGE rows (H41, 2026-10-09), the loop flag, audio, the
+        // palette, the quality override, the bitrate and the DESTINATION-mode codec
+        // row. Transparency is NOT one of them any more (ruled 2026-10-03: it moved to
+        // the regular surface), which is why the model's advancedVisible no longer
+        // asks alpha capability.
+        const bool anythingInside = model.rangeVisible()
                                     || model.loop()->visible()
                                     || model.audio()->visible()
                                     || model.palette()->visible()
                                     || model.qualityOverrideVisible()
-                                    || model.bitrateVisible();
+                                    || model.bitrateVisible()
+                                    || (model.codecVisible() && !model.manualMode());
         check(!anythingInside || model.advancedVisible(),
               QStringLiteral("%1: a reachable decision is never behind a hidden Advanced").arg(t.id));
         check(!model.advancedVisible() || anythingInside,
               QStringLiteral("%1: Advanced never opens onto nothing").arg(t.id));
-        if (model.qualityInCharge()) ++adjacentRows;
+        if (!model.qualityCustom()) ++adjacentRows;
     }
 
     // ---- destination switches re-sync the codec row (I44) ------------------
@@ -406,33 +511,48 @@ int main(int argc, char** argv) {
         check(model.qualityOverrideVisible(),
               QStringLiteral("a codec with a knob offers its own value control"));
 
-        // The sentinel has to be INSIDE the range. The widget form's setRange CLAMPED
-        // it away, so the box always held a number, the Quality combo was disabled as
-        // "not in charge", and MainWindow wrote that number into every export: the
-        // intent never decided anything - in the shipping build, with the whole suite
-        // green.
-        check(model.qualityOverrideMinimum() == control.autoValue()
-                  && model.qualityOverrideValue() == control.autoValue()
-                  && model.qualityOverrideValue() <= model.qualityOverrideMaximum(),
-              QStringLiteral("and it starts on Auto, the bottom of its own range "
-                             "(value %1, range %2..%3, codec span %4..%5)")
-                  .arg(model.qualityOverrideValue())
+        // Auto is a STATE (ruled 2026-10-08: "Auto needs to be a special value, not
+        // just a visual thing"), and the range is the codec's OWN span. The widget
+        // form could not hold a value outside its range, so it carved the sentinel out
+        // of the bottom of the span - which meant a user could not pick the codec's
+        // best value at all, and the word "Auto" was painted over a number that every
+        // other consumer had to re-derive.
+        check(model.qualityOverrideAuto()
+                  && model.qualityOverrideMinimum() == std::min(control.best, control.worst)
+                  && model.qualityOverrideMaximum() == std::max(control.best, control.worst),
+              QStringLiteral("and it starts in Auto over the codec's own span "
+                             "(range %1..%2, codec span %3..%4)")
                   .arg(model.qualityOverrideMinimum())
                   .arg(model.qualityOverrideMaximum())
                   .arg(control.best)
                   .arg(control.worst));
         check(model.qualityOverrideAutoText() == QStringLiteral("Auto"),
-              QStringLiteral("the bottom of the range reads as Auto, not as a number"));
-        check(model.qualityInCharge(),
-              QStringLiteral("so the Quality setting is in charge until the user says otherwise"));
+              QStringLiteral("the state is drawn as the word Auto, not as a number"));
+        check(model.readBack().qualityOverride == -1,
+              QStringLiteral("and Auto asks the export for no override at all"));
+        check(!model.qualityCustom(),
+              QStringLiteral("so the Quality combo is not reading Custom yet"));
 
-        model.setQualityOverrideValue(control.autoValue() + 1);
-        check(!model.qualityInCharge(),
-              QStringLiteral("naming a value takes the Quality setting out of charge (%1)")
+        model.setQualityOverrideValue(std::min(control.best, control.worst));
+        check(!model.qualityOverrideAuto() && model.qualityCustom(),
+              QStringLiteral("naming a value leaves Auto and the combo reads Custom (%1)")
                   .arg(model.qualityOverrideValue()));
+        check(model.readBack().qualityOverride == model.qualityOverrideValue(),
+              QStringLiteral("and the number the user named is what the export carries (%1)")
+                  .arg(model.readBack().qualityOverride));
+
+        // Choosing an intent hands the decision back: the combo's Custom state cannot
+        // outlive the choice that ended it - including the bucket that was ALREADY
+        // current, because the combo read "Custom" until that moment.
+        model.setQualityIndex(model.qualityIndex());
+        check(!model.qualityCustom() && model.qualityOverrideAuto(),
+              "choosing a Quality bucket hands the decision back (Custom ends with it)");
+
+        model.setQualityOverrideValue(std::min(control.best, control.worst));
         model.setQualityOverrideToAuto();
-        check(model.qualityOverrideValue() == control.autoValue() && model.qualityInCharge(),
-              QStringLiteral("and its own Auto hands it back (%1)")
+        check(model.qualityOverrideAuto() && !model.qualityCustom()
+                  && model.readBack().qualityOverride == -1,
+              QStringLiteral("and Reset to auto hands it back too (%1)")
                   .arg(model.qualityOverrideValue()));
     }
 
@@ -441,8 +561,14 @@ int main(int argc, char** argv) {
     check(stills > 0 && sequenceRows > 0 && videoRows > 0,
           QStringLiteral("all three artifact kinds were covered (stills %1, sequences %2, video %3)")
               .arg(stills).arg(sequenceRows).arg(videoRows));
-    check(fpsIgnoredRows == 1,
-          QStringLiteral("the one row that ignores the frame rate was covered (%1)").arg(fpsIgnoredRows));
+    // TWO rows ignore the frame rate now, and the number is the table's, not a typo:
+    // the export pass added generic.sequence (artifact="sequence", fps="ignored") to
+    // sit alongside the older post.pixiv.ugoira. Both must be walked, and the ids the
+    // walk collected are named so the claim is about which rows, not only how many.
+    check(fpsIgnoredRows == 2,
+          QStringLiteral("every row that ignores the frame rate was covered (%1 of 2: %2)")
+              .arg(fpsIgnoredRows)
+              .arg(fpsIgnoredIds.join(QStringLiteral(", "))));
     check(capped > 20, QStringLiteral("capped rows were covered (%1)").arg(capped));
     check(unbuildable >= 1,
           QStringLiteral("rows this build cannot produce were covered (%1)").arg(unbuildable));
@@ -466,7 +592,15 @@ int main(int argc, char** argv) {
         { "discord.animation", true, false, true, true },
         // One image: no frame rate, no range, and image quality IS the control.
         { "still.instagram.feed", false, true, true, false },
-        // A folder of numbered stills whose timing is authored elsewhere.
+        // A folder of numbered stills whose timing is authored elsewhere. One PNG
+        // codec (no codec choice to make), the frame rate is authored on the upload
+        // page, no audio, no loop, no palette, no quality knob - so every resident it
+        // has is the FRAME-RANGE row, which H41 moved under Advanced on 2026-10-09.
+        // It used to offer the section only because transparency lived there - since
+        // 2026-10-03 the transparency row is on the regular surface - and the range
+        // move reused the section: with nothing else inside, this is the row that
+        // keeps it offered (without it the section is hidden and the destination's
+        // ranges are unreachable).
         { "post.pixiv.ugoira", false, true, true, true },
         // An exact-size sticker: the destination owns the size.
         { "discord.sticker", true, false, false, true },
@@ -625,18 +759,19 @@ int main(int argc, char** argv) {
               "an audio row that carries sound states it once and gives no reason");
     }
 
-    // The facts of a destination that only BOUNDS the size must say what the bound is,
-    // and its audio line must name the destination rather than the project.
+    // A destination's audio line must name the destination rather than the project:
+    // Telegram is not silent, this project is. (The byte cap this row declares is
+    // pinned BY VALUE further down, in the Free-row block that found the truncation.
+    // The old check here settled for the word "GB", which this row's own <note>
+    // already contains - "2 GB per file" - so it passed with the cap read as 0 and
+    // the limits row missing.)
     {
         const ctrl::ExportTarget t =
             ctrl::ExportTargets::find(targets, QStringLiteral("chat.telegram.video"));
         model.setDestinationId(t.id);
-        const QString text = model.factsText();
-        check(text.contains(QStringLiteral("GB")),
-              "a 2 GB cap is stated in GB, not as a number of bytes");
         check(factById(model, QStringLiteral("audio")).detail
                   .contains(QStringLiteral("none in this project")),
-              "and its audio line blames the silent project, not Telegram");
+              "the destination's audio line blames the silent project, not Telegram");
     }
 
     // ---- the aspect lock writes back ONE WAY --------------------------------
@@ -665,7 +800,11 @@ int main(int argc, char** argv) {
 
         // Editing Width must still move Height to the formula's number (item 36).
         const int width = 418;
-        const int expectedHeight = evenUp((native.nativeSize.height() * width) / native.nativeSize.width());
+        // The ratio the lock HOLDS is the pair the form opened on - here the project's
+        // own 720x1172, because that is the pair the model was constructed with. (The
+        // case where it is NOT the project's ratio is below.)
+        const QSize lock(native.nativeSize);
+        const int expectedHeight = evenUp((lock.height() * width) / lock.width());
         check(aspect.setProperty("width", width),
               "a direct width write (the WriteProperty route QML uses) returns");
         check(aspect.width() == width,
@@ -676,7 +815,7 @@ int main(int argc, char** argv) {
 
         // The mirror: editing Height must still move Width.
         const int height = 680;
-        const int expectedWidth = evenUp((native.nativeSize.width() * height) / native.nativeSize.height());
+        const int expectedWidth = evenUp((lock.width() * height) / lock.height());
         check(aspect.setProperty("height", height),
               "a direct height write returns too");
         check(aspect.height() == height,
@@ -703,7 +842,7 @@ int main(int argc, char** argv) {
         // the aspect lock would silently stop working - a quieter, worse bug than the
         // crash. So edit again, AFTER the locked writes, and require the partner to move.
         const int later = 300;
-        const int laterHeight = evenUp((native.nativeSize.height() * later) / native.nativeSize.width());
+        const int laterHeight = evenUp((lock.height() * later) / lock.width());
         check(aspect.setProperty("width", later) && aspect.height() == laterHeight,
               QStringLiteral("an edit after the locked ones still moves the partner, so the guard came back down (%1x%2)")
                   .arg(aspect.width()).arg(aspect.height()));
@@ -715,6 +854,236 @@ int main(int argc, char** argv) {
         check(aspect.width() == native.nativeSize.width() && aspect.height() == native.nativeSize.height(),
               QStringLiteral("and writeSize lands the native size exactly (%1x%2)")
                   .arg(aspect.width()).arg(aspect.height()));
+
+        // ---- the lock holds the ratio it was SWITCHED ON with --------------------
+        // Ruled 2026-10-08, verbatim: "Aspect ratio should lock aspect ratio to the one
+        // used when the lock was last activated." The old derive read the PROJECT's
+        // ratio instead, so a locked pair of any other shape snapped back to the
+        // project's on the next edit - the report was "the resolution aspect ratio
+        // linking is broken".
+        {
+            gui::ExportViewModel square(native);
+            check(square.keepAspectRatio(),
+                  "precondition: this one starts with the lock on (the saved preference)");
+            square.setKeepAspectRatio(false);
+            square.setProperty("width", 1080);
+            square.setProperty("height", 1080);
+            check(square.width() == 1080 && square.height() == 1080,
+                  QStringLiteral("precondition: unlocked, the pair can be any shape (%1x%2)")
+                      .arg(square.width()).arg(square.height()));
+
+            square.setKeepAspectRatio(true);
+            square.setProperty("height", 540);
+            check(square.width() == 540,
+                  QStringLiteral("switching the lock ON captures THAT pair, so the next edit "
+                                 "holds 1:1 (%1x%2)")
+                      .arg(square.width()).arg(square.height()));
+            square.setProperty("width", 800);
+            check(square.height() == 800,
+                  QStringLiteral("and the captured ratio survives editing the other field "
+                                 "(%1x%2)")
+                      .arg(square.width()).arg(square.height()));
+
+            // Reset ignores the lock and RE-BASES it: "Reset should ignore aspect ratio
+            // lock and set a new aspect ratio for it if the lock is enabled."
+            square.setSizeToNative();
+            check(square.width() == native.nativeSize.width()
+                      && square.height() == native.nativeSize.height(),
+                  QStringLiteral("Reset lands the project's size exactly, whatever the lock held (%1x%2)")
+                      .arg(square.width()).arg(square.height()));
+            square.setProperty("width", 360);
+            check(square.height() == evenUp((native.nativeSize.height() * 360) / native.nativeSize.width()),
+                  QStringLiteral("and from then on the lock holds the ratio Reset landed on, "
+                                 "not the 1:1 it held before (%1x%2)")
+                      .arg(square.width()).arg(square.height()));
+        }
+
+        // A lock that starts ON (the saved preference) holds the pair the form OPENED
+        // on - the remembered size, not the project's.
+        {
+            gui::ExportViewModel::Init remembered = native;
+            remembered.width = 1000;
+            remembered.height = 1000;
+            remembered.keepAspectRatio = true;
+            gui::ExportViewModel opened(remembered);
+            check(opened.width() == 1000 && opened.height() == 1000,
+                  "precondition: the form opens on the remembered pair");
+            opened.setProperty("height", 500);
+            check(opened.width() == 500,
+                  QStringLiteral("and its lock holds that pair, not the project's (%1x%2)")
+                      .arg(opened.width()).arg(opened.height()));
+            // The project's ratio is what a lock that was OFF captures only when it is
+            // switched on over a pair that IS the project's.
+            opened.setKeepAspectRatio(false);
+            opened.setSizeToNative();
+            opened.setKeepAspectRatio(true);
+            opened.setProperty("height", 586);
+            check(opened.width() == evenUp((native.nativeSize.width() * 586) / native.nativeSize.height()),
+                  QStringLiteral("while a lock switched on over the project's own pair holds "
+                                 "the project's ratio (%1x%2)")
+                      .arg(opened.width()).arg(opened.height()));
+        }
+    }
+
+    // ---- a Max rule is a CEILING on the FILE, not a decision about the boxes ----
+    //
+    // The user's report, verbatim: "It should default to project resolution unless a
+    // destination enforces a strict resolution limit." chat.whatsapp.video is a
+    // surviving ceiling row whose rule is <size mode="max" w="1280" h="720"/> - a
+    // ceiling, not a size - so a project LARGER than 1280x720 must still open at its
+    // own resolution, with the export fitted down.
+    // The superseded code wrote the PLAN's fitted size into the boxes and carried the
+    // ceiling as their maximum, so a 1080x1080 project opened showing 720x720 (a
+    // 1920x1080 project showing 1280x720) and "Reset to native" could not land the
+    // native size: the field clamped it back to the ceiling. Both fail below.
+    {
+        const ctrl::ExportTarget ceiling =
+            ctrl::ExportTargets::find(targets, QStringLiteral("chat.whatsapp.video"));
+        check(ceiling.size.mode == ctrl::SizeMode::Max && ceiling.size.w == 1280
+                  && ceiling.size.h == 720,
+              QStringLiteral("chat.whatsapp.video is the 1280x720 ceiling this rule is about "
+                             "(%1x%2)")
+                  .arg(ceiling.size.w).arg(ceiling.size.h));
+
+        const QSize natives[] = { QSize(1080, 1080), QSize(1920, 1080) };
+        for (const QSize& native : natives) {
+            gui::ExportViewModel::Init init = initFor();
+            init.nativeSize = native;
+            gui::ExportViewModel m(init);
+            m.setDestinationId(ceiling.id);
+
+            // The default is the PROJECT's resolution, not the ceiling's fit. Fails on
+            // the old code, which showed the fitted plan size here.
+            check(m.width() == native.width() && m.height() == native.height(),
+                  QStringLiteral("a %1x%2 project over a 1280x720 ceiling opens at its own "
+                                 "resolution (%3x%4): the ceiling bounds the FILE, not the "
+                                 "boxes - the superseded code showed the fitted size")
+                      .arg(native.width()).arg(native.height()).arg(m.width()).arg(m.height()));
+
+            // ... while the FILE is still capped: the boxes are the request, the facts
+            // are the file. Asserting the plan too, so the facts check below cannot pass
+            // by stating the request.
+            const ctrl::ExportPlan plan = m.lastPlan();
+            check(plan.size.width() <= ceiling.size.w && plan.size.height() <= ceiling.size.h
+                      && plan.size != native,
+                  QStringLiteral("a %1x%2 project's plan still fits the ceiling (%3x%4)")
+                      .arg(native.width()).arg(native.height())
+                      .arg(plan.size.width()).arg(plan.size.height()));
+            check(factById(m, QStringLiteral("size")).value.contains(
+                      QStringLiteral("%1 x %2").arg(plan.size.width()).arg(plan.size.height()))
+                      && !(m.width() == plan.size.width() && m.height() == plan.size.height()),
+                  QStringLiteral("a %1x%2 project states the capped output size (%3x%4) in its "
+                                 "facts while the boxes hold the request (%5x%6) - the plan is "
+                                 "the file, the boxes are the request, and the superseded code "
+                                 "made them the same")
+                      .arg(native.width()).arg(native.height())
+                      .arg(plan.size.width()).arg(plan.size.height())
+                      .arg(m.width()).arg(m.height()));
+
+            // Reset to native lands the project's size EXACTLY. Fails on the old code:
+            // the ceiling was the field's maximum and clamped the write.
+            m.setSizeToNative();
+            check(m.width() == native.width() && m.height() == native.height(),
+                  QStringLiteral("a %1x%2 project's Reset to native lands the native size "
+                                 "exactly over a ceiling (%3x%4)")
+                      .arg(native.width()).arg(native.height()).arg(m.width()).arg(m.height()));
+        }
+    }
+
+    // ---- and the aspect lock keeps the PROJECT's ratio, not the ceiling's --------
+    //
+    // Contract item 36: with "Keep aspect ratio" on, editing Width derives Height from
+    // the PROJECT's ratio. The superseded code clamped that derived partner against the
+    // destination ceiling, so a 720x1172 project at 800 wide came back 800x720 - the
+    // ceiling's ratio, not the project's. Fails on the old code.
+    {
+        const ctrl::ExportTarget ceiling =
+            ctrl::ExportTargets::find(targets, QStringLiteral("chat.whatsapp.video"));
+        gui::ExportViewModel::Init init = initFor();
+        init.nativeSize = QSize(720, 1172);
+        init.keepAspectRatio = true;
+        gui::ExportViewModel m(init);
+        m.setDestinationId(ceiling.id);
+        check(m.keepAspectRatio() && m.nativeWidth() == 720 && m.nativeHeight() == 1172,
+              "the aspect lock is on over a 720x1172 project under the 1280x720 ceiling");
+
+        const int width = 800;
+        const int expectedHeight =
+            evenUp((init.nativeSize.height() * width) / init.nativeSize.width());
+        check(m.setProperty("width", width), "a direct width write returns under the ceiling");
+        check(m.height() == expectedHeight && expectedHeight > ceiling.size.h,
+              QStringLiteral("and the locked height is the PROJECT's ratio (%1, past the 720 "
+                             "ceiling) - a ceiling bounds the file, not the box")
+                  .arg(m.height()));
+    }
+
+    // ---- a dictated size still reports the plan's size --------------------------
+    //
+    // MaxExactSide and Exact PIN the size, so the boxes must go on reporting exactly
+    // what the plan resolved and stop accepting edits; only the BOUNDING modes (Free,
+    // Max) hand the boxes back to the user. Unchanged by the ceiling fix, asserted so
+    // that fix cannot leak into the pinned modes.
+    {
+        const ctrl::ExportTarget pinned[] = {
+            ctrl::ExportTargets::find(targets, QStringLiteral("telegram.sticker")),
+            ctrl::ExportTargets::find(targets, QStringLiteral("telegram.emoji")),
+        };
+        check(pinned[0].size.mode == ctrl::SizeMode::MaxExactSide && pinned[0].size.side == 512,
+              QStringLiteral("telegram.sticker pins the long side at 512 (%1)")
+                  .arg(pinned[0].size.side));
+        check(pinned[1].size.mode == ctrl::SizeMode::Exact && pinned[1].size.w == 100
+                  && pinned[1].size.h == 100,
+              QStringLiteral("telegram.emoji pins 100x100 (%1x%2)")
+                  .arg(pinned[1].size.w).arg(pinned[1].size.h));
+
+        for (const ctrl::ExportTarget& t : pinned) {
+            gui::ExportViewModel::Init init = initFor();
+            init.nativeSize = QSize(1080, 1080);
+            gui::ExportViewModel m(init);
+            m.setDestinationId(t.id);
+            const ctrl::ExportPlan plan = m.lastPlan();
+            check(plan.ok(),
+                  QStringLiteral("%1: the plan resolves on this build (%2)")
+                      .arg(t.id, plan.error));
+            check(!m.sizeEditable(),
+                  QStringLiteral("%1: a dictated size is still not editable").arg(t.id));
+            check(m.width() == plan.size.width() && m.height() == plan.size.height()
+                      && !(m.width() == 1080 && m.height() == 1080),
+                  QStringLiteral("%1: the boxes still report the plan's size (%2x%3), not the "
+                                 "1080x1080 project's")
+                      .arg(t.id).arg(m.width()).arg(m.height()));
+        }
+    }
+
+    // ---- the resolution ceiling is STATED, or the form hides a destination rule -
+    {
+        gui::ExportViewModel::Init init = initFor();
+        gui::ExportViewModel m(init);
+        const ctrl::ExportTarget ceiling =
+            ctrl::ExportTargets::find(targets, QStringLiteral("chat.whatsapp.video"));
+        m.setDestinationId(ceiling.id);
+        check(factById(m, QStringLiteral("limits")).value.contains(
+                  QStringLiteral("max 1280 x 720")),
+              QStringLiteral("a ceiling row states its resolution limit (%1)")
+                  .arg(factById(m, QStringLiteral("limits")).value));
+
+        const ctrl::ExportTarget free =
+            ctrl::ExportTargets::find(targets, QStringLiteral("chat.telegram.video"));
+        check(free.size.mode == ctrl::SizeMode::Free,
+              "chat.telegram.video imposes no size, only a byte cap");
+        // The cap is 2^31 exactly - one past INT_MAX - so its VALUE is what proves the
+        // byte cap is read as a qint64: read as an int it fails and returns 0, the
+        // limits row disappears and the fit loop loses its only bound. Pinned against
+        // the number, not the word "GB" (which the row's <note> already supplies).
+        check(free.caps.maxBytes == 2147483648LL,
+              QStringLiteral("chat.telegram.video's 2 GB cap survives parsing as a qint64 (%1)")
+                  .arg((qlonglong)free.caps.maxBytes));
+        m.setDestinationId(free.id);
+        const gui::ExportFact freeLimits = factById(m, QStringLiteral("limits"));
+        check(!freeLimits.value.contains(QStringLiteral(" x "))
+                  && freeLimits.value.contains(QStringLiteral("2 GB")),
+              QStringLiteral("a Free row states its byte cap (2 GB) and no resolution limit (%1)")
+                  .arg(freeLimits.value));
     }
 
     // ---- the read-back MainWindow assembles the export from ----------------
@@ -736,6 +1105,110 @@ int main(int argc, char** argv) {
         check(!back.ranges.isEmpty(), "and at least one frame range");
     }
 
+    // ---- H42: the destination-mode plan is asked about the USER'S answer ----
+    //
+    // The HIGH the review recorded: `buildRequest()` never wrote
+    // `allowTransparency`, so the destination-mode request kept its own `true`
+    // default (`ctrl/ExportTarget.h:349`) and the row on screen reached only
+    // `readBack()`. With the default standing, a `choice` alpha row's own resolution
+    // and the archive ladder's alpha-OFF branch are both unreachable from the app,
+    // and a box the user unticked is a control that lies.
+    //
+    // The assertion is that the REQUEST carries the row, in both states: the answer
+    // that used to arrive as the default's own value is the half that passed before
+    // the field was wired, so pinning only one state would prove nothing. Fails on
+    // the tree where buildRequest() leaves the field to its default.
+    {
+        const ctrl::ExportTarget t =
+            ctrl::ExportTargets::find(targets, QStringLiteral("twitch.emote"));
+        check(t.alpha == ctrl::Capability::Choice,
+              QStringLiteral("precondition: %1 OFFERS the transparency choice rather than "
+                             "deciding it").arg(t.id));
+        model.setDestinationId(t.id);
+        model.transparency()->setValue(false);
+        check(requestFor(model).allowTransparency == false,
+              "H42: the destination-mode request says transparency OFF when the row is off");
+        model.transparency()->setValue(true);
+        check(requestFor(model).allowTransparency == true,
+              "H42: and ON when the row is on (the state the request's default already "
+              "carried, which is why both are asserted)");
+    }
+
+    // ---- F36: the frame-range fields clamp against each other ---------------
+    //
+    // Contract item 36 (`docs/export-dialog-behavior.md:218`): "the frame-range
+    // fields clamp against each other so a range can never invert." Both fields were
+    // independent full int32 on the row (AeFrameRangeRow) and the model
+    // bound-checked the INDEX only, so a user could set first=100 on a [10..50]
+    // range and produce an inverted pair that only the backend noticed (it swaps the
+    // pair with a warning, `ctrl/ExportParams.h:229-238`). The form-level guarantee
+    // is what is pinned here, and it fails on the tree that took the number as typed.
+    {
+        gui::ExportRangeModel* ranges = model.ranges();
+        // A project of 0..200 holding one remembered range of 10..50: an edit of
+        // first to 100 is a real frame of the project and past the row's last, which
+        // is the case that inverts.
+        ranges->setProjectExtent(0, 200);
+        ranges->resetRanges({ctrl::FrameRange{10, 50}});
+        check(ranges->ranges().size() == 1 && ranges->ranges().at(0).first == 10
+                  && ranges->ranges().at(0).last == 50,
+              "precondition: one remembered range of [10..50] inside a 0..200 project");
+
+        RangeChangeSpy spy(ranges);
+        ranges->setRangeFirst(0, 100);
+        const ctrl::FrameRange dragged = ranges->ranges().at(0);
+        check(dragged.first == 100 && dragged.last == 100,
+              QStringLiteral("F36: first=100 on a [10..50] range carries the last along, so "
+                             "the pair reads %1..%2 and cannot invert")
+                  .arg(dragged.first).arg(dragged.last));
+        check(spy.sawRow(0) && spy.sawBothFields(),
+              "F36: and dataChanged names the row with BOTH fields, so the view redraws "
+              "the neighbour it was not told about");
+
+        // The mirror: an edit of last below the row's first drags first down.
+        ranges->setRangeLast(0, 3);
+        const ctrl::FrameRange mirrored = ranges->ranges().at(0);
+        check(mirrored.first == 3 && mirrored.last == 3,
+              QStringLiteral("F36: last=3 on a [100..100] range carries the first along "
+                             "(%1..%2)")
+                  .arg(mirrored.first).arg(mirrored.last));
+
+        // Each field is also clamped into the PROJECT's own extent, so no frame
+        // outside the animation can be named: 100 and 3 are outside a 10..50 project,
+        // and the extent wins over both the edit and the neighbour.
+        ranges->setProjectExtent(10, 50);
+        ranges->resetRanges({ctrl::FrameRange{10, 50}});
+        ranges->setRangeFirst(0, 100);
+        const ctrl::FrameRange high = ranges->ranges().at(0);
+        check(high.first <= high.last && high.last == 50,
+              QStringLiteral("F36: first=100 on a [10..50] range in a 10..50 project clamps "
+                             "to the project's own last (%1..%2), the pair still non-inverted")
+                  .arg(high.first).arg(high.last));
+
+        // A project that does not start at 0: its own first is the floor for BOTH
+        // fields, and the old code let a field keep a number below it.
+        ranges->setRangeLast(0, 3);
+        const ctrl::FrameRange lowLast = ranges->ranges().at(0);
+        check(lowLast.last == 10 && lowLast.first == 10,
+              QStringLiteral("F36: a below-minimum last clamps to the project's own first "
+                             "(%1..%2)")
+                  .arg(lowLast.first).arg(lowLast.last));
+        ranges->setRangeFirst(0, -40);
+        const ctrl::FrameRange lowFirst = ranges->ranges().at(0);
+        check(lowFirst.first == 10,
+              QStringLiteral("F36: and so does a below-minimum first (%1..%2)")
+                  .arg(lowFirst.first).arg(lowFirst.last));
+
+        // An out-of-range INDEX is still a no-op rather than a crash, and a write of
+        // the value already held moves nothing.
+        ranges->setRangeFirst(7, 20);
+        check(ranges->ranges().at(0).first == 10,
+              "F36: an index that is not there is still a no-op");
+        ranges->setRangeFirst(0, 10);
+        check(ranges->ranges().at(0).first == 10 && ranges->ranges().at(0).last == 10,
+              "F36: re-writing the held value leaves the pair alone");
+    }
+
     // ---- the table's strings actually arrive translated ---------------------
     //
     // The mechanism (a generated QT_TRANSLATE_NOOP list plus a lookup through the same
@@ -751,13 +1224,17 @@ int main(int argc, char** argv) {
             QCoreApplication::installTranslator(&translator);
             const QList<ctrl::ExportTarget> translated =
                 ctrl::ExportTargets::load(QStringLiteral(AE_EXPORT_TARGETS_PATH));
-            const ctrl::ExportTarget esGeneric =
-                ctrl::ExportTargets::find(translated, QStringLiteral("chat.generic.video"));
-            const ctrl::ExportTarget enGeneric =
-                ctrl::ExportTargets::find(targets, QStringLiteral("chat.generic.video"));
-            check(!esGeneric.label.isEmpty() && esGeneric.label != enGeneric.label,
+            // archive.master stands in as the translated sample: its label is an
+            // ordinary translated name ("Archivo (máxima calidad)"), whereas the row
+            // this used to name (chat.generic.video) was removed and the trio that
+            // replaced it carries NEW English-only labels.
+            const ctrl::ExportTarget esArchive =
+                ctrl::ExportTargets::find(translated, QStringLiteral("archive.master"));
+            const ctrl::ExportTarget enArchive =
+                ctrl::ExportTargets::find(targets, QStringLiteral("archive.master"));
+            check(!esArchive.label.isEmpty() && esArchive.label != enArchive.label,
                   QStringLiteral("a destination name arrives translated (%1 -> %2)")
-                      .arg(enGeneric.label, esGeneric.label));
+                      .arg(enArchive.label, esArchive.label));
             // The FACTS are built in code (gui/ExportFacts.cpp) through
             // QCoreApplication::translate with the "MainWindow" context, and those
             // strings reach a translator only because the call is written out with its
@@ -812,13 +1289,26 @@ int main(int argc, char** argv) {
                                translatedModel.transparency()->label()));
             }
             QCoreApplication::removeTranslator(&probe);
+            // The table's own translation coverage, read off the LOADED table so the
+            // number cannot go stale. On the table this landed with it is 37 of 66:
+            // the three removed general rows each had a Spanish label ("Un vídeo para
+            // una app de chat", "Sitio web", "Solo un archivo (todavía no lo sé)") and
+            // their three replacements ("Video", "Animated image", "Image sequence")
+            // are NEW English source strings the catalog does not carry, so the trio
+            // neither translates nor counts (three fewer than the 40 the old table
+            // yielded). The eight renamed platform labels changed spelling only and
+            // were brand words whose Spanish was already the same word, so they move
+            // the count by nothing. Brands still do not translate.
             int translatedLabels = 0;
             for (const ctrl::ExportTarget& t : translated) {
                 const ctrl::ExportTarget english = ctrl::ExportTargets::find(targets, t.id);
                 if (t.label != english.label) ++translatedLabels;
             }
             check(translatedLabels > 20,
-                  QStringLiteral("most names are translated, brands are not (%1 of %2 differ)")
+                  QStringLiteral("most names are translated, brands are not (%1 of %2 differ; "
+                                 "the three new general labels are new English strings and the "
+                                 "three removed rows' translations are gone) - the old table's "
+                                 "40 was the same read before that swap")
                       .arg(translatedLabels).arg(translated.size()));
             QCoreApplication::removeTranslator(&translator);
         }

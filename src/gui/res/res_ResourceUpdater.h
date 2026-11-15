@@ -19,7 +19,19 @@ namespace gui::res {
         void load(QTreeWidget& aTree, const QString& aFilePath);
         void reload(Item& aItem);
         void forceReload(Item& aItem);
-        void remove(QTreeWidget& aTree, Item& aTopItem);
+
+        // Remove the asset subtree. When aReferencingObjects is empty the asset
+        // must have no live reference; if it does, nothing is removed, the user
+        // is warned and false is returned. When it is non-empty those object
+        // nodes (the layers that render from the asset) are deleted in the SAME
+        // undo step, which is how the asset can be removed with them.
+        //
+        // Returns whether the asset was removed.
+        bool remove(
+            QTreeWidget& aTree,
+            Item& aTopItem,
+            const QVector<core::ObjectNode*>& aReferencingObjects = QVector<core::ObjectNode*>()
+        );
 
     private:
         img::ResourceNode* createResourceTree(const QString& aFilePath, bool aLoadImage);

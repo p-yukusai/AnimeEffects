@@ -15,6 +15,9 @@ namespace gui {
 class ResourceDialog;
 }
 namespace gui {
+class ObjectTreeWidget;
+}
+namespace gui {
 class MainMenuBar;
 }
 namespace gui {
@@ -43,6 +46,12 @@ public:
 
     void setResourceDialog(ResourceDialog* aResDialog);
     ResourceDialog* resourceDialog() const { return mResDialog; }
+
+    // The object tree's view. The asset removal path needs it to delete the
+    // layers that reference a removed asset in the same undo step; it is the one
+    // place a res-namespace action can reach the object tree widget from.
+    void setObjectTreeWidget(ObjectTreeWidget* aTree);
+    ObjectTreeWidget* objectTreeWidget() const { return mObjectTree; }
 
     img::ResourceNode* requireOneResource();
 
@@ -80,6 +89,7 @@ private:
     core::Project* mProject;
     MainMenuBar* mMainMenuBar;
     ResourceDialog* mResDialog;
+    ObjectTreeWidget* mObjectTree;
     QPlainTextEdit* mLogView;
     gl::DeviceInfo mGLDeviceInfo;
     KeyCommandMap* mKeyCommandMap;

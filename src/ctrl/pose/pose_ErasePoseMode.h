@@ -2,6 +2,7 @@
 #define CTRL_POSE_ERASEPOSEMODE_H
 
 #include <QMatrix4x4>
+#include "cmnd/Gesture.h"
 #include "util/Circle.h"
 #include "core/Project.h"
 #include "core/ObjectNode.h"
@@ -31,7 +32,7 @@ namespace pose {
         QMatrix4x4 mTargetMtx;
         QMatrix4x4 mTargetInvMtx;
         KeyOwner& mKeyOwner;
-        RotateAllBones* mCommandRef;
+        cmnd::Gesture<RotateAllBones> mGesture;
         util::Circle mBrush;
         float mBrushPressure;
         bool mIsBrushDrawing;

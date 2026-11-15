@@ -19,9 +19,9 @@ import QtQuick.Controls
 //   Output / Frame rate / Format / Audio / ...       <- label + value rows
 //   > Details (the destination's own notes)          <- collapsed; a note can be long
 //   ---
-//   OUTPUT     frames - resolution - frame rate
+//   OUTPUT     resolution - frame rate
 //   ENCODING   format - codec - quality - capabilities
-//   > Advanced
+//   > Advanced  frame ranges - loop - audio - palette - codec's own numbers
 //   ---
 //   [ Export ]  [ Cancel ]
 //
@@ -104,26 +104,46 @@ Item {
         anchors.fill: parent
         color: theme.base
 
-        // Background click: drop focus from any field being edited.
+        // Background click: drop focus from any field being edited. A3 (item 3)
+        // and B11 (item 11): a click outside a focused text field removes its
+        // focus, and what the field holds is untouched by that click. The blur is
+        // by objectName, because that is the one thing both kinds of editor can
+        // be named by: `scrubEdit` is ScrubSpinBox's inner TextInput, and
+        // `bitrateEdit` is the Advanced section's bitrate AeTextField - a
+        // TextField IS its own editor, unlike the scrub box, so it is the field
+        // itself that carries the name. The bitrate field was the hole in this
+        // handler until 2026-10-09: everything else on the form lost focus to a
+        // background click and this one kept the caret.
         MouseArea {
             anchors.fill: parent
             onPressed: {
                 const fi = root.Window ? root.Window.activeFocusItem : null;
-                if (fi && fi.objectName === "scrubEdit")
+                if (fi && (fi.objectName === "scrubEdit" || fi.objectName === "bitrateEdit"))
                     fi.focus = false;
             }
         }
 
         // D25/Q9 (decided 2026-09-30): when the content does not fit - the measured
-        // case is minimum size with Advanced open and four frame ranges: 630px of
-        // content in 558px of page, cut with no recourse before this - the CONTENT
-        // scrolls and the action row below stays put and reachable. Wheel and drag
-        // are the Flickable's own; the keys are two kinds: focus movement scrolls
-        // the target into view (every control stays reachable), and
-        // PageUp/PageDown/Home/End scroll by page when the focused editor does not
-        // consume them. Horizontal too: below 468px of width the form's layout
+        // case is minimum size with Advanced open and four frame ranges: 700px of
+        // content in 558px of page (the 630px this note carried before 2026-10-03 is
+        // stale; re-measured 2026-10-09 after H41 moved the frame ranges in here -
+        // 702px on the row's old placement, and 2px less now that it sits in this
+        // column's spacing rather than the OUTPUT grid's row spacing), and cut with
+        // no recourse before this - the CONTENT scrolls and the action row below
+        // stays put and reachable. Wheel and drag are the Flickable's own; the keys
+        // are two kinds: focus movement scrolls the target into view (every control
+        // stays reachable), and PageUp/PageDown/Home/End scroll by page when the
+        // focused editor does not consume them. Horizontal too: below 343px of width
+        // - the form's own layout minimum, measured at 552 with the frame ranges on
+        // the default surface (a 320-wide range row plus the 104px label column was
+        // the widest thing in the form) and 343 now that they are here - the form's
         // minimums overflow (measured, overflow-spike), and the line says never
-        // exceeds the window WITHOUT A SCROLL - so it scrolls rather than cuts.
+        // exceeds the window WITHOUT A SCROLL - so it scrolls rather than cuts. H41
+        // (2026-10-09) moved the frame-range rows INTO the Advanced section, so the
+        // worst case above is essentially UNCHANGED - they were already inside its
+        // height while the section was open - and the default surface (Advanced
+        // shut) is now shorter by them, which is the point of the move. Both figures
+        // are printed and re-measured by tests/form_layout.cpp.
         Flickable {
             id: scroller
             // What a test or a probe addresses this scroll host by.
@@ -299,6 +319,7 @@ Item {
                         required property string factSeverity
 
                         Layout.fillWidth: true
+                        Layout.preferredWidth: 0
                         Layout.preferredHeight: implicitHeight
                         visible: factId === "note"
                         text: "• " + factValue
@@ -323,56 +344,16 @@ Item {
             }
             Item { Layout.preferredHeight: 6 }
 
-            // Frames first: which frames, then how big, then how fast - the order a
-            // person thinks about them.
+            // What the OUTPUT grid holds now: how big, then how fast - the order a
+            // person thinks about them. The frame range that used to open this grid
+            // (which frames, then how big, then how fast) lives under Advanced now
+            // (see the block there), so the default surface stays uncluttered for
+            // the common case.
             GridLayout {
                 Layout.fillWidth: true
                 columns: 2
                 columnSpacing: 12
                 rowSpacing: 8
-
-                AeFieldLabel { text: qsTr("Frames"); visible: exportModel.rangeVisible }
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    visible: exportModel.rangeVisible
-                    spacing: 4
-
-                    Repeater {
-                        model: exportModel.ranges
-                        delegate: AeFrameRangeRow {
-                            required property int index
-                            required property int first
-                            required property int last
-                            required property string firstName
-                            required property string lastName
-                            required property bool canRemove
-
-                            Layout.fillWidth: true
-                            ordinal: index + 1
-                            // Bound WITH verbs: `firstFrame: first` is a binding
-                            // from the model role to the row's own property, never an
-                            // override of it (see AeFrameRangeRow's note).
-                            firstFrame: first
-                            lastFrame: last
-                            firstLabel: firstName
-                            lastLabel: lastName
-                            removable: canRemove
-                            // Through root's own functions: inside a delegate the name
-                            // `model` is ambiguous (the role model vs. the context
-                            // property), and a click that removes the wrong row is the
-                            // bug this row exists to make impossible.
-                            onFirstEdited: (value) => root.setRangeFirstAt(index, value)
-                            onLastEdited: (value) => root.setRangeLastAt(index, value)
-                            onRemoveRequested: root.removeRangeAt(index)
-                        }
-                    }
-                    AeButton {
-                        text: qsTr("Add range")
-                        kind: "ghost"
-                        iconName: "plus-bold"
-                        onClicked: exportModel.addRange()
-                    }
-                }
 
                 // Resolution: width x height as ONE row, with ONE reset for both. The
                 // widget form had two rows and two resets, so "make it the project's
@@ -520,32 +501,50 @@ Item {
                     Layout.maximumWidth: 260
                     visible: exportModel.qualityVisible
                     overlay: root
-                    enabled: exportModel.qualityInCharge
+                    // NOT disabled while the codec's own number is set: naming that
+                    // number is a fourth answer to the same question, and a combo
+                    // reading "Balanced" beside "CRF 18" is the form contradicting
+                    // itself. It reads "Custom" instead (ruled 2026-10-08: "when CRF is
+                    // used Quality should change to Custom instead of disabling, this
+                    // is established UI convention"), and choosing a bucket from it
+                    // hands the decision back to the intent - the model clears the
+                    // override, so "Custom" cannot outlive the choice that ended it.
                     options: {
                         const labels = exportModel.qualityLabels;
                         const out = [];
                         for (let i = 0; i < labels.length; ++i)
                             out.push({ label: labels[i], value: i });
+                        if (exportModel.qualityCustom)
+                            out.push({ label: exportModel.qualityCustomLabel,
+                                       value: labels.length });
                         return out;
                     }
-                    index: exportModel.qualityIndex
+                    // The Custom entry exists only while it IS the state, so it can
+                    // never be picked as if it were a fifth intent (the model refuses an
+                    // index above the buckets anyway).
+                    index: exportModel.qualityCustom ? exportModel.qualityLabels.length
+                                                     : exportModel.qualityIndex
                     onActivated: (index) => exportModel.qualityIndex = index
                 }
 
-                // Image quality: QImage::save()'s own setting, the only quality
-                // control a sequence has. -1 is the writer's own default, shown as
-                // the word "Auto".
+                // Image quality: QImage::save()'s own setting, the only quality control
+                // a sequence has. Auto is the writer's own default, and it is a STATE
+                // (the word, not a -1 sitting at the bottom of the range): the range is
+                // the writer's own 0..100, so every number the field offers is a number
+                // that reaches the file.
                 AeFieldLabel { text: qsTr("Image quality"); visible: exportModel.imageQualityVisible }
                 AeNumberField {
                     id: imageQualityField
+                    objectName: "imageQualityField"
                     Layout.fillWidth: true
                     Layout.preferredWidth: 160
                     Layout.maximumWidth: 260
                     visible: exportModel.imageQualityVisible
                     label: qsTr("Image quality")
-                    from: -1
+                    from: 0
                     to: 100
                     value: exportModel.imageQuality
+                    auto: exportModel.imageQualityAuto
                     placeholder: qsTr("Auto")
                     resetLabel: qsTr("Reset to auto")
                     onValueEdited: (value) => { exportModel.imageQuality = value }
@@ -555,6 +554,33 @@ Item {
                         function onImageQualityChanged() { imageQualityField.value = exportModel.imageQuality }
                     }
                 }
+            }
+
+            // Transparency is a REGULAR option, not an Advanced one (ruled
+            // 2026-10-03: "why is transparency under Advanced? since it pushes
+            // the codec choice onto a suboptimal codec it belongs in the
+            // regular options, and off by default"). It is not a
+            // control-for-a-default: turning it ON moves the encoder ladder
+            // off its own best pick — measured (table in
+            // docs/export-dialog-implementation-notes.md, 2026-10-01):
+            // libsvtav1 keeps the encode "ok" and silently drops alpha,
+            // libx265 refuses to open with yuva420p, and only libvpx-vp9 and
+            // ffv1 carry it. That is a quality trade the user has to see next
+            // to the encoding controls, so the toggle sits here and starts
+            // OFF; a preference saved by an earlier run is read as this dialog's
+            // starting point (MainWindow's export_allow_transparency), though the
+            // target's own alpha rule still overrides it — see item 42 of
+            // docs/export-dialog-behavior.md for what a saved `true` does today.
+            // A codec that cannot
+            // carry alpha hides the row (ExportViewModel's
+            // applyArtifactConstraints).
+            AeCheckBox {
+                Layout.fillWidth: true
+                visible: exportModel.transparency.visible
+                text: exportModel.transparency.label
+                checked: exportModel.transparency.value
+                enabled: exportModel.transparency.enabled
+                onToggled: exportModel.transparency.value = checked
             }
 
             // ============================================================ ADVANCED
@@ -574,14 +600,66 @@ Item {
                 visible: exportModel.advancedVisible && exportModel.advancedOpen
                 spacing: 6
 
-                AeCheckBox {
+                // WHICH FRAMES - the FIRST row of this section, in the order it
+                // always had: which frames, then how big (Resolution, above), then
+                // how fast (Frame rate, above). The placement is contract item 41
+                // ([R12], unamended): "the frame range lives under the
+                // Custom/Advanced section; the default surface stays uncluttered
+                // for the common case." It used to be the first row of the OUTPUT
+                // grid instead, and `rangeVisible` - true for video, animated image
+                // and image sequence, the app's primary use - put it on the default
+                // surface for exactly the common case the line names. Still gated by
+                // rangeVisible, so manual mode and a Still artifact are unchanged.
+                GridLayout {
                     Layout.fillWidth: true
-                    visible: exportModel.transparency.visible
-                    text: exportModel.transparency.label
-                    checked: exportModel.transparency.value
-                    enabled: exportModel.transparency.enabled
-                    onToggled: exportModel.transparency.value = checked
+                    columns: 2
+                    columnSpacing: 12
+                    rowSpacing: 8
+
+                    AeFieldLabel { text: qsTr("Frames"); visible: exportModel.rangeVisible }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: exportModel.rangeVisible
+                        spacing: 4
+
+                        Repeater {
+                            model: exportModel.ranges
+                            delegate: AeFrameRangeRow {
+                                required property int index
+                                required property int first
+                                required property int last
+                                required property string firstName
+                                required property string lastName
+                                required property bool canRemove
+
+                                Layout.fillWidth: true
+                                ordinal: index + 1
+                                // Bound WITH verbs: `firstFrame: first` is a binding
+                                // from the model role to the row's own property, never an
+                                // override of it (see AeFrameRangeRow's note).
+                                firstFrame: first
+                                lastFrame: last
+                                firstLabel: firstName
+                                lastLabel: lastName
+                                removable: canRemove
+                                // Through root's own functions: inside a delegate the name
+                                // `model` is ambiguous (the role model vs. the context
+                                // property), and a click that removes the wrong row is the
+                                // bug this row exists to make impossible.
+                                onFirstEdited: (value) => root.setRangeFirstAt(index, value)
+                                onLastEdited: (value) => root.setRangeLastAt(index, value)
+                                onRemoveRequested: root.removeRangeAt(index)
+                            }
+                        }
+                        AeButton {
+                            text: qsTr("Add range")
+                            kind: "ghost"
+                            iconName: "plus-bold"
+                            onClicked: exportModel.addRange()
+                        }
+                    }
                 }
+
                 AeCheckBox {
                     Layout.fillWidth: true
                     visible: exportModel.loop.visible
@@ -630,9 +708,11 @@ Item {
                     // under Advanced") — this is the DESTINATION-mode instance
                     // (manual mode's stays beside Format above; the two share
                     // every binding and are never both visible). It sits first
-                    // in this grid, right under the transparency toggle, because
-                    // the toggle is one of its inputs: the archive rule's
-                    // default codec follows it. A destination that DICTATES one
+                    // in this grid because the archive rule's default codec
+                    // follows the transparency toggle — which since 2026-10-03
+                    // lives on the REGULAR surface above, not beside this row
+                    // (see the toggle's own comment; only placement moved, the
+                    // dependency is the same). A destination that DICTATES one
                     // codec keeps the row hidden and states the fact instead.
                     AeFieldLabel {
                         text: qsTr("Codec")
@@ -650,26 +730,30 @@ Item {
                         onActivated: (index) => exportModel.codecIndex = index
                     }
 
-                    // The codec's own value, for a user who knows the number they
-                    // want instead of the intent. It starts on the codec's own
-                    // sentinel, drawn as the word "Auto" - and while it is there, the
-                    // Quality setting is in charge (see qualityInCharge).
+                    // The codec's own value, for a user who knows the number they want
+                    // instead of the intent. It starts in the Auto STATE, drawn as the
+                    // word rather than as a number, and while it is there the Quality
+                    // setting is what decides. Naming a number is what switches the
+                    // Quality row to "Custom" (see the combo above).
                     AeFieldLabel {
                         text: exportModel.qualityOverrideLabel
                         visible: exportModel.qualityOverrideVisible
                     }
                     AeNumberField {
                         id: overrideField
+                        objectName: "qualityOverrideField"
                         Layout.fillWidth: true
                         Layout.preferredWidth: 160
                         Layout.maximumWidth: 260
                         visible: exportModel.qualityOverrideVisible
                         label: qsTr("Quality override")
+                        // The codec's OWN span: the field offers the numbers the codec
+                        // accepts, and Auto is not one of them.
                         from: exportModel.qualityOverrideMinimum
                         to: exportModel.qualityOverrideMaximum
                         value: exportModel.qualityOverrideValue
+                        auto: exportModel.qualityOverrideAuto
                         placeholder: exportModel.qualityOverrideAutoText
-                        placeholderValue: exportModel.qualityOverrideMinimum
                         resetLabel: qsTr("Reset to auto")
                         onValueEdited: (value) => { exportModel.qualityOverrideValue = value }
                         onResetRequested: exportModel.setQualityOverrideToAuto()
@@ -692,6 +776,12 @@ Item {
                         spacing: 6
                         AeTextField {
                             id: bitrateField
+                            // The name the shell's background click addresses this
+                            // editor by (A3/B11): a TextField is its OWN editor, so
+                            // unlike the scrub fields - whose name sits on the inner
+                            // TextInput, "scrubEdit" - it is the field itself that
+                            // carries it.
+                            objectName: "bitrateEdit"
                             Layout.fillWidth: true
                             placeholderText: qsTr("Auto")
                             accessibleName: qsTr("Bitrate")
@@ -710,15 +800,18 @@ Item {
                         }
                     }
 
-                    // I43 (decided 2026-09-30): the size cap is OPT-IN and
-                    // settable. "Auto" (the sentinel) means NO cap is enforced —
-                    // the destination's own cap stays a stated fact in the facts
-                    // panel and the picker badge. Set a value and the export is
-                    // fitted under it; when it cannot fit, the export is REFUSED
-                    // with a visible reason rather than silently reduced further.
+                    // I43 (decided 2026-09-30): the size cap is OPT-IN and settable.
+                    // "Auto" is the STATE of no cap at all — the destination's own cap
+                    // stays a stated fact in the facts panel and the picker badge — and
+                    // the field draws the word for it rather than comparing a number to
+                    // a magic one (which is how a 0.25 MB cap used to read as "Auto").
+                    // Set a value and the export is fitted under it; when it cannot fit,
+                    // the export is REFUSED with a visible reason rather than silently
+                    // reduced further.
                     AeFieldLabel { text: qsTr("Size cap (MB)"); visible: exportModel.sizeCapVisible }
                     AeNumberField {
                         id: sizeCapField
+                        objectName: "sizeCapField"
                         Layout.fillWidth: true
                         Layout.preferredWidth: 160
                         Layout.maximumWidth: 260
@@ -729,8 +822,8 @@ Item {
                         decimals: 2
                         step: 0.1
                         value: exportModel.sizeCapValue
+                        auto: exportModel.sizeCapAuto
                         placeholder: qsTr("Auto")
-                        placeholderValue: exportModel.sizeCapAutoValue
                         resetLabel: qsTr("Reset to auto")
                         onValueEdited: (value) => { exportModel.sizeCapValue = value }
                         onResetRequested: exportModel.setSizeCapToAuto()

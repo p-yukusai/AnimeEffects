@@ -1,5 +1,8 @@
+#include <algorithm>
+#include <memory>
 #include <string>
 #include <QFileInfo>
+#include <QString>
 #include "util/TextUtil.h"
 #include "img/ColorRGBA.h"
 #include "img/PSDUtil.h"
@@ -13,6 +16,49 @@
 #include <QMessageBox>
 
 namespace img {
+
+namespace {
+// The identity a resource node is matched by when its source file is reimported:
+// Photoshop's stable per-layer id ("lyid") when the file carries one, otherwise
+// the layer's name. Writers without a "lyid" (ORA, older PSDs, non-Photoshop
+// tools) have no stable id, so the name is the only identity on offer -- and the
+// real name is "luni" where it disagrees with the padded Pascal field.
+QString layerIdentity(const PSDFormat::Layer& aLayer, const QString& aName)
+{
+    if (!aLayer.identity.empty()) {
+        return QString::fromStdString(aLayer.identity);
+    }
+    if (!aLayer.unicodeName.empty()) {
+        // the "luni" text is decoded already; the text filter (Shift-JIS) is for
+        // the Pascal bytes and must not run over it again.
+        return QString::fromStdString(aLayer.unicodeName);
+    }
+    return aName;
+}
+
+// A private copy of what the lazy image loader reads from a layer, so the loader
+// closure owns its own bytes instead of pointing into an img::PSDFormat the
+// caller may have destroyed (the relink path destroys it as soon as
+// createResourceNodes returns, yet the nodes survive for the session).
+std::shared_ptr<PSDFormat::Layer> copyLayerImageSource(const PSDFormat::Layer& aLayer)
+{
+    auto copy = std::make_shared<PSDFormat::Layer>();
+    copy->rect = aLayer.rect;
+    for (const PSDFormat::ChannelPtr& channel : aLayer.channels) {
+        auto chan = new PSDFormat::Channel();
+        chan->id = channel->id;
+        chan->compressionId = channel->compressionId;
+        chan->dataLength = channel->dataLength;
+        chan->data.reset(new uint8[channel->dataLength]);
+        if (channel->data) {
+            std::copy(
+                channel->data.get(), channel->data.get() + channel->dataLength, chan->data.get());
+        }
+        copy->channels.push_back(PSDFormat::ChannelPtr(chan));
+    }
+    return copy;
+}
+} // unnamed
 
 bool Util::isShiftJisCode(const img::PSDFormat& aFormat) {
     std::string nameset;
@@ -265,9 +311,8 @@ ResourceNode* Util::createResourceNodes(PSDFormat& aFormat, bool aLoadImage) {
 
         if (layer.entryType == PSDFormat::LayerEntryType_Layer) {
             // create resource
-            auto resNode = new ResourceNode(name);
+            auto resNode = new ResourceNode(name, layerIdentity(layer, name));
             resNode->data().setPos(rect.topLeft());
-            resNode->data().setUserData(&layer);
             resNode->data().setIsLayer(true);
             resNode->data().setBlendMode(getBlendModeFromPSD(layer.blendMode, psdHasCspTslyFlag(layer)));
             resNode->data().setIsVisible(layer.isVisible());
@@ -278,10 +323,20 @@ ResourceNode* Util::createResourceNodes(PSDFormat& aFormat, bool aLoadImage) {
                 resNode->data().grabImage(image.first, image.second.size(), Format_RGBA8);
             } else {
                 auto header = aFormat.header();
-                auto layerPtr = &layer;
+                // The loader has to own what it reads. It used to capture a
+                // pointer into the PSDFormat it was built from, which the relink
+                // path owns on the stack and destroys as soon as this function
+                // returns -- so every node that survived a reload held a closure
+                // into freed memory (and ResourceUpdater::createNewAppendNode,
+                // which copies the loader and calls it once, left it dangling
+                // for the rest of the session). A private copy of the layer's
+                // channel bytes makes the copied closure self-sufficient, and
+                // ResourceData::loadImage clears the loader after a successful
+                // run, so the same closure is never invoked twice.
+                auto layerCopy = copyLayerImageSource(layer);
 
-                resNode->data().setImageLoader([=](ResourceData& aData) -> bool {
-                    auto image = createTextureImage(header, *layerPtr);
+                resNode->data().setImageLoader([header, layerCopy](ResourceData& aData) -> bool {
+                    auto image = createTextureImage(header, *layerCopy);
                     aData.setPos(image.second.topLeft());
                     aData.grabImage(image.first, image.second.size(), Format_RGBA8);
                     return true;
@@ -295,9 +350,8 @@ ResourceNode* Util::createResourceNodes(PSDFormat& aFormat, bool aLoadImage) {
             resStack.pop_back();
         } else {
             // create resource
-            auto resNode = new ResourceNode(name);
+            auto resNode = new ResourceNode(name, layerIdentity(layer, name));
             resNode->data().setPos(rect.topLeft());
-            resNode->data().setUserData(&layer);
             resNode->data().setIsLayer(false);
             resCurrent->children().pushBack(resNode);
 
@@ -364,7 +418,6 @@ ResourceNode* Util::createResourceNodes(bool merged, const std::string& aFilePat
             // create resource
             auto resNode = new ResourceNode(name);
             resNode->data().setPos(rect.topLeft());
-            resNode->data().setUserData(&layer);
             resNode->data().setIsLayer(true);
             resNode->data().setBlendMode(oraParser::oraBlendToPSDBlend(layer.composite.blend));
             resNode->data().setIsVisible(layer.isVisible);
@@ -374,10 +427,17 @@ ResourceNode* Util::createResourceNodes(bool merged, const std::string& aFilePat
                 resNode->data().setPos(img_aLoad.second.topLeft());
                 resNode->data().grabImage(img_aLoad.first, img_aLoad.second.size(), Format_RGBA8);
             } else {
-                auto layerPtr = &layer;
+                // ORA layers carry no Photoshop-style stable id, so this node's
+                // identity falls back to its name (see ResourceNode's ctor).
+                //
+                // The QImage is captured by value: it is implicitly shared, so
+                // the copy outlives the `layers` copy this function's loop walks
+                // -- the old closure held a pointer into that list and dangled as
+                // soon as the function returned.
+                auto layerImage = layer.image;
 
-                resNode->data().setImageLoader([=](ResourceData& aData) -> bool {
-                    auto img_load = createTextureImage(layerPtr->image);
+                resNode->data().setImageLoader([layerImage](ResourceData& aData) -> bool {
+                    auto img_load = createTextureImage(layerImage);
                     aData.setPos(img_load.second.topLeft());
                     aData.grabImage(img_load.first, img_load.second.size(), Format_RGBA8);
                     return true;
@@ -392,7 +452,6 @@ ResourceNode* Util::createResourceNodes(bool merged, const std::string& aFilePat
             // create resource
             auto resNode = new ResourceNode(name);
             resNode->data().setPos(rect.topLeft());
-            resNode->data().setUserData(&layer);
             resNode->data().setIsLayer(false);
             resCurrent->children().pushBack(resNode);
 

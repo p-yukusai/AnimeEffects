@@ -8,6 +8,7 @@
 #include "core/ResourceUpdatingWorkspace.h"
 #include "ctrl/TimeLineUtil.h"
 #include "ctrl/CmndName.h"
+#include "ctrl/graph/graph_Channel.h"
 
 using namespace core;
 
@@ -162,6 +163,37 @@ namespace TimeLineUtil {
         }
 
         mCurrent = 1;
+    }
+
+    //---------------------------------------------------------------------------------------
+    AssignKeyValue::AssignKeyValue(TimeKey& aKey, TimeKeyType aType, int aComponent, float aValue):
+        mKey(&aKey), mType(aType), mComponent(aComponent), mPrev(0.0f), mNext(aValue), mDone(false) {}
+
+    void AssignKeyValue::modifyValue(float aValue) {
+        mNext = aValue;
+        if (mDone) {
+            redo();
+        }
+    }
+
+    void AssignKeyValue::exec() {
+        // The value the key holds NOW is the one undo restores - the same
+        // capture cmnd::ModifiableAssign::exec does, done through the channel
+        // because the component (not the whole Data) is what this command owns.
+        mPrev = graph::Channel(mType, mComponent).value(*mKey);
+        redo();
+    }
+
+    void AssignKeyValue::undo() {
+        if (mDone) {
+            graph::Channel(mType, mComponent).writeValue(*mKey, mPrev);
+            mDone = false;
+        }
+    }
+
+    void AssignKeyValue::redo() {
+        graph::Channel(mType, mComponent).writeValue(*mKey, mNext);
+        mDone = true;
     }
 
     //---------------------------------------------------------------------------------------

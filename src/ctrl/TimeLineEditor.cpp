@@ -327,9 +327,15 @@ TimeLineEditor::UpdateFlags TimeLineEditor::updateCursor(const AbstractCursor& a
             // keeps the selection; plain already cleared at press
             if (degenerate && mMarqueeMode == Marquee_Subtract) {
                 mSelection.clear();
-                flags |= UpdateFlag_ModView;
             }
             clearState(); // the box is transient; the selection highlights remain
+            // ...and a repaint is what takes it down: the drag repainted the box
+            // on every move, so a release that clears the state without asking
+            // for a view update leaves the dashed box on the surface until
+            // something else happens to repaint it (measured 2026-10-11: a plain
+            // release left the box drawn until the next scroll - the reported
+            // "stays drawn after the button is released").
+            flags |= UpdateFlag_ModView;
         }
     } else {
         // hover: nothing to do — selection lives in the Selection object

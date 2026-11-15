@@ -12,7 +12,7 @@
 #   $ROOT   repository root (derived, so this works from any checkout)
 #   $APP    the Debug application binary
 #   $SHOTS  where screenshots are written (gitignored; override with AE_SHOTS)
-#   $PROJ   a project to open (arg 1, or the first .anie found, or AE_PROJECT)
+#   $PROJ   a project to open (arg 1, AE_PROJECT, or the smallest .anie found)
 # and the helpers below, each of which FAILS LOUDLY rather than returning quietly.
 
 set -u
@@ -36,7 +36,16 @@ fi
 
 PROJ="${1:-${AE_PROJECT:-}}"
 if [ -z "$PROJ" ]; then
-    PROJ=$(find "$HOME/Downloads" "$ROOT" -maxdepth 3 -name '*.anie' 2>/dev/null | head -1)
+    # SMALLEST, not first. The probes need a project with layers and a frame range,
+    # nothing more, but opening one is not free: measured 2026-10-08 the largest
+    # project on this machine (`nene.anie`, 325 MB, a 15000x15000 canvas) costs ~80 s
+    # of load and ~10 GB resident per instance, against well under a second and a few
+    # hundred MB for one under a megabyte - and a sweep opens the project once per
+    # probe. `head -1` took whichever file the filesystem happened to
+    # return first, which is how the heaviest project here became the default for
+    # every probe. Pass a path as arg 1 (or AE_PROJECT) to test against a specific one.
+    PROJ=$(find "$HOME/Downloads" "$ROOT" -maxdepth 3 -name '*.anie' -printf '%s\t%p\n' \
+               2>/dev/null | sort -n | head -1 | cut -f2-)
 fi
 if [ -z "$PROJ" ] || [ ! -f "$PROJ" ]; then
     echo "FAIL  no project file: pass one as arg 1, or set AE_PROJECT"
@@ -242,6 +251,42 @@ ae_drag() { # ae_drag <x> <y> <dx> <dy> [steps]
     xdotool mouseup 1; sleep 0.4
 }
 
+# A hard ceiling on the application's resident memory, started from wait_ready so
+# every probe is covered without touching any probe body.
+#
+# WHY THIS EXISTS (measured 2026-10-08, the hard way): an AnimeEffects instance was
+# found holding ~38 GB resident and ~95 GB virtual on a 46 GB machine, which is what
+# took the owner's desktop (and this session) down twice. Nothing in these probes had
+# ever bounded a run, and the sum was four instances of one project alive at once: a
+# long-lived app being tree-walked, the 24-test suite, and a probe sweep.
+#
+# The ceiling has to sit ABOVE what a legitimate project needs or it fails honest runs.
+# Measured on the biggest project here (`nene.anie`: 15000x15000 canvas, ~112 image
+# layers, 2.4 GB of decoded images): ONE instance -- GUI or the headless round-trip --
+# climbs to ~10 GB in ~80 s and then stays there for minutes. A run that keeps growing
+# past 12 GB is not loading a project, it is leaking; override with AE_MAX_RSS_KB when
+# a real job needs more. When the cap fires the app is killed and the probe reports a
+# failure rather than letting the machine swap itself to death.
+ae_memory_cap() { # ae_memory_cap <pid> [limit_kb]
+    local pid=$1 limit=${2:-${AE_MAX_RSS_KB:-12582912}} # 12 GB (a big project needs ~10)
+    ( while kill -0 "$pid" 2>/dev/null; do
+          local rss
+          rss=$(awk '/VmRSS/{print $2}' "/proc/$pid/status" 2>/dev/null)
+          if [ -n "$rss" ] && [ "$rss" -gt "$limit" ]; then
+              echo "MEMORY CAP: pid $pid hit ${rss} kB > ${limit} kB; killing it" >&2
+              kill -9 "$pid" 2>/dev/null
+              break
+          fi
+          sleep 2
+      done ) &
+    # The subshell's output is deliberately NOT discarded any more. It has exactly
+    # one message - the cap firing - and swallowing it is how a run that kills the
+    # application reads as "the application died for no reason": measured
+    # 2026-10-14, a probe lost its application AND its X server at the first
+    # accessibility query (the moment the accessible tree spikes) with no message
+    # anywhere, because both the kill and the report were silenced here.
+}
+
 # Wait until the MAIN WINDOW is up, by asking the accessibility tree, instead of
 # sleeping a guessed number of seconds. The probes all did `sleep 12`, which is not a
 # readiness check: the same project opened in 4s on one run and took longer than 25s on
@@ -255,6 +300,13 @@ wait_ready() { # wait_ready [seconds]
     # helpers. One check at this point covers the input that would otherwise go
     # unchecked.
     ae_guard_display
+    # ...and the run gets a memory ceiling at the same moment, because this is the
+    # point every probe has the application up: see ae_memory_cap. The process is
+    # found by NAME (`-x`), not by command line, so the `bash -c` wrapper that
+    # carries the same path in its argv is not mistaken for the app.
+    local app_pid
+    app_pid=$(pgrep -n -x AnimeEffects 2>/dev/null)
+    [ -n "$app_pid" ] && ae_memory_cap "$app_pid"
     local limit=${1:-120} i
     for i in $(seq 1 "$limit"); do
         ae wait "File" >/dev/null 2>&1 && return 0
@@ -318,11 +370,11 @@ require_export_flow() {
         : > "$AE_STALE_FLAG"
         exit 3
     fi
-    if ae wait "Use this destination" >/dev/null 2>&1; then
+    if ae wait "Continue" >/dev/null 2>&1; then
         return 0
     fi
     echo "FAIL  the export flow did not open the destination picker: no widget named" >&2
-    echo "FAIL  'Use this destination' appeared within the wait. This probe is recorded" >&2
+    echo "FAIL  'Continue' appeared within the wait. This probe is recorded" >&2
     echo "FAIL  against the current flow revision, so this is the application." >&2
     check 1 "the export click opens the destination picker"
     return 1
@@ -442,4 +494,9 @@ summary() { # summary <probe name>
 export AE_OUTER_PID=$$
 export AE_FAIL_FLAG="$(mktemp -u)"
 export -f ae ae_center ae_press ae_activate ae_report ae_report_asked check require_export_flow
-export -f ae_y ae_drag wait_ready ae_guard_display
+# ae_memory_cap is here because wait_ready CALLS it from inside the child shell: it was
+# defined and never exported, so every probe's wait_ready printed
+# "environment: line 3: ae_memory_cap: command not found" and the resident-memory
+# ceiling described above was started by nobody. The cap the comment block above says
+# every probe is covered by was, in fact, applied to no probe at all.
+export -f ae_y ae_drag wait_ready ae_guard_display ae_memory_cap

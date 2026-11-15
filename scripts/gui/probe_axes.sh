@@ -42,7 +42,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   require_export_flow
   ae set "Search destinations" "telegram sticker" >/dev/null
   sleep 1.2
-  ae_activate "Use this destination" "the Telegram sticker destination is chosen"
+  ae_activate "Continue" "the Telegram sticker destination is chosen"
   # The form builds itself per destination; wait for it rather than for a fixed
   # number of seconds, so the report cannot describe a half-applied plan.
   ae wait "Advanced" >/dev/null 2>&1 || true
@@ -62,7 +62,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   sleep 1.5
   ae set "Search destinations" "zzz no such platform" >/dev/null
   sleep 1.2
-  ae_activate "Use this destination" "an unmatched search answers with the manual form"
+  ae_activate "Continue" "an unmatched search answers with the manual form"
   ae wait "Format" >/dev/null 2>&1 || true
   sleep 2
   ae text > /tmp/ax_manual_facts.txt 2>/dev/null

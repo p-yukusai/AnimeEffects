@@ -59,13 +59,11 @@ Exporter::Exporter(core::Project& aProject):
     mOverwriteConfirmer(),
     mOverwriteConfirmation(),
     mProgressReporter(),
-    mUILogger(),
     mCommonParam(),
     mImageParam(),
     mVideoExporting(),
     mExporting(false),
     mIndex(0),
-    mDigitCount(0),
     mProgress(0.0f),
     mLog(),
     mIsCanceled() {}
@@ -82,8 +80,6 @@ Exporter::~Exporter() {
 void Exporter::setOverwriteConfirmer(const OverwriteConfirmer& aConfirmer) { mOverwriteConfirmer = aConfirmer; }
 
 void Exporter::setProgressReporter(util::IProgressReporter& aReporter) { mProgressReporter = &aReporter; }
-
-void Exporter::setUILogger(UILogger& aLogger) { mUILogger = &aLogger; }
 
 void Exporter::setAudioTracks(const QVector<media::AudioMixer::Track>& aTracks,
                               int aSampleRate, int aChannels) {
@@ -151,6 +147,46 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const GifParam& a
     return execute();
 }
 
+namespace {
+// The software encoder of the same family as a HARDWARE encoder name, or an
+// empty string when aCodec is not a hardware encoder of a family we can step
+// down to (which includes every software encoder: there is nothing to step
+// down from).
+//
+// This lives in this translation unit on purpose. The family -> preferred
+// encoder TABLE in ExportTarget.cpp is DATA: which encoders a destination
+// declares, and in which order the planner prefers them. What this answers is a
+// RUNTIME AVAILABILITY fact -- "the encoder this machine handed us cannot be
+// opened here, so use the software one in the same family" -- which no table
+// entry can carry, because it depends on the devices and the build of the
+// machine the export runs on, not on the destination. Putting it in the planner
+// would also grow a table meant to be read as configuration with a second,
+// invisible meaning.
+QString softwareEncoderForFamily(const QString& aCodec)
+{
+    const QString name = aCodec.toLower();
+    // Hardware encoder names are compound: <family>_<backend> (h264_nvenc,
+    // hevc_qsv, av1_vaapi, h264_amf, ...), so the backend substring is what
+    // marks them. Matched case-insensitively so a build that reports "NVENC"
+    // is recognised too.
+    if (name.indexOf(QLatin1String("nvenc")) < 0 &&
+        name.indexOf(QLatin1String("qsv")) < 0 &&
+        name.indexOf(QLatin1String("vaapi")) < 0 &&
+        name.indexOf(QLatin1String("amf")) < 0 &&
+        name.indexOf(QLatin1String("videotoolbox")) < 0) {
+        return QString();
+    }
+    if (name.startsWith(QLatin1String("h264"))) return QStringLiteral("libx264");
+    if (name.startsWith(QLatin1String("hevc"))) return QStringLiteral("libx265");
+    if (name.startsWith(QLatin1String("av1")))  return QStringLiteral("libsvtav1");
+    if (name.startsWith(QLatin1String("vp9")))  return QStringLiteral("libvpx-vp9");
+    // A hardware backend with no software encoder of the same family in this
+    // mapping (e.g. mpeg2_qsv): nothing to step down to, so the caller reports
+    // the original failure rather than exporting a different codec than asked.
+    return QString();
+}
+} // namespace
+
 Exporter::Result Exporter::execute(const CommonParam& aCommon, const VideoParam& aVideo) {
     // check param
     if (!aCommon.isValid()) {
@@ -216,30 +252,36 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const VideoParam&
         }
 
         QString encoderError;
-        media::VideoEncoder::Config cfg = media::VideoEncoder::makeConfig(
-            container, codecName, aVideo.pixfmt, aVideo.transparent,
-            mCommonParam.size.width(), mCommonParam.size.height(), mCommonParam.fps,
-            aVideo.bps, &encoderError);
+        // Build the encoder Config for one candidate codec. Everything
+        // encoder-specific is derived by makeConfig (name resolution, and a
+        // pixel format the encoder can actually take); the destination's own
+        // requirements are then layered on, and they do NOT depend on which
+        // candidate they are layered onto — the container, the private options
+        // and the stream codec tag stay as the caller set them. That is what
+        // lets the fallback below retry with the same config on a different
+        // encoder without rebuilding (or silently dropping) any of it.
+        auto makeEncoderConfig = [&](const QString& aCodec) {
+            media::VideoEncoder::Config c = media::VideoEncoder::makeConfig(
+                container, aCodec, aVideo.pixfmt, aVideo.transparent,
+                mCommonParam.size.width(), mCommonParam.size.height(), mCommonParam.fps,
+                aVideo.bps, &encoderError);
+            c.outputPath = outPath;
+            // The destination's encoder-level requirements: its private options and
+            // its stream codec tag (hvc1 for Apple HEVC), plus how to reconcile the
+            // rendered frame with an exact output size.
+            c.encOptions = aVideo.encOptions;
+            c.codecTag = aVideo.codecTag;
+            c.fit = aCommon.fit;
+            // The encoder pads/crops internally when the rendered frame's aspect
+            // differs from the output size; those margins take the same background
+            // the render cleared to (invalid = transparent export).
+            c.fill = mCommonParam.background;
 
-        if (cfg.codec.isEmpty()) {
-            mLog = QCoreApplication::translate("Exporter", "Video encoder error.\n%1")
-                       .arg(encoderError);
-            return Result(ResultCode_EncoderOpenFailed, mLog);
-        }
-        cfg.outputPath = outPath;
-        // The destination's encoder-level requirements: its private options and
-        // its stream codec tag (hvc1 for Apple HEVC), plus how to reconcile the
-        // rendered frame with an exact output size.
-        cfg.encOptions = aVideo.encOptions;
-        cfg.codecTag = aVideo.codecTag;
-        cfg.fit = aCommon.fit;
-
-        // Configure the audio stream (muxed in the same pass) when tracks were
-        // supplied AND the container supports a standard audio codec we have.
-        // This keeps AVI/Ogg exports video-only rather than failing on an
-        // audio codec the container can't carry.
-        if (mHasAudio) {
-            if (media::ffmpeg::containerCarriesAudio(container)) {
+            // Configure the audio stream (muxed in the same pass) when tracks were
+            // supplied AND the container supports a standard audio codec we have.
+            // This keeps AVI/Ogg exports video-only rather than failing on an
+            // audio codec the container can't carry.
+            if (mHasAudio && media::ffmpeg::containerCarriesAudio(container)) {
                 // The destination's audio spec wins; the container-derived
                 // default is the fallback (WebM cannot carry AAC, so the codec
                 // is never simply taken from the table without this check).
@@ -250,21 +292,73 @@ Exporter::Result Exporter::execute(const CommonParam& aCommon, const VideoParam&
                                      : QStringLiteral("aac");
                 }
                 if (media::ffmpeg::encoderAvailable(audioCodec.toUtf8().constData())) {
-                    cfg.audioCodec = audioCodec;
-                    cfg.audioChannels = aVideo.audioChannels > 0 ? aVideo.audioChannels : mAudioChannels;
-                    cfg.audioSampleRate = aVideo.audioSampleRate > 0 ? aVideo.audioSampleRate : mAudioSampleRate;
-                    cfg.audioBitrate = aVideo.audioBitrate > 0 ? aVideo.audioBitrate : 128000;
+                    c.audioCodec = audioCodec;
+                    c.audioChannels = aVideo.audioChannels > 0 ? aVideo.audioChannels : mAudioChannels;
+                    c.audioSampleRate = aVideo.audioSampleRate > 0 ? aVideo.audioSampleRate : mAudioSampleRate;
+                    c.audioBitrate = aVideo.audioBitrate > 0 ? aVideo.audioBitrate : 128000;
                 }
             }
+            return c;
+        };
+
+        media::VideoEncoder::Config cfg = makeEncoderConfig(codecName);
+
+        if (cfg.codec.isEmpty()) {
+            mLog = QCoreApplication::translate("Exporter", "Video encoder error.\n%1")
+                       .arg(encoderError);
+            return Result(ResultCode_EncoderOpenFailed, mLog);
         }
 
         // Frame-sink mode writes no file: the caller fits and encodes the frames
         // itself. Opening the encoder here would create an empty file that the
         // caller's own encode then has to overwrite.
         if (!mFrameSink && !mVideoEncoder.open(cfg)) {
-            mLog = QCoreApplication::translate("Exporter", "Video encoder error.\n%1")
-                       .arg(mVideoEncoder.error());
-            return Result(ResultCode_EncoderOpenFailed, mLog);
+            const QString softwareCodec = softwareEncoderForFamily(codecName);
+
+            if (softwareCodec.isEmpty()) {
+                // Not a hardware encoder of a family we can step down from (the
+                // codec was already software, or its family has no software
+                // encoder here). The failure stands exactly as it was reported
+                // before the fallback existed, and its reason is preserved.
+                mLog = QCoreApplication::translate("Exporter", "Video encoder error.\n%1")
+                           .arg(mVideoEncoder.error());
+                return Result(ResultCode_EncoderOpenFailed, mLog);
+            }
+
+            // Step down ONCE, with the same config on the same family's software
+            // encoder. The capability probe that offered this codec is a 64x64
+            // one-frame encode, which a hardware backend can pass while
+            // avcodec_open2 still refuses the real resolution and option set:
+            // NVENC on a machine with no capable device, a QSV/VAAPI profile
+            // without the residency the resolution needs, an AMF driver that
+            // reports the codec and not the profile. Every one of those aborted
+            // the whole export here instead of encoding, so retry the software
+            // encoder of the family and only fail when it fails too. There is
+            // no second retry: it would repeat the same failure and nothing
+            // else is known to work.
+            const QString hardwareError = mVideoEncoder.error();
+            media::VideoEncoder::Config retry = makeEncoderConfig(softwareCodec);
+
+            if (!retry.codec.isEmpty() && mVideoEncoder.open(retry)) {
+                // Not an error: the export is going ahead. Note what happened so
+                // the reason is not lost — this log is only ever shown on
+                // failure, so it reads as the "why is this the codec" record.
+                mLog = QCoreApplication::translate("Exporter",
+                                                   "The %1 encoder could not be opened here (%2); "
+                                                   "exported with the %3 encoder instead.")
+                           .arg(codecName, hardwareError, softwareCodec);
+            } else {
+                // Both candidates failed. Keep the hardware reason first (it is
+                // the one describing the requested codec) and append the software
+                // one, so a genuine failure still reports a reason for each.
+                const QString softwareError =
+                    retry.codec.isEmpty() ? encoderError : mVideoEncoder.error();
+                mLog = QCoreApplication::translate("Exporter",
+                                                   "Video encoder error.\n%1\n"
+                                                   "The %2 encoder could not be opened either (%3).")
+                           .arg(hardwareError, softwareCodec, softwareError);
+                return Result(ResultCode_EncoderOpenFailed, mLog);
+            }
         }
     }
 
@@ -327,7 +421,6 @@ Exporter::Result Exporter::start() {
     // order. updateTime() indexes this instead of assuming min() + n, which is
     // what made several ranges export as one span.
     mSelectedFrames = mCommonParam.selection.indices();
-    mDigitCount = getDigitCount((int)mSelectedFrames.size(), mCommonParam.fps, mOriginTimeInfo.fps);
 
     // initialize graphics
     {
@@ -442,7 +535,7 @@ bool Exporter::update() {
 
     // setup
     gl::Util::setViewportAsActualPixels(originSize);
-    gl::Util::clearColorBuffer(0.0, 0.0, 0.0, 0.0);
+    clearBackground();
     gl::Util::resetRenderState();
 
     // render
@@ -476,7 +569,7 @@ bool Exporter::update() {
 
                 const QSize size = fbo->size();
                 gl::Util::setViewportAsActualPixels(size);
-                gl::Util::clearColorBuffer(0.0, 0.0, 0.0, 0.0);
+                clearBackground();
 
                 mTextureDrawer.draw(prev->texture());
 
@@ -493,9 +586,6 @@ bool Exporter::update() {
         // flush
         ggl.glFlush();
 
-        // update log if necessary
-        updateLog();
-
         // export
         if (!exportImage(outImage, currentIndex)) {
             return false;
@@ -503,6 +593,20 @@ bool Exporter::update() {
     }
 
     return true;
+}
+
+void Exporter::clearBackground() {
+    // mCommonParam.background carries the effective viewport colour only when the
+    // export is OPAQUE; an invalid colour is the transparent export's clear. The
+    // alpha is forced to 1 because an alpha-less artifact has no alpha plane for
+    // the background to sit in, and the viewport draws the colour fully opaque
+    // whatever the picker's own alpha happens to be.
+    const QColor& background = mCommonParam.background;
+    if (background.isValid()) {
+        gl::Util::clearColorBuffer(background.redF(), background.greenF(), background.blueF(), 1.0f);
+    } else {
+        gl::Util::clearColorBuffer(0.0, 0.0, 0.0, 0.0);
+    }
 }
 
 bool Exporter::exportImage(const QImage& aFboImage, int aIndex) {
@@ -515,8 +619,10 @@ bool Exporter::exportImage(const QImage& aFboImage, int aIndex) {
 
     // Frames leave here at the RENDER size; an exact-size destination needs the
     // output size, so reconcile once here for the paths that do not go through
-    // the encoder (which does its own pad/crop from the same helper).
-    const QImage outImage = media::fitImage(aFboImage, mCommonParam.size, mCommonParam.fit);
+    // the encoder (which does its own pad/crop from the same helper). The margin
+    // takes the export's background, so a padded opaque export has no black border.
+    const QImage outImage =
+        media::fitImage(aFboImage, mCommonParam.size, mCommonParam.fit, mCommonParam.background);
 
     // GIF mode: accumulate the rendered frames (encoded in finish()).
     if (mCollectFrames) {
@@ -720,9 +826,9 @@ bool Exporter::decideImagePath(int aIndex, QFileInfo& aPath) {
     // 0001, at the name the user typed" (probe_still's line, and exportWithFit's
     // image writer does exactly `arg(i + 1, 4, 10, '0')` while claiming parity
     // with this function). Before 2026-10-01 this used the 0-based render index
-    // and mDigitCount, so whenever a sequence stopped riding the fit path the two
-    // writers named the same frames differently (0000 vs 0001) — measured:
-    // nene0000.png beside a status bar naming probe_frames.png.
+    // and a computed digit count, so whenever a sequence stopped riding the fit
+    // path the two writers named the same frames differently (0000 vs 0001) —
+    // measured: nene0000.png beside a status bar naming probe_frames.png.
     const QString stem = mImageParam.singleFile
                              ? mImageParam.name
                              : mImageParam.name
@@ -747,19 +853,6 @@ bool Exporter::checkOverwriting(const QFileInfo& aPath) {
         mOverwriteConfirmation = true;
     }
     return true;
-}
-
-int Exporter::getDigitCount(int aFrameCount, int aFps, int aFpsOrigin) {
-    int digitCount = 1;
-    double count = (aFps * aFrameCount) / (double)aFpsOrigin;
-    for (; count >= 10.0; count *= 0.1)
-        ++digitCount;
-    return std::max(digitCount, 4);
-}
-
-void Exporter::updateLog() {
-    // In-process media encoding has no subprocess log to surface.
-    Q_UNUSED(mUILogger);
 }
 
 } // namespace ctrl

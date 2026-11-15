@@ -2,6 +2,7 @@
 #define CTRL_POSE_TRANSBONEMODE_H
 
 #include <QMatrix4x4>
+#include "cmnd/Gesture.h"
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/BoneKey.h"
@@ -30,7 +31,7 @@ namespace pose {
         QMatrix4x4 mTargetInvMtx;
         KeyOwner& mKeyOwner;
         bone::Focuser mFocuser;
-        RotateBone* mCommandRef;
+        cmnd::Gesture<RotateBone> mGesture;
         QVector2D mMoveOffset;
     };
 

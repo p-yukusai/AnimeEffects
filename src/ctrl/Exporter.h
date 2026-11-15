@@ -9,12 +9,12 @@
 #include <QList>
 #include <QMap>
 #include <QImage>
+#include <QColor>
 #include <QFileInfo>
 #include <QOpenGLFramebufferObject>
 #include "util/Range.h"
 #include "ctrl/ExportTarget.h"   // FrameSelection
 #include "util/IProgressReporter.h"
-#include "ctrl/UILogger.h"
 #include "gl/EasyTextureDrawer.h"
 #include "gl/VertexArrayObject.h"
 #include "core/Project.h"
@@ -80,6 +80,15 @@ public:
         // let `fit` reconcile the remainder, so art is never stretched.
         QSize renderSize;
         media::FitMode fit = media::FitMode::None;
+        // The export's background, when the artifact is OPAQUE (transparency
+        // off): the effective viewport colour, resolved by the GUI (the theme is
+        // a GUI concept) and passed down plain — this layer reads no theme. The
+        // render clears to it (alpha 1) and the pad/crop margins fill with it, so
+        // every pixel the artwork does not paint is that colour.
+        //
+        // An INVALID QColor (the default) means a transparent export: the clear
+        // stays (0,0,0,0), exactly as before, and the pads stay transparent.
+        QColor background;
         bool isValid() const;
     };
 
@@ -145,7 +154,6 @@ public:
     void setOverwriteConfirmer(const OverwriteConfirmer& aConfirmer);
     void setProgressReporter(util::IProgressReporter& aReporter);
     void setFrameSink(FrameSink aSink) { mFrameSink = std::move(aSink); }
-    void setUILogger(ctrl::UILogger& aLogger);
 
     // Supply the multi-track audio to mix and mux alongside the video. Call
     // before execute(); ignored for image/GIF exports. The tracks are in
@@ -174,14 +182,17 @@ private:
     Result finish();
     bool updateTime(core::TimeInfo& aDst);
     bool exportImage(const QImage& aFboImage, int aIndex);
+    // Clear the bound framebuffer to the export's background: the viewport
+    // colour at alpha 1 when the artifact is opaque, transparent black when it
+    // is not (see CommonParam::background). ONE implementation, so the first
+    // pass and the scaling passes cannot clear differently.
+    void clearBackground();
     void destroyFramebuffers();
     void releaseExportVAO();
     void createFramebuffers(const QSize& aOriginSize, const QSize& aExportSize);
     void setTextureParam(QOpenGLFramebufferObject& aFbo);
-    static int getDigitCount(int aFrameCount, int aFps, int aFpsOrigin);
     bool decideImagePath(int aIndex, QFileInfo& aPath);
     bool checkOverwriting(const QFileInfo& aPath);
-    void updateLog();
 
     core::Project& mProject;
     FramebufferList mFramebuffers;
@@ -210,7 +221,6 @@ private:
     OverwriteConfirmer mOverwriteConfirmer;
     bool mOverwriteConfirmation;
     util::IProgressReporter* mProgressReporter;
-    ctrl::UILogger* mUILogger;
 
     CommonParam mCommonParam;
     // The selection flattened to project frame numbers, in output order, built
@@ -231,7 +241,6 @@ private:
     bool mHasAudio = false;
     bool mExporting;
     int mIndex;
-    int mDigitCount;
     float mProgress;
     QString mLog;
     bool mIsCanceled;

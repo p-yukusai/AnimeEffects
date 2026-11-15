@@ -19,7 +19,7 @@ namespace pose {
         mTargetInvMtx(aTarget.invMtx),
         mKeyOwner(aKey),
         mFocuser(),
-        mCommandRef(),
+        mGesture(mProject.commandStack()),
         mPullPos(),
         mPullOffset(),
         mPullPosRate(),
@@ -37,7 +37,7 @@ namespace pose {
         bool updated = mFocuser.focusChanged();
 
         if (aCursor.emitsLeftPressedEvent()) {
-            mCommandRef = nullptr;
+            mGesture.end();
             mFocuser.clearSelection();
             if (focus && focus->parent()) {
                 mFocuser.select(*focus);
@@ -64,7 +64,7 @@ namespace pose {
             }
             updated = true;
         } else if (aCursor.emitsLeftReleasedEvent()) {
-            mCommandRef = nullptr;
+            mGesture.end();
             mFocuser.clearSelection();
             updated = true;
         }
@@ -124,8 +124,8 @@ namespace pose {
             const int frame = mProject.animator().currentFrame().get();
 
             // modify
-            if (mCommandRef && stack.isModifiable(mCommandRef)) {
-                mCommandRef->modifyValue(nextRots);
+            if (mGesture.continues()) {
+                mGesture.command()->modifyValue(nextRots);
 
                 // notify
                 TimeLineEvent event;
@@ -133,25 +133,24 @@ namespace pose {
                 event.pushTarget(mTarget, TimeKeyType_Pose, frame);
                 mProject.onTimeLineModified(event, false);
             } else {
-                cmnd::ScopedMacro macro(stack, CmndName::tr("Pull bones of a pose key"));
+                mGesture.begin(CmndName::tr("Pull bones of a pose key"), [&](cmnd::ScopedMacro& macro) {
+                    // set notifier
+                    {
+                        auto notifier = new TimeLineUtil::Notifier(mProject);
+                        notifier->event().setType(
+                            mKeyOwner.owns() ? TimeLineEvent::Type_PushKey : TimeLineEvent::Type_ChangeKeyValue
+                        );
+                        notifier->event().pushTarget(mTarget, TimeKeyType_Pose, frame);
+                        macro.grabListener(notifier);
+                    }
+                    // push key command
+                    if (mKeyOwner.owns()) {
+                        mKeyOwner.pushOwnsKey(stack, timeLine, frame);
+                    }
 
-                // set notifier
-                {
-                    auto notifier = new TimeLineUtil::Notifier(mProject);
-                    notifier->event().setType(
-                        mKeyOwner.owns() ? TimeLineEvent::Type_PushKey : TimeLineEvent::Type_ChangeKeyValue
-                    );
-                    notifier->event().pushTarget(mTarget, TimeKeyType_Pose, frame);
-                    macro.grabListener(notifier);
-                }
-                // push key command
-                if (mKeyOwner.owns()) {
-                    mKeyOwner.pushOwnsKey(stack, timeLine, frame);
-                }
-
-                // push command
-                mCommandRef = new RotateBones(&targetRoot, nextRots);
-                stack.push(mCommandRef);
+                    // push command
+                    return new RotateBones(&targetRoot, nextRots);
+                });
             }
         }
     }

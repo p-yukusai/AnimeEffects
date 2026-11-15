@@ -55,7 +55,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   require_export_flow
   ae set "Search destinations" "zzz no such platform" >/dev/null
   sleep 1.2
-  ae_activate "Use this destination" "an unmatched search answers with the manual form"
+  ae_activate "Continue" "an unmatched search answers with the manual form"
   ae wait "Format" >/dev/null 2>&1 || true
   sleep 2
   ae_report /tmp/fmt_manual.txt "Destination" "Format" "Codec" "Quality" \

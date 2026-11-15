@@ -132,7 +132,7 @@ PY
   #    costing the full report timeout.
   ae_press "Export project as" "the export entry is pressed with no project"
   sleep 3
-  ae_report /tmp/np_after_click.txt "Search destinations" "Use this destination" "Destination" "File"
+  ae_report /tmp/np_after_click.txt "Search destinations" "Continue" "Destination" "File"
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/np_03_after_click.png
   xdotool key Escape; sleep 0.5
@@ -170,7 +170,7 @@ expect_state /tmp/np_states.txt "New project" enabled "while the entries that do
 # The disabled entry, pressed: the flow must not open. This is the assertion the old
 # probe was reaching for and never made - it had no way to say "nothing happened".
 assert_absent /tmp/np_after_click.txt "Search destinations" "pressing it opens no destination picker"
-assert_absent /tmp/np_after_click.txt "Use this destination" "so the picker is not there at all"
+assert_absent /tmp/np_after_click.txt "Continue" "so the picker is not there at all"
 assert_absent /tmp/np_after_click.txt "Destination" "and the parameter form is not reached either"
 assert_rendered "$SHOTS/np_01_fresh_start.png" "the File menu on a fresh start"
 assert_rendered "$SHOTS/np_02_no_project.png" "the File menu with the project closed"

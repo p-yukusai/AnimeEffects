@@ -185,6 +185,13 @@ QList<ExportFact> exportFacts(const ctrl::ExportPlan& plan, const ctrl::ExportTa
     QStringList limits;
     if (target.caps.maxBytes > 0)
         limits << QCoreApplication::translate("MainWindow", "max %1").arg(sizeText(target.caps.maxBytes));
+    // The RESOLUTION ceiling belongs in the same statement as the byte cap: it is the
+    // other limit on the file. A Max rule deliberately leaves the user's own size in
+    // the boxes (the ceiling bounds the OUTPUT - planExport fits the file to it), so a
+    // form that omitted it here would hide a real destination rule from the user.
+    if (target.size.mode == ctrl::SizeMode::Max && target.size.w > 0 && target.size.h > 0)
+        limits << QCoreApplication::translate("MainWindow", "max %1 x %2")
+                      .arg(target.size.w).arg(target.size.h);
     if (target.caps.maxDurationSec > 0)
         limits << QCoreApplication::translate("MainWindow", "max %1 s").arg(target.caps.maxDurationSec);
     if (target.caps.minDurationSec > 0)

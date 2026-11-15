@@ -92,7 +92,11 @@ class ImageReloader: public ImageResourceUpdaterBase {
     const ResourceEvent& mEvent;
 
     void tryPushTarget(ImageKey* aKey) {
-        if (aKey) {
+        // A key whose image reference never resolved has no resource handle at
+        // all, and its address is only reachable through one. Skipping it keeps a
+        // partially-deserialized tree from being dereferenced here; the id solver
+        // refuses that load outright for the same reason (util::IDSolver::solve).
+        if (aKey && aKey->data().resource()) {
             auto node = mEvent.findTarget(aKey->data().resource()->serialAddress());
             if (node) {
                 this->targets().push_back(Target(aKey));

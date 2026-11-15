@@ -13,8 +13,21 @@ import QtQuick.Layouts
 Text {
     id: root
 
-    Layout.preferredWidth: 104
-    Layout.minimumWidth: 104
+    // The lane is as wide as the WIDEST label in the column, with the design's 104
+    // as the FLOOR rather than the width. A short form (the export form's "Format",
+    // "Quality"; the new-project form's rows) keeps the alignment it was measured
+    // with, and a long label widens the whole column instead of being ellipsized
+    // while the field beside it sits half empty. Measured 2026-10-11 on the settings
+    // dialog, which is the first form with long labels: at the fixed 104 it clipped
+    // "Language (needs restart)", "Global keybind delay (ms)", "Default keyframe
+    // easing" and "Time (in minutes) between autosaves". `implicitWidth` is the
+    // Text's natural width even with `elide` set, which is what makes this a
+    // measurement of the words rather than of the box.
+    //
+    // minimumWidth 0 lets the column yield - and the label elide - when a window is
+    // genuinely too narrow for the row, which is the only case eliding is for.
+    Layout.preferredWidth: Math.max(104, implicitWidth)
+    Layout.minimumWidth: 0
     // Top-aligned with a nudge: the label reads as the field's name, not as a
     // baseline that has to match a 28px control's centre.
     Layout.alignment: Qt.AlignTop | Qt.AlignLeft

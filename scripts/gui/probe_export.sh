@@ -189,17 +189,20 @@ PY
   ae_press "File" "the File menu opens"
   ae_press "Export project as" "the export entry is there"
   require_export_flow
-  # The ID, not the label: "A video for a chat app" is one of several rows whose search
-  # haystack contains "video", and a query that matches several rows answers with
-  # whichever the tree lists first. The id is unique, so the destination this probe
-  # exports with is the one it names.
-  ae set "Search destinations" "chat.generic.video" >/dev/null
+  # The ID, not the label: the new first row label is "Video", and "video" is a word
+  # several row haystacks contain, so a label query would answer with whichever the tree
+  # lists first. The id "generic.video" is unique, so the destination this probe exports
+  # with is the one it names. (This id replaced chat.generic.video, removed 2026-10-08.)
+  ae set "Search destinations" "generic.video" >/dev/null
   sleep 1.2
-  ae_activate "Use this destination" "the destination is accepted"
+  ae_activate "Continue" "the destination is accepted"
   # Wait for the plan to have been applied before touching the form: a report answers as
   # soon as ANY name it was asked about is on screen, so it can describe the form BEFORE
   # the destination has filled it in.
   ae wait "Advanced" >/dev/null 2>&1 || true
+  # H41: the frame range lives under Advanced, so the section has to be OPEN before
+  # its rows can be addressed by name.
+  ae_activate "Advanced" "the Advanced section opens, adding its rows"
   sleep 1.5
 
   # 2. A short range, set BY NAME. A destination that caps the DURATION decides the range
@@ -282,16 +285,22 @@ assert_showing /tmp/exp_form.txt "Last frame 1" "both ends of it"
 # video, so it is hidden rather than greyed. (probe_still asks the same question the other
 # way round, on the artifact that does go through QImage::save().)
 assert_hidden /tmp/exp_form.txt "Image quality" "and does not offer an image quality control to a video"
-# The chosen destination's own decisions, in the words on screen. "20 MB" is the cap this
-# row declares in the destination table, so this checks that the destination's data
-# reached the form rather than that some particular wording is used.
-for want in "H.264 · MP4" "20 MB"; do
-    if grep -q "$want" /tmp/exp_facts.txt; then
-        check 0 "the facts state what this destination decides ($want)"
-    else
-        check 1 "the facts state what this destination decides ($want) (got: $(tr '\n' ' ' < /tmp/exp_facts.txt 2>/dev/null | head -c 200))"
-    fi
-done
+# The chosen destination's own decisions, in the words on screen. generic.video is the
+# no-ceiling row (mode="free" and no <caps>), so what its data must put on the form is
+# its FORMAT - "H.264 · MP4", the codec and the container arriving through the plan -
+# and the ABSENCE of a Limits line. The old "20 MB" assertion belonged to the removed
+# chat.generic.video row's byte cap; asserting it against this row would be a lie about
+# the data, so the second half is the negative that generic.video truly declares.
+if grep -q "H.264 · MP4" /tmp/exp_facts.txt; then
+    check 0 "the facts state what this destination decides (H.264 · MP4)"
+else
+    check 1 "the facts state what this destination decides (H.264 · MP4) (got: $(tr '\n' ' ' < /tmp/exp_facts.txt 2>/dev/null | head -c 200))"
+fi
+if grep -q "Limits:" /tmp/exp_facts.txt; then
+    check 1 "and state no limit for the no-ceiling row (found: $(grep -m1 'Limits:' /tmp/exp_facts.txt 2>/dev/null))"
+else
+    check 0 "and state no limit for the no-ceiling row (mode=free, no caps)"
+fi
 
 # THE FILE. Non-empty is the floor; the range the FORM held is the assertion that the form
 # this probe drove is the export that ran.

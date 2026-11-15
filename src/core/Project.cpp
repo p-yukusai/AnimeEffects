@@ -11,7 +11,7 @@ const int kDefaultFrameCount = 60 * 10;
 
 namespace core {
 //-------------------------------------------------------------------------------------------------
-Project::Attribute::Attribute(): mImageSize(), mFrameRange(1, kDefaultFrameCount), mFps(kStandardFps), mLoop(false) {}
+Project::Attribute::Attribute(): mImageSize(), mFrameRange(1, kDefaultFrameCount), mFps(kStandardFps), mLoop(false), mHasViewportBackground(false), mViewportBackground() {}
 
 // Observable setters: emit the owning project's onProjectAttributeModified only
 // when a value actually changes, so re-sync (bone caches, timeline, display,
@@ -35,6 +35,20 @@ void Project::Attribute::setLoop(bool aLoop) {
     if (mLoop == aLoop) return;
     mLoop = aLoop;
     if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeLoop);
+}
+void Project::Attribute::setViewportBackground(const QColor& aColor) {
+    // turning the override on from unset is itself the change; an equal colour
+    // against an already-set override is not.
+    if (mHasViewportBackground && mViewportBackground == aColor) return;
+    mHasViewportBackground = true;
+    mViewportBackground = aColor;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeViewportBackground);
+}
+void Project::Attribute::clearViewportBackground() {
+    if (!mHasViewportBackground) return;
+    mHasViewportBackground = false;
+    mViewportBackground = QColor();
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeViewportBackground);
 }
 
 //-------------------------------------------------------------------------------------------------

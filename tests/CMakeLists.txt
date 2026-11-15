@@ -35,6 +35,66 @@ add_executable(treeutil_delete_uaf treeutil_delete_uaf.cpp)
 target_include_directories(treeutil_delete_uaf PRIVATE ../src)
 target_link_libraries(treeutil_delete_uaf PRIVATE Qt6::Core)
 
+# Regression test for the PackBits noop packet (util::PackBits::decode,
+# src/util/PackBits.cpp): a 0x80 header is one byte of "copy nothing" and has to
+# consume that byte, but the loop re-read it forever -- so a single 0x80 anywhere
+# in a project's image data hung the load on one core with no progress instead of
+# reporting a decode error. PackBits.cpp is compiled in directly, so, like
+# treeutil above, this needs no library beyond Qt6::Core. See packbits_decode.cpp.
+add_executable(packbits_decode packbits_decode.cpp ../src/util/PackBits.cpp)
+target_include_directories(packbits_decode PRIVATE ../src)
+target_link_libraries(packbits_decode PRIVATE Qt6::Core)
+
+# Regression test for the line length check in core::Deserializer::readImage: the
+# length comes from the file and nothing compared it with the per-line buffer
+# sized from the image width, so a damaged project made the loader copy an
+# arbitrary length into that block. Drives the real Deserializer over a crafted
+# stream and asserts the refusal (and, as a control, that a well-formed stream is
+# accepted). See readimage_line_length.cpp.
+add_executable(readimage_line_length readimage_line_length.cpp)
+target_include_directories(readimage_line_length PRIVATE ..)
+target_compile_definitions(readimage_line_length PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(readimage_line_length PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Regression test for the noop packet in the PSD importer's own PackBits reader
+# (img::PSDUtil::decodePlanePackBits): a 0x80 header was re-read forever, so a
+# damaged .psd hung the import instead of failing it. See psd_rle_noop.cpp.
+add_executable(psd_rle_noop psd_rle_noop.cpp)
+target_include_directories(psd_rle_noop PRIVATE ..)
+target_compile_definitions(psd_rle_noop PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(psd_rle_noop PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    gl img thr util pugixml
+)
+
+# Contract test for the picker's fuzzy search (src/gui/qml/FuzzyMatch.h): each rule
+# that must fire, the two that must not (rule 6's length gate and span guard), the
+# ordering between rules, and the rule that is deliberately absent -- no rule may
+# match a subsequence spanning several words, because " capped size limit" sits on
+# every capped haystack and a cross-word subsequence would stop the search narrowing.
+# The header is header-only, so, like treeutil above, this needs no library beyond
+# Qt6::Core. `..` is the repository root (the header lives under src/gui/qml).
+add_executable(fuzzy_match fuzzy_match.cpp)
+target_include_directories(fuzzy_match PRIVATE ..)
+target_link_libraries(fuzzy_match PRIVATE Qt6::Core)
+
 # Contract test for the cmnd::Gesture seam (src/cmnd/Gesture.h): the open edit that
 # owns one coalescing command. Pins the semantics every editor relies on -- the
 # builder runs inside the edit's macro, the gate (continues()) survives in-place
@@ -121,6 +181,11 @@ target_link_libraries(creation_select_keys PRIVATE
 #       build/tests/Debug/pose_pull_crash <file.anie>
 # See pose_pull_crash.cpp.
 add_executable(pose_pull_crash pose_pull_crash.cpp
+    # ctrl::Driver owns ctrl::GraphEditor, whose renderQt() calls theme::Graph, and
+    # the ctrl library leaves that symbol unresolved (the same reason graph_drag
+    # and graph_render_pixels compile it). Without this the target links the graph
+    # editor's object and fails on theme::Graph::from / keyColor.
+    ../src/gui/theme/Graph.cpp
     ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
 target_include_directories(pose_pull_crash PRIVATE ..)
 target_compile_definitions(pose_pull_crash PRIVATE
@@ -243,6 +308,104 @@ target_link_libraries(picker_keyboard PRIVATE
     media
 )
 
+# The new-project dialog, headless: the model's defaults and clamps, and the scene's
+# own wiring. The form used to be a QWidget/QFormLayout, so only a shown widget could
+# be driven; it is a Qt Quick scene now, and both halves of the contract are asked
+# without a window - the model directly, and the REAL NewProjectDialog.qml loaded and
+# clicked so the "Live link" checkbox is proven to write back (AeCheckBox records that
+# setting `checked` does not fire toggled(), so a click is the only honest driver).
+add_executable(new_project_form new_project_form.cpp
+    ../src/gui/qml/NewProjectViewModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp)
+target_include_directories(new_project_form PRIVATE .. ../src ../src/gui)
+target_compile_definitions(new_project_form PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(new_project_form PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
+# The project-settings dialog, headless: the model's defaults and clamps (canvas
+# dimensions bounded by the device buffer, fps floor, the frame range's
+# start <= end invariant) and the scene's own wiring. Same shape as
+# new_project_form: the model directly, and the REAL ProjectSettingDialog.qml
+# loaded so the fields are proven to write back.
+add_executable(project_setting_form project_setting_form.cpp
+    ../src/gui/qml/ProjectSettingViewModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp)
+target_include_directories(project_setting_form PRIVATE .. ../src ../src/gui)
+target_compile_definitions(project_setting_form PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(project_setting_form PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
+# The key-bindings dialog, headless: the model's capture rules (Delete/Backspace
+# clears, a modifier-free key after an existing chord becomes the sub-key, a valid
+# chord replaces, conflicts are reported both ways, reset-to-defaults restores),
+# and that a real key press through KeyBindingDialog.qml writes the row.
+# ctrl/KeyBinding.cpp is compiled in directly (the model is Core-only plus that
+# type, the way destination_picker compiles ExportTarget.cpp).
+add_executable(key_binding_form key_binding_form.cpp
+    ../src/gui/qml/KeyBindingViewModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/ctrl/KeyBinding.cpp)
+target_include_directories(key_binding_form PRIVATE .. ../src ../src/gui)
+target_compile_definitions(key_binding_form PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(key_binding_form PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
+# The general-settings dialog, headless: the model's defaults and that each edit
+# flips the matching has-changed predicate the shell reports to the menu bar, plus
+# the REAL GeneralSettingDialog.qml loaded so a control is proven to write back.
+add_executable(general_setting_form general_setting_form.cpp
+    ../src/gui/qml/GeneralSettingViewModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/gui/MouseSetting.cpp)
+target_include_directories(general_setting_form PRIVATE .. ../src ../src/gui)
+target_compile_definitions(general_setting_form PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(general_setting_form PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
 # The numeric fields' Escape contract (F34, decided 2026-09-30): Escape restores
 # the value from when THIS edit began - not the value the property happens to hold
 # at Escape time (the owner can re-sync it mid-edit) and not the session's opening
@@ -356,7 +519,7 @@ target_compile_definitions(form_layout PRIVATE
 add_dependencies(form_layout release_translations)
 target_link_libraries(form_layout PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
-    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test
     media
 )
 
@@ -692,4 +855,352 @@ target_link_libraries(media_exporter_e2e PRIVATE
     Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
     Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
     media cmnd core ctrl gl img thr util pugixml
+)
+
+# Regression test for the encoder open-time fallback (src/ctrl/Exporter.cpp): a
+# hardware encoder that passes the small capability probe can still be refused at
+# the real resolution/option set, and the export must step down to the same family's
+# software encoder instead of aborting. The test makes nvenc fail device-independently
+# by handing it an option only libx264 knows, so it stays red on a box that has working
+# NVENC. See export_encoder_fallback.cpp.
+add_executable(export_encoder_fallback export_encoder_fallback.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+)
+target_include_directories(export_encoder_fallback PRIVATE ..)
+target_compile_definitions(export_encoder_fallback PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(export_encoder_fallback PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    media cmnd core ctrl gl img thr util pugixml
+)
+
+# Regression test for the PSD layer identity defects (src/img/PSDFormat.h,
+# PSDReader.cpp, Util.cpp, ResourceData, ResourceNode, core/ImageKey.cpp):
+# identity was the display name, the lazy loader captured a pointer into a
+# stack-owned PSDFormat, and JSON resolution took the LAST matching tree. Drives
+# the real reader and loader through a crafted PSD. See psd_layer_identity.cpp.
+add_executable(psd_layer_identity psd_layer_identity.cpp)
+target_include_directories(psd_layer_identity PRIVATE ..)
+target_compile_definitions(psd_layer_identity PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(psd_layer_identity PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Contract test for the PSD live-link safety rules (src/gui/res/res_ResourceUpdater.cpp,
+# src/gui/ResourceTreeWidget.cpp, src/core/ImageKeyUpdater.cpp, src/util/IDSolver.h):
+# a relink had to be transactional (the failure paths returned out of a ScopedMacro
+# whose destructor committed half a batch), forceReload compared the live tree with
+# itself and then freed it, a layer missing from the source was silently kept or
+# dropped, a name-colliding rename re-pointed one layer's content onto another's
+# live node, and the file watcher ignored which file changed while accumulating a
+# handler per watch cycle. Headless: QApplication, no GL. See psd_relink_safety.cpp.
+add_executable(psd_relink_safety psd_relink_safety.cpp
+    ../src/gui/ResourceTreeWidget.cpp
+    ../src/gui/ProjectHook.cpp
+    ../src/gui/ViaPoint.cpp
+    ../src/gui/EasyDialog.cpp
+    # The real ResourceDialog, not a stub: the test links its moc key functions,
+    # and it needs no MainMenuBar at link time (only the type name in a connect).
+    ../src/gui/ResourceDialog.cpp
+    ../src/gui/res/res_ResourceUpdater.cpp
+    ../src/gui/res/res_Item.cpp
+    ../src/gui/res/res_Notifier.cpp)
+target_include_directories(psd_relink_safety PRIVATE .. ../src ../src/gui)
+target_compile_definitions(psd_relink_safety PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(psd_relink_safety PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Contract test for the animation graph's value model: ctrl::graph::Channel,
+# ctrl::graph::Curve and ctrl::graph::Scaler (src/ctrl/graph). The sampler is
+# compared against the real core::TimeKeyBlender over a real core::TimeLine and
+# read out of the same core::TimeKeyExpans the renderer reads, so the graph can
+# only pass by drawing what playback evaluates. Headless: no widgets, no GL, no
+# .anie fixture, no extra source files (the one property that needs a GL
+# context, the image-offset staircase, reports itself as a skip). See
+# graph_curve.cpp.
+add_executable(graph_curve graph_curve.cpp)
+target_include_directories(graph_curve PRIVATE ..)
+target_compile_definitions(graph_curve PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(graph_curve PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# ---------------------------------------------------------------------------
+# The overlay's units (the Dear ImGui renderer of the viewport panel). They exist
+# because the pieces a screenshot cannot see need gates of their own: the font
+# stack, the Qt->ImGuiIO translation, the accessibility bridge and the panel
+# model. The first two link ae_imgui (declared in the root CMakeLists, behind
+# AE_ENABLE_IMGUI); the last two deliberately do not - the accessibility bridge is
+# pure QAccessible over a plain model, and the panel model is geometry. All four
+# are headless: offscreen, no GL context, no window.
+#
+# scripts/run_suites.sh discovers targets from this file, so registering one here
+# is all that puts it on the gate.
+# ---------------------------------------------------------------------------
+if(AE_ENABLE_IMGUI)
+    # The font loader: ImGui rasterizes through Qt (QRawFont), which is what makes
+    # CJK, .ttc, CFF and variable fonts work. Builds an atlas and reads glyph
+    # pixels - no GL. See src/gui/ImGuiQtFontLoader.h.
+    add_executable(imgui_qt_font_loader imgui_qt_font_loader.cpp
+        ../src/gui/ImGuiQtFontLoader.cpp)
+    target_include_directories(imgui_qt_font_loader PRIVATE .. ../src)
+    target_compile_definitions(imgui_qt_font_loader PRIVATE
+        AE_MAJOR_VERSION=1
+        AE_MINOR_VERSION=7
+        AE_MICRO_VERSION=1
+        USE_GL_CORE_PROFILE
+    )
+    target_link_libraries(imgui_qt_font_loader PRIVATE
+        Qt6::Core Qt6::Gui Qt6::Widgets
+        ae_imgui
+    )
+
+    # The input bridge: mouse/keys/wheel, IME (commit and pre-edit), tablet, touch,
+    # DPR, and the WantCapture consumption policy the application's key routing has
+    # to obey. No GL, no window.
+    add_executable(imgui_input_bridge imgui_input_bridge.cpp
+        ../src/gui/ImGuiInputBridge.cpp)
+    target_include_directories(imgui_input_bridge PRIVATE .. ../src)
+    target_compile_definitions(imgui_input_bridge PRIVATE
+        AE_MAJOR_VERSION=1
+        AE_MINOR_VERSION=7
+        AE_MICRO_VERSION=1
+        USE_GL_CORE_PROFILE
+    )
+    target_link_libraries(imgui_input_bridge PRIVATE
+        Qt6::Core Qt6::Gui Qt6::Widgets
+        ae_imgui
+    )
+
+    # The panel's PIXEL contract, and the replacement for graph_render_pixels (which
+    # pins the painter renderer the cutover deletes). It drives gui::drawPanel through
+    # a real ImGui frame into its own offscreen framebuffer and asserts the pixels the
+    # model's geometry promises - including the INVERSE assertion that a plot area
+    # holding no geometry is left untouched, which is what "no background, no grid"
+    # means in pixels. Needs a real GL context, so it runs under xvfb (the GL branch
+    # in scripts/run_suites.sh).
+    #
+    # There is no `gui` library to link against - the application target compiles
+    # these files itself - so the overlay's own units come along as sources.
+    # ImGuiSpikeGL.cpp must stay the first ImGui translation unit: its loader shim
+    # precedes the backend.
+    add_executable(graph_panel_pixels graph_panel_pixels.cpp
+        ../src/gui/ImGuiGLBackend.cpp
+        ../src/gui/ImGuiOverlay.cpp
+        ../src/gui/GraphPanelModel.cpp
+        ../src/gui/ImGuiInputBridge.cpp
+        ../src/gui/ImGuiA11y.cpp
+        ../src/gui/ImGuiQtFontLoader.cpp
+        ../src/gui/theme/Graph.cpp)
+    target_include_directories(graph_panel_pixels PRIVATE .. ../src)
+    target_compile_definitions(graph_panel_pixels PRIVATE
+        AE_MAJOR_VERSION=1
+        AE_MINOR_VERSION=7
+        AE_MICRO_VERSION=1
+        USE_GL_CORE_PROFILE
+        AE_ENABLE_IMGUI=1
+    )
+    target_link_libraries(graph_panel_pixels PRIVATE
+        Qt6::Core Qt6::Core5Compat Qt6::Widgets
+        Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+        Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+        cmnd core ctrl gl img thr util pugixml
+        ae_imgui
+    )
+endif()
+
+# The accessibility bridge for the overlay's framebuffer-drawn content. No ImGui
+# dependency at all: it publishes a plain item model through QAccessible, and the
+# live AT-SPI dump (scripts/gui/probe_graph_overlay.sh) is what finally checks it
+# against a screen reader's view. See ImGuiA11y.h.
+add_executable(imgui_a11y imgui_a11y.cpp
+    ../src/gui/ImGuiA11y.cpp)
+target_include_directories(imgui_a11y PRIVATE .. ../src)
+target_compile_definitions(imgui_a11y PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(imgui_a11y PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets
+)
+
+# The panel model: what the overlay draws, as engine-neutral geometry computed from
+# ctrl::GraphEditor - and, crucially, asserted CONSISTENT with the editor's own
+# panelRect/scale, because a model that computed its own rects would silently
+# desync the pixels from the hit-test. Compiles theme::Graph for the same reason
+# graph_drag does. See graph_panel_model.cpp.
+add_executable(graph_panel_model graph_panel_model.cpp
+    ../src/gui/GraphPanelModel.cpp
+    ../src/gui/theme/Graph.cpp)
+target_include_directories(graph_panel_model PRIVATE ..)
+target_compile_definitions(graph_panel_model PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(graph_panel_model PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Contract test for the animation graph's EDIT path (ctrl::GraphEditor): one
+# handle drag must be exactly ONE undo step, and it must edit the grabbed key's
+# own util::Easing::Param. Drives the real editor with synthetic
+# core::AbstractCursor frames and proves the command count by undo/redo rather
+# than by inspection. Headless: offscreen, no GL, no .anie. Compiles the real
+# theme::Graph because GraphEditor names it and the ctrl library leaves that
+# symbol unresolved - the same reason the timeline tests compile
+# theme/TimeLine.cpp. See graph_drag.cpp.
+add_executable(graph_drag graph_drag.cpp
+    ../src/gui/theme/Graph.cpp)
+target_include_directories(graph_drag PRIVATE ..)
+target_compile_definitions(graph_drag PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(graph_drag PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# The panel's pixels used to be pinned here, by driving the raster QPainter
+# renderer (ctrl::graph::Renderer) into a QImage. That renderer is gone: the panel
+# is drawn by gui::drawPanel (Dear ImGui), and its pixel contract lives in
+# tests/graph_panel_pixels.cpp, which drives the real drawing through a GL frame and
+# asserts the same primitives - plus the inverse assertion that an area with no
+# geometry in it is untouched, which no test of the painter path could make.
+
+# The image-offset channel's step-hold, in the one environment where it can be
+# observed: constructing a core::ImageKey binds a GL buffer for its GridMesh, so
+# tests/graph_curve.cpp (headless, offscreen) has to report that section as a
+# skip. This test creates a context and asserts the staircase for real - the
+# offset holds the last preceding key's value across the whole span, with no
+# trace of the Custom easing the first key carries. Runs under xvfb.
+add_executable(graph_image_step graph_image_step.cpp)
+target_include_directories(graph_image_step PRIVATE ..)
+target_compile_definitions(graph_image_step PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(graph_image_step PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# GUARD test for the paint engine that draws every viewport overlay
+# (ctrl::PainterHandle -> GLCorePaintEngine in a USE_GL_CORE_PROFILE build). It
+# drives the real ctrl::PainterHandle into its OWN offscreen framebuffer and
+# counts pixels per probe, so the engine's ACTUAL primitive subset is pinned
+# rather than assumed: the primitives the gizmos and the graph panel rely on must
+# paint, and two silent traps must keep behaving as documented - a QPainterPath
+# paints nothing (drawPath is `{ (void)aPath; }`), and a text draw with no brush
+# scheduled paints nothing (pushDrawCommand drops usePen=false draws unless a
+# brush is scheduled). Both cost real defects on 2026-10-12; see the measured
+# notes in AGENTS.md. It reads its own FBO with glReadPixels, never
+# QOpenGLWidget::grabFramebuffer() (which re-enters Qt's render and invalidates
+# the buffer). Needs a real GL context, so it runs under xvfb (see the GL branch
+# in scripts/run_suites.sh). assets.qrc is embedded for the engine's shaders.
+add_executable(overlay_engine_primitives overlay_engine_primitives.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(overlay_engine_primitives PRIVATE ..)
+target_compile_definitions(overlay_engine_primitives PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(overlay_engine_primitives PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Regression test for removing an asset that layers still use
+# (core::ObjectTree::findNodesUsingResource, gui::ObjectTreeWidget::pushDeleteObjects,
+# gui::res::ResourceUpdater::remove): the removal used to be refused outright when
+# any layer rendered from the asset. It now deletes those layers in the same undo
+# step, so the search must walk the asset's whole subtree, the resource must be
+# released before its tree is removed, and ONE undo must restore both the asset and
+# its layers IN ORDER. Builds the real object tree and asset tree and drives the
+# real removal; needs a GL context for core::LayerNode's default ImageKey, so it
+# runs under xvfb (cf. psd_layer_identity). See asset_remove_layers.cpp.
+add_executable(asset_remove_layers asset_remove_layers.cpp
+    ../src/gui/ObjectTreeWidget.cpp
+    ../src/gui/GUIResources.cpp
+    ../src/gui/AppStyle.cpp
+    ../src/gui/ProjectHook.cpp
+    ../src/gui/ViaPoint.cpp
+    ../src/gui/EasyDialog.cpp
+    ../src/gui/ResourceDialog.cpp
+    ../src/gui/ResourceTreeWidget.cpp
+    ../src/gui/res/res_ResourceUpdater.cpp
+    ../src/gui/res/res_Item.cpp
+    ../src/gui/res/res_Notifier.cpp
+    ../src/gui/obj/obj_Item.cpp
+    ../src/gui/obj/obj_InsertItem.cpp
+    ../src/gui/obj/obj_MoveItem.cpp
+    ../src/gui/obj/obj_Notifiers.cpp
+    ../src/gui/obj/obj_RemoveItem.cpp
+    ../src/gui/obj/obj_Util.cpp
+    ../src/gui/theme/Theme.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/gui/theme/TimeLine.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(asset_remove_layers PRIVATE .. ../src ../src/gui)
+target_compile_definitions(asset_remove_layers PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(asset_remove_layers PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
 )
