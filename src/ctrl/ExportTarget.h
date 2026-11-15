@@ -122,11 +122,30 @@ struct ExportTarget {
     QString group;
     QString family;
     DestClass klass = DestClass::Fixed;
-    bool codecLadder = false; // true => codec comes from the ladder, not @codec
+
+    // I44 (review: "Discord codec fixed"): the codecs this destination ACCEPTS,
+    // most preferred first, and which one is the default. A LIST, not a mode -
+    // the old `codecSelect fixed|ladder` said how we would pick one; this says
+    // what the platform actually takes, so the codec row can offer AV1/H.265/
+    // H.264 where they are accepted instead of a fixed encoder. Keys are FORMAT
+    // names ("h264", "hevc", "av1", "vp9", "webp", "apng", "gif", "ffv1",
+    // "prores"): the facts name formats ("H.264 or HEVC in a closed GOP"), and
+    // which encoder produces one stays internal (the ladder's own rule).
+    QStringList codecs;
+    // The declared default among `codecs`. Empty = the row states no preference,
+    // so the class policy decides (the ladder, constrained to `codecs`) - the
+    // same "empty = derive" convention AudioSpec uses for its codec. Either way
+    // the answer must be a member of `codecs` that this build can produce.
+    QString defaultCodec;
 
     // For an image artifact (Still/Sequence) the CONTAINER names the image format
     // instead of a muxed container: "png", "jpg".
     QString container;
+    // The ENCODER implementation this row pins for its codecs (an internal, not a
+    // fact): empty = pick by the format's own table. Kept per row because exactly
+    // one row needs it - safari.transparent must use hevc_videotoolbox (libx265
+    // advertises yuva420p and then refuses it at open) - and because the pinned
+    // encoders of the fixed rows are the measured, working choice.
     QString codec;
     QString pixFmt;
     ArtifactKind artifact = ArtifactKind::Video;
@@ -154,6 +173,12 @@ struct ExportTarget {
     // Instagram, which rejects an MP4 without its moov atom at the front).
     QMap<QString, QString> muxerOptions;
     QString codecTag;
+    // Codec FAMILY the tag above applies to (the `codec=` attribute on the
+    // element: "hevc"). Empty = unconditional, which is what a row whose codec
+    // list is a single family needs. A qualified tag is written only when the
+    // codec the plan actually resolved is that family (ruling 2026-10-03:
+    // hvc1 for HEVC in an ISO container, and NOTHING ELSE changes).
+    QString codecTagCodec;
     AudioSpec audioSpec; // parameters (the `audio` member is the capability)
 
     // Floor for fit-to-cap's scale phase, in percent. Below this the image is
@@ -278,6 +303,25 @@ struct ExportRequest {
     // selection: the dialog's range has nothing to say about a single image and its
     // start is usually frame 0.
     int playhead = 0;
+
+    // The VIDEO codec the user picked from the codec row (I44): a libav encoder
+    // name taken from the destination's offered list (what it accepts ∩ what this
+    // build can produce). Empty = the destination's own default (its declared
+    // default, or the class policy where it declares none). Deliberately the
+    // opposite of the AUDIO codec note below: a destination that merely defaults
+    // the codec leaves the choice to the user (contract item 42), and the plan
+    // re-validates the choice against the accepted list anyway, so a stale pick
+    // cannot smuggle in a codec the destination refuses.
+    QString codec;
+
+    // The "Export with transparency" checkbox (the dialog always carries its
+    // state; bare requests assume it on). This is the ALPHA STATE the archive
+    // codec rule follows (user's call 2026-10-01): the default codec may depend
+    // on whether transparency is wanted, because the alpha-capable codecs are a
+    // strict subset of the accepted ones (MEASURED 2026-10-01 in this build:
+    // ffv1 and libvpx-vp9 carry yuva420p; libsvtav1 accepts the request but
+    // stores no alpha at all; libx265 refuses it outright).
+    bool allowTransparency = true;
 
     // Whether audio is exported is NOT a preference — it is derived:
     //   included  iff  the project HAS audio  AND  not muted  AND  the
@@ -440,6 +484,12 @@ void applyCaps(const Caps& aCaps, int* aFps, int* aFrames, QStringList* aNotes =
 QString codecDisplayName(const QString& aCodec);
 QString containerDisplayName(const QString& aContainer);
 
+// The FORMAT key an encoder produces ("libx265" -> "hevc"), or empty for an
+// encoder the schema has no key for. The inverse of formatEncoders(); the
+// schema and the facts name formats, the build names encoders, and everything
+// that crosses between them crosses here.
+QString formatKeyForEncoder(const QString& aEncoder);
+
 // Pick a codec for a destination whose codec is NOT dictated. Walks the (class,
 // bucket) ladder and returns the first candidate that actually RUNS here, with hardware
 // preferred inside a format for the buckets that care about time. `aWhy` receives the
@@ -447,6 +497,39 @@ QString containerDisplayName(const QString& aContainer);
 // file. Nothing about which library produced it, and nothing about how long it will
 // take: neither is the user's to adjudicate.
 QString resolveLadderCodec(DestClass aClass, QualityBucket aBucket, QString* aWhy = nullptr);
+
+// One codec the codec row can offer (I44): a FORMAT the destination accepts that
+// this build can actually produce into the destination's container, and the
+// encoder that will produce it. The row shows `label` ("H.265"); the export uses
+// `encoder` ("libx265"); the schema and the facts carry only `format` ("hevc").
+struct CodecChoice {
+    QString format;
+    QString encoder;
+    QString label;
+    bool lossless = false;
+};
+
+// The intersection the contract names: the destination's accepted list ∩ what
+// this build can produce (an encoder that RUNS here - not one that merely
+// compiled in - and that the container's muxer takes). Empty for a row that
+// dictates one codec or produces an image: those have nothing to choose, and the
+// codec row stays hidden for them (contract item 42: "controls the destination
+// dictates are stated, not offered").
+QList<CodecChoice> offeredCodecs(const ExportTarget& aTarget);
+
+// The default codec for a row: its DECLARED default where it has one, else the
+// class policy (the ladder, constrained to the row's accepted list - the policy
+// picks among what the destination accepts and never beyond it). Returns an
+// empty choice when the row accepts nothing this build can produce.
+// `aAlphaOn` is the user's transparency state (ExportRequest::allowTransparency):
+// it changes the default only for Archive outside Lossless (rule decided
+// 2026-10-01) — transparency ON takes the alpha-capable lossy codec (VP9 here;
+// measured: AV1 drops alpha silently in this build), OFF takes AV1 where quality
+// per bit wins and H.265 where the ladder puts time/size first.
+// `aWhy` receives the class-policy reason when the policy decided; a declared
+// default needs no advocacy.
+CodecChoice resolveDefaultCodec(const ExportTarget& aTarget, QualityBucket aBucket,
+                                bool aAlphaOn, QString* aWhy = nullptr);
 
 // The whole point: destination + request + quality intent -> a ready-to-open
 // encoder config, plus constraint application and human-readable reasoning.

@@ -48,6 +48,41 @@ fi
 unset WAYLAND_DISPLAY
 export QT_QPA_PLATFORM=xcb
 
+# AND PIN THE PLATFORM THEME, OR THE FILE DIALOG APPEARS ON THE USER'S DESKTOP.
+# A session that sets QT_QPA_PLATFORMTHEME (COSMIC sets "cosmic") makes Qt load that
+# theme's plugin, and `libcutecosmictheme.so` opens org.freedesktop.portal.FileChooser:
+# the PORTAL draws that window in the live session, while the probe types into Xvfb and
+# waits for a dialog that is not there. Measured 2026-09-29: a sweep prompted for a
+# filename over and over on the desktop and the journal logged
+#   xdg-desktop-portal-cosmic ... file_chooser: no file chooser dialog with ID Id(642)
+# Three things are worth knowing before "fixing" it differently:
+#   * QT_NO_XDG_DESKTOP_PORTAL does NOT stop this - cutecosmic never reads that
+#     variable (measured: zero occurrences of it in the plugin).
+#   * Leaving the variable unset is not enough either: Qt's candidate list came out as
+#     ("cosmic", "generic"), so the portal theme is offered even when we ask for
+#     nothing.
+#   * Of the four platform themes installed, only libcutecosmictheme.so (1) and
+#     libqxdgdesktopportal.so (2) contain the FileChooser bus name; libqgtk3.so and
+#     libqt6ct.so contain none.
+# "generic" is Qt's own theme: it has no plugin file and no portal strings, so the
+# dialog is an ordinary widget dialog rendered inside this Xvfb, where xdotool can
+# reach it. This pins the HARNESS only - the shipped application still follows the
+# user's session.
+export QT_QPA_PLATFORMTHEME=generic
+
+# AND MAKE THE APPLICATION'S OWN WORDS REACH THE LOG. Qt's default message handler
+# writes to the systemd JOURNAL when stderr is not a console, and a probe redirects
+# stderr to /tmp/probe_app.log -- so every Qt warning and every QML error has been
+# going somewhere no probe log shows. Measured: with the output redirected, QML
+# console.info produced 0 lines in the file without this and 1 line with it, and
+# journalctl held the ones that went missing. Set it so a failing probe's log is
+# the whole story rather than the part of it that happened to be a printf.
+export QT_FORCE_STDERR_LOGGING=1
+# The QML console.log category (qCDebug, "qml") is filtered by the default rules;
+# `QT_LOGGING_RULES="qml.debug=true"` turns it on when a scene needs to explain
+# itself. Deliberately NOT set here: *.debug=true drowns a probe log in Qt's own
+# font-database and pointer-trace chatter.
+
 # SANDBOX THE SETTINGS. A probe drives the real application, and the application
 # writes QSettings on every export: the remembered destination, the last output
 # directory and name, the per-destination folders, the remembered frame range and
@@ -124,6 +159,45 @@ export RECORDED_AGAINST="${RECORDED_AGAINST:-0}"
 
 ae() { python3 "$AE_UI" "$@" 2>/dev/null; }
 
+# ---- refuse to drive a REAL display ----------------------------------------
+#
+# xdotool talks to $DISPLAY, and NOTHING in this file sets it. Every probe is
+# wrapped in `xvfb-run`, which does; a command run OUTSIDE that wrapper inherits the
+# developer's own DISPLAY and drives the real desktop - the clicks, keystrokes and
+# typed text land wherever the cursor happens to be. It happened: the journal of
+# Sep 28 11:23:27 records an unwrapped
+#     xdotool mousemove 100 40 click 1; xdotool key Down; xdotool type "ab"
+# reaching the live session, and it was followed (11:25:02) by the corrected version
+# wrapped in `xvfb-run -n 55` - the defect found by accident, not by a check.
+#
+# Note what is NOT the fix: `unset WAYLAND_DISPLAY` (above) does not touch DISPLAY.
+# Qt's platform choice and xdotool's target are two different variables, and only
+# the first was guarded. `QT_QPA_PLATFORM=xcb` changes which server Qt connects to;
+# it changes nothing about where xdotool sends input.
+#
+# The test is therefore "is an Xvfb SERVING this display", never "is DISPLAY set":
+# a real session has Xorg or Xwayland on :0, and that is precisely what must not be
+# driven. Exits 97 rather than returning, because a probe that silently skips its
+# clicks passes while testing nothing.
+ae_guard_display() {
+    local d=${DISPLAY:-} n pid
+    n=${d#*:}; n=${n%%.*}
+    if [ -z "$d" ] || [ -z "$n" ]; then
+        echo "FAIL  ae: DISPLAY is unset, so there is nothing to drive." >&2
+        echo "FAIL  ae: run this under xvfb-run, as the probes do." >&2
+        exit 97
+    fi
+    for pid in $(pgrep -x Xvfb 2>/dev/null); do
+        if tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -qE "(^| ):${n}( |$)"; then
+            return 0
+        fi
+    done
+    echo "FAIL  ae: DISPLAY=$d is not an Xvfb display. Synthetic input sent here would" >&2
+    echo "FAIL  reach the REAL desktop, not the test window. Wrap this command in:" >&2
+    echo "FAIL    xvfb-run -a --server-args=\"-screen 0 1440x900x24\" <command>" >&2
+    exit 97
+}
+
 # The centre of a named widget, as "x y". Empty when the widget is not there.
 ae_center() {
     local box
@@ -134,6 +208,7 @@ ae_center() {
 
 # Click a named widget, by asking it where it is.
 ae_press() { # ae_press <name> <what-the-caller-expects-to-happen>
+    ae_guard_display
     local at
     at=$(ae_center "$1")
     if [ -z "$at" ]; then
@@ -142,6 +217,81 @@ ae_press() { # ae_press <name> <what-the-caller-expects-to-happen>
     fi
     xdotool mousemove $at click 1
     check 0 "$2"
+}
+
+# The screen y of a named widget, from its AT-SPI rectangle. A LIST ROW's rect is
+# usable (measured: the picker's rows report x=14 w=520, which is the list), unlike a
+# QML control's rect inside a dialog that is not at the screen origin - see the note
+# in ae_activate. Empty when the widget is not on screen, which is also how "this row
+# scrolled out of the viewport" reads.
+ae_y() { ae extents "$1" 2>/dev/null | awk 'NR==1 {print $2}'; }
+
+# A real pointer drag: move, press, move in STEPS, release. The steps are the point -
+# one mousemove followed by a mouseup is a click, which is why a drag with no motion
+# in it cannot tell a working scroll bar from a decorative one.
+ae_drag() { # ae_drag <x> <y> <dx> <dy> [steps]
+    ae_guard_display
+    local x=$1 y=$2 dx=$3 dy=$4 steps=${5:-8} i
+    xdotool mousemove --sync "$x" "$y"; sleep 0.2
+    xdotool mousedown 1; sleep 0.2
+    for i in $(seq 1 "$steps"); do
+        xdotool mousemove --sync $((x + dx * i / steps)) $((y + dy * i / steps))
+        sleep 0.05
+    done
+    sleep 0.2
+    xdotool mouseup 1; sleep 0.4
+}
+
+# Wait until the MAIN WINDOW is up, by asking the accessibility tree, instead of
+# sleeping a guessed number of seconds. The probes all did `sleep 12`, which is not a
+# readiness check: the same project opened in 4s on one run and took longer than 25s on
+# another (llvmpipe, plus whatever else the machine is doing), and every assertion
+# after the sleep then runs against the loading splash - a slow machine reported as a
+# broken application.
+wait_ready() { # wait_ready [seconds]
+    # Guarded HERE rather than only in ae_press/ae_drag: every probe calls this
+    # inside its xvfb-run body BEFORE its first raw `xdotool`, and the probes use
+    # raw xdotool (mousemove, key, type, search) more often than they use the
+    # helpers. One check at this point covers the input that would otherwise go
+    # unchecked.
+    ae_guard_display
+    local limit=${1:-120} i
+    for i in $(seq 1 "$limit"); do
+        ae wait "File" >/dev/null 2>&1 && return 0
+        sleep 1
+    done
+    return 1
+}
+
+# Press a named widget through the accessibility ACTION instead of at its
+# coordinates. Required for Qt Quick controls, because Qt reports a QML item's
+# screen extents in the coordinates of its QQuickWidget and not of the window it
+# sits in: a dialog that is not at the screen origin has every reported rectangle
+# shifted by exactly its window offset, and a coordinate click lands beside the
+# button (measured: the picker's "Cancel" reported x=333..405 while the dialog sat
+# at x=61, so the reported centre missed it and probe_menu's "dismissing the
+# picker closes it" failed; the click that worked was at x=400, where the button
+# really is). An action cannot be shifted by a window position.
+#
+# It is a SEPARATE helper rather than the default because a popup item (a menu
+# entry, a combo row) can answer a coordinate click where the action path is
+# refused - and the reverse - so each probe says which route it means.
+ae_activate() { # ae_activate <name> <what-the-caller-expects-to-happen> [role]
+    local ok=0
+    if [ -n "${3:-}" ]; then
+        # A combo OPTION needs the role: a Qt Quick combo reports its current value
+        # as its own accessible name, so with the popup open the closed field and
+        # the item share a name, and the field comes first.
+        ae click "$1" "$3" >/dev/null 2>&1 && ok=1
+    else
+        ae click "$1" >/dev/null 2>&1 && ok=1
+    fi
+    if [ "$ok" = 1 ]; then
+        check 0 "$2"
+        return 0
+    fi
+    check 1 "$2 (no accessibility action on '$1'${3:+ as a $3})"
+    return 1
 }
 
 # A probe must be re-recorded when the export flow changes SHAPE, and it must SAY SO
@@ -291,4 +441,5 @@ summary() { # summary <probe name>
 #     and summary() counts and prints those lines as its own.
 export AE_OUTER_PID=$$
 export AE_FAIL_FLAG="$(mktemp -u)"
-export -f ae ae_center ae_press ae_report ae_report_asked check require_export_flow
+export -f ae ae_center ae_press ae_activate ae_report ae_report_asked check require_export_flow
+export -f ae_y ae_drag wait_ready ae_guard_display

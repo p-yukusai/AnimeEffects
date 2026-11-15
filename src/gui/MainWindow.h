@@ -27,10 +27,12 @@
 #include "qfilesystemwatcher.h"
 #include "res/res_ResourceUpdater.h"
 #include "ctrl/ExportParams.h"
-#include "exportdiag.h"
 
 
 namespace gui {
+
+class ExportDialog;
+class ExportViewModel;
 
 class MainWindow: public QMainWindow {
     Q_OBJECT
@@ -114,19 +116,10 @@ private:
     bool onStartup = true;
     bool themeChangeWarned = false;
     bool exporting = false;
-    // For some reason you need these here or the widget will only show properly once :/
-    ExportWidgetUI *exportUI = new ExportWidgetUI;
-    QDialog* exportWidget = new QDialog;
-    QDialog* gpDiag = new QDialog;
-    void regenerateWidget(){ exportWidget = new QDialog; exporting = false; }
-    void regenerateGeneralPurposeDiag(){ gpDiag = new QDialog; }
-
-    // Recompute the destination's facts and re-apply them to the dialog's
-    // controls. Held as a member only so it can be invoked once AFTER the
-    // project's own size/fps/saved options have been written into the widgets:
-    // running it earlier would state the plan's numbers and then have the
-    // initialisation overwrite them.
-    std::function<void()> mRefreshExportFacts;
+    // The export form. It is a Qt Quick dialog now (gui/ExportDialog) whose every
+    // rule lives in gui::ExportViewModel, which is widget-free and is what
+    // tests/export_form.cpp drives. Held only while it is open.
+    QPointer<ExportDialog> mExportDialog;
 
     // The last export that actually wrote something, kept so it can be repeated.
     // A copy of the parameters, not a re-derivation: repeating an export must
@@ -138,9 +131,10 @@ private:
     void rememberExportLocation(const exportParam& aParam);
     // The dialog's per-run inputs (frame ranges, size, fps) live in QSettings, per
     // project, so reopening the dialog to change one thing does not mean selecting
-    // the range again.
+    // the range again. The remembered values are loaded into the model at
+    // construction, and written back after it closes.
     QString exportInputsKey() const;
-    void restoreExportInputs();
+    void rememberExportInputs(const ExportViewModel& aModel);
     void reportExportOutcome(const exportParam& aParam, bool aWrote);
 
 

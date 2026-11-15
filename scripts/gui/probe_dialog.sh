@@ -38,7 +38,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   '"$APP"' "'"$PROJ"'" >/tmp/probe_dialog.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 12
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -50,7 +50,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   require_export_flow
   ae set "Search destinations" "telegram.sticker" >/dev/null
   sleep 1.2
-  ae_press "Use this destination" "the destination is accepted"
+  ae_activate "Use this destination" "the destination is accepted"
 
   # 2. The form, once the plan for that destination has been applied. Asking about
   #    "Destination" alone can answer with a snapshot of the form BEFORE the plan
@@ -60,22 +60,25 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   # Every name asserted below is asked about HERE, in this one snapshot.
   ae_report /tmp/dlg_form.txt "Destination" "Width" "Height" "Frame rate" "Advanced" \
                               "Keep aspect ratio" "Export" "Cancel" "Quality" \
-                              "What to export" "How to encode" "Format" "Codec" \
+                              "Output" "Encoding" "Format" "Codec" \
                               "General Parameters"
   # What the form SAYS, in words. The facts box is a label, so its own lines arrive
   # through the same query as every other label on screen.
   ae text > /tmp/dlg_text.txt 2>/dev/null
   # Which words on screen belong to which field: a control can answer to a name and
   # still have nothing beside it that reads as its label.
-  ae labeled "Width" > /tmp/dlg_labeled_width.txt 2>/dev/null
-  ae labeled "Frame rate" > /tmp/dlg_labeled_fps.txt 2>/dev/null
+  # A QML Text has no label-for relation, so the words are read from the tree
+  # itself. -x is exact: the facts row prints "Frame rate:" (with its colon),
+  # which is NOT the label of the field and must not satisfy this.
+  ae text | grep -x "Resolution" > /tmp/dlg_labeled_width.txt
+  ae text | grep -x "Frame rate" > /tmp/dlg_labeled_fps.txt
   # The accessibility tree itself, for the structural claim: the export dialog is one
   # node ("Export parameters"), and the subtree below it is what the user is looking at.
   ae dump > /tmp/dlg_tree.txt 2>/dev/null
   awk "/Export parameters/{found=1} found" /tmp/dlg_tree.txt > /tmp/dlg_subtree.txt
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/dlg_01_form.png
-  ae_press "Cancel" "the form closes on Cancel"
+  ae_activate "Cancel" "the form closes on Cancel"
   sleep 1
   kill $app 2>/dev/null; wait $app 2>/dev/null
 ' 2>&1 | tail -4
@@ -118,10 +121,10 @@ fi
 # NOT A TAB WIDGET, in two independent ways:
 #   * the old tab title is absent, and
 #   * both section headings are on screen at the same time - a tab widget shows one
-#     page at a time, so "What to export" and "How to encode" together is the shape.
+#     page at a time, so "Output" and "Encoding" together is the shape.
 assert_absent /tmp/dlg_form.txt "General Parameters" "the old single-tab page is gone, not renamed"
-assert_showing /tmp/dlg_form.txt "What to export" "the form is one stack: the first section is on screen"
-assert_showing /tmp/dlg_form.txt "How to encode" "and so is the second, which a tab widget could not show at once"
+assert_showing /tmp/dlg_form.txt "Output" "the form is one stack: the first section is on screen"
+assert_showing /tmp/dlg_form.txt "Encoding" "and so is the second, which a tab widget could not show at once"
 if grep -q "Export parameters" /tmp/dlg_subtree.txt && ! grep -q "page tab" /tmp/dlg_subtree.txt; then
     check 0 "and the export dialog subtree contains no tab widget at all"
 else
@@ -133,7 +136,7 @@ assert_hidden /tmp/dlg_form.txt "Format" "the destination dictates the format, s
 assert_hidden /tmp/dlg_form.txt "Codec" "and no codec control beside it"
 # The expectation is the words ON SCREEN, which are not the accessible name: the fps
 # box answers to "Frame rate" and is labelled "FPS:" on the form.
-for pair in "Width:/tmp/dlg_labeled_width.txt" "FPS:/tmp/dlg_labeled_fps.txt"; do
+for pair in "Resolution:/tmp/dlg_labeled_width.txt" "Frame rate:/tmp/dlg_labeled_fps.txt"; do
     name=${pair%%:*}
     file=${pair#*:}
     if grep -qi -- "$name" "$file"; then

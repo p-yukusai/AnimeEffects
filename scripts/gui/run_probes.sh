@@ -12,10 +12,16 @@ DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJ="${1:-${AE_PROJECT:-}}"
 
 pass=0; fail=0; stale=0; failed=""; stalled=""
+# Per-probe wall budget. The blanket 900 s killed probe_capped mid-case in every
+# sweep: its honest cases (72/100-frame real exports with fit bisections) measure
+# 1120 s standalone on an idle machine (timed 2026-10-01, EXIT=0 green). The
+# raise is PER PROBE so one probe's honest runtime cannot silently eat the sweep
+# budget the others live in.
+declare -A PROBE_TIMEOUT=( [probe_capped]=1800 )
 for probe in "$DIR"/probe_*.sh; do
     name=$(basename "$probe")
-    # probe_capped exports up to 16 encodes; give the slow ones room.
-    out=$(timeout 900 "$probe" "$PROJ" 2>&1)
+    budget=${PROBE_TIMEOUT["${name%.sh}"]:-900}
+    out=$(timeout "$budget" "$probe" "$PROJ" 2>&1)
     rc=$?
     # 3 = the probe's navigation no longer matches the application (it exits with
     # its own message). Neither a pass nor a failure of the application: a probe

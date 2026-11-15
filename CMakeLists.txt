@@ -18,7 +18,11 @@ endif()
 include(GNUInstallDirs)
 # You need to add the Qt directory to your path, otherwise you'll have a very bad time
 # On MacOS Tahoe please remove AGL from the framework list when linking
-find_package(Qt6 REQUIRED COMPONENTS Core5Compat Core Gui OpenGL OpenGLWidgets Svg Xml Concurrent Widgets Multimedia Quick Qml QuickWidgets LinguistTools)
+# QuickControls2 is here for the migrated Qt Quick dialogs: their controls are
+# QtQuick.Controls types with the design's own background/contentItem delegates.
+# The Basic style is selected in Main.cpp (the default on Linux is Fusion, and
+# Basic is the documented base for a customised look).
+find_package(Qt6 REQUIRED COMPONENTS Core5Compat Core Gui OpenGL OpenGLWidgets Svg Xml Concurrent Widgets Multimedia Quick Qml QuickWidgets QuickControls2 LinguistTools)
 # Qt's i18n CMake support: declares the translated languages lupdate/lrelease
 # operate on, and enables the qt_add_translations/update_translations targets.
 # The translation sources live in assets/locale/translation_<locale>.ts.

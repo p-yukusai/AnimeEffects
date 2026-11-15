@@ -33,7 +33,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   '"$APP"' "'"$PROJ"'" >/tmp/probe_menu.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 12
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -56,7 +56,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   # 3. Dismissed. The quick action leads to the picker and then to an export: it does
   #    NOT open the parameter form, which is the whole difference between it and
   #    "Export project as".
-  ae_press "Cancel" "the picker is dismissed"
+  ae_activate "Cancel" "the picker is dismissed"
   sleep 1.5
   # "File" is asked about as well: it is on screen either way, and a report answers as
   # soon as ANY name it was asked about is up, so naming a present anchor is what keeps

@@ -180,7 +180,7 @@ PY
   '"$APP"' "'"$PROJ"'" >/tmp/probe_export.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 12
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -195,7 +195,7 @@ PY
   # exports with is the one it names.
   ae set "Search destinations" "chat.generic.video" >/dev/null
   sleep 1.2
-  ae_press "Use this destination" "the destination is accepted"
+  ae_activate "Use this destination" "the destination is accepted"
   # Wait for the plan to have been applied before touching the form: a report answers as
   # soon as ANY name it was asked about is on screen, so it can describe the form BEFORE
   # the destination has filled it in.
@@ -206,16 +206,16 @@ PY
   #    itself, which is why probe_capped sets none; this destination has no say in it, so
   #    the range is the input that proves the form this probe drove is the export that
   #    ran.
-  if spin set "First frame" "'"$FIRST_FRAME"'" "Last frame" "'"$LAST_FRAME"'"; then
+  if spin set "First frame 1" "'"$FIRST_FRAME"'" "Last frame 1" "'"$LAST_FRAME"'"; then
     check 0 "the frame range takes the values this probe sets by name"
   else
     check 1 "the frame range takes the values this probe sets by name"
   fi
   sleep 0.8
-  ae_report /tmp/exp_form.txt "Destination" "Width" "Height" "Frame rate" "First frame" "Last frame" "Image quality"
+  ae_report /tmp/exp_form.txt "Destination" "Width" "Height" "Frame rate" "First frame 1" "Last frame 1" "Image quality"
   # What the form HOLDS, read back through the same interface: a box clamps to whatever
   # the range of the project allows, and the file has to match the form, not this probe.
-  spin read /tmp/exp_range.txt "First frame" "Last frame" "Frame rate"
+  spin read /tmp/exp_range.txt "First frame 1" "Last frame 1" "Frame rate"
   # What the form says it is about to make. The destination DICTATES the format, so the
   # form states it as a fact instead of offering a Format control, and the facts are the
   # data the destination declares, arriving through the plan. Read with a retry: a single
@@ -235,7 +235,7 @@ PY
   #    suggested name selected, and a relative name resolves against the working
   #    directory of the application - which is why the app was launched from the output
   #    directory above.
-  ae_press "Export" "the export form is answered"
+  ae_activate "Export" "the export form is answered"
   sleep 4
   xdotool key --clearmodifiers ctrl+a; sleep 0.4
   xdotool type --delay 25 "'"$OUTNAME"'"; sleep 0.6
@@ -276,8 +276,8 @@ PY
 # will be made of.
 assert_showing /tmp/exp_form.txt "Destination" "the export form states the destination it was given"
 assert_showing /tmp/exp_form.txt "Frame rate" "a video destination keeps the frame rate editable"
-assert_showing /tmp/exp_form.txt "First frame" "and the frame range it will encode"
-assert_showing /tmp/exp_form.txt "Last frame" "both ends of it"
+assert_showing /tmp/exp_form.txt "First frame 1" "and the frame range it will encode"
+assert_showing /tmp/exp_form.txt "Last frame 1" "both ends of it"
 # The other half of what a form asks: an image writer's quality control cannot affect a
 # video, so it is hidden rather than greyed. (probe_still asks the same question the other
 # way round, on the artifact that does go through QImage::save().)
@@ -285,7 +285,7 @@ assert_hidden /tmp/exp_form.txt "Image quality" "and does not offer an image qua
 # The chosen destination's own decisions, in the words on screen. "20 MB" is the cap this
 # row declares in the destination table, so this checks that the destination's data
 # reached the form rather than that some particular wording is used.
-for want in "H.264 in MP4" "20 MB"; do
+for want in "H.264 · MP4" "20 MB"; do
     if grep -q "$want" /tmp/exp_facts.txt; then
         check 0 "the facts state what this destination decides ($want)"
     else
@@ -296,8 +296,8 @@ done
 # THE FILE. Non-empty is the floor; the range the FORM held is the assertion that the form
 # this probe drove is the export that ran.
 assert_exists "$OUT" "the export wrote the file the user named"
-first=$(sed -n 's/^First frame=//p' /tmp/exp_range.txt 2>/dev/null | head -1)
-last=$(sed -n 's/^Last frame=//p' /tmp/exp_range.txt 2>/dev/null | head -1)
+first=$(sed -n 's/^First frame 1=//p' /tmp/exp_range.txt 2>/dev/null | head -1)
+last=$(sed -n 's/^Last frame 1=//p' /tmp/exp_range.txt 2>/dev/null | head -1)
 fps=$(sed -n 's/^Frame rate=//p' /tmp/exp_range.txt 2>/dev/null | head -1)
 [ -n "$first" ] && [ -n "$last" ] && [ "$first" != "absent" ] && [ "$last" != "absent" ] \
     && [ "$first" -ge 0 ] 2>/dev/null && [ "$last" -gt "$first" ] 2>/dev/null

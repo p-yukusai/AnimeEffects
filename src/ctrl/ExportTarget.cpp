@@ -7,6 +7,7 @@
 #include <QDomDocument>
 #include <QFileInfo>
 #include <QFile>
+#include <QRegularExpression>
 
 #include <algorithm>
 #include <cmath>
@@ -115,6 +116,29 @@ QStringList familyEncoders(const QString& aFamily) {
     if (aFamily == QLatin1String("hevc")) return {"libx265", "hevc_nvenc", "hevc_qsv", "hevc_vaapi", "hevc_amf"};
     if (aFamily == QLatin1String("h264")) return {"libx264", "h264_nvenc", "h264_qsv", "h264_vaapi", "h264_amf"};
     if (aFamily == QLatin1String("lossless")) return {"ffv1"};
+    if (aFamily == QLatin1String("vp9")) return {"libvpx-vp9", "vp9_vaapi"};
+    return {};
+}
+
+// ---------- I44: format keys (what the facts and the schema name) ----------
+//
+// The schema's `codecs` list names FORMATS ("Discord accepts AV1/H.265/H.264"),
+// never encoder libraries (the ladder's own rule: the choice of implementation
+// stays internal). These three functions are the translation between the two
+// worlds: key -> candidate encoders, key -> what the row shows, encoder -> key.
+QStringList formatEncoders(const QString& aFormat) {
+    // The four families the ladder knows first: same names, same order policy.
+    if (aFormat == QLatin1String("av1") || aFormat == QLatin1String("hevc")
+        || aFormat == QLatin1String("h264") || aFormat == QLatin1String("ffv1")) {
+        return familyEncoders(aFormat == QLatin1String("ffv1") ? QStringLiteral("lossless")
+                                                              : aFormat);
+    }
+    if (aFormat == QLatin1String("vp9")) return {"libvpx-vp9", "vp9_vaapi"};
+    if (aFormat == QLatin1String("vp8")) return {"libvpx"};
+    if (aFormat == QLatin1String("webp")) return {"libwebp", "libwebp_anim"};
+    if (aFormat == QLatin1String("apng")) return {"apng"};
+    if (aFormat == QLatin1String("gif")) return {"gif"};
+    if (aFormat == QLatin1String("prores")) return {"prores_ks"};
     return {};
 }
 
@@ -124,6 +148,17 @@ QString familyLabel(const QString& aFamily) {
     if (aFamily == QLatin1String("h264")) return QStringLiteral("H.264");
     if (aFamily == QLatin1String("lossless")) return QStringLiteral("FFV1");
     return aFamily;
+}
+
+QString formatLabel(const QString& aFormat) {
+    if (aFormat == QLatin1String("ffv1")) return QStringLiteral("FFV1");
+    if (aFormat == QLatin1String("vp9")) return QStringLiteral("VP9");
+    if (aFormat == QLatin1String("vp8")) return QStringLiteral("VP8");
+    if (aFormat == QLatin1String("webp")) return QStringLiteral("WebP");
+    if (aFormat == QLatin1String("apng")) return QStringLiteral("APNG");
+    if (aFormat == QLatin1String("prores")) return QStringLiteral("ProRes");
+    if (aFormat == QLatin1String("gif")) return QStringLiteral("GIF");
+    return familyLabel(aFormat); // av1 / hevc / h264, or the key itself
 }
 
 bool isHardwareEncoder(const QString& aName) {
@@ -199,6 +234,27 @@ QString classReason(DestClass aClass, const QString& aEncoder) {
 }
 
 } // namespace
+
+// The exported half of the format-key translation (the encoder tables above are
+// TU-local): declared in the header, so it lives OUTSIDE the anonymous
+// namespace — a second definition inside it would make every call ambiguous.
+QString formatKeyForEncoder(const QString& aEncoder) {
+    if (aEncoder.isEmpty()) return QString();
+    if (aEncoder.contains(QLatin1String("av1")) || aEncoder == QLatin1String("libaom-av1"))
+        return QStringLiteral("av1");
+    if (aEncoder.contains(QLatin1String("265")) || aEncoder.contains(QLatin1String("hevc")))
+        return QStringLiteral("hevc");
+    if (aEncoder.contains(QLatin1String("264"))) return QStringLiteral("h264");
+    if (aEncoder == QLatin1String("ffv1")) return QStringLiteral("ffv1");
+    if (aEncoder == QLatin1String("libvpx-vp9") || aEncoder == QLatin1String("vp9_vaapi"))
+        return QStringLiteral("vp9");
+    if (aEncoder == QLatin1String("libvpx")) return QStringLiteral("vp8");
+    if (aEncoder.contains(QLatin1String("webp"))) return QStringLiteral("webp");
+    if (aEncoder == QLatin1String("apng")) return QStringLiteral("apng");
+    if (aEncoder == QLatin1String("gif")) return QStringLiteral("gif");
+    if (aEncoder.contains(QLatin1String("prores"))) return QStringLiteral("prores");
+    return QString();
+}
 
 bool applyQualityIntent(const QString& aCodec, QualityBucket aBucket,
                         QMap<QString, QString>& aEncOptions, QStringList* aNotes) {
@@ -333,7 +389,18 @@ QList<ExportTarget> ExportTargets::load(const QString& aPath, QString* aError) {
         t.group = d.attribute(QStringLiteral("group"));
         t.family = d.attribute(QStringLiteral("family"));
         t.klass = parseClass(d.attribute(QStringLiteral("class")));
-        t.codecLadder = d.attribute(QStringLiteral("codecSelect")) == QLatin1String("ladder");
+        // I44: accepted codecs as a LIST plus the declared default. The old
+        // codecSelect fixed|ladder mode is gone: a row says WHAT the platform
+        // takes, and the default either names one of them or is empty (the class
+        // policy decides, constrained to the list).
+        {
+            const QString list = d.attribute(QStringLiteral("codecs"));
+            for (const QString& key :
+                 list.split(QRegularExpression(QStringLiteral("[\\s,]+")), Qt::SkipEmptyParts)) {
+                t.codecs.append(key.trimmed());
+            }
+            t.defaultCodec = d.attribute(QStringLiteral("default"));
+        }
         t.container = d.attribute(QStringLiteral("container"));
         {
             const QString kind = d.attribute(QStringLiteral("artifact"));
@@ -402,7 +469,11 @@ QList<ExportTarget> ExportTargets::load(const QString& aPath, QString* aError) {
         t.minScalePct = attrInt(d, QStringLiteral("minScalePct"), 25);
 
         const QDomElement tagElem = d.firstChildElement(QStringLiteral("codecTag"));
-        if (!tagElem.isNull()) t.codecTag = tagElem.attribute(QStringLiteral("value"));
+        if (!tagElem.isNull()) {
+            t.codecTag = tagElem.attribute(QStringLiteral("value"));
+            // The optional family qualifier; empty means the tag is unconditional.
+            t.codecTagCodec = tagElem.attribute(QStringLiteral("codec"));
+        }
 
         const QDomElement noteElem = d.firstChildElement(QStringLiteral("note"));
         if (!noteElem.isNull() && t.note.isEmpty()) t.note = tableText(oneLine(noteElem.text()));
@@ -735,6 +806,136 @@ QString resolveLadderCodec(DestClass aClass, QualityBucket aBucket, QString* aWh
     return QString();
 }
 
+// I44: accepted ∩ build-capable — the intersection the contract names. A row
+// offers a format only when THIS BUILD can produce it into THIS container: an
+// encoder that runs here (encoderUsable, not "compiled in" — the ladder's own
+// measured trap) and that the muxer takes. The row's pin is the measured,
+// working implementation for its format where it has one (safari's
+// hevc_videotoolbox: libx265 advertises yuva420p and then refuses it at open).
+QList<CodecChoice> offeredCodecs(const ExportTarget& aTarget) {
+    QList<CodecChoice> out;
+    if (aTarget.artifact != ArtifactKind::Video) return out;
+
+    // GIF is the one artifact media::GifEncoder owns rather than libav: present
+    // whenever the app is (writableContainers' own rule) — no encoder to probe.
+    if (aTarget.container.compare(QLatin1String("gif"), Qt::CaseInsensitive) == 0) {
+        for (const QString& format : aTarget.codecs) {
+            if (format != QLatin1String("gif")) continue;
+            CodecChoice c;
+            c.format = format;
+            c.encoder = QStringLiteral("gif");
+            c.label = formatLabel(format);
+            out.append(c);
+        }
+        return out;
+    }
+
+    for (const QString& format : aTarget.codecs) {
+        QStringList candidates;
+        if (!aTarget.codec.isEmpty() && formatKeyForEncoder(aTarget.codec) == format)
+            candidates.append(aTarget.codec);
+        for (const QString& name : formatEncoders(format)) {
+            if (!candidates.contains(name)) candidates.append(name);
+        }
+        for (const QString& encoder : candidates) {
+            if (!media::ffmpeg::containerAcceptsUsableCodec(aTarget.container, encoder))
+                continue;
+            CodecChoice c;
+            c.format = format;
+            c.encoder = encoder;
+            c.label = formatLabel(format);
+            c.lossless = (format == QLatin1String("ffv1"));
+            out.append(c);
+            break;
+        }
+    }
+    return out;
+}
+
+// I44: the default codec for a row. Its DECLARED default where it has one (the
+// row's own decision needs no advocacy); otherwise the class policy — the
+// ladder — constrained to the row's accepted list. The constraint is the schema
+// change's whole point: the policy picks among what the destination takes and
+// never beyond it (the old ladder would hand YouTube an FFV1 upload at Lossless
+// because the policy knew the class but not the row).
+CodecChoice resolveDefaultCodec(const ExportTarget& aTarget, QualityBucket aBucket,
+                                bool aAlphaOn, QString* aWhy) {
+    const QList<CodecChoice> offered = offeredCodecs(aTarget);
+    if (offered.isEmpty()) {
+        if (aWhy)
+            *aWhy = QCoreApplication::translate("ExportTargets",
+                                                "no suitable encoder found in this build");
+        return CodecChoice();
+    }
+
+    // 1. the declared default. A default this build cannot produce falls
+    //    through to the policy (still constrained to `codecs`): better the
+    //    row's next accepted codec than a dead export.
+    if (!aTarget.defaultCodec.isEmpty()) {
+        for (const CodecChoice& c : offered) {
+            if (c.format == aTarget.defaultCodec) return c;
+        }
+    }
+
+    // 2. the class policy, list-constrained. Inside a family the ladder's own
+    //    order rule applies unchanged (hardware first for the time-sensitive
+    //    buckets, declared order for the fidelity ones).
+    const Ladder ladder = ladderFor(aTarget.klass, aBucket);
+    QStringList families = ladder.families;
+    if (aTarget.klass == DestClass::Archive && aBucket != QualityBucket::Lossless) {
+        // The archive rule (decided 2026-10-01; alpha capability MEASURED in
+        // this build — libsvtav1 accepts yuva420p but stores no alpha at all,
+        // libx265 refuses it outright, libvpx-vp9 and ffv1 carry it):
+        //   transparency ON  -> VP9, the alpha-capable lossy pick (a MEASURED
+        //       capability limit, not a preference: AV1 drops alpha silently
+        //       here and H.265 refuses it);
+        //   transparency OFF -> AV1 at EVERY non-Lossless bucket (Best,
+        //       Balanced and Smaller file alike). Ruled 2026-10-01: "AV1 all
+        //       the way makes more sense" — the ladder's family order already
+        //       leads with AV1, and the transparency flag no longer reorders
+        //       this row's families. H.265 is only the fallback for a build
+        //       with no usable AV1 encoder. Lossless stays the ladder's own
+        //       FFV1, always.
+        //
+        // The ladder's fastFirst split does NOT order this row's families any
+        // more; it still governs hardware-encoder preference WITHIN a family
+        // (the per-family loop below prepends hardware when fastFirst is set),
+        // exactly as it does for every other class.
+        if (aAlphaOn) {
+            families = QStringList{QStringLiteral("vp9")};
+        }
+    }
+    for (const QString& family : families) {
+        const QString format =
+            (family == QLatin1String("lossless")) ? QStringLiteral("ffv1") : family;
+        const CodecChoice* here = nullptr;
+        for (const CodecChoice& c : offered) {
+            if (c.format == format) {
+                here = &c;
+                break;
+            }
+        }
+        if (!here) continue; // the row does not accept this family — policy yields
+        QStringList order;
+        for (const QString& name : familyEncoders(family)) {
+            if (!media::ffmpeg::encoderUsable(name.toUtf8().constData())) continue;
+            if (ladder.fastFirst && isHardwareEncoder(name)) {
+                order.prepend(name);
+            } else {
+                order.append(name);
+            }
+        }
+        if (order.isEmpty()) continue;
+        CodecChoice c = *here;
+        c.encoder = order.first();
+        if (aWhy) *aWhy = classReason(aTarget.klass, formatLabel(format));
+        return c;
+    }
+
+    // 3. the policy has no preference the row accepts: the row's own order.
+    return offered.first();
+}
+
 // ---------------------------------------------------------------------------
 
 ExportPlan planExport(const ExportTarget& aTarget, const ExportRequest& aRequest,
@@ -831,17 +1032,49 @@ ExportPlan planExport(const ExportTarget& aTarget, const ExportRequest& aRequest
                           .arg(plan.selection.describe());
     }
 
-    // --- codec --------------------------------------------------------------
-    QString codec = aTarget.codec;
-    if (aTarget.codecLadder) {
-        QString why;
-        codec = resolveLadderCodec(aTarget.klass, aBucket, &why);
-        if (codec.isEmpty()) {
-            plan.error = QCoreApplication::translate(
-                "ExportTargets", "no encoder available for this destination in this build");
-            return plan;
+    // --- codec (I44: accepted list + declared default) -----------------------
+    // The user's choice from the codec row wins WHERE THE DESTINATION ACCEPTS
+    // IT — validated against the offered list (accepted ∩ this build can
+    // produce), so a stale pick cannot smuggle in a codec the destination
+    // refuses. Empty, or refused: the row's DECLARED default, else the class
+    // policy constrained to the accepted list. Image artifacts have no codec at
+    // all (their branch below writes through Qt's own image writers).
+    QString codec;
+    if (aTarget.artifact == ArtifactKind::Video) {
+        const QList<CodecChoice> offered = offeredCodecs(aTarget);
+        if (!aRequest.codec.isEmpty()) {
+            for (const CodecChoice& c : offered) {
+                if (c.encoder == aRequest.codec
+                    || formatKeyForEncoder(aRequest.codec) == c.format) {
+                    // The format is accepted. Keep the EXACT encoder asked for
+                    // when it runs here and the muxer takes it: the request also
+                    // carries the plan's own passthrough (possibly a hardware
+                    // encoder of the offered format), and silently swapping it
+                    // for the offered software entry would downgrade it.
+                    codec = media::ffmpeg::containerAcceptsUsableCodec(aTarget.container,
+                                                                       aRequest.codec)
+                                ? aRequest.codec
+                                : c.encoder;
+                    break;
+                }
+            }
         }
-        plan.notes << why;
+        if (codec.isEmpty()) {
+            QString why;
+            // The archive codec rule follows the user's transparency toggle
+            // (the row's Capability can force or veto it).
+            const bool alphaOn = (aTarget.alpha == Capability::Required)
+                                 || (aTarget.alpha != Capability::Forbidden
+                                     && aRequest.allowTransparency);
+            const CodecChoice def = resolveDefaultCodec(aTarget, aBucket, alphaOn, &why);
+            if (def.encoder.isEmpty()) {
+                plan.error = QCoreApplication::translate(
+                    "ExportTargets", "no encoder available for this destination in this build");
+                return plan;
+            }
+            codec = def.encoder;
+            if (!why.isEmpty()) plan.notes << why;
+        }
     }
 
     // Exact-size destinations (Discord 320x320, WhatsApp 512x512) need the
@@ -993,7 +1226,22 @@ ExportPlan planExport(const ExportTarget& aTarget, const ExportRequest& aRequest
     plan.config.fit = fitMode; // makeConfig() replaced the config; see above
     plan.config.encOptions = aTarget.encOptions;
     plan.config.muxerOptions = aTarget.muxerOptions;
-    plan.config.codecTag = aTarget.codecTag;
+    // The stream codec tag, gated by the optional family qualifier on the
+    // element (ruling 2026-10-03: tag hvc1 whenever HEVC lands in an mp4/mov,
+    // and nothing else changes).
+    //
+    // The witness is plan.config.codec — the encoder that will ACTUALLY be
+    // encoded, after resolveEncoderName()'s same-family substitution and the
+    // pixfmt fallback just above (which replaces the whole config, so reading a
+    // local captured earlier would answer for a codec we are no longer using).
+    // It is non-empty here: the empty case returned at the makeConfig() error
+    // above. formatKeyForEncoder() is the same canonicalizer the codec
+    // resolution itself uses (the `c.format` comparison above), so the
+    // destination's qualifier and this witness speak one vocabulary.
+    plan.config.codecTag = (aTarget.codecTagCodec.isEmpty() ||
+                            aTarget.codecTagCodec == formatKeyForEncoder(plan.config.codec))
+                               ? aTarget.codecTag
+                               : QString();
 
     // The user's quality intent, applied through the codec's OWN knob.
     //

@@ -6,14 +6,14 @@
 #include <QString>
 #include "ctrl/ExportTarget.h"
 
-class QLineEdit;
-class QPushButton;
-class QTreeWidget;
-class QTreeWidgetItem;
+class QQuickWidget;
+class QShowEvent;
 
 namespace gui {
 
+class DestinationPickerModel;
 class GUIResources;
+class QmlTheme;
 
 // The destination chooser: a search field and a TREE of platforms, in a modal.
 //
@@ -47,11 +47,18 @@ class GUIResources;
 //
 // The escape hatch for a platform the tree does not know is a button, not a
 // destination, so it cannot be filtered away.
+//
+// THE SCENE IS QT QUICK. The behaviour above lives in DestinationPickerModel (GL-free,
+// driven directly by tests/destination_picker.cpp with no QML engine), and this class
+// is the shell: a QQuickWidget hosting qml/DestinationPicker.qml with the model and the
+// theme as context properties. The class name and its whole public API are unchanged,
+// so MainWindow.cpp does not know the change happened. A section row is not selectable
+// (DestinationPickerModel::flags) and Enter on one only toggles it.
 class DestinationPicker : public QDialog {
-    // Without this the dialog has no metaobject of its own, tr() resolves through
-    // QDialog, and every string here is looked up in the "QDialog" context: the
-    // catalog's gui::DestinationPicker entries are read by nobody (measured: the
-    // whole dialog stayed English with six catalogs loaded).
+    // Without this the dialog has no metaobject of its own. It is no longer what
+    // makes the strings translate (the model asks the catalog's
+    // gui::DestinationPicker context explicitly), but it stays: a Q_OBJECT-less
+    // QDialog subclass is a trap for the next signal or slot added here.
     Q_OBJECT
 public:
     // aCurrentId preselects a destination (empty = none). The section holding it is
@@ -65,27 +72,32 @@ public:
     DestinationPicker(const QList<ctrl::ExportTarget>& aTargets,
                       const QList<ctrl::ExportGroup>& aGroups, GUIResources& aResources,
                       const QString& aCurrentId, QWidget* aParent);
+    ~DestinationPicker() override;
 
     // The chosen destination id, or empty for "my platform isn't listed".
     QString chosenId() const { return mChosenId; }
 
-    // Destinations currently on screen (a platform node is not one, and a hidden row
-    // is not on screen), for tests and probes.
+    // Destinations currently on screen (a platform node is not one, and a child of a
+    // closed platform is not on screen), for tests and probes.
     int visibleRowCount() const;
 
+protected:
+    void showEvent(QShowEvent* aEvent) override;
+    // Every close (accept, reject, Esc, the window button) saves the expansion
+    // state first: C17 remembers the dialog as the user left it.
+    void done(int aResult) override;
+
 private:
-    void applyFilter(const QString& aQuery);
-    void chooseCurrent();
-    // Open or close a platform node. The one thing a platform can do, whatever route
-    // asked: Enter, a click, or the dialog's own default button.
-    void toggleSection(QTreeWidgetItem* aSection);
+    // C17: write the current expansion state (stable section ids) to QSettings.
+    void saveExpansion();
 
-    bool eventFilter(QObject* aWatched, QEvent* aEvent) override;
-
-    QLineEdit* mSearch = nullptr;
-    QTreeWidget* mTree = nullptr;
-    QPushButton* mManualButton = nullptr;
+    DestinationPickerModel* mModel = nullptr;
+    QmlTheme* mTheme = nullptr;
+    QQuickWidget* mQuick = nullptr;
     QString mChosenId;
+    // True while the remembered expansion state is being applied, so the restore
+    // is not mistaken for a user change and written back.
+    bool mRestoring = false;
 };
 
 } // namespace gui

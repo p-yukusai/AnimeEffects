@@ -45,8 +45,22 @@
                 reencode - platform re-encodes our upload (YouTube, X, TikTok)
                 direct   - platform serves our file as-is (website, messaging)
                 archive  - keep a master
-    codecSelect fixed  - use @codec
-                ladder - pick by (class, quality bucket) via the availability probe
+    codecs      the codecs this destination ACCEPTS, most preferred first: a
+                space-separated list of format keys (h264 hevc av1 vp9 vp8 webp
+                apng gif ffv1 prores). A LIST, not a mode: the facts name what
+                the platform takes ("H.264 or HEVC in a closed GOP"), and the
+                codec row offers exactly this list minus whatever this build
+                cannot produce. Absent = the row produces an image (still /
+                sequence) and has no codec to pick.
+    default     which accepted codec is the default. Absent = the row states no
+                preference and the class policy decides - constrained to
+                @codecs, so the policy can never pick what the row does not
+                accept (a master-archive row that accepts FFV1 and H.265 gets
+                FFV1 at Lossless and H.265 otherwise; YouTube, which does not
+                accept FFV1, no longer receives one at Lossless).
+    codec       the ENCODER implementation this row pins for its codecs (an
+                internal, not a fact): libx264, libvpx-vp9, libwebp, apng, gif,
+                hevc_videotoolbox. Absent = the format's own table decides.
     alpha/audio/loop
                 required   - forced on; stated in the UI, never a control
                 forbidden  - impossible or rejected; stated or hidden
@@ -81,7 +95,13 @@
   <encOptions>    private encoder options (avcodec_open2). e.g. libvpx's
                   auto-alt-ref=0, which VP9+alpha requires.
   <codecTag>      four-char stream codec tag. NOT an encoder option — it lives
-                  in the container's stream entry (hvc1 for HEVC).
+                  in the container's stream entry (hvc1 for HEVC). The optional
+                  codec="<family>" attribute qualifies it to that codec FAMILY:
+                  the planner writes the tag only when the codec it resolved for
+                  the plan is that family. No attribute = unconditional. Both
+                  sides are canonicalized the same way (family key or encoder
+                  name: "hevc" and "libx265" match; a container spelling such as
+                  "hev1" matches nothing, so the tag would never be written).
   <audio>         per-destination audio parameters. Empty codec = derive from
                   the container (WebM cannot carry AAC).
   minScalePct     floor for fit-to-cap's scale phase (never shrink past this).
@@ -150,8 +170,8 @@
 
   <destination id="telegram.sticker" group="telegram" label="Telegram sticker"
                icon="brand-telegram" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="webm" codec="libvpx-vp9" pixfmt="yuva420p"
+               class="fixed"
+               container="webm" codec="libvpx-vp9" codecs="vp9" default="vp9" pixfmt="yuva420p"
                alpha="required" audio="forbidden" loop="default-on"
                checked="2026-09-05" source="https://core.telegram.org/stickers" verified="true">
     <size mode="maxExactSide" side="512"/>
@@ -162,8 +182,8 @@
 
   <destination id="telegram.emoji" group="telegram" label="Telegram custom emoji"
                icon="brand-telegram" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="webm" codec="libvpx-vp9" pixfmt="yuva420p"
+               class="fixed"
+               container="webm" codec="libvpx-vp9" codecs="vp9" default="vp9" pixfmt="yuva420p"
                alpha="required" audio="forbidden" loop="default-on"
                checked="2026-09-05" source="https://core.telegram.org/stickers" verified="true">
     <size mode="exact" w="100" h="100"/>
@@ -173,8 +193,8 @@
 
   <destination id="discord.sticker" group="discord" label="Discord sticker"
                icon="brand-discord" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="apng" codec="apng" pixfmt="rgba"
+               class="fixed"
+               container="apng" codec="apng" codecs="apng" default="apng" pixfmt="rgba"
                alpha="required" audio="forbidden" loop="default-on"
                checked="2026-09-05" source="https://discord.com/blog/how-to-create-upload-your-own-stickers-on-discord" verified="true">
     <size mode="exact" w="320" h="320"/>
@@ -183,8 +203,8 @@
   </destination>
 
   <destination id="discord.emoji" group="discord" label="Discord emoji" icon="brand-discord" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="webp" codec="libwebp" pixfmt="yuva420p"
+               class="fixed"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
                alpha="required" audio="forbidden" loop="default-on"
                checked="2026-09-05" source="https://github.com/discord/discord-api-docs" verified="true">
     <size mode="max" w="128" h="128"/>
@@ -194,8 +214,8 @@
 
   <destination id="whatsapp.sticker" group="whatsapp" label="WhatsApp sticker"
                icon="brand-whatsapp" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="webp" codec="libwebp" pixfmt="yuva420p"
+               class="fixed"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
                alpha="required" audio="forbidden" loop="default-on"
                checked="2026-09-05" source="https://github.com/WhatsApp/stickers" verified="true">
     <size mode="exact" w="512" h="512"/>
@@ -204,8 +224,8 @@
   </destination>
 
   <destination id="signal.sticker" group="signal" label="Signal sticker" icon="brand-signal" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="apng" codec="apng" pixfmt="rgba"
+               class="fixed"
+               container="apng" codec="apng" codecs="apng" default="apng" pixfmt="rgba"
                alpha="required" audio="forbidden" loop="default-on"
                checked="2026-09-05" source="https://support.signal.org/hc/en-us/articles/360031836512-Stickers" verified="true">
     <size mode="exact" w="512" h="512"/>
@@ -214,8 +234,8 @@
   </destination>
 
   <destination id="line.sticker" group="line" label="LINE sticker" icon="brand-line" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="apng" codec="apng" pixfmt="rgba"
+               class="fixed"
+               container="apng" codec="apng" codecs="apng" default="apng" pixfmt="rgba"
                alpha="required" audio="forbidden" loop="required"
                checked="2026-09-05" source="https://creator.line.me/en/guideline/animationsticker/" verified="true">
     <size mode="maxMinSide" w="320" h="270" side="270"/>
@@ -224,8 +244,8 @@
   </destination>
 
   <destination id="twitch.emote" group="twitch" label="Twitch emote" icon="brand-twitch" family="sticker"
-               class="reencode" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="choice" audio="forbidden" loop="default-on"
                checked="2026-09-11" source="https://help.twitch.tv/s/article/emote-guidelines" verified="true">
     <size mode="exact" w="112" h="112"/>
@@ -246,8 +266,8 @@
 
   <destination id="chat.generic.video" group="general" label="A video for a chat app"
                icon="dest-film" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="(design decision; the conservative floor across the chat apps below)" verified="true">
     <size mode="max" w="1280" h="720"/>
@@ -259,8 +279,8 @@
   </destination>
 
   <destination id="chat.whatsapp.video" group="whatsapp" label="WhatsApp" icon="brand-whatsapp" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://faq.whatsapp.com/453914586839706" verified="true">
     <size mode="max" w="1280" h="720"/>
@@ -273,8 +293,8 @@
   </destination>
 
   <destination id="chat.whatsapp.gif" group="whatsapp" label="WhatsApp (animated GIF)" icon="brand-whatsapp" family="chat"
-               class="direct" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="direct"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="choice" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://faq.whatsapp.com/674208810641277/ (GIFs are a supported chat surface)" verified="false">
     <size mode="free"/>
@@ -289,8 +309,8 @@
   </destination>
 
   <destination id="chat.telegram.video" group="telegram" label="Telegram" icon="brand-telegram" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://telegram.org/faq" verified="true">
     <size mode="free"/>
@@ -303,8 +323,8 @@
   </destination>
 
   <destination id="chat.telegram.gif" group="telegram" label="Telegram (animated GIF)" icon="brand-telegram" family="chat"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://core.telegram.org/api/gifs (GIFs are converted server-side to MPEG-4 H.264 without sound)" verified="true">
     <size mode="max" w="1280" h="720"/>
@@ -321,13 +341,14 @@
   </destination>
 
   <destination id="chat.discord.file" group="discord" label="Discord" icon="brand-discord" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264 hevc av1" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://support.discord.com/hc/en-us/articles/25444343291031" verified="true">
     <size mode="max" w="1280" h="720"/>
     <caps maxBytes="20971520"/>
     <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
     <note>20 MB to send, 50 MB with Nitro Basic, 500 MB with Nitro; a boosted server
           lifts everyone to 50 MB (level 2) or 100 MB (level 3). Discord's older help
           pages still say 10 MB. On mobile the size is now measured BEFORE
@@ -335,8 +356,8 @@
   </destination>
 
   <destination id="discord.animation" group="discord" label="Discord (animated image)" icon="brand-discord" family="chat"
-               class="direct" codecSelect="fixed"
-               container="webp" codec="libwebp" pixfmt="yuva420p"
+               class="direct"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
                alpha="default-on" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://discord.com/blog/modern-image-formats-at-discord-supporting-webp-and-avif (animated WebP in attachments, all platforms since mobile 252) and https://support.discord.com/hc/en-us/articles/25444343291031 (upload sizes)" verified="true">
     <size mode="free"/>
@@ -353,8 +374,8 @@
   </destination>
 
   <destination id="chat.signal.video" group="signal" label="Signal" icon="brand-signal" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="Signal-Android PushMediaConstraints.java / RemoteConfig.kt" verified="true">
     <size mode="max" w="1280" h="720"/>
@@ -366,8 +387,8 @@
   </destination>
 
   <destination id="chat.signal.gif" group="signal" label="Signal (animated GIF)" icon="brand-signal" family="chat"
-               class="direct" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="direct"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="choice" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://support.signal.org/hc/en-us/articles/360007317471 (GIFs are a first-class attachment) and https://github.com/signalapp/Signal-Android/issues/13098 (maintainer: 100 MB)" verified="false">
     <size mode="free"/>
@@ -386,8 +407,8 @@
 
   <destination id="chat.messenger.video" group="messenger" label="Messenger"
                icon="brand-messenger" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://developers.facebook.com/docs/graph-api/reference/page/asset" verified="false">
     <size mode="max" w="1280" h="720"/>
@@ -400,8 +421,8 @@
   </destination>
 
   <destination id="chat.messenger.gif" group="messenger" label="Messenger (animated GIF)" icon="brand-messenger" family="chat"
-               class="direct" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="direct"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="choice" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://www.facebook.com/help/messenger-app/141024792690630 (send GIF) and https://developers.facebook.com/docs/messenger-platform/send-messages/template/media/ (API: GIFs play in the conversation)" verified="false">
     <size mode="free"/>
@@ -417,8 +438,8 @@
 
   <destination id="chat.kakaotalk.video" group="kakaotalk" label="KakaoTalk (카카오톡)"
                icon="brand-kakaotalk" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://cs.kakao.com/helps_html/2128" verified="false">
     <size mode="max" w="1280" h="720"/>
@@ -429,8 +450,8 @@
   </destination>
 
   <destination id="chat.wechat.video" group="wechat" label="WeChat (微信)" icon="brand-wechat" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="(no primary source exists: Tencent does not publish personal-chat limits)" verified="false">
     <size mode="max" w="1280" h="720"/>
@@ -442,8 +463,8 @@
   </destination>
 
   <destination id="chat.qq.video" group="qq" label="QQ" icon="brand-qq" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/send-receive/rich-media.html" verified="false">
     <size mode="max" w="1280" h="720"/>
@@ -455,8 +476,8 @@
   </destination>
 
   <destination id="chat.vk.video" group="vk" label="VK (ВКонтакте)" icon="brand-vk" family="chat"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://vk.com/@business-kak-rabotat-s-formatami-video-vkontakte" verified="true">
     <size mode="free"/>
@@ -468,8 +489,8 @@
   <!-- ===== posting to a platform ========================================== -->
 
   <destination id="post.x.video" group="x" label="X (Twitter)" icon="brand-x" family="post"
-               class="reencode" codecSelect="ladder"
-               container="mp4" codec="" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="" codecs="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://docs.x.com/x-api/media/quickstart/best-practices" verified="true">
     <size mode="max" w="1920" h="1080"/>
@@ -482,8 +503,8 @@
   </destination>
 
   <destination id="post.x.gif" group="x" label="X (animated GIF)" icon="brand-x" family="post"
-               class="reencode" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="choice" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://docs.x.com/x-api/media/quickstart/best-practices (API surface; X publishes NO organic byte cap)" verified="true">
     <size mode="max" w="1280" h="1080"/>
@@ -500,13 +521,14 @@
 
   <destination id="post.instagram.reels" group="instagram" label="Instagram Reels"
                icon="brand-instagram" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264 hevc" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://developers.facebook.com/docs/instagram-platform/content-publishing" verified="true">
     <size mode="max" w="1080" h="1920"/>
     <caps maxBytes="314572800" maxDurationSec="900"/>
     <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
     <note>300 MB, 3 seconds to 15 minutes, 9:16 up to 1920 px wide, H.264 or HEVC in a
           closed GOP. The moov atom must be at the FRONT of the file with no edit lists,
           which is what the faststart muxer option below does: without it the upload is
@@ -514,8 +536,8 @@
   </destination>
 
   <destination id="post.tiktok.video" group="tiktok" label="TikTok" icon="brand-tiktok" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://developers.tiktok.com/doc/media-transfer-guide/" verified="true">
     <size mode="max" w="1080" h="1920"/>
@@ -527,8 +549,8 @@
 
   <destination id="post.bilibili.video" group="bilibili" label="Bilibili (哔哩哔哩)"
                icon="brand-bilibili" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://www.bilibili.com/blackboard/help.html (qid 3845), conflicting with their API docs" verified="false">
     <size mode="max" w="3840" h="2160"/>
@@ -541,8 +563,8 @@
   </destination>
 
   <destination id="post.weibo.video" group="weibo" label="Weibo (微博)" icon="brand-sinaweibo" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://kefu.weibo.com/faqdetail?id=21503" verified="true">
     <size mode="max" w="1920" h="1080"/>
@@ -554,8 +576,8 @@
   </destination>
 
   <destination id="post.weibo.gif" group="weibo" label="Weibo (animated GIF)" icon="brand-sinaweibo" family="post"
-               class="direct" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="direct"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="choice" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://kefu.weibo.com/faqdetail?id=21352 (updated 2024-08-21: at most 1080 px wide, and 原图 must be ticked, or the GIF posts as a still) and id=12483 (updated 2026-04-01: 20 MB per image)" verified="true">
     <size mode="max" w="1080" h="1080"/>
@@ -573,8 +595,8 @@
   </destination>
 
   <destination id="post.bluesky.video" group="bluesky" label="Bluesky" icon="brand-bluesky" family="post"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://github.com/bluesky-social/atproto (video lexicon) and social-app constants" verified="true">
     <size mode="max" w="1920" h="1080"/>
@@ -586,8 +608,8 @@
   </destination>
 
   <destination id="post.bluesky.animation" group="bluesky" label="Bluesky (animation)" icon="brand-bluesky" family="post"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://github.com/bluesky-social/social-app/pull/6433 (animated GIFs are processed as video) and https://github.com/bluesky-social/atproto (app.bsky.embed.video accepts only video/mp4)" verified="true">
     <size mode="max" w="1920" h="1080"/>
@@ -606,8 +628,8 @@
   </destination>
 
   <destination id="post.mastodon.video" group="mastodon" label="Mastodon" icon="brand-mastodon" family="post"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="default-on"
                checked="2026-09-11" source="https://docs.joinmastodon.org/user/posting/ and the instance's /api/v2/instance" verified="true">
     <size mode="max" w="1920" h="1080"/>
@@ -621,8 +643,8 @@
   </destination>
 
   <destination id="post.reddit.video" group="reddit" label="Reddit" icon="brand-reddit" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="(Reddit publishes no limit for native video posts; the 15-minute figure is from a 2017 announcement)" verified="false">
     <size mode="max" w="1920" h="1080"/>
@@ -634,8 +656,8 @@
   </destination>
 
   <destination id="post.reddit.gif" group="reddit" label="Reddit (animated GIF)" icon="brand-reddit" family="post"
-               class="reencode" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="forbidden" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://cdn.jsdelivr.net/npm/@devvit/reddit@0.13.9/models/Post.d.ts (isGif / videogif) and https://support.reddithelp.com/hc/en-us/articles/10516331142932 (comment images)" verified="false">
     <size mode="free"/>
@@ -652,8 +674,8 @@
 
   <destination id="wechat.sticker" group="wechat" label="WeChat sticker (微信表情)"
                icon="brand-wechat" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="fixed"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="required" audio="forbidden" loop="required"
                checked="2026-09-11" source="https://sticker.weixin.qq.com/cgi-bin/mmemoticon-bin/readtemplate?t=guide/index.html" verified="true">
     <size mode="exact" w="240" h="240"/>
@@ -666,8 +688,8 @@
 
   <destination id="kakaotalk.sticker" group="kakaotalk" label="KakaoTalk sticker (카카오톡 스티커)"
                icon="brand-kakaotalk" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="webp" codec="libwebp" pixfmt="yuva420p"
+               class="fixed"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
                alpha="required" audio="forbidden" loop="required"
                checked="2026-09-11" source="https://emoticonstudio.kakao.com/pages/webp-animator" verified="true">
     <size mode="exact" w="360" h="360"/>
@@ -678,8 +700,8 @@
   </destination>
 
   <destination id="qq.sticker" group="qq" label="QQ sticker" icon="brand-qq" family="sticker"
-               class="fixed" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="fixed"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="required" audio="forbidden" loop="required"
                checked="2018-10-07" source="https://web.archive.org/web/20181007163610/http://yuanchuang.qq.com/html/design_rule.html" verified="false">
     <size mode="exact" w="300" h="300"/>
@@ -705,8 +727,8 @@
 
   <destination id="post.niconico.video" group="niconico" label="Nico Nico Douga (ニコニコ動画)"
                icon="brand-niconico" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://www.nicovideo.jp/help/video/upload" verified="true">
     <size mode="max" w="4096" h="2160"/>
@@ -719,8 +741,8 @@
   </destination>
 
   <destination id="post.douyin.video" group="douyin" label="Douyin (抖音)" icon="dest-film" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://partner.open-douyin.com/docs/resource/zh-CN/dop/develop/openapi/video-management/douyin/create-video/upload-video" verified="false">
     <size mode="max" w="4096" h="2160"/>
@@ -735,8 +757,8 @@
 
   <destination id="post.facebook.video" group="facebook" label="Facebook (video)"
                icon="brand-facebook" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://www.facebook.com/help/1041366099316573" verified="false">
     <size mode="free"/>
@@ -751,8 +773,8 @@
   </destination>
 
   <destination id="post.facebook.gif" group="facebook" label="Facebook (animated GIF)" icon="brand-facebook" family="post"
-               class="reencode" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="choice" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://www.facebook.com/help/167931376599294 (photo formats) and https://www.facebook.com/business/help/1006874066021923 (ads: a GIF plays as video)" verified="false">
     <size mode="free"/>
@@ -769,8 +791,8 @@
 
   <destination id="post.facebook.reels" group="facebook" label="Facebook Reels"
                icon="brand-facebook" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://developers.facebook.com/docs/video-api/guides/reels-publishing" verified="false">
     <size mode="max" w="1080" h="1920"/>
@@ -783,8 +805,8 @@
   </destination>
 
   <destination id="post.tumblr.video" group="tumblr" label="Tumblr" icon="brand-tumblr" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://help.tumblr.com/knowledge-base/how-to-upload-a-video/" verified="true">
     <size mode="free"/>
@@ -797,8 +819,8 @@
   </destination>
 
   <destination id="post.tumblr.gif" group="tumblr" label="Tumblr (animated GIF)" icon="brand-tumblr" family="post"
-               class="reencode" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="choice" audio="forbidden" loop="default-on"
                checked="2026-09-13" source="https://help.tumblr.com/knowledge-base/adding-creating-gifs/ and https://engineering.tumblr.com/post/690135035533230080/making-gifs-load-faster (2022-07-18)" verified="true">
     <size mode="max" w="540" h="540"/>
@@ -816,13 +838,14 @@
 
   <destination id="post.pinterest.video" group="pinterest" label="Pinterest (video Pin)"
                icon="brand-pinterest" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264 hevc" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://help.pinterest.com/en/business/article/video-pins" verified="true">
     <size mode="max" w="1080" h="1920"/>
     <caps maxDurationSec="300"/>
     <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
     <note>4 seconds to 5 minutes. No byte cap is published for organic video Pins; the
           "2 GB / 15 minutes" figure belongs to the ADVERTISING spec, which is a different
           surface and is quoted constantly as if it were this one. MP4/M4V, H.264 or
@@ -831,8 +854,8 @@
 
   <destination id="post.snapchat.spotlight" group="snapchat" label="Snapchat Spotlight"
                icon="brand-snapchat" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://help.snapchat.com/hc/en-us/articles/7012288096532" verified="false">
     <size mode="free"/>
@@ -848,8 +871,8 @@
 
   <destination id="post.dailymotion.video" group="dailymotion" label="Dailymotion"
                icon="brand-dailymotion" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://faq.dailymotion.com/hc/en-us/articles/202592305-Video-upload-specifications" verified="true">
     <size mode="max" w="3840" h="2160"/>
@@ -861,8 +884,8 @@
   </destination>
 
   <destination id="post.vimeo.video" group="vimeo" label="Vimeo" icon="brand-vimeo" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264 prores" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://help.vimeo.com/hc/en-us/articles/12426199699985" verified="false">
     <size mode="free"/>
@@ -877,8 +900,8 @@
 
   <destination id="post.deviantart.video" group="deviantart" label="DeviantArt (video, Core members)"
                icon="brand-deviantart" family="post"
-               class="reencode" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-11" source="https://help.deviantart.com/161/" verified="true">
     <size mode="max" w="1920" h="1080"/>
@@ -892,8 +915,8 @@
 
   <destination id="post.newgrounds.movie" group="newgrounds" label="Newgrounds (animation)"
                icon="brand-newgrounds" family="post"
-               class="direct" codecSelect="fixed"
-               container="mp4" codec="libx264" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="choice"
                checked="2026-09-11" source="https://www.newgrounds.com/wiki/creator-resources/animation-resources" verified="false">
     <size mode="max" w="1920" h="1080"/>
@@ -1035,8 +1058,8 @@
 
   <destination id="post.deviantart.gif" group="deviantart" label="DeviantArt (animation)"
                icon="brand-deviantart" family="post"
-               class="fixed" codecSelect="fixed"
-               container="gif" codec="gif" pixfmt="pal8"
+               class="fixed"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
                alpha="required" audio="forbidden" loop="required"
                checked="2026-09-11" source="https://help.deviantart.com/161/" verified="false">
     <size mode="free"/>
@@ -1051,8 +1074,8 @@
   <!-- ===== overlay ===================================================== -->
 
   <destination id="obs.overlay" group="obs" label="Stream overlay (OBS)" icon="brand-obsstudio" family="overlay"
-               class="fixed" codecSelect="fixed"
-               container="webm" codec="libvpx-vp9" pixfmt="yuva420p"
+               class="fixed"
+               container="webm" codec="libvpx-vp9" codecs="vp9" default="vp9" pixfmt="yuva420p"
                alpha="required" audio="choice" loop="choice"
                checked="2026-09-05" source="https://github.com/kasunjith713/obs-transparent-webm-guide" verified="true">
     <size mode="free"/>
@@ -1063,9 +1086,9 @@
 
   <destination id="safari.transparent" group="safari" label="Transparent video (Safari / iOS)"
                icon="brand-obsstudio" family="overlay"
-               class="fixed" codecSelect="fixed"
+               class="fixed"
                platform="apple"
-               container="mov" codec="hevc_videotoolbox" pixfmt="yuva420p"
+               container="mov" codec="hevc_videotoolbox" codecs="hevc" default="hevc" pixfmt="yuva420p"
                alpha="required" audio="choice" loop="choice"
                checked="2026-09-05" source="https://github.com/kasunjith713/obs-transparent-webm-guide" verified="true">
     <size mode="free"/>
@@ -1079,50 +1102,56 @@
   <!-- ===== file ======================================================== -->
 
   <destination id="youtube.video" group="youtube" label="YouTube" icon="brand-youtube" family="post"
-               class="reencode" codecSelect="ladder"
-               container="mp4" codec="" pixfmt="yuv420p"
+               class="reencode"
+               container="mp4" codec="" codecs="h264 hevc av1" pixfmt="yuv420p"
                alpha="forbidden" audio="default-on" loop="forbidden"
                checked="2026-09-05" source="https://support.google.com/youtube/answer/1722171" verified="true">
     <size mode="free"/>
     <audio codec="aac" bitrate="256000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
     <note>YouTube re-encodes every upload. Official docs still recommend H.264/AAC;
           AV1/H.265 give more quality per bit. Codec is resolved by the ladder.</note>
   </destination>
 
   <destination id="website.video" group="general" label="Website" icon="dest-website" family="file"
-               class="direct" codecSelect="ladder"
-               container="mp4" codec="" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="" codecs="h264 hevc av1" pixfmt="yuv420p"
                alpha="choice" audio="choice" loop="choice"
                checked="2026-09-05" source="(design decision)" verified="true">
     <size mode="free"/>
     <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
     <note>Direct playback: decode compatibility dominates, so H.264 at every bucket.
           For transparency on the web, ship BOTH .webm (VP9) and .mov (HEVC hvc1).</note>
   </destination>
 
   <destination id="generic.file" group="general" label="Just a file (not sure yet)"
                icon="dest-chat" family="file"
-               class="direct" codecSelect="ladder"
-               container="mp4" codec="" pixfmt="yuv420p"
+               class="direct"
+               container="mp4" codec="" codecs="h264 hevc av1" pixfmt="yuv420p"
                alpha="choice" audio="default-on" loop="forbidden"
                checked="2026-09-05" source="(design decision)" verified="true">
     <size mode="free"/>
     <audio codec="aac" bitrate="160000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
     <note>The fallback when the destination is unknown: maximum compatibility.</note>
   </destination>
 
   <!-- ===== archive ===================================================== -->
 
-  <destination id="archive.master" group="general" label="Keep a master copy"
+  <destination id="archive.master" group="general" label="Archive file (highest quality)"
                icon="dest-archive" family="archive"
-               class="archive" codecSelect="ladder"
-               container="mkv" codec="" pixfmt="yuva420p"
+               class="archive"
+               container="mkv" codec="" codecs="ffv1 av1 hevc vp9" pixfmt="yuva420p"
                alpha="default-on" audio="default-on" loop="forbidden"
-               checked="2026-09-05" source="(design decision)" verified="true">
+               checked="2026-10-01" source="(design decision)" verified="true">
     <size mode="free"/>
     <audio codec="flac" channels="2" rate="48000"/>
-    <note>At Lossless quality this is FFV1, which carries alpha (yuva420p); the other
-          buckets pick H.265, which cannot encode alpha here at all.</note>
+    <note>Lossless quality always writes FFV1, which carries transparency. With transparency ON
+          the other quality buckets use VP9, the lossy codec that keeps the alpha channel here
+          (AV1 drops it silently and H.265 refuses it). With transparency OFF AV1 is used at every
+          quality bucket — Best, Balanced and Smaller file alike; H.265 is only the fallback for a
+          build with no usable AV1 encoder.</note>
   </destination>
 
   <!-- ===== quality control (for the post-encode fit-to-cap loop) ============

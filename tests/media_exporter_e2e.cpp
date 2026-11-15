@@ -411,7 +411,93 @@ int main(int argc, char** argv) {
                                 .arg(expected).arg(pngs.size());
         const QByteArray msgBytes = msg.toUtf8();
         check(pngs.size() == expected, msgBytes.constData());
+        // NAMING (regression net, 2026-10-01): "numbered from 0001" at the stem
+        // the caller gave — the app's one convention (probe_still's line; the fit
+        // writer numbers i+1 the same way). The direct writer used to number
+        // 0-based, disagreeing with exportWithFit whenever a sequence stopped
+        // riding the fit path — see 7b for the parity proof.
+        check(pngs.value(0) == QLatin1String("ae_e2e_frame0001.png"),
+              "e2e image-seq: the first frame is numbered from 0001 at the given stem");
+        check(pngs.value(expected - 1)
+                  == QStringLiteral("ae_e2e_frame%1.png").arg(expected, 4, 10, QChar('0')),
+              "e2e image-seq: the last frame keeps the same 4-digit numbering");
         QDir(imgDir).removeRecursively();
+    }
+
+    // Scenario 7b: the direct image writer and exportWithFit's image writer must
+    // name files IDENTICALLY — "a fitted set has the same file names as an
+    // unfitted one" is the export flow's own invariant, and probe_still's line is
+    // "one file per frame, numbered from 0001, at the name the user typed".
+    // Regression (2026-10-01, measured): the writers disagreed on BOTH axes —
+    // project stem + 0-based indices (direct) vs typed stem + 1-based (fit) — and
+    // it stayed invisible while every capped sequence rode the fit path. I43's
+    // opt-in cap gate moved sequences to the direct path and probe_still found
+    // nene0000.png under a status bar naming probe_frames.png.
+    {
+        const ctrl::ExportTarget ugoira = ctrl::ExportTargets::find(
+            ctrl::ExportTargets::load(), QStringLiteral("post.pixiv.ugoira"));
+        check(ugoira.artifact == ctrl::ArtifactKind::Sequence,
+              "e2e naming parity: the ugoira row is the sequence row this needs");
+        const ctrl::FrameSelection three = ctrl::FrameSelection::fromRange(minFrame, minFrame + 2);
+        // Frames exactly as the app's fit path captures them: a sink-mode render,
+        // no files written.
+        QList<QImage> frames;
+        {
+            std::unique_ptr<ctrl::Exporter> ex = makeExporter();
+            ctrl::Exporter::CommonParam cp;
+            cp.path = aeTestTempPath("ae_e2e_parity_sink"); // never written in sink mode
+            cp.size = small;
+            cp.selection = three;
+            cp.fps = fps;
+            ctrl::Exporter::VideoParam vp;
+            ex->setFrameSink([&](const QList<QImage>& aFrames) { frames = aFrames; });
+            const auto r = ex->execute(cp, vp);
+            check((bool)r && frames.size() == 3,
+                  "e2e naming parity: three frames captured for both writers");
+        }
+        // Direct: the plain export's names, with the stem the dialog passes down.
+        const QString directDir = aeTestTempPath("ae_e2e_parity_direct");
+        QDir(directDir).removeRecursively();
+        QDir().mkpath(directDir);
+        {
+            std::unique_ptr<ctrl::Exporter> ex = makeExporter();
+            ctrl::Exporter::CommonParam cp;
+            cp.path = directDir;
+            cp.size = small;
+            cp.selection = three;
+            cp.fps = fps;
+            ctrl::Exporter::ImageParam ip;
+            ip.name = "ae_e2e_frame"; ip.suffix = "png"; ip.quality = 90;
+            const auto r = ex->execute(cp, ip);
+            check((bool)r, "e2e naming parity: the direct writer succeeds");
+        }
+        // Fit: exportWithFit's image arm, wired the way MainWindow wires it.
+        const QString fitDir = aeTestTempPath("ae_e2e_parity_fit");
+        QDir(fitDir).removeRecursively();
+        QDir().mkpath(fitDir);
+        ctrl::ExportRequest req;
+        req.outputPath = fitDir + "/ae_e2e_frame.png";
+        req.sourceSize = project.attribute().imageSize();
+        req.fps = fps;
+        req.selection = three;
+        req.imageStem = "ae_e2e_frame";
+        const ctrl::FitResult fit =
+            ctrl::exportWithFit(ugoira, req, ctrl::QualityBucket::Balanced, frames);
+        check(fit.ok,
+              QStringLiteral("e2e naming parity: the fit writer succeeds (%1)").arg(fit.error).toUtf8().constData());
+
+        const QStringList fitNames =
+            QDir(fitDir).entryList(QStringList{ "*.png" }, QDir::Files, QDir::Name);
+        const QStringList directNames =
+            QDir(directDir).entryList(QStringList{ "*.png" }, QDir::Files, QDir::Name);
+        check(!directNames.isEmpty() && directNames == fitNames,
+              QStringLiteral("e2e naming parity: fitted and unfitted sets are identically named (direct=[%1] fit=[%2])")
+                  .arg(directNames.join(QLatin1Char(' ')), fitNames.join(QLatin1Char(' ')))
+                  .toUtf8().constData());
+        check(directNames.value(0) == QLatin1String("ae_e2e_frame0001.png"),
+              "e2e naming parity: and numbered from 0001 at the given stem");
+        QDir(directDir).removeRecursively();
+        QDir(fitDir).removeRecursively();
     }
 
     // Scenario 8: MULTI-RANGE selection. A selection is a LIST of ranges, so a
@@ -926,6 +1012,97 @@ int main(int argc, char** argv) {
                   QStringLiteral("e2e capped: %1 bytes is inside Telegram's %2")
                       .arg((qlonglong)written).arg((qlonglong)telegram.caps.maxBytes)
                       .toUtf8().constData());
+            QFile::remove(out);
+        }
+    }
+
+    // Scenario 13: I43 (decided 2026-09-30) — the size cap is OPT-IN, and this
+    // is the boundary where the policy lives now that MainWindow gates the fit
+    // loop on the USER's cap and passes the user's number as the ceiling:
+    //   (1) "Auto" = no cap = ONE encode, untouched (the natural file survives);
+    //   (2) a user cap fits under the USER's number (the copy-override the gate
+    //       performs — the row's own declared cap is deliberately NOT the one
+    //       enforced: half the natural size is below any declared cap here);
+    //   (3) an impossible cap REFUSES with a visible reason — never a silent
+    //       mangle (the give-up path kept verbatim).
+    {
+        const ctrl::ExportTarget telegram =
+            ctrl::ExportTargets::find(ctrl::ExportTargets::load(), QStringLiteral("telegram.sticker"));
+        const QString out = aeTestTempPath("ae_e2e_i43.webm");
+        ctrl::ExportRequest req;
+        req.outputPath = out;
+        req.sourceSize = project.attribute().imageSize();
+        req.fps = fps;
+        const int lastWanted = minFrame + 3 * fps - 1;
+        const int lastFrame = std::min(lastWanted, project.attribute().frameRange().max());
+        req.selection = ctrl::FrameSelection::fromRange(minFrame, lastFrame);
+        const ctrl::ExportPlan plan = ctrl::planExport(telegram, req, ctrl::QualityBucket::Balanced);
+        check(plan.ok(), QStringLiteral("e2e i43: telegram plan builds (%1)").arg(plan.error).toUtf8().constData());
+
+        if (plan.ok()) {
+            std::unique_ptr<ctrl::Exporter> ex = makeExporter();
+            ctrl::Exporter::CommonParam cp;
+            cp.path = out;
+            cp.size = plan.size;
+            cp.renderSize = plan.renderSize;
+            cp.fit = plan.config.fit;
+            cp.fps = plan.fps;
+            cp.selection = plan.selection;
+            ctrl::Exporter::VideoParam vp;
+            vp.container = plan.config.container;
+            vp.codec = plan.config.codec;
+
+            QList<QImage> frames;
+            ex->setFrameSink([&](const QList<QImage>& aFrames) { frames = aFrames; });
+            const auto r = ex->execute(cp, vp);
+            check((bool)r, QStringLiteral("e2e i43: sink-mode render succeeds (%1)").arg(ex->log()).toUtf8().constData());
+
+            // (1) "Auto": maxBytes 0 on the request the gate builds — one encode,
+            // no loop, and the NATURAL file is what lands on disk.
+            ctrl::ExportTarget uncapped = telegram;
+            uncapped.caps.maxBytes = 0;
+            QFile::remove(out);
+            const ctrl::FitResult natural =
+                ctrl::exportWithFit(uncapped, req, ctrl::QualityBucket::Balanced, frames);
+            const qint64 naturalBytes = QFileInfo(out).size();
+            check(natural.ok && naturalBytes > 0,
+                  QStringLiteral("e2e i43 Auto: the uncapped export succeeds (%1)").arg(natural.error).toUtf8().constData());
+            check(natural.attempts == 1,
+                  QStringLiteral("e2e i43 Auto: one encode, no loop (%1 attempts)").arg(natural.attempts).toUtf8().constData());
+            // PRECONDITION for the fit below: the natural file must exceed the
+            // cap the opt-in case sets, or that case cannot observe anything.
+            // Asserted loudly rather than assumed (a lighter source would make it
+            // vacuous).
+            const qint64 userCap = naturalBytes / 2;
+            check(naturalBytes > userCap && userCap > 0,
+                  QStringLiteral("e2e i43 precondition: natural %1 bytes exceeds the user cap %2")
+                      .arg((qlonglong)naturalBytes).arg((qlonglong)userCap).toUtf8().constData());
+
+            // (2) the user's number governs: half the natural size, deliberately
+            // BELOW Telegram's declared 256 KB so no declared-cap path can be
+            // what achieves it.
+            ctrl::ExportTarget userSet = telegram;
+            userSet.caps.maxBytes = userCap;
+            QFile::remove(out);
+            const ctrl::FitResult fitted =
+                ctrl::exportWithFit(userSet, req, ctrl::QualityBucket::Balanced, frames);
+            const qint64 fittedBytes = QFileInfo(out).size();
+            check(fitted.ok && fittedBytes > 0 && fittedBytes <= userCap,
+                  QStringLiteral("e2e i43 opt-in: %1 bytes fitted under the USER cap %2 (%3)")
+                      .arg((qlonglong)fittedBytes).arg((qlonglong)userCap).arg(fitted.error)
+                      .toUtf8().constData());
+
+            // (3) the limit semantics: refused with a visible reason, not mangled
+            // to some silent smallest attempt.
+            ctrl::ExportTarget impossible = telegram;
+            impossible.caps.maxBytes = 1;
+            QFile::remove(out);
+            const ctrl::FitResult refused =
+                ctrl::exportWithFit(impossible, req, ctrl::QualityBucket::Balanced, frames);
+            check(!refused.ok,
+                  "e2e i43 at-limit: an impossible cap is refused, not silently reduced");
+            check(!refused.error.isEmpty(),
+                  "e2e i43 at-limit: and the refusal carries its visible reason");
             QFile::remove(out);
         }
     }

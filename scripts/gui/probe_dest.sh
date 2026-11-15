@@ -22,7 +22,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   '"$APP"' "'"$PROJ"'" >/tmp/probe_app.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 12
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -44,7 +44,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
 
   # 3. The default button answers with that destination, and the form that follows
   #    states it: what the picker chose must be what the dialog shows.
-  ae_press "Use this destination" "the chosen destination is accepted"
+  ae_activate "Use this destination" "the chosen destination is accepted"
   # Wait for the form to have applied the destination before snapshotting it. A
   # report answers as soon as ANY name it was asked about is on screen, so asking
   # about "Destination" (visible the moment the form opens) can return a snapshot of
@@ -68,11 +68,14 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   # Which words on screen belong to which field. This is the OTHER half of
   # addressing a form: a control can answer to a name and still have nothing beside
   # it that reads as its label.
-  ae labeled "Width" > /tmp/dst_labeled_width.txt 2>/dev/null
-  ae labeled "Frame rate" > /tmp/dst_labeled_fps.txt 2>/dev/null
+  # A QML Text has no label-for relation (see probe_dialog): read the words from
+  # the tree, exactly, so the facts row "Frame rate:" cannot stand in for the
+  # label of the field.
+  ae text | grep -x "Resolution" > /tmp/dst_labeled_width.txt
+  ae text | grep -x "Frame rate" > /tmp/dst_labeled_fps.txt
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/dst_03_form.png
-  ae_press "Cancel" "the form closes on Cancel"
+  ae_activate "Cancel" "the form closes on Cancel"
   sleep 1
   kill $app 2>/dev/null; wait $app 2>/dev/null
 ' 2>&1 | tail -4
@@ -102,7 +105,7 @@ assert_showing /tmp/dst_form.txt "Height" "both of them"
 assert_showing /tmp/dst_form.txt "Advanced" "and the disclosure stays available with a destination chosen"
 # The expectation is the words ON SCREEN, which are not the accessible name:
 # the fps box answers to "Frame rate" and is labelled "FPS:" on the form.
-for pair in "Width:/tmp/dst_labeled_width.txt" "FPS:/tmp/dst_labeled_fps.txt"; do
+for pair in "Resolution:/tmp/dst_labeled_width.txt" "Frame rate:/tmp/dst_labeled_fps.txt"; do
     name=${pair%%:*}
     file=${pair#*:}
     if grep -qi "$name" "$file"; then

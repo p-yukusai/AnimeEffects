@@ -311,30 +311,42 @@ def _enabled(node):
 
 
 def do(node, action="click"):
-    """Run a named action, or the first one the widget offers."""
+    """Run a named action, or the first one the widget offers.
+
+    The action is looked up BY NAME, and the names are tried in order, because a
+    QML control's action list is not one entry: a spin button can expose Qt's own
+    role actions ("increase"/"decrease") beside the item's "press", and the old
+    "first action wins" rule then selected "increase" - `ae_activate "Width"` bumped
+    the value by one instead of entering edit mode, which is a silent, plausible
+    wrong answer. "press" is the name the Accessible.onPressAction handlers use.
+    """
     iface = node.get_action_iface()
     if iface is None:
         return False
     names = [iface.get_action_name(i) or "" for i in range(iface.get_n_actions())]
-    index = 0
-    for i, n in enumerate(names):
-        if n.lower() == action:
-            index = i
-            break
-    else:
-        if action != "click":
-            return False
-    try:
-        return bool(iface.do_action(index))
-    except Exception as exc:
-        # "Did not receive a reply" is what an action that OPENS A MODAL DIALOG
-        # looks like: the handler runs, the dialog starts its own event loop, and
-        # the D-Bus reply never comes. The click landed. Callers must assert the
-        # effect (ae_ui.py wait <the widget that should now exist>), which is what
-        # makes this safe to swallow rather than a silent failure.
-        print(f"note: {action} on the widget did not reply ({exc}); "
-              f"the caller must verify the effect", file=sys.stderr)
-        return True
+
+    def run(index):
+        try:
+            return bool(iface.do_action(index))
+        except Exception as exc:
+            # "Did not receive a reply" is what an action that OPENS A MODAL DIALOG
+            # looks like: the handler runs, the dialog starts its own event loop, and
+            # the D-Bus reply never comes. The click landed. Callers must assert the
+            # effect (ae_ui.py wait <the widget that should now exist>), which is what
+            # makes this safe to swallow rather than a silent failure.
+            print(f"note: {action} on the widget did not reply ({exc}); "
+                  f"the caller must verify the effect", file=sys.stderr)
+            return True
+
+    for want in (action, "press", "click", "activate"):
+        for i, n in enumerate(names):
+            if n.lower() == want:
+                return run(i)
+    # No named match: only a generic click may fall back to whatever is first, and
+    # only when the widget offers something at all.
+    if action == "click" and names:
+        return run(0)
+    return False
 
 
 def children(node):
@@ -367,10 +379,62 @@ def cmd_wait(name):
     return 0
 
 
-def cmd_click(name):
-    node = find(name)
+PRESS_ACTIONS = ("press", "click", "activate")
+# The one action that means "this node cannot be clicked": Qt hands it to every
+# static text in the Qt Quick form.
+FOCUS_ONLY = "setfocus"
+
+
+def action_names(node):
+    """The action names the node offers, lowercased."""
+    iface = node.get_action_iface()
+    if iface is None:
+        return []
+    try:
+        return [(iface.get_action_name(i) or "").lower()
+                for i in range(iface.get_n_actions())]
+    except Exception:
+        return []
+
+
+def cmd_click(name, role=None):
+    # Prefer a node that can actually be PRESSED, which is not the same question as
+    # "does this node have an Action interface": Qt gives every static text in the
+    # Qt Quick form an interface whose only entry is SetFocus, and a labeled field is
+    # addressed by the LABEL's name because that is the name a user reads. Taking the
+    # first node with an interface therefore pressed the label of the Format row and
+    # ran SetFocus on it - exit status 0, no popup, and a probe left reporting that
+    # the popup's items were missing.
+    #
+    # A name can match more than one node now that the Qt Quick form exposes its own
+    # text (a facts row states "WebM" and the open Format popup offers a "WebM"
+    # option), so both passes below walk the matches best-name-first and take the
+    # first one that really answers.
+    #
+    # `role` is required for a combo OPTION: a Qt Quick combo reports its current
+    # value as its own accessible NAME, so while the popup lists "WebM" the closed
+    # field is ALSO named "WebM" - and it comes first, so a plain press toggles the
+    # popup shut instead of choosing the item. A caller that means the item says
+    # role="list item".
+    found = candidates(name, role=role)
+    node = None
+    for candidate in found:  # a node that offers a press
+        if _enabled(candidate) and any(n in PRESS_ACTIONS for n in action_names(candidate)):
+            node = candidate
+            break
     if node is None:
-        print(f"no widget named {name!r} to click", file=sys.stderr)
+        for candidate in found:  # else any node with a non-focus action
+            if _enabled(candidate) and any(n != FOCUS_ONLY
+                                           for n in action_names(candidate)):
+                node = candidate
+                break
+    if node is None:
+        if not found:
+            what = role if role is not None else "widget"
+            print(f"no {what} named {name!r} to click", file=sys.stderr)
+        else:
+            print(f"{name!r} offers nothing to click (only "
+                  f"{', '.join(action_names(found[0])) or 'no actions'})", file=sys.stderr)
         return 1
     if not do(node):
         print(f"{name!r} has no click action", file=sys.stderr)
@@ -434,30 +498,45 @@ def cmd_set(name, value):
 
 def cmd_value(name):
     node = find_capable(name)
-    if node is None:
-        # A QComboBox has neither interface: Qt reports its CURRENT VALUE as the node's
-        # accessible name (see names_of), which is exactly what a caller asking for the
-        # value wants. Without this fallback, `ae value "Format"` failed on the one
-        # control whose value is a word rather than a number, and a probe that had been
-        # cross-checking the facts against the Format row had to give that assertion up.
+    if node is not None:
+        value_iface = node.get_value_iface()
+        if value_iface is not None:
+            current = value_iface.get_current_value()
+            # A spin box holds a number; printing it without a trailing ".0" makes the
+            # caller's comparison readable ("17", not "17.0").
+            print(int(current) if float(current).is_integer() else current)
+            return 0
+        editable = node.get_editable_text_iface()
+        if editable is not None:
+            print(editable.get_text(0, -1))
+            return 0
+    # The hand-rolled Qt Quick controls expose NO Value interface (Qt Quick's
+    # Accessible attached property has no `value`), so their state is carried by the
+    # accessible name and description instead. Read it by ROLE, because the two roles
+    # carry it in opposite places:
+    #   * a combo box reports its current VALUE as its NAME and its identity as the
+    #     DESCRIPTION (Qt's rule, good for a screen reader);
+    #   * a spin button reports its identity as the NAME and its current VALUE as the
+    #     DESCRIPTION (AeNumberField.qml), so `ae value "Width"` still answers here.
+    # Without the role split, `ae value "Format"` found the static label beside the
+    # combo (the row is "Format" in both places) and reported the row's TITLE as the
+    # control's value - which is how probe_axes "read" the word "Format" from a row
+    # that was showing "WebM".
+    combo = find(name, role="combo box")
+    if combo is not None:
+        print(combo.get_name())
+        return 0
+    fallback = find(name, role="spin button")
+    if fallback is None:
         fallback = find(name)
-        if fallback is None:
-            print(f"no widget named {name!r}", file=sys.stderr)
-            return 1
-        print(fallback.get_name())
-        return 0
-    value_iface = node.get_value_iface()
-    if value_iface is not None:
-        current = value_iface.get_current_value()
-        # A spin box holds a number; printing it without a trailing ".0" makes the
-        # caller's comparison readable ("17", not "17.0").
-        print(int(current) if float(current).is_integer() else current)
-        return 0
-    editable = node.get_editable_text_iface()
-    if editable is not None:
-        print(editable.get_text(0, -1))
-        return 0
-    print(node.get_name())
+    if fallback is None:
+        print(f"no widget named {name!r}", file=sys.stderr)
+        return 1
+    try:
+        described = fallback.get_description() or ""
+    except Exception:
+        described = ""
+    print(described if described else fallback.get_name())
     return 0
 
 
@@ -517,15 +596,29 @@ def cmd_labeled(name):
     return 1
 
 
-def cmd_extents(name):
-    """The widget's rectangle on screen, as `x y w h`.
+def cmd_extents(name, role=None):
+    """The widget's rectangle ON SCREEN, as `x y w h`.
 
     Input is still synthesized with xdotool (mailbox-free, and the only way to send
     keystrokes), but the POSITION comes from the widget itself, so it survives a
     layout change: that is the whole difference from a hardcoded coordinate, which
     goes on clicking whatever has since moved underneath it.
+
+    `role` disambiguates a control from the LABEL beside it: the redesigned export
+    form gives the field and its muted label the same words ("Frame rate"), and the
+    label is the text-only node, so a caller that means the CONTROL says so
+    (role="spin button").
+
+    THE WINDOW OFFSET, and why it is added here. Qt reports a QML item's
+    Atspi.CoordType.SCREEN rectangle in the coordinates of its QQuickWidget, not of
+    the window that contains it: the picker's "Cancel" reported x=333..405 while the
+    dialog sat at x=61, so every coordinate click landed beside its target. The tell
+    is that SCREEN and WINDOW agree exactly, which a WIDGET's rectangle cannot do
+    unless the window is itself at the screen origin (where the correction is zero
+    anyway). So when they agree, the top-level frame's own screen origin is added -
+    and the frame is a widget, so ITS rectangle is correct.
     """
-    node = find(name)
+    node = find(name, role=role)
     if node is None:
         print(f"no widget named {name!r}", file=sys.stderr)
         return 1
@@ -538,6 +631,30 @@ def cmd_extents(name):
     except Exception as exc:
         print(f"cannot read {name!r}'s geometry: {exc}", file=sys.stderr)
         return 1
+    try:
+        win = component.get_extents(Atspi.CoordType.WINDOW)
+        if win.x == rect.x and win.y == rect.y:
+            top = node
+            for _ in range(32):
+                if top is None:
+                    break
+                try:
+                    role_name = top.get_role_name()
+                except Exception:
+                    break
+                if role_name in ("dialog", "frame"):
+                    tcomp = top.get_component_iface()
+                    if tcomp is not None:
+                        trect = tcomp.get_extents(Atspi.CoordType.SCREEN)
+                        rect.x += trect.x
+                        rect.y += trect.y
+                    break
+                try:
+                    top = top.get_parent()
+                except Exception:
+                    break
+    except Exception:
+        pass
     print(f"{rect.x} {rect.y} {rect.width} {rect.height}")
     return 0
 
@@ -623,7 +740,7 @@ def main(argv):
         "labeled": (cmd_labeled, 1),
         "text": (cmd_text, 0),
         "report": (cmd_report, None),
-        "extents": (cmd_extents, 1),
+        "extents": (cmd_extents, None),
         "absent": (cmd_absent, None),
         "enabled": (cmd_enabled, 1),
     }
@@ -635,6 +752,12 @@ def main(argv):
         return fn(rest)
     if cmd == "absent":
         return fn(*rest) if rest else 2
+    if cmd == "extents":
+        # extents <name> [role]
+        return fn(*rest) if 1 <= len(rest) <= 2 else 2
+    if cmd == "click":
+        # click <name> [role]
+        return fn(*rest) if 1 <= len(rest) <= 2 else 2
     if len(rest) != argc:
         print(f"{cmd} takes {argc} argument(s)", file=sys.stderr)
         return 2

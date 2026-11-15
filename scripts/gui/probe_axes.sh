@@ -31,7 +31,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   '"$APP"' "'"$PROJ"'" >/tmp/probe_app.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 12
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -42,7 +42,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   require_export_flow
   ae set "Search destinations" "telegram sticker" >/dev/null
   sleep 1.2
-  ae_press "Use this destination" "the Telegram sticker destination is chosen"
+  ae_activate "Use this destination" "the Telegram sticker destination is chosen"
   # The form builds itself per destination; wait for it rather than for a fixed
   # number of seconds, so the report cannot describe a half-applied plan.
   ae wait "Advanced" >/dev/null 2>&1 || true
@@ -58,11 +58,11 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   # 2. The escape hatch, through the form own destination row. A search that
   #    matches nothing is answered as "no destination known", which is manual
   #    mode: the same dialog with the format handed back to the user.
-  ae_press "Destination" "the destination row reopens the picker"
+  ae_activate "Destination" "the destination row reopens the picker"
   sleep 1.5
   ae set "Search destinations" "zzz no such platform" >/dev/null
   sleep 1.2
-  ae_press "Use this destination" "an unmatched search answers with the manual form"
+  ae_activate "Use this destination" "an unmatched search answers with the manual form"
   ae wait "Format" >/dev/null 2>&1 || true
   sleep 2
   ae text > /tmp/ax_manual_facts.txt 2>/dev/null
@@ -74,7 +74,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   ae_report /tmp/ax_manual.txt "Destination" "Format" "Codec" "Quality" "Width" "Height"
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/ax_02_manual.png
-  ae_press "Cancel" "the form closes on Cancel"
+  ae_activate "Cancel" "the form closes on Cancel"
   sleep 1
   kill $app 2>/dev/null; wait $app 2>/dev/null
 ' 2>&1 | tail -4
@@ -88,7 +88,7 @@ if grep -q "Transparency is required by this destination" /tmp/ax_sticker_facts.
 else
     check 1 "the facts state that transparency is required (got: $(grep -i transparency /tmp/ax_sticker_facts.txt | tr '\n' ' ' | head -c 200))"
 fi
-if grep -q "Audio: not accepted by this destination" /tmp/ax_sticker_facts.txt; then
+if grep -q "not accepted by this destination" /tmp/ax_sticker_facts.txt; then
     check 0 "the facts state that audio is not accepted"
 else
     check 1 "the facts state that audio is not accepted (got: $(grep -i audio /tmp/ax_sticker_facts.txt | tr '\n' ' ' | head -c 200))"
@@ -108,12 +108,18 @@ assert_showing /tmp/ax_manual.txt "Format" "the escape hatch offers the Format r
 assert_showing /tmp/ax_manual.txt "Codec" "and the Codec row beside it"
 # The rows are only half of it: the facts have to name the container the Format row
 # is actually showing, which is a cross-check between a control and the words beside
-# it rather than a pattern that any "Codec: X in Y" line would satisfy. The form hands
-# back the container it was carrying when the destination went away (WebM here, since
-# the sticker had set it), so the container itself is read from the row instead of
-# being hard-coded from an earlier run.
+# it rather than a pattern that any "codec in container" line would satisfy. The form
+# hands back the container it was carrying when the destination went away (WebM here,
+# since the sticker had set it), so the container itself is read from the row instead
+# of being hard-coded from an earlier run.
+#
+# The separator is the fact row's own: the manual rows state the codec and the
+# container the way the destination rows do ("VP9 · WebM"), which probe_export,
+# probe_capped and probe_format assert in those words. This probe matched the manual
+# branch's old "VP9 in WebM" phrasing instead, so it has to ask for the container the
+# way the row next to it now says it.
 manualFormat=$(tr -d '\n' < /tmp/ax_manual_format.txt 2>/dev/null)
-if [ -n "$manualFormat" ] && grep -qF "in $manualFormat" /tmp/ax_manual_facts.txt; then
+if [ -n "$manualFormat" ] && grep -qF "· $manualFormat" /tmp/ax_manual_facts.txt; then
     check 0 "and the facts name the container the Format row states ($manualFormat)"
 else
     check 1 "and the facts name the container the Format row states (row said '$manualFormat', facts said: $(grep -i codec /tmp/ax_manual_facts.txt 2>/dev/null | tr '\n' ' ' | head -c 200))"

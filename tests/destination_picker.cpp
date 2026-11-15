@@ -1,12 +1,12 @@
 // The destination picker, offscreen: what the user actually gets.
 //
-// Every question about this tree is a question about a person, and two of the
+// Every question about this list is a question about a person, and two of the
 // answers are already in the application: MainWindow passes the REMEMBERED
 // destination in (QSettings "export_destination"), and the picker's own header says
 // that id "preselects a destination". It did not, once: the constructor set the
-// current item and then applyFilter("") replaced it with the first row, so the
-// picker opened on "A video for a chat app" and Enter exported there whatever the
-// user chose last time. A remembered setting the screen contradicts is worse than no
+// current item and then the filter replaced it with the first row, so the picker
+// opened on "A video for a chat app" and Enter exported there whatever the user
+// chose last time. A remembered setting the screen contradicts is worse than no
 // remembered setting.
 //
 // The rest of this file is about the STRUCTURE, because a tree has three ways to be
@@ -14,26 +14,31 @@
 // with bold lines in it, and was shipped once), the preselection could be current
 // but inside a closed platform (on screen is the requirement), and a platform node
 // could be treated as an answer (it has no destination id, so it must never be one).
+// The fourth is the reported bug this rewrite fixes: a platform was an ordinary
+// SELECTABLE item, so the keyboard could land on it and the default button had to
+// guess what "Telegram" meant. Here it is not selectable at all, and Enter on it
+// only opens or closes it.
 //
 // Display-free on purpose: the GUI probes need a display, an accessibility bus and a
 // window manager to ask the same question, which is how the first of those defects
 // went unnoticed.
 //
+// It drives gui::DestinationPickerModel directly - no QWidget, no QTreeWidget, no
+// QML engine - so it is the same code the scene binds to and not a parallel
+// reimplementation of it.
+//
 // Run: QT_QPA_PLATFORM=offscreen ./build/tests/Debug/destination_picker
 #include <QApplication>
-#include <QDialogButtonBox>
-#include <QKeyEvent>
-#include <QLineEdit>
-#include <QPushButton>
+#include <QAbstractListModel>
+#include <QHash>
+#include <QMetaObject>
 #include <QSet>
-#include <QTranslator>
 #include <QTextStream>
-#include <QTreeWidget>
+#include <QTranslator>
 #include <cstdio>
 
 #include "ctrl/ExportTarget.h"
-#include "gui/DestinationPicker.h"
-#include "gui/GUIResources.h"
+#include "gui/qml/DestinationPickerModel.h"
 
 static int failures = 0;
 
@@ -42,82 +47,59 @@ static void check(bool ok, const QString& what) {
     if (!ok) ++failures;
 }
 
+using Model = gui::DestinationPickerModel;
+
 // A platform node is a section. Structural on purpose: a platform is the only thing
 // in this tree that has children (a platform with one destination is listed as that
 // destination, not as a section holding one line).
-static bool isSection(QTreeWidgetItem* aItem) {
-    return aItem && aItem->childCount() > 0;
-}
-
-static QString idOf(QTreeWidgetItem* aItem) {
-    return aItem ? aItem->data(0, Qt::UserRole).toString() : QString();
-}
-
-static QTreeWidget* treeOf(gui::DestinationPicker& aPicker) {
-    return aPicker.findChild<QTreeWidget*>(QStringLiteral("destinationTree"));
-}
-
-static QLineEdit* searchOf(gui::DestinationPicker& aPicker) {
-    return aPicker.findChild<QLineEdit*>(QStringLiteral("destinationSearch"));
-}
-
-static QString currentId(QTreeWidget* aTree) {
-    return idOf(aTree ? aTree->currentItem() : nullptr);
-}
-
-static QList<QTreeWidgetItem*> sections(QTreeWidget* aTree) {
-    QList<QTreeWidgetItem*> out;
-    for (int i = 0; i < aTree->topLevelItemCount(); ++i) {
-        if (isSection(aTree->topLevelItem(i))) out.push_back(aTree->topLevelItem(i));
+static QList<int> sections(const Model& aModel) {
+    QList<int> out;
+    for (int i = 0; i < aModel.rowCount(); ++i) {
+        if (aModel.isSection(i)) out.push_back(i);
     }
     return out;
 }
 
-static QTreeWidgetItem* sectionNamed(QTreeWidget* aTree, const QString& aText) {
-    for (QTreeWidgetItem* item : sections(aTree)) {
-        if (item->text(0) == aText) return item;
-    }
-    return nullptr;
-}
-
-// Every destination the picker could answer with, in tree order.
-static QList<QTreeWidgetItem*> destinations(QTreeWidget* aTree) {
-    QList<QTreeWidgetItem*> out;
-    for (int i = 0; i < aTree->topLevelItemCount(); ++i) {
-        QTreeWidgetItem* top = aTree->topLevelItem(i);
-        if (!isSection(top)) {
-            out.push_back(top);
-            continue;
-        }
-        for (int c = 0; c < top->childCount(); ++c) out.push_back(top->child(c));
+// Every destination row, on screen or not.
+static QList<int> destinations(const Model& aModel) {
+    QList<int> out;
+    for (int i = 0; i < aModel.rowCount(); ++i) {
+        if (!aModel.isSection(i) && !aModel.idOf(i).isEmpty()) out.push_back(i);
     }
     return out;
 }
 
-// A destination is ON SCREEN when it is not hidden AND every platform above it is
-// open. Asking isHidden() alone would answer "not hidden" for the children of a
-// closed platform, which is precisely the state this file exists to prevent. A
-// platform's own row is drawn whether or not it is open, so its expansion says
-// nothing about the node itself.
-static bool onScreen(QTreeWidgetItem* aItem) {
-    if (!aItem || aItem->isHidden()) return false;
-    for (QTreeWidgetItem* parent = aItem->parent(); parent; parent = parent->parent()) {
-        if (parent->isHidden() || !parent->isExpanded()) return false;
+static int sectionNamed(const Model& aModel, const QString& aText) {
+    for (int row : sections(aModel)) {
+        if (aModel.labelOf(row) == aText) return row;
     }
-    return true;
+    return -1;
 }
 
-static int countOnScreen(QTreeWidget* aTree) {
+// The rows inside a section. Children are contiguous after their section (the model
+// keeps tree order), which is what makes this arithmetic rather than a search.
+static QList<int> children(const Model& aModel, int aSection) {
+    QList<int> out;
+    for (int c = 1; c <= aModel.childCount(aSection); ++c) out.push_back(aSection + c);
+    return out;
+}
+
+// A destination is ON SCREEN when it matches the query AND its platform is open.
+// Asking "visible" alone would answer true for the children of a closed platform,
+// which is precisely the state this file exists to prevent. A platform's own row is
+// drawn whether or not it is open, so its expansion says nothing about the node.
+static bool onScreen(const Model& aModel, int aRow) { return aModel.isOnScreen(aRow); }
+
+static int countOnScreen(const Model& aModel) {
     int n = 0;
-    for (QTreeWidgetItem* item : destinations(aTree)) {
-        if (onScreen(item)) ++n;
+    for (int row : destinations(aModel)) {
+        if (onScreen(aModel, row)) ++n;
     }
     return n;
 }
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
-    gui::GUIResources resources(QStringLiteral(AE_RESOURCE_DIR));
     const QList<ctrl::ExportTarget> targets =
         ctrl::ExportTargets::load(QStringLiteral(AE_EXPORT_TARGETS_PATH));
     const QList<ctrl::ExportGroup> groups =
@@ -129,16 +111,14 @@ int main(int argc, char** argv) {
     // 1. The remembered destination is the selected one, and its platform is OPEN:
     //    "selected" inside a closed platform is an answer the user cannot see.
     {
-        gui::DestinationPicker picker(targets, groups, resources,
-                                      QStringLiteral("telegram.sticker"), nullptr);
-        QTreeWidget* tree = treeOf(picker);
-        check(tree != nullptr, "the picker has a destination tree");
-        if (!tree) return 1;
-        const QString shown = currentId(tree);
+        Model model(targets, groups, QStringLiteral("telegram.sticker"));
+        check(model.rowCount() > 0, "the picker has a destination list");
+        if (model.rowCount() == 0) return 1;
+        const QString shown = model.idOf(model.currentRow());
         check(shown == QStringLiteral("telegram.sticker"),
               QStringLiteral("the remembered destination is selected, not the first row "
                              "(selected: %1)").arg(shown.isEmpty() ? QStringLiteral("nothing") : shown));
-        check(onScreen(tree->currentItem()),
+        check(onScreen(model, model.currentRow()),
               "and it is on screen: the platform holding it is open");
     }
 
@@ -146,27 +126,25 @@ int main(int argc, char** argv) {
     //    level is the platform, not fifty-five destinations. The one exception on
     //    this run is the section holding the remembered destination, above.
     {
-        gui::DestinationPicker picker(targets, groups, resources, QString(), nullptr);
-        QTreeWidget* tree = treeOf(picker);
-        if (!tree) return 1;
-        const QList<QTreeWidgetItem*> heads = sections(tree);
+        Model model(targets, groups, QString());
+        const QList<int> heads = sections(model);
         check(heads.size() >= 10,
               QStringLiteral("the platforms are sections (%1 of them)").arg(heads.size()));
         int open = 0, nested = 0;
-        for (QTreeWidgetItem* head : heads) {
-            if (head->isExpanded()) ++open;
-            if (head->childCount() > 0) ++nested;
+        for (int head : heads) {
+            if (model.isExpanded(head)) ++open;
+            if (model.childCount(head) > 0) ++nested;
         }
         check(open == 0, QStringLiteral("every platform starts closed (%1 open)").arg(open));
         check(nested == heads.size(), "every platform has destinations inside it");
-        check(countOnScreen(tree) < targets.size(),
+        check(countOnScreen(model) < targets.size(),
               QStringLiteral("so the picker does not open on the whole flat list (%1 of %2 "
                              "destinations on screen)")
-                  .arg(countOnScreen(tree)).arg(targets.size()));
-        check(!isSection(tree->currentItem()) && !currentId(tree).isEmpty(),
+                  .arg(countOnScreen(model)).arg(targets.size()));
+        check(!model.isSection(model.currentRow()) && !model.idOf(model.currentRow()).isEmpty(),
               QStringLiteral("with no remembered destination a destination is selected (%1)")
-                  .arg(currentId(tree)));
-        check(onScreen(tree->currentItem()), "and it is on screen");
+                  .arg(model.idOf(model.currentRow())));
+        check(onScreen(model, model.currentRow()), "and it is on screen");
     }
 
     // 3. Two levels exactly when there is something to choose between: a platform
@@ -183,22 +161,20 @@ int main(int argc, char** argv) {
             if (g.variants && rowsPerGroup.value(g.id) > 1) nested.insert(g.id);
         }
 
-        gui::DestinationPicker picker(targets, groups, resources, QString(), nullptr);
-        QTreeWidget* tree = treeOf(picker);
-        if (!tree) return 1;
+        Model model(targets, groups, QString());
 
         QSet<QString> gotNested;
-        for (QTreeWidgetItem* head : sections(tree)) {
+        for (int head : sections(model)) {
             QString key;
             for (const ctrl::ExportGroup& g : groups) {
-                if (g.title == head->text(0) && nested.contains(g.id)) key = g.id;
+                if (g.title == model.labelOf(head) && nested.contains(g.id)) key = g.id;
             }
             check(!key.isEmpty(),
-                  QStringLiteral("the section '%1' is one that should nest").arg(head->text(0)));
+                  QStringLiteral("the section '%1' is one that should nest").arg(model.labelOf(head)));
             if (!key.isEmpty()) gotNested.insert(key);
-            check(head->childCount() > 1,
+            check(model.childCount(head) > 1,
                   QStringLiteral("'%1' is a section because there is a choice inside it (%2)")
-                      .arg(head->text(0)).arg(head->childCount()));
+                      .arg(model.labelOf(head)).arg(model.childCount(head)));
         }
         check(gotNested == nested,
               QStringLiteral("every platform with variants is a section (%1 of %2)")
@@ -211,163 +187,236 @@ int main(int argc, char** argv) {
             if (nested.contains(key)) continue;
             ++flat;
             bool found = false;
-            for (QTreeWidgetItem* item : destinations(tree)) {
-                if (idOf(item) == t.id && !item->parent()) found = true;
+            for (int item : destinations(model)) {
+                if (model.idOf(item) == t.id && model.sectionOf(item) < 0) found = true;
             }
             if (!found) {
                 check(false, QStringLiteral("%1 is listed directly, not under a section").arg(t.id));
             }
         }
         check(flat > 10, QStringLiteral("the single-destination platforms are listed directly (%1)").arg(flat));
-        check(destinations(tree).size() == targets.size(),
-              QStringLiteral("every destination is in the tree once (%1 of %2)")
-                  .arg(destinations(tree).size()).arg(targets.size()));
-    }
+        check(destinations(model).size() == targets.size(),
+              QStringLiteral("every destination is in the list once (%1 of %2)")
+                  .arg(destinations(model).size()).arg(targets.size()));
 
-    // 4. A platform is not an answer. It has no destination id, so the default
-    //    button opens it rather than exporting something the user never chose, and
-    //    it deliberately does NOT pick the first destination inside it.
-    {
-        gui::DestinationPicker picker(targets, groups, resources, QString(), nullptr);
-        QTreeWidget* tree = treeOf(picker);
-        QDialogButtonBox* box = picker.findChild<QDialogButtonBox*>();
-        check(box != nullptr, "the picker has its buttons");
-        QTreeWidgetItem* telegram = sectionNamed(tree, QStringLiteral("Telegram"));
-        check(telegram != nullptr, "the Telegram platform is a section");
-        if (!tree || !box || !telegram) return 1;
+        // C18 (contract line 97): "A destination with no children is not indented as
+        // though it had a parent." The row's LEVEL is the model's one authoritative
+        // statement of that - 0 = listed directly (a section, or a destination whose
+        // platform has no section row above it), 1 = nested under a section - and it
+        // is what the delegate draws every horizontal lane from. `isSection` cannot
+        // answer it: a platform with a single destination, or a group whose rows are
+        // not variants of one platform, is appended with NO section above it, so such
+        // a destination is top-level (and was, before this role existed, drawn with
+        // the CHILD offsets 38/62 instead of 24/48 - the reported bug).
+        //
+        // Read the role by the NAME the scene binds, not by enum: that is the
+        // contract with QML, and it lets this same test compile against the tree
+        // before the fix (where the failure is "no such role" plus wrong geometry).
+        const int levelRole = [&model] {
+            const QHash<int, QByteArray> names = model.roleNames();
+            for (auto it = names.cbegin(); it != names.cend(); ++it) {
+                if (it.value() == "level") return it.key();
+            }
+            return -1;
+        }();
+        check(levelRole >= 0, "C18: the model exposes a 'level' role for the scene to bind");
+        auto levelOf = [&](int aRow) {
+            return levelRole < 0 ? -1 : model.data(model.index(aRow, 0), levelRole).toInt();
+        };
 
-        tree->setCurrentItem(telegram);
-        box->button(QDialogButtonBox::Ok)->click();
-        check(picker.chosenId().isEmpty(),
-              QStringLiteral("the default button does not answer with a platform (%1)")
-                  .arg(picker.chosenId()));
-        check(telegram->isExpanded(), "it opens the platform instead");
-        box->button(QDialogButtonBox::Ok)->click();
-        check(!telegram->isExpanded(), "and pressing it again closes it");
-
-        // On a destination it is the answer, and the answer is a row of the table.
-        QTreeWidgetItem* sticker = nullptr;
-        for (int c = 0; c < telegram->childCount(); ++c) {
-            if (idOf(telegram->child(c)) == QLatin1String("telegram.sticker")) {
-                sticker = telegram->child(c);
+        int flatRow = -1;   // a childless TOP-LEVEL destination: no section above it
+        int nestedRow = -1; // a destination that really is inside a section
+        for (int i = 0; i < model.rowCount(); ++i) {
+            if (model.isSection(i) || model.idOf(i).isEmpty()) continue;
+            if (model.sectionOf(i) < 0) {
+                if (flatRow < 0) flatRow = i;
+            } else if (nestedRow < 0) {
+                nestedRow = i;
             }
         }
-        check(sticker != nullptr, "telegram.sticker is inside the Telegram section");
-        if (sticker) {
-            telegram->setExpanded(true);
-            tree->setCurrentItem(sticker);
-            box->button(QDialogButtonBox::Ok)->click();
-            const QString chosen = picker.chosenId();
+        check(flatRow >= 0, "precondition (C18): a childless top-level destination exists to measure");
+        check(nestedRow >= 0, "precondition (C18): a destination under a section exists to measure");
+        if (flatRow >= 0 && nestedRow >= 0) {
+            check(model.sectionOf(flatRow) < 0 && model.sectionOf(nestedRow) >= 0,
+                  "C18: the two measured rows really are one top-level and one nested (sectionOf)");
+            check(levelOf(flatRow) == 0,
+                  QStringLiteral("C18: a CHILDLESS top-level destination is level 0, not 1 (%1)")
+                      .arg(levelOf(flatRow)));
+            check(levelOf(nestedRow) == 1,
+                  QStringLiteral("C18: a destination under a section is level 1 (%1)")
+                      .arg(levelOf(nestedRow)));
+            const int flatSection = model.sectionOf(flatRow);
+            const int nestedSection = model.sectionOf(nestedRow);
+            check(flatSection < 0 && levelOf(nestedSection) == 0,
+                  "C18: the section a child was measured against is itself level 0");
+            check(model.childCount(flatRow) == 0 && model.childCount(nestedRow) == 0,
+                  "C18: childCount keeps its meaning (a section's children; 0 for a destination)");
+            check(model.childCount(nestedSection) > 0,
+                  "C18: the measured section still reports the children it has");
+        }
+        // Both directions, every row: level is exactly "was appended under a section",
+        // and a section is always level 0. A missing role reads -1 and fails every row.
+        int wrongLevel = 0;
+        for (int i = 0; i < model.rowCount(); ++i) {
+            const int want = model.sectionOf(i) < 0 ? 0 : 1;
+            if (levelOf(i) != want) ++wrongLevel;
+        }
+        check(wrongLevel == 0,
+              QStringLiteral("C18: every row's level states its own parent fact (%1 wrong)").arg(wrongLevel));
+    }
+
+    // 4. A platform is not an answer, and (the reported bug) it is not SELECTABLE:
+    //    the keyboard cannot land on it as a current item, so "Use this destination"
+    //    can never be asked what a platform means. Enter on it opens it rather than
+    //    exporting something the user never chose.
+    {
+        Model model(targets, groups, QString());
+        check(!model.okText().isEmpty() && !model.cancelText().isEmpty(),
+              "the picker has its buttons");
+        const int telegram = sectionNamed(model, QStringLiteral("Telegram"));
+        check(telegram >= 0, "the Telegram platform is a section");
+        if (telegram < 0) return 1;
+
+        int accepted = 0;
+        const QMetaObject::Connection conn = QObject::connect(
+            &model, &Model::accepted, [&accepted]() { ++accepted; });
+
+        check(!(model.flags(model.index(telegram, 0)) & Qt::ItemIsSelectable),
+              "a platform row is not selectable");
+        const int beforeSelect = model.currentRow();
+        model.select(telegram);
+        check(model.currentRow() == beforeSelect && !model.isSection(model.currentRow()),
+              "and the selection never lands on a platform");
+
+        model.activate(telegram);
+        check(model.chosenId().isEmpty(),
+              QStringLiteral("the default button does not answer with a platform (%1)")
+                  .arg(model.chosenId()));
+        check(model.isExpanded(telegram), "it opens the platform instead");
+        check(accepted == 0, "and a platform is never accepted as the answer");
+        model.activate(telegram);
+        check(!model.isExpanded(telegram), "and pressing it again closes it");
+
+        // On a destination it is the answer, and the answer is a row of the table.
+        int sticker = -1;
+        for (int c : children(model, telegram)) {
+            if (model.idOf(c) == QLatin1String("telegram.sticker")) sticker = c;
+        }
+        check(sticker >= 0, "telegram.sticker is inside the Telegram section");
+        if (sticker >= 0) {
+            if (!model.isExpanded(telegram)) model.toggleSection(telegram);
+            model.select(sticker);
+            model.activateCurrent();
+            const QString chosen = model.chosenId();
             check(chosen == QLatin1String("telegram.sticker"),
                   QStringLiteral("the default button answers with the selected destination (%1)")
                       .arg(chosen));
             check(ctrl::ExportTargets::find(targets, chosen).id == chosen,
                   "and it is a row of the table");
         }
+        QObject::disconnect(conn);
     }
 
     // 5. Typing narrows, OPENS what it found, and selects a destination rather than
     //    the platform above it: "wec" then Enter is the fast path, and it has to be
     //    two keystrokes rather than three.
     {
-        gui::DestinationPicker picker(targets, groups, resources, QString(), nullptr);
-        QTreeWidget* tree = treeOf(picker);
-        QLineEdit* search = searchOf(picker);
-        check(search != nullptr, "the picker can be typed at");
-        if (!tree || !search) return 1;
+        Model model(targets, groups, QString());
+        check(model.rowCount() > 0, "the picker can be typed at");
+        if (model.rowCount() == 0) return 1;
 
-        search->setText(QStringLiteral("wec"));
-        const QString shown = currentId(tree);
-        check(!isSection(tree->currentItem()),
+        model.setQuery(QStringLiteral("wec"));
+        const QString shown = model.idOf(model.currentRow());
+        check(!model.isSection(model.currentRow()),
               "a search selects a destination, never the platform above it");
         check(shown.contains(QStringLiteral("wechat")),
               QStringLiteral("and selects one of its matches (%1)").arg(shown));
-        check(onScreen(tree->currentItem()), "which is on screen");
-        check(picker.visibleRowCount() >= 1 && picker.visibleRowCount() < targets.size(),
-              QStringLiteral("a search narrows the tree (%1 of %2 destinations)")
-                  .arg(picker.visibleRowCount()).arg(targets.size()));
+        check(onScreen(model, model.currentRow()), "which is on screen");
+        check(model.visibleRowCount() >= 1 && model.visibleRowCount() < targets.size(),
+              QStringLiteral("a search narrows the list (%1 of %2 destinations)")
+                  .arg(model.visibleRowCount()).arg(targets.size()));
 
         // A platform with one destination is not a section, so its match selects the
         // destination itself: there is nothing to open.
-        search->setText(QStringLiteral("youtube"));
-        check(currentId(tree) == QLatin1String("youtube.video"),
+        model.setQuery(QStringLiteral("youtube"));
+        check(model.idOf(model.currentRow()) == QLatin1String("youtube.video"),
               QStringLiteral("a single-destination platform matches directly (%1)")
-                  .arg(currentId(tree)));
+                  .arg(model.idOf(model.currentRow())));
 
         // A platform name keeps the whole platform, and the results are legible
         // because they arrive under the platform that matched.
-        search->setText(QStringLiteral("instagram"));
+        model.setQuery(QStringLiteral("instagram"));
         int shownRows = 0;
-        for (QTreeWidgetItem* item : destinations(tree)) {
-            if (onScreen(item) && item->data(0, Qt::UserRole + 1).toString().contains(
-                                      QStringLiteral("instagram"))) {
+        for (int item : destinations(model)) {
+            if (onScreen(model, item) && model.haystackOf(item).contains(QStringLiteral("instagram"))) {
                 ++shownRows;
             }
         }
         check(shownRows >= 2, QStringLiteral("a platform match shows its destinations (%1)").arg(shownRows));
-        QTreeWidgetItem* instagram = sectionNamed(tree, QStringLiteral("Instagram"));
-        check(instagram && !instagram->isHidden() && instagram->isExpanded(),
+        const int instagram = sectionNamed(model, QStringLiteral("Instagram"));
+        check(instagram >= 0 && model.isVisible(instagram) && model.isExpanded(instagram),
               "the platform that matched is open");
-        QTreeWidgetItem* telegram = sectionNamed(tree, QStringLiteral("Telegram"));
-        check(telegram && telegram->isHidden(), "a platform with no match is not shown");
+        const int telegram = sectionNamed(model, QStringLiteral("Telegram"));
+        check(telegram >= 0 && !model.isVisible(telegram), "a platform with no match is not shown");
 
-        search->clear();
-        check(picker.visibleRowCount() == countOnScreen(tree),
+        model.setQuery(QString());
+        check(model.visibleRowCount() == countOnScreen(model),
               "visibleRowCount counts what is on screen");
         bool anyHidden = false;
-        for (QTreeWidgetItem* item : destinations(tree)) {
-            if (item->isHidden()) anyHidden = true;
+        for (int item : destinations(model)) {
+            if (!model.isVisible(item)) anyHidden = true;
         }
         check(!anyHidden, "clearing the search restores every destination");
         // Clearing is not "collapse everything again": a platform the user opened, or
         // one a search opened, stays open. It is not a reset button.
-        check(instagram->isExpanded(), "and leaves the platforms it opened open");
+        check(model.isExpanded(instagram), "and leaves the platforms it opened open");
     }
 
     // 6. Enter on a platform is the only thing it can be, never a jump into it, and
     //    the arrows only ever move between things that are on screen.
     {
-        gui::DestinationPicker picker(targets, groups, resources, QString(), nullptr);
-        QTreeWidget* tree = treeOf(picker);
-        if (!tree) return 1;
-        QTreeWidgetItem* telegram = sectionNamed(tree, QStringLiteral("Telegram"));
-        QDialogButtonBox* box = picker.findChild<QDialogButtonBox*>();
-        if (!telegram || !box) return 1;
+        Model model(targets, groups, QString());
+        const int telegram = sectionNamed(model, QStringLiteral("Telegram"));
+        if (telegram < 0) return 1;
 
-        tree->setCurrentItem(telegram);
-        const QString before = currentId(tree);
-        box->button(QDialogButtonBox::Ok)->click();
-        check(picker.chosenId().isEmpty() && currentId(tree) == before,
+        const int before = model.currentRow();
+        model.select(telegram);
+        model.activate(telegram);
+        check(model.chosenId().isEmpty() && model.currentRow() == before,
               "opening a platform does not move the highlight into it");
 
-        telegram->setExpanded(true);
-        tree->setCurrentItem(telegram);
-        int offscreen = 0;
+        if (!model.isExpanded(telegram)) model.toggleSection(telegram);
+        const QList<int> kids = children(model, telegram);
+        if (kids.isEmpty()) return 1;
+        model.select(kids.first());
+        int offscreen = 0, onSection = 0;
         for (int i = 0; i < 120; ++i) {
-            QKeyEvent down(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
-            QApplication::sendEvent(tree, &down);
-            if (tree->currentItem() && !onScreen(tree->currentItem())) ++offscreen;
+            model.step(1);
+            if (model.currentRow() < 0 || !onScreen(model, model.currentRow())) ++offscreen;
+            if (model.isSection(model.currentRow())) ++onSection;
         }
         check(offscreen == 0,
               QStringLiteral("walking down never lands on something that is not on screen "
                              "(%1 times)").arg(offscreen));
-        check(!currentId(tree).isEmpty(),
-              QStringLiteral("and the walk reaches destinations (%1)").arg(currentId(tree)));
+        check(onSection == 0,
+              QStringLiteral("and never lands on a platform (%1 times)").arg(onSection));
+        check(!model.idOf(model.currentRow()).isEmpty(),
+              QStringLiteral("and the walk reaches destinations (%1)").arg(model.idOf(model.currentRow())));
     }
 
-    // 5. The dialog in a language that is not English, which is the one question a
+    // 7. The dialog in a language that is not English, which is the one question a
     //    catalog full of translations cannot answer by itself.
     //
-    //    tr() resolves through the class's staticMetaObject. Without Q_OBJECT on
-    //    DestinationPicker the call bound to QDialog, the lookup asked for the
-    //    "QDialog" context, and every string in this dialog stayed English in all six
-    //    languages while the .ts files shipped translations under
-    //    "gui::DestinationPicker" that nothing ever read. lrelease reported 708
-    //    finished translations; the window title was "Where are you posting this?".
+    //    The strings are looked up in the "gui::DestinationPicker" context, which is
+    //    the context the widget class filled and the one the shipped catalogs
+    //    translated. Moving them to the QML module's own context would have left
+    //    every existing translation under a context nothing reads, so the model asks
+    //    for that context explicitly and the dialog sets its title from the model:
+    //    the string the test reads is the string the window shows.
     //
-    //    So this asks the WIDGET, not the catalog, and it asks it with the shipping
-    //    .qm installed: a title that comes back Spanish proves the context the class
-    //    actually asks for is the one translators filled.
+    //    So this asks the MODEL the scene binds to, and it asks it with the shipping
+    //    .qm installed: a title that comes back Spanish proves the context the
+    //    picker actually asks for is the one translators filled.
     {
         QTranslator translator;
         const QString qmDir = QStringLiteral(AE_I18N_QM_DIR);
@@ -375,21 +424,28 @@ int main(int argc, char** argv) {
         check(loaded, QStringLiteral("the Spanish catalog loads from the build (%1)").arg(qmDir));
         if (loaded) {
             QApplication::installTranslator(&translator);
-            gui::DestinationPicker picker(targets, groups, resources, QString(), nullptr);
-            const QString title = picker.windowTitle();
+            Model model(targets, groups, QString());
+            const QString title = model.windowTitleText();
             check(title != QStringLiteral("Where are you posting this?"),
                   QStringLiteral("the picker title is translated, not the English source (%1)")
                       .arg(title));
-            QDialogButtonBox* box = picker.findChild<QDialogButtonBox*>();
-            const QString ok = box ? box->button(QDialogButtonBox::Ok)->text() : QString();
+            const QString ok = model.okText();
             check(ok != QStringLiteral("Use this destination") && !ok.isEmpty(),
                   QStringLiteral("and so is its confirm button (%1)").arg(ok));
             // The export dialog answers through its own context, and it was unreachable
             // for a different reason: a hand rolled tr() that forwarded to "ExportDiag",
             // a context no catalog has. Both are asked here so the pair cannot regress
             // together unnoticed.
-            const QString exported = QCoreApplication::translate("ExportWidgetUI", "Export");
-            check(exported != QStringLiteral("Export"),
+            //
+            // The context asked has to be one the code STILL USES. It was
+            // "ExportWidgetUI" - the widget form's context - which this check kept
+            // passing against long after exportdiag.{h,cpp} was deleted, until lupdate
+            // marked it vanished and lrelease dropped it from the .qm. The Qt Quick
+            // form's C++ strings live in gui::ExportViewModel, so that is the context
+            // a translator actually fills now.
+            const QString exported =
+                QCoreApplication::translate("gui::ExportViewModel", "Export with transparency");
+            check(exported != QStringLiteral("Export with transparency"),
                   QStringLiteral("the export dialog's own context answers in Spanish (%1)")
                       .arg(exported));
             QApplication::removeTranslator(&translator);

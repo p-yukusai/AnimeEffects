@@ -115,7 +115,7 @@ PY
   '"$APP"' "'"$PROJ"'" >/tmp/probe_still.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 12
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -126,7 +126,7 @@ PY
   require_export_flow
   ae set "Search destinations" "still.instagram.feed" >/dev/null
   sleep 1.2
-  ae_press "Use this destination" "the still destination is accepted"
+  ae_activate "Use this destination" "the still destination is accepted"
   ae wait "Advanced" >/dev/null 2>&1 || true
   sleep 1.5
 
@@ -134,7 +134,7 @@ PY
   #    writer has, and a size. NOT a frame rate and NOT a frame range - and the
   #    Format row is a fact the destination states, not a control.
   ae_report /tmp/still_form.txt "Destination" "Image quality" "Width" "Height" \
-                                "Frame rate" "First frame" "Last frame" "Format" "Quality"
+                                "Frame rate" "First frame 1" "Last frame 1" "Format" "Quality"
   # Read with a retry: one query against a busy application can come back with an empty
   # tree, and an empty file here would be read as "the form said nothing".
   for i in 1 2 3 4 5; do
@@ -149,7 +149,7 @@ PY
   #    widgets are not in the application accessibility tree. It opens with the name
   #    field focused and the suggested name selected, and a relative name resolves
   #    against the working directory of the application.
-  ae_press "Export" "the export form is answered"
+  ae_activate "Export" "the export form is answered"
   sleep 4
   xdotool key --clearmodifiers ctrl+a; sleep 0.4
   xdotool type --delay 25 "'"$STILL_NAME"'"; sleep 0.6
@@ -188,8 +188,8 @@ assert_showing /tmp/still_form.txt "Height" "both dimensions of it"
 # ...and what it must NOT ask for. These are hidden rather than greyed: a control that
 # cannot affect the file is not information.
 assert_hidden /tmp/still_form.txt "Frame rate" "one image has no frame rate to ask for"
-assert_hidden /tmp/still_form.txt "First frame" "and no frame range"
-assert_hidden /tmp/still_form.txt "Last frame" "neither end of one"
+assert_hidden /tmp/still_form.txt "First frame 1" "and no frame range"
+assert_hidden /tmp/still_form.txt "Last frame 1" "neither end of one"
 assert_hidden /tmp/still_form.txt "Format" "and the destination dictates the format, so there is no Format control"
 # The destination's own decision, in the words on screen: one JPG, not a sequence.
 if grep -q "one JPG image" /tmp/still_facts.txt; then
@@ -370,7 +370,7 @@ PY
   '"$APP"' "'"$PROJ"'" >/tmp/probe_sequence.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID
-  sleep 12
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
   ae_press "File" "the File menu opens"
@@ -378,31 +378,31 @@ PY
   require_export_flow
   ae set "Search destinations" "post.pixiv.ugoira" >/dev/null
   sleep 1.2
-  ae_press "Use this destination" "the sequence destination is accepted"
+  ae_activate "Use this destination" "the sequence destination is accepted"
   ae wait "Advanced" >/dev/null 2>&1 || true
   sleep 1.5
   # Shrink the frame so the stills render quickly: a sequence is a `free` size
   # destination, so its Width and Height belong to the user. The aspect lock comes off
   # first, or the two boxes drive each other and the width this probe sets is overwritten
   # by the height it sets next.
-  ae_press "Keep aspect ratio" "the size boxes are unlocked from each other"
+  ae_activate "Keep aspect ratio" "the size boxes are unlocked from each other"
   sleep 0.8
   # ...and a SHORT range, by name, with BOTH ends given so the count of files does not
   # depend on where the range of the project starts. The format caps the range at 150
   # frames and this probe is not here to render a hundred and fifty: what is asserted is
   # that the range the form carries is the range that reaches the disk, which 20 stills
   # show as well as 150.
-  if spin set "Width" "160" "Height" "256" "First frame" "1" "Last frame" "'"$SEQ_FRAMES"'"; then
+  if spin set "Width" "160" "Height" "256" "First frame 1" "1" "Last frame 1" "'"$SEQ_FRAMES"'"; then
     check 0 "the sequence inputs take the values this probe sets by name"
   else
     check 1 "the sequence inputs take the values this probe sets by name"
   fi
   sleep 0.8
-  ae_report /tmp/seq_form.txt "Destination" "Image quality" "Width" "Height" "First frame" \
-                               "Last frame" "Frame rate" "Format" "Quality"
+  ae_report /tmp/seq_form.txt "Destination" "Image quality" "Width" "Height" "First frame 1" \
+                               "Last frame 1" "Frame rate" "Format" "Quality"
   # What the form HOLDS, read back through the same interface, so the file count below is
   # checked against the form rather than against this probe.
-  spin read /tmp/seq_range.txt "First frame" "Last frame" "Width" "Height"
+  spin read /tmp/seq_range.txt "First frame 1" "Last frame 1" "Width" "Height"
   # Read with a retry: one query against a busy application can come back with an empty
   # tree, and an empty file here would be read as "the form said nothing".
   for i in 1 2 3 4 5; do
@@ -411,7 +411,7 @@ PY
     sleep 1
   done
   import -window root '"$SHOTS"'/seq_01_form.png
-  ae_press "Export" "the sequence form is answered"
+  ae_activate "Export" "the sequence form is answered"
   sleep 4
   xdotool key --clearmodifiers ctrl+a; sleep 0.4
   xdotool type --delay 25 "'"$SEQ_NAME"'"; sleep 0.6
@@ -439,8 +439,8 @@ PY
 ' 2>&1 | tail -4
 
 assert_showing /tmp/seq_form.txt "Destination" "the sequence form states the destination it was given"
-assert_showing /tmp/seq_form.txt "First frame" "a frame sequence keeps the frame range editable"
-assert_showing /tmp/seq_form.txt "Last frame" "both ends of it"
+assert_showing /tmp/seq_form.txt "First frame 1" "a frame sequence keeps the frame range editable"
+assert_showing /tmp/seq_form.txt "Last frame 1" "both ends of it"
 assert_hidden /tmp/seq_form.txt "Frame rate" "and asks for no frame rate: a numbered sequence has no timing of its own"
 assert_showing /tmp/seq_form.txt "Image quality" "a sequence offers the image writer's own quality control"
 if grep -q "numbered PNG files" /tmp/seq_facts.txt; then
@@ -452,8 +452,8 @@ fi
 # One file per frame, numbered from 0001, at the name the user typed. The COUNT is
 # checked against the range the FORM held, read back above: a box clamps to whatever the
 # range of the project allows, and the disk has to match the form, not this probe.
-seqfirst=$(sed -n 's/^First frame=//p' /tmp/seq_range.txt 2>/dev/null | head -1)
-seqlast=$(sed -n 's/^Last frame=//p' /tmp/seq_range.txt 2>/dev/null | head -1)
+seqfirst=$(sed -n 's/^First frame 1=//p' /tmp/seq_range.txt 2>/dev/null | head -1)
+seqlast=$(sed -n 's/^Last frame 1=//p' /tmp/seq_range.txt 2>/dev/null | head -1)
 seqwant=$(( ${seqlast:-0} - ${seqfirst:-0} + 1 ))
 [ -n "$seqfirst" ] && [ -n "$seqlast" ] && [ "$seqfirst" != "absent" ] && [ "$seqlast" != "absent" ] \
     && [ "$seqwant" -ge 2 ] && [ "$seqwant" -le 60 ] 2>/dev/null

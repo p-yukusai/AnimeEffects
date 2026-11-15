@@ -715,10 +715,18 @@ bool Exporter::decideImagePath(int aIndex, QFileInfo& aPath) {
     // a numbered sequence. The index is ignored in the single-file case, so a
     // selection that somehow held two frames would still produce one image rather
     // than two files with the same name.
+    //
+    // Numbered frames are 1-based, 4 digits — "one file per frame, numbered from
+    // 0001, at the name the user typed" (probe_still's line, and exportWithFit's
+    // image writer does exactly `arg(i + 1, 4, 10, '0')` while claiming parity
+    // with this function). Before 2026-10-01 this used the 0-based render index
+    // and mDigitCount, so whenever a sequence stopped riding the fit path the two
+    // writers named the same frames differently (0000 vs 0001) — measured:
+    // nene0000.png beside a status bar naming probe_frames.png.
     const QString stem = mImageParam.singleFile
                              ? mImageParam.name
                              : mImageParam.name
-                                   + QString("%1").arg(aIndex, mDigitCount, 10, QChar('0'));
+                                   + QStringLiteral("%1").arg(aIndex + 1, 4, 10, QChar('0'));
     QFileInfo filePath(mCommonParam.path + "/" + stem + "." + mImageParam.suffix);
 
     // check overwrite

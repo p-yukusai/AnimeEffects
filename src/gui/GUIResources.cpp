@@ -8,6 +8,7 @@
 #include <QStyleHints>
 
 #include "gui/AppStyle.h"
+#include "gui/qml/QmlFormAccessibility.h"
 #include "theme/Icons.h"
 
 namespace gui {
@@ -21,6 +22,14 @@ GUIResources::GUIResources(const QString& aResourceDir):
     mIconDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/icons"),
     mAccent(theme::kDefaultAccent) {
     setAppStyle();
+
+    // The Qt Quick export form's numeric fields get a real AT-SPI Value interface
+    // (see gui/qml/NumberFieldAccessibility). Installed here because this is the
+    // one constructor every GUI entry point runs after QApplication exists, and the
+    // call is idempotent. It must be a QAccessible FACTORY rather than a per-item
+    // setting: Qt Quick's Accessible attached type has no way to describe a value,
+    // and a factory is the documented answer for a non-widget accessible object.
+    installQmlFormAccessibility();
 
     QSettings settings;
     QString themeId = settings.value("generalsettings/ui/theme", "dark").toString();

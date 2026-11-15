@@ -42,7 +42,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   '"$APP"' "'"$PROJ"'" >/tmp/probe_qual.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 12
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -68,8 +68,11 @@ def number(value):
     return int(value) if float(value).is_integer() else value
 
 out = open(sys.argv[1], "w")
-for name in ["Quality", "Quality override"]:
-    node = ae_ui.find(name, timeout=6.0)
+for name, role in [("Quality", "combo box"), ("Quality override", "spin button")]:
+    # By ROLE: the redesigned form exposes its row labels as text too, and a
+    # plain name match takes the label (enabled, no value) over the control -
+    # which is how this reader reported enabled=True for a disabled combo.
+    node = ae_ui.find(name, role=role, timeout=6.0)
     if node is None:
         out.write("%s: absent\n" % name)
         continue
@@ -94,7 +97,7 @@ PY
   require_export_flow
   ae set "Search destinations" "telegram sticker" >/dev/null
   sleep 1.2
-  ae_press "Use this destination" "the Telegram sticker destination is chosen"
+  ae_activate "Use this destination" "the Telegram sticker destination is chosen"
   ae wait "Advanced" >/dev/null 2>&1 || true
   sleep 1.5
   ae_report /tmp/qual_form.txt "Destination" "Quality" "Advanced" "Quality override" "Width"
@@ -103,9 +106,9 @@ PY
   import -window root '"$SHOTS"'/qual_01_destination.png
 
   # 2. Advanced is where the codec s own value lives, and it opens on Auto.
-  ae_press "Advanced" "Advanced opens on the codec s own value"
+  ae_activate "Advanced" "Advanced opens on the codec s own value"
   sleep 1.5
-  ae_report /tmp/qual_advanced.txt "Advanced" "Quality" "Quality override" "Quality override to auto"
+  ae_report /tmp/qual_advanced.txt "Advanced" "Quality" "Quality override" "Reset to auto"
   ae value "Quality override" > /tmp/qual_auto_value.txt 2>/dev/null
   quality_state /tmp/qual_auto_state.txt
   xdotool mousemove 700 600; sleep 0.5
@@ -120,13 +123,13 @@ PY
   import -window root '"$SHOTS"'/qual_03_named.png
 
   # 4. The box own Set to auto button hands the intent back.
-  ae_press "Quality override to auto" "the box s own Set to auto button is pressed"
+  ae_activate "Reset to auto" "the box s own Set to auto button is pressed"
   sleep 1.5
   ae value "Quality override" > /tmp/qual_back_value.txt 2>/dev/null
   quality_state /tmp/qual_back_state.txt
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/qual_04_auto_again.png
-  ae_press "Cancel" "the form closes on Cancel"
+  ae_activate "Cancel" "the form closes on Cancel"
   sleep 1
   kill $app 2>/dev/null; wait $app 2>/dev/null
 ' 2>&1 | tail -4
@@ -149,7 +152,7 @@ assert_rendered "$SHOTS/qual_01_destination.png" "the form carrying the destinat
 
 # ---- Advanced opens on Auto, and Auto is the codec s own sentinel -------------
 assert_showing /tmp/qual_advanced.txt "Quality override" "and opening Advanced offers the codec s own value"
-assert_showing /tmp/qual_advanced.txt "Quality override to auto" "together with the box s own Set to auto button"
+assert_showing /tmp/qual_advanced.txt "Reset to auto" "together with the box s own Set to auto button"
 qoValue=$(state_field /tmp/qual_auto_state.txt "Quality override" value)
 qoMin=$(state_field /tmp/qual_auto_state.txt "Quality override" min)
 qoMax=$(state_field /tmp/qual_auto_state.txt "Quality override" max)

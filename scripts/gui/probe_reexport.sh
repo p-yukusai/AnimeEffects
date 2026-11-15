@@ -51,7 +51,7 @@ gi.require_version("Atspi", "2.0")
 from gi.repository import Atspi as A
 
 want = os.environ.get("AE_UI_PID", "").strip()
-wanted = {"First frame": sys.argv[1], "Last frame": sys.argv[2]}
+wanted = {"First frame 1": sys.argv[1], "Last frame 1": sys.argv[2]}
 
 def walk(node, depth=0):
     if depth > 16:
@@ -121,7 +121,7 @@ PY
   '"$APP"' "'"$PROJ"'" >/tmp/probe_reexport.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 13
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -153,7 +153,7 @@ PY
   ae_press "File" "the File menu opens"
   ae_press "Export project as" "the export entry is there"
   require_export_flow
-  ae_press "Use this destination" "the remembered destination is accepted"
+  ae_activate "Use this destination" "the remembered destination is accepted"
   ae wait "Advanced" >/dev/null 2>&1 || true
   sleep 1.5
   # Short, so that the first export is seconds and not minutes: this probe is about the
@@ -172,7 +172,7 @@ PY
   sleep 1.2
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/re_01_form.png
-  ae_press "Export" "the first export is asked for"
+  ae_activate "Export" "the first export is asked for"
   sleep 4
   xdotool key --clearmodifiers ctrl+a; sleep 0.4
   xdotool type --delay 25 "repeat1.mp4"; sleep 0.6

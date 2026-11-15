@@ -137,16 +137,15 @@ target_link_libraries(easing_picker_layout PRIVATE
 # drag-outside, knob clip, bezier spin input). Same source set as the layout
 # gate; prints PASS/FAIL lines for each behavior.
 # What the destination picker shows, offscreen: the list's own state, which is the
-# part a person is affected by (what is selected when it opens, what typing selects).
-# No display: the GUI probes ask the same question and need a bus and a window manager
+# part a person is affected by (what is selected when it opens, what typing selects,
+# whether a platform can become an answer). It drives gui::DestinationPickerModel
+# directly - no QWidget, no QTreeWidget, no QML engine - because the model is where
+# the behaviour now lives and the Qt Quick scene binds to the same object. No
+# display: the GUI probes ask the same question and need a bus and a window manager
 # to do it, which is why this went unnoticed.
 add_executable(destination_picker
     destination_picker.cpp
-    ../src/gui/DestinationPicker.cpp
-    ../src/gui/GUIResources.cpp
-    ../src/gui/AppStyle.cpp
-    ../src/gui/theme/Icons.cpp
-    ../src/gui/theme/Theme.cpp
+    ../src/gui/qml/DestinationPickerModel.cpp
     ../src/ctrl/ExportTarget.cpp)
 target_include_directories(destination_picker PRIVATE .. ../src/gui)
 target_compile_definitions(destination_picker PRIVATE
@@ -154,7 +153,6 @@ target_compile_definitions(destination_picker PRIVATE
     AE_MINOR_VERSION=7
     AE_MICRO_VERSION=1
     USE_GL_CORE_PROFILE
-    AE_RESOURCE_DIR="${CMAKE_SOURCE_DIR}/assets"
     AE_EXPORT_TARGETS_PATH="${CMAKE_SOURCE_DIR}/assets/export/ExportTargets.txt"
     # The .qm are build artifacts (not sources) and they are what the app actually
     # loads, so the language assertions need the built catalog and a dependency on
@@ -167,21 +165,205 @@ target_link_libraries(destination_picker PRIVATE
     media
 )
 
+# The picker's KEYBOARD contract, offscreen and windowless: which key belongs to the
+# search field's caret and which one moves the list. Neither of the two tests above
+# can ask it - the model test has no scene, so nothing routes a key, and the GUI
+# probes cannot inject a keystroke without a window manager. Measured before relying
+# on it: a key sent straight to a Qt Quick item reaches the item's Keys filter with NO
+# window and NO active focus, and everything the filter does not consume still reaches
+# the editor. So this loads the real DestinationPicker.qml, injects the keys, and
+# reads the model - the same object the scene binds to.
+add_executable(picker_keyboard
+    picker_keyboard.cpp
+    ../src/gui/qml/DestinationPickerModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/ctrl/ExportTarget.cpp)
+target_include_directories(picker_keyboard PRIVATE .. ../src ../src/gui)
+target_compile_definitions(picker_keyboard PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_EXPORT_TARGETS_PATH="${CMAKE_SOURCE_DIR}/assets/export/ExportTargets.txt"
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+add_dependencies(picker_keyboard release_translations)
+target_link_libraries(picker_keyboard PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
+# The numeric fields' Escape contract (F34, decided 2026-09-30): Escape restores
+# the value from when THIS edit began - not the value the property happens to hold
+# at Escape time (the owner can re-sync it mid-edit) and not the session's opening
+# value - with the AeNumberField sentinel ("Auto") as part of the same line.
+# Loads the REAL ScrubSpinBox.qml and AeNumberField.qml and drives the edit
+# lifecycle through a real offscreen window, because the lifecycle IS focus:
+# beginEdit() focuses the editor, Escape blurs it, and onActiveFocusChanged is
+# where the edit starts and ends. See scrub_escape.cpp for the measured routing
+# facts this rests on.
+add_executable(scrub_escape
+    scrub_escape.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp)
+target_include_directories(scrub_escape PRIVATE .. ../src ../src/gui)
+target_compile_definitions(scrub_escape PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(scrub_escape PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
+# C21's hover-fade rule (item 21): no wrong intermediate colour. The ghost
+# button's rest fill must fade through its OWN RGB at varying alpha - the old
+# "transparent" endpoint made the ColorAnimation pass through semi-transparent
+# black ("Add range hover flashes black"). Samples the ANIMATED background.color
+# property per frame (a grabToImage is blind here: it composites over opaque
+# black and hides alpha - measured). See hover_parity.cpp.
+add_executable(hover_parity
+    hover_parity.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp)
+target_include_directories(hover_parity PRIVATE .. ../src ../src/gui)
+target_compile_definitions(hover_parity PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(hover_parity PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
+# The tooltip contract (E26/E27/E28/E29, decided 2026-09-30): WHICH controls
+# keep a tooltip (the set is explicit - the Auto/Reset affordances and truncated
+# picker rows), WHERE the bubble sits (below-first, flipping above at the bottom
+# edge) and that it is NEVER clipped at the dialog's edge. Hosts the REAL
+# call-site files and the real ExportDialog.qml (so the set cannot silently
+# grow) with the real view model. See tooltip_contract.cpp.
+add_executable(tooltip_contract
+    tooltip_contract.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/gui/qml/ExportViewModel.cpp
+    ../src/gui/qml/ExportViewModel.h
+    ../src/gui/ExportFacts.cpp
+    ../src/ctrl/ExportTarget.cpp
+    # The embedded destination table (see export_form below: the dialog's own
+    # lookups go through the static loaders to ":/export/ExportTargets.txt").
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(tooltip_contract PRIVATE .. ../src ../src/gui)
+target_compile_definitions(tooltip_contract PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+add_dependencies(tooltip_contract release_translations)
+target_link_libraries(tooltip_contract PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
+# The export form's overflow contract (D25 + Q9): the content scrolls by wheel,
+# drag and keys while the Cancel/Export row stays pinned and reachable, every
+# control is scrolled into view on focus, the bar appears only on overflow, and
+# the tooltip/combo popups inside the scrolling content are clipped by NOTHING
+# (E28's clamp narrows to the visible viewport). Hosts the REAL ExportDialog.qml
+# with the real view model. See form_layout.cpp.
+add_executable(form_layout
+    form_layout.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/gui/qml/ExportViewModel.cpp
+    ../src/gui/qml/ExportViewModel.h
+    ../src/gui/ExportFacts.cpp
+    ../src/ctrl/ExportTarget.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(form_layout PRIVATE .. ../src ../src/gui)
+target_compile_definitions(form_layout PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+add_dependencies(form_layout release_translations)
+target_link_libraries(form_layout PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    media
+)
+
+# Persistence: C17 (group expansion remembered across sessions) and A5 (the
+# dialog remembers its size). Drives the MACHINERY (DestinationPickerModel's
+# expandedIds/applyExpandedIds) and the WIRING (gui::DestinationPicker and
+# gui::ExportDialog reading and writing QSettings) through the real dialog
+# classes. Their QML scenes live in the application's qml module and are not
+# linked here (the scene routes are picker_keyboard's and the probes' job).
+add_executable(persist_state
+    persist_state.cpp
+    ../src/gui/DestinationPicker.cpp
+    ../src/gui/ExportDialog.cpp
+    ../src/gui/GUIResources.cpp
+    ../src/gui/AppStyle.cpp
+    ../src/gui/qml/QmlFormAccessibility.cpp
+    ../src/gui/qml/DestinationPickerModel.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/qml/ExportViewModel.cpp
+    ../src/gui/theme/Theme.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/gui/ExportFacts.cpp
+    ../src/ctrl/ExportTarget.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(persist_state PRIVATE .. ../src ../src/gui)
+target_compile_definitions(persist_state PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_EXPORT_TARGETS_PATH="${CMAKE_SOURCE_DIR}/assets/export/ExportTargets.txt"
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+add_dependencies(persist_state release_translations)
+target_link_libraries(persist_state PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickWidgets Qt6::QuickControls2
+    media
+)
+
 # The export dialog, headless: what it STATES and what it OFFERS per destination.
 # This is the coverage hole the session named twice: every export-form bug was either
 # a fact contradicting a control or a control the destination did not decide, and both
-# are questions about text and widget state rather than about pixels. Compiles
-# ExportTarget.cpp + ExportFacts.cpp + the dialog header (GL-free), so it needs no
-# project, no GL context and no display. See tests/export_form.cpp.
+# are questions about state and text rather than about pixels. Since the port to Qt
+# Quick it drives gui::ExportViewModel directly - no QWidget, no offscreen show, no
+# isVisible() - so its sources compile GUI-free: no GL, no Widgets, no Quick. See
+# tests/export_form.cpp.
 add_executable(export_form
     export_form.cpp
     ../src/gui/ExportFacts.cpp
-    ../src/gui/GUIResources.cpp
-    ../src/gui/AppStyle.cpp
-    ../src/gui/theme/Icons.cpp
-    ../src/gui/theme/Theme.cpp
+    ../src/gui/qml/ExportViewModel.cpp
+    ../src/gui/qml/ExportViewModel.h
     ../src/ctrl/ExportTarget.cpp
-    ../src/gui/exportdiag.h
     # The destination TABLE, embedded the way the application embeds it.
     #
     # The table is loaded two ways: this test passes a path (AE_EXPORT_TARGETS_PATH) for
@@ -193,7 +375,7 @@ add_executable(export_form
     # ask about it were skipped for every row while the suite stayed green. A dialog test
     # that reads a different table than the application is not testing the application.
     ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
-target_include_directories(export_form PRIVATE .. ../src/gui)
+target_include_directories(export_form PRIVATE .. ../src ../src/gui)
 target_compile_definitions(export_form PRIVATE
     AE_MAJOR_VERSION=1
     AE_MINOR_VERSION=7
@@ -207,7 +389,7 @@ target_compile_definitions(export_form PRIVATE
     AE_I18N_QM_DIR="${PROJECT_BINARY_DIR}/src/gui"
 )
 target_link_libraries(export_form PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml Qt6::Svg
+    Qt6::Core Qt6::Gui Qt6::Xml Qt6::Svg
     media
 )
 # The runtime translation assertion reads a BUILT catalog, so the test has to depend on

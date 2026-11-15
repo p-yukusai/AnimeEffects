@@ -315,6 +315,8 @@ bool VideoEncoder::open(const Config& aConfig) {
     // stream entry, not the encoder, so it is applied AFTER the parameters are
     // copied and before the header is written. Without it, HEVC in an ISO
     // container defaults to hev1, which Safari/iOS refuse to play.
+    // Applied verbatim: WHICH codec gets a tag is decided once, by the planner
+    // (see ExportTarget.cpp), so a second gate must not be grown here.
     if (aConfig.codecTag.size() == 4) {
         // Bind the UTF-8 buffer to a local: taking constData() off a temporary
         // QByteArray leaves a dangling pointer by the next statement (this

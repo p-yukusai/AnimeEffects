@@ -41,10 +41,22 @@ FRAMES=20
 
 # run_case <dest id> <output name> <cap bytes> <cap KB> <cap label> <container> \
 #          <codec line the facts must state> <exact size or empty> <duration limit or 0> \
-#          <what the cap assertion is about>
+#          <what the cap assertion is about> <cap MB to set, or empty for "Auto">
+#
+# I43 (decided 2026-09-30): a size cap is enforced ONLY when the user sets one.
+# The last argument is the opt-in — the value in MB this case applies through the
+# form's own "Size cap (MB)" row (Advanced). Empty = "Auto" = NO cap, and the
+# case asserts the export was NOT fitted (the reviewed defect was exactly this
+# loop running without the user asking). The destination's declared cap ($cap,
+# $cap_kb) is STATED guidance on the form and in the status message either way —
+# "a fact the user may apply" — so those asserts hold in both modes.
 run_case() {
     local dest="$1" name="$2" cap="$3" cap_kb="$4" label="$5" container="$6"
     local codec="$7" size="$8" limit="$9" what="${10}"
+    local capmb="${11:-}"
+    local cframes="${12:-20}"
+    local userbytes=0
+    [ -n "$capmb" ] && userbytes=$(awk -v m="$capmb" 'BEGIN { printf "%d", m * 1048576 }')
     local slug="${dest//./_}"
     local out="$OUTDIR/$name"
     local form="/tmp/cap_${slug}_form.txt" facts="/tmp/cap_${slug}_facts.txt"
@@ -206,7 +218,7 @@ PY
       '"$APP"' "'"$PROJ"'" >/tmp/probe_capped_'"$slug"'.log 2>&1 &
       app=$!
       AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-      sleep 12
+      wait_ready 120 || sleep 12
       W=$(xdotool search --name "AnimeEffects" | tail -1)
       xdotool windowactivate --sync $W 2>/dev/null
 
@@ -218,7 +230,7 @@ PY
       require_export_flow
       ae set "Search destinations" "'"$dest"'" >/dev/null
       sleep 1.2
-      ae_press "Use this destination" "the '"$dest"' destination is accepted"
+      ae_activate "Use this destination" "the '"$dest"' destination is accepted"
       ae wait "Advanced" >/dev/null 2>&1 || true
       sleep 1.5
 
@@ -226,14 +238,21 @@ PY
       #    covers, and one second of animation exercises it as well as twenty-five. The
       #    range is read back below, so the file is judged against what the form holds
       #    rather than against what this probe typed at it.
-      if spin set "First frame" "1" "Last frame" "'"$FRAMES"'"; then
+      if spin set "First frame 1" "1" "Last frame 1" "'"$cframes"'"; then
         check 0 "the frame range takes the values this probe sets by name ('"$dest"')"
       else
         check 1 "the frame range takes the values this probe sets by name ('"$dest"')"
       fi
       sleep 0.8
-      ae_report "'"$form"'" "Destination" "Width" "Height" "Frame rate" "First frame" "Last frame"
-      spin read "'"$range"'" "First frame" "Last frame"
+      # 2b. THE OPT-IN (I43): set the size cap by name, exactly like the range —
+      #     or leave it on "Auto" for the no-cap case. Read back below either way,
+      #     so the assertion is about what the form HOLDS.
+      if [ -n "'"$capmb"'" ]; then
+        spin set "Size cap (MB)" "'"$capmb"'" || true
+      fi
+      sleep 0.5
+      ae_report "'"$form"'" "Destination" "Width" "Height" "Frame rate" "First frame 1" "Last frame 1"
+      spin read "'"$range"'" "First frame 1" "Last frame 1" "Size cap (MB)"
       # The cap as the form states it, and the codec the plan resolved. Read with a
       # retry: one query against a busy application can come back with an empty tree, and
       # an empty file here would be read as "the form said nothing".
@@ -250,7 +269,7 @@ PY
       #    application. It opens with the name field focused and the suggested name
       #    selected, and resolves a relative name against the working directory of the
   #    application.
-      ae_press "Export" "the '"$dest"' form is answered"
+      ae_activate "Export" "the '"$dest"' form is answered"
       sleep 4
       xdotool key --clearmodifiers ctrl+a; sleep 0.4
       xdotool type --delay 25 "'"$name"'"; sleep 0.6
@@ -295,25 +314,39 @@ PY
     assert_showing "$form" "Width" "the destination's own size reaches the form ($dest)"
     assert_showing "$form" "Height" "both dimensions of it ($dest)"
     if grep -q "$cap_kb KB" "$facts"; then
-        check 0 "the form states the cap this export will be held to ($cap_kb KB, $dest)"
+        check 0 "the form states the cap guidance as a fact ($cap_kb KB, $dest)"
     else
-        check 1 "the form states the cap this export will be held to ($cap_kb KB, $dest) (got: $(tr '\n' ' ' < "$facts" 2>/dev/null | head -c 200))"
+        check 1 "the form states the cap guidance as a fact ($cap_kb KB, $dest) (got: $(tr '\n' ' ' < "$facts" 2>/dev/null | head -c 200))"
     fi
     if grep -q "$codec" "$facts"; then
         check 0 "and the codec the plan resolved for it ($codec)"
     else
         check 1 "and the codec the plan resolved for it ($codec) (got: $(tr '\n' ' ' < "$facts" 2>/dev/null | head -c 200))"
     fi
-    first=$(sed -n 's/^First frame=//p' "$range" 2>/dev/null | head -1)
-    last=$(sed -n 's/^Last frame=//p' "$range" 2>/dev/null | head -1)
+    first=$(sed -n 's/^First frame 1=//p' "$range" 2>/dev/null | head -1)
+    last=$(sed -n 's/^Last frame 1=//p' "$range" 2>/dev/null | head -1)
     want=$(( ${last:-0} - ${first:-0} + 1 ))
     [ -n "$first" ] && [ -n "$last" ] && [ "$first" != "absent" ] && [ "$last" != "absent" ] \
-        && [ "$want" -ge 2 ] && [ "$want" -le 60 ] 2>/dev/null
+        && [ "$want" -ge 2 ] && [ "$want" -le 120 ] 2>/dev/null
     check $? "the form holds the short range this probe set by name ($first..$last, $dest)"
 
-    # THE ASSERTION THIS PROBE EXISTS FOR: the file on disk, weighed against the cap the
-    # destination declares.
-    assert_under "$out" "$cap" "$what"
+    # THE ASSERTION THIS PROBE EXISTS FOR: the file on disk, weighed against the
+    # cap in force. With the opt-in (I43) that is the USER's number; with "Auto"
+    # nothing is fitted and the natural file must land OVER the declared cap —
+    # the not-fitted proof, which fails loudly if the source got lighter (then
+    # this case could not tell fitted from unfitted and must not pass quietly).
+    got_cap=$(sed -n 's/^Size cap (MB)=//p' "$range" 2>/dev/null | head -1)
+    if [ -n "$capmb" ]; then
+        awk -v v="${got_cap:-x}" -v m="$capmb" 'BEGIN { exit !(v+0 > 0 && (v-m < 0.005) && (m-v < 0.005)) }'
+        check $? "the size cap holds the value this case set by name ($capmb MB = $userbytes bytes, $dest, read back ${got_cap:-absent})"
+        assert_under "$out" "$userbytes" "$what"
+    else
+        case "${got_cap:-absent}" in 0*) ok=0;; *) ok=1;; esac
+        check "$ok" "the size cap is still Auto = no cap (${got_cap:-absent}, $dest)"
+        got_size=$(wc -c < "$out" 2>/dev/null || echo 0)
+        [ "$got_size" -gt "$cap" ]
+        check $? "the uncapped export is NOT fitted: $got_size bytes is over the declared ${cap} on purpose ($dest)"
+    fi
     if [ -s "$out" ]; then
         # COUNTED, not read from the container: a WebM does not carry a frame count, so
         # nb_frames answers N/A for a file that is plainly an animation. -count_frames
@@ -350,10 +383,21 @@ PY
     else
         check 1 "the status bar reports the export by name (got: $(tr -d '\n' < "$status" 2>/dev/null | head -c 120))"
     fi
-    if grep -qF "of $cap_kb KB allowed for $label" "$status" && ! grep -q "OVER THE LIMIT" "$status"; then
-        check 0 "and measures it against that cap without reporting it as over the limit"
+    if [ -n "$capmb" ]; then
+        if grep -qF "of $cap_kb KB allowed for $label" "$status" && ! grep -q "OVER THE LIMIT" "$status"; then
+            check 0 "and measures it against that cap without reporting it as over the limit"
+        else
+            check 1 "and measures it against that cap without reporting it as over the limit (got: $(tr -d '\n' < "$status" 2>/dev/null | head -c 160))"
+        fi
     else
-        check 1 "and measures it against that cap without reporting it as over the limit (got: $(tr -d '\n' < "$status" 2>/dev/null | head -c 160))"
+        # I43's other half: the guidance is STATED as a fact the user may apply —
+        # including the consequence — while nothing was enforced (the file above
+        # is over it on purpose). Silence would be the defect here.
+        if grep -qF "of $cap_kb KB allowed for $label" "$status" && grep -q "OVER THE LIMIT" "$status"; then
+            check 0 "and the status STATES the guidance and its consequence without having enforced it"
+        else
+            check 1 "and the status STATES the guidance and its consequence without having enforced it (got: $(tr -d '\n' < "$status" 2>/dev/null | head -c 160))"
+        fi
     fi
     grep -qF "$OUTDIR" "$status"
     check $? "and says it wrote into the throwaway directory, not the checkout ($dest)"
@@ -368,19 +412,37 @@ PY
     assert_rendered "$SHOTS/cap_${slug}_02_done.png" "the app after the capped export ($dest)"
 }
 
-# A capped VIDEO destination: WebM/VP9 with alpha, 512 px, three seconds, 256 KB. This is
+# A capped VIDEO destination: WebM/VP9 with alpha, 512 px, 256 KB. This is
 # the branch of the fit loop that already worked, and the one that proves the destination
-# can cap a video whose natural size is far over the limit.
+# can cap a video whose natural size is far over the limit. 0.25 MB = 262144 bytes is
+# exactly the declared cap, set by the user (I43). 72 frames = the row's own 3 s at
+# 24 fps: heavy enough that the natural alpha-VP9 is far over 256 KB (the bisection
+# runs), inside the duration limit the case asserts below.
 run_case telegram.sticker probe_capped.webm 262144 256 "Telegram sticker" webm \
-    "VP9 in WebM" "" 3 \
-    "the Telegram sticker is inside its 256 KB cap"
+    "VP9 · WebM" "" 3 \
+    "the Telegram sticker is inside its opted-in 0.25 MB cap" "0.25" "72"
 
 # A capped GIF destination: 240x240, 500 KB, GIF only. media::GifEncoder owns this
 # artifact, and the cap loop did not know about it at all once - a GIF went out at
 # whatever size it came to. Its file is also checked for the frames and the exact size
-# that make it a real animated GIF rather than a still.
+# that make it a real animated GIF rather than a still. 0.48 MB = 503316 bytes is under
+# the declared 500 KB and is the USER's number — if silent enforcement leaked back, the
+# fit would target the row's 512000 instead and the weigh would say so. 100 frames: the
+# 20-frame source measured 142141 bytes, UNDER every cap here, which made both this
+# case and the natural one vacuous (measured 2026-09-30); the sibling case below proves
+# the 100-frame natural exceeds 512000, so this fitted file is demonstrably reduced.
 run_case wechat.sticker probe_capped.gif 512000 500 "WeChat sticker (微信表情)" gif \
     "animated GIF" "240x240" 0 \
-    "the WeChat sticker GIF is inside its 500 KB cap"
+    "the WeChat sticker GIF is inside its opted-in 0.48 MB cap" "0.48" "100"
+
+# THE I43 DEFAULT, same GIF destination with the cap left on "Auto": nothing is
+# fitted. The natural file lands OVER the declared 500 KB (asserted loudly below —
+# a source that gets lighter fails here instead of passing vacuously), while the
+# status states the guidance and its consequence as facts. This case is the
+# silent-enforcement detector: a fit loop that runs without the user makes its
+# file fit and this case fails.
+run_case wechat.sticker probe_capped_natural.gif 512000 500 "WeChat sticker (微信表情)" gif \
+    "animated GIF" "240x240" 0 \
+    "the uncapped export is left at its natural size" "" "100"
 
 summary probe_capped

@@ -52,6 +52,7 @@
     <file>icons/ph/images.svg</file>
     <file>icons/ph/image.svg</file>
     <file>icons/ph/link.svg</file>
+    <file>icons/ph/magnifying-glass.svg</file>
     <file>icons/ph/minus-bold.svg</file>
     <file>icons/ph/minus.svg</file>
     <file>icons/ph/navigation-arrow.svg</file>
@@ -64,6 +65,7 @@
     <file>icons/ph/skip-back.svg</file>
     <file>icons/ph/skip-forward.svg</file>
     <file>icons/ph/speaker-high.svg</file>
+    <file>icons/ph/trash.svg</file>
     <file>icons/ph/x.svg</file>
     <file>icons/pose.svg</file>
     <file>icons/radio_checked.svg</file>

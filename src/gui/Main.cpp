@@ -16,6 +16,7 @@
 #include <QLoggingCategory>
 #include <QtConcurrent>
 #include <QApplication>
+#include <QQuickStyle>
 
 // This MSVC debugger is not useful and only serves to pain me in the ways it unexpectedly fails,
 // I'm sure it worked wonderfully before, but it sure doesn't anymore
@@ -127,6 +128,16 @@ int entryPoint(int argc, char* argv[]) {
     QLoggingCategory::defaultCategory()->setEnabled(QtWarningMsg, true);
     #endif
     XC_DEBUG_REPORT() << "exe path =" << app.applicationFilePath();
+
+    // Which Qt Quick Controls style the migrated dialogs (gui/qml) are built on.
+    // It MUST be chosen before the first QQuickWidget loads a scene, and it must
+    // be a style the design is actually customised against: the default here is
+    // Fusion (measured, Qt 6.11.2 on Linux), while Basic is the one the Qt docs
+    // recommend basing a customised look on - minimal padding and implicit sizes,
+    // identical on every platform. The dialogs replace each control's
+    // background/contentItem with the app's own, so the style contributes
+    // behaviour and defaults, not paint.
+    QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     // application path
     #if defined(Q_OS_DARWIN)

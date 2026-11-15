@@ -11,6 +11,7 @@
 #include "ctrl/ExportTarget.h"
 #include "gui/MainMenuBar.h"
 #include "gui/MainWindow.h"
+#include "media/FFmpegHelpers.h"
 #include "gui/ResourceDialog.h"
 #include "gui/EasyDialog.h"
 #include "gui/KeyBindingDialog.h"

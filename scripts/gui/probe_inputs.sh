@@ -52,7 +52,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   # answers EditableText with an EMPTY string for a QSpinBox - so `ae value` prints
   # nothing for every box on this form and `ae set` writes text no value is taken
   # from. Worse, the name is ambiguous by substring: the label beside the box reads
-  # "- First frame -", which CONTAINS "First frame". What is asked for here is the
+  # "- First frame -", which CONTAINS "First frame 1". What is asked for here is the
   # first node that answers to the name AND holds a number, which is exactly the box
   # and never the label beside it. The number read is the one the application itself
   # uses (widthSpinBox->value() is what it writes to the settings), and setting uses
@@ -158,7 +158,7 @@ PY
   '"$APP"' "'"$PROJ"'" >/tmp/probe_inputs.log 2>&1 &
   app=$!
   AE_UI_PID=$app; export AE_UI_PID   # the window the tooling must address
-  sleep 13
+  wait_ready 120 || sleep 12
   W=$(xdotool search --name "AnimeEffects" | tail -1)
   xdotool windowactivate --sync $W 2>/dev/null
 
@@ -168,7 +168,7 @@ PY
     ae_press "Export project as" "the export entry is there"
     require_export_flow
     ae wait "Use this destination" >/dev/null 2>&1 || true
-    ae_press "Use this destination" "the destination is accepted"
+    ae_activate "Use this destination" "the destination is accepted"
     # The plan for the destination is applied after the form appears, so wait for a
     # widget it only shows once that has happened before reading any input back.
     ae wait "Advanced" >/dev/null 2>&1 || true
@@ -180,23 +180,23 @@ PY
   # The aspect lock off first. With it on, the two size boxes drive each other, so the
   # width this probe set would be overwritten by the height it set next, and what came
   # back below would be the aspect ratio rather than the inputs.
-  ae_press "Keep aspect ratio" "the size boxes are unlocked from each other"
+  ae_activate "Keep aspect ratio" "the size boxes are unlocked from each other"
   sleep 0.8
-  if ! spin set "First frame" 2 "Last frame" 7 "Width" 160 "Height" 256 "Frame rate" 17 \
+  if ! spin set "First frame 1" 2 "Last frame 1" 7 "Width" 160 "Height" 256 "Frame rate" 17 \
        > /tmp/inputs_set.txt; then
     check 1 "every per-run input answers by name and takes a value (see /tmp/inputs_set.txt)"
   else
     check 0 "the per-run inputs are set by name"
   fi
   sleep 1.2
-  spin read /tmp/inputs_before_values.txt "First frame" "Last frame" "Width" "Height" "Frame rate"
+  spin read /tmp/inputs_before_values.txt "First frame 1" "Last frame 1" "Width" "Height" "Frame rate"
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/inputs_01_set.png
 
   # 2. Press Export and CANCEL the platform file dialog it opens. No encode happens,
   #    and the inputs are written on the way in - which is what makes the reopen below
   #    a test of the remembering rather than of the encoder.
-  ae_press "Export" "the form is answered"
+  ae_activate "Export" "the form is answered"
   sleep 3
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/inputs_02_filedialog.png
@@ -206,10 +206,10 @@ PY
   # 3. Reopen the form and touch NOTHING. Whatever the form holds now is what was
   #    remembered.
   open_form
-  spin read /tmp/inputs_after_values.txt "First frame" "Last frame" "Width" "Height" "Frame rate"
+  spin read /tmp/inputs_after_values.txt "First frame 1" "Last frame 1" "Width" "Height" "Frame rate"
   xdotool mousemove 700 600; sleep 0.5
   import -window root '"$SHOTS"'/inputs_03_reopened.png
-  ae_press "Cancel" "the form closes on Cancel"
+  ae_activate "Cancel" "the form closes on Cancel"
   sleep 1
   kill $app 2>/dev/null; wait $app 2>/dev/null
 ' 2>&1 | tail -4
@@ -222,8 +222,8 @@ expect_value() { # expect_value <file> <name> <value> <what>
         check 1 "$4 (got: $(grep -F "$2=" "$1" 2>/dev/null | tr -d '\n'))"
     fi
 }
-expect_value /tmp/inputs_before_values.txt "First frame" 2 "the first frame can be set on the form"
-expect_value /tmp/inputs_before_values.txt "Last frame" 7 "and the last frame"
+expect_value /tmp/inputs_before_values.txt "First frame 1" 2 "the first frame can be set on the form"
+expect_value /tmp/inputs_before_values.txt "Last frame 1" 7 "and the last frame"
 expect_value /tmp/inputs_before_values.txt "Width" 160 "and the width"
 expect_value /tmp/inputs_before_values.txt "Height" 256 "and the height"
 expect_value /tmp/inputs_before_values.txt "Frame rate" 17 "and the frame rate"
@@ -232,7 +232,7 @@ expect_value /tmp/inputs_before_values.txt "Frame rate" 17 "and the frame rate"
 # reads rather than hardcoding the answers is deliberate - a spin box clamps to what
 # the project and the destination allow, and what has to be remembered is what the
 # form actually held, not what this probe typed.
-for name in "First frame" "Last frame" "Width" "Height" "Frame rate"; do
+for name in "First frame 1" "Last frame 1" "Width" "Height" "Frame rate"; do
     before=$(grep -F "$name=" /tmp/inputs_before_values.txt 2>/dev/null | head -1)
     after=$(grep -F "$name=" /tmp/inputs_after_values.txt 2>/dev/null | head -1)
     if [ -n "$before" ] && [ "$before" = "$after" ]; then

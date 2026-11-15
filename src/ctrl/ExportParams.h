@@ -91,6 +91,12 @@ struct GeneralParams {
     QVector<frameExportRange> exportRange = QVector<frameExportRange>();
     frameExportRange nativeFrameRange = frameExportRange();
     int imageExportQuality = -1;
+    // I43 (decided 2026-09-30): the size cap is OPT-IN and settable. 0 =
+    // "Auto" = no cap enforced — a destination's own caps.maxBytes is a STATED
+    // FACT (ExportFacts, the picker badge) and nothing more; fitting happens
+    // only against THIS value and only when the user set it. Bytes; the dialog
+    // shows MB (decimals=2, 1 MB = 1,048,576 bytes).
+    qint64 sizeCapBytes = 0;
 };
 
 // The artifact chosen in the escape hatch (the dialog's Format row), used only
