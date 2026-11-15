@@ -1,0 +1,9 @@
+<RCC>
+  <!-- The CJK collection is 32 MB. It is in its OWN resource, added only to the
+       application target: assets.qrc is compiled into every test target, and the
+       32 MB font became a 162 MB generated C++ file per target (measured). -->
+  <qresource prefix="/fonts">
+    <file alias="NotoSansCJK-VF.ttc">NotoSansCJK-VF.ttc</file>
+    <file alias="OFL-NotoSansCJK.txt">OFL-NotoSansCJK.txt</file>
+  </qresource>
+</RCC>

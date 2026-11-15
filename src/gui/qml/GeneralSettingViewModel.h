@@ -44,6 +44,12 @@ class GeneralSettingViewModel : public QObject {
     // applied to QT_SCALE_FACTOR at the next start (the dialog says so): Qt fixes
     // its device-pixel ratio when the QGuiApplication is constructed.
     Q_PROPERTY(int uiScalePercent READ uiScalePercent WRITE setUiScalePercent NOTIFY uiScalePercentChanged)
+    // The user's interface font, or empty for the locale's default. Applied at the
+    // next start (the process font is built once); the shell seeds the options from
+    // QFontDatabase after the bundled faces are registered.
+    Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY fontFamilyChanged)
+    Q_PROPERTY(int fontFamilyIndex READ fontFamilyIndex WRITE setFontFamilyIndex NOTIFY fontFamilyIndexChanged)
+    Q_PROPERTY(QVariantList fontFamilyOptions READ fontFamilyOptions WRITE setFontFamilyOptions NOTIFY fontFamilyOptionsChanged)
     Q_PROPERTY(int easingIndex READ easingIndex WRITE setEasingIndex NOTIFY easingIndexChanged)
     Q_PROPERTY(int rangeIndex READ rangeIndex WRITE setRangeIndex NOTIFY rangeIndexChanged)
     // The theme's settings id ("system"/"light"/"dark"), the value
@@ -109,6 +115,8 @@ public:
         int languageIndex = 0;              // "Auto"
         // Generalsettings/ui/uiScale. 100 leaves the environment alone.
         int uiScalePercent = 100;
+        // Generalsettings/ui/fontFamily; empty means the locale's own default.
+        QString fontFamily;
         // util::Easing::Type_Linear's display index in util/Easing.cpp's
         // kEasingDisplayOrder - the SAME expression GeneralSettingDialog.cpp's read
         // block seeds when no setting is present, so a bare model and the dialog open
@@ -143,6 +151,9 @@ public:
     int currentTab() const { return mCurrentTab; }
     int languageIndex() const { return mLanguageIndex; }
     int uiScalePercent() const { return mUiScalePercent; }
+    QString fontFamily() const { return mFontFamily; }
+    int fontFamilyIndex() const;
+    QVariantList fontFamilyOptions() const { return mFontFamilyOptions; }
     int easingIndex() const { return mEasingIndex; }
     int rangeIndex() const { return mRangeIndex; }
     QString themeKey() const { return mThemeKey; }
@@ -184,6 +195,9 @@ public:
     void setLanguageIndex(int aIndex);
     // Clamps into gui::ui_scale's [75, 200] range.
     void setUiScalePercent(int aPercent);
+    void setFontFamily(const QString& aFamily);
+    void setFontFamilyIndex(int aIndex);
+    void setFontFamilyOptions(const QVariantList& aOptions);
     void setEasingIndex(int aIndex);
     void setRangeIndex(int aIndex);
     void setThemeKey(const QString& aKey);
@@ -211,6 +225,7 @@ public:
     // bodies (mInitialX != control->value()).
     Q_INVOKABLE bool languageHasChanged() const;
     Q_INVOKABLE bool uiScaleHasChanged() const;
+    Q_INVOKABLE bool fontFamilyHasChanged() const;
     Q_INVOKABLE bool easingHasChanged() const;
     Q_INVOKABLE bool rangeHasChanged() const;
     Q_INVOKABLE bool timeFormatHasChanged() const;
@@ -238,6 +253,9 @@ signals:
     void currentTabChanged();
     void languageIndexChanged();
     void uiScalePercentChanged();
+    void fontFamilyChanged();
+    void fontFamilyIndexChanged();
+    void fontFamilyOptionsChanged();
     void easingIndexChanged();
     void rangeIndexChanged();
     void themeKeyChanged();
@@ -267,6 +285,7 @@ private:
     // The "before" side, written only by seed().
     int mInitialLanguageIndex = 0;
     int mInitialUiScalePercent = 100;
+    QString mInitialFontFamily;
     int mInitialEasingIndex = 2;
     int mInitialRangeIndex = 2;
     int mInitialTimeFormatIndex = 0;
@@ -286,6 +305,8 @@ private:
     // The "now" side, written by the setters (and by seed()).
     int mLanguageIndex = 0;
     int mUiScalePercent = 100;
+    QString mFontFamily;
+    QVariantList mFontFamilyOptions;
     int mEasingIndex = 2;
     int mRangeIndex = 2;
     int mTimeFormatIndex = 0;

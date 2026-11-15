@@ -893,7 +893,12 @@ void MainWindow::onThemeUpdated(theme::Theme& aTheme) {
     if (!standard.isEmpty()) {
         QString fontOption;
         {
-            auto hasFamily = !mLocaleParam.fontFamily.isEmpty();
+            // A QSS font-family names ONE face, so a locale with a CJK fallback
+            // leaves the family out: QApplication::setFont already carries the
+            // primary + fallback list, and setting a single family here would
+            // discard it for every widget. A CJK locale's primary covers its
+            // script by itself, so naming it is safe and keeps the QSS explicit.
+            auto hasFamily = !mLocaleParam.fontFamily.isEmpty() && mLocaleParam.fallbackFamilies.isEmpty();
             auto hasSize = !mLocaleParam.fontSize.isEmpty();
             fontOption = "QWidget {" + (hasFamily ? ("font-family: " + mLocaleParam.fontFamily + ";") : "") +
                 (hasSize ? ("font-size: " + mLocaleParam.fontSize + ";") : "") + " }\n";

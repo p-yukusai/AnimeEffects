@@ -142,6 +142,7 @@ void GeneralSettingViewModel::setThemeOptions(const QVariantList& aOptions) {
 void GeneralSettingViewModel::seed(const Init& aInit) {
     mInitialLanguageIndex = aInit.languageIndex;
     mInitialUiScalePercent = ui_scale::clampPercent(aInit.uiScalePercent);
+    mInitialFontFamily = aInit.fontFamily;
     mInitialEasingIndex = aInit.easingIndex;
     mInitialRangeIndex = aInit.rangeIndex;
     mInitialTimeFormatIndex = aInit.timeFormatIndex;
@@ -161,6 +162,7 @@ void GeneralSettingViewModel::seed(const Init& aInit) {
     // Through the setters, so the "now" side moves and every listener sees it.
     setLanguageIndex(aInit.languageIndex);
     setUiScalePercent(aInit.uiScalePercent);
+    setFontFamily(aInit.fontFamily);
     setEasingIndex(aInit.easingIndex);
     setRangeIndex(aInit.rangeIndex);
     setTimeFormatIndex(aInit.timeFormatIndex);
@@ -199,6 +201,38 @@ void GeneralSettingViewModel::setUiScalePercent(int aPercent) {
         return;
     mUiScalePercent = clamped;
     emit uiScalePercentChanged();
+}
+
+int GeneralSettingViewModel::fontFamilyIndex() const {
+    for (int i = 0; i < mFontFamilyOptions.size(); ++i) {
+        if (mFontFamilyOptions.at(i).toMap().value(QStringLiteral("value")).toString() == mFontFamily)
+            return i;
+    }
+    return 0; // "Default" is the first entry; an unknown saved family reads as it
+}
+
+void GeneralSettingViewModel::setFontFamily(const QString& aFamily) {
+    if (mFontFamily == aFamily)
+        return;
+    const int before = fontFamilyIndex();
+    mFontFamily = aFamily;
+    emit fontFamilyChanged();
+    if (fontFamilyIndex() != before)
+        emit fontFamilyIndexChanged();
+}
+
+void GeneralSettingViewModel::setFontFamilyIndex(int aIndex) {
+    if (aIndex < 0 || mFontFamilyOptions.size() <= aIndex)
+        return;
+    setFontFamily(mFontFamilyOptions.at(aIndex).toMap().value(QStringLiteral("value")).toString());
+}
+
+void GeneralSettingViewModel::setFontFamilyOptions(const QVariantList& aOptions) {
+    if (mFontFamilyOptions == aOptions)
+        return;
+    mFontFamilyOptions = aOptions;
+    emit fontFamilyOptionsChanged();
+    emit fontFamilyIndexChanged(); // the same family may resolve to a new index
 }
 
 void GeneralSettingViewModel::setEasingIndex(int aIndex) {
@@ -328,6 +362,8 @@ void GeneralSettingViewModel::setAccentOptions(const QVariantList& aOptions) {
 bool GeneralSettingViewModel::languageHasChanged() const { return mInitialLanguageIndex != mLanguageIndex; }
 
 bool GeneralSettingViewModel::uiScaleHasChanged() const { return mInitialUiScalePercent != mUiScalePercent; }
+
+bool GeneralSettingViewModel::fontFamilyHasChanged() const { return mInitialFontFamily != mFontFamily; }
 
 bool GeneralSettingViewModel::easingHasChanged() const { return mInitialEasingIndex != mEasingIndex; }
 

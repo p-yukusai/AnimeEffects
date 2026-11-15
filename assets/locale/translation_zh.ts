@@ -177,7 +177,7 @@
         <location filename="../../src/gui/qml/NewProjectDialog.qml" line="350"/>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="384"/>
         <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="280"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="563"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="574"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -330,7 +330,7 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="389"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="568"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="579"/>
         <source>OK</source>
         <translation>确定</translation>
     </message>
@@ -390,95 +390,101 @@
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="252"/>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="254"/>
-        <source>Default keyframe easing</source>
-        <translation>默认关键帧缓和</translation>
+        <source>Interface font (needs restart)</source>
+        <translation>界面字体（需要重启）</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="263"/>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="265"/>
+        <source>Default keyframe easing</source>
+        <translation>默认关键帧缓和</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="274"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="276"/>
         <source>Default keyframe range</source>
         <translation>默认关键帧范围</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="279"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="290"/>
         <source>Theme</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="310"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="321"/>
         <source>Accent color</source>
         <translation>强调色</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="326"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="337"/>
         <source>Accent color %1</source>
         <translation>强调色 %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="347"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="358"/>
         <source>Allow donation menu</source>
         <translation>展示捐赠菜单</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="359"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="370"/>
         <source>Reset recent files list</source>
         <translation>重置最近文件列表</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="365"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="376"/>
         <source>Deletes all project entries from your recents</source>
         <translation>从历史记录中删除所有项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="383"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
         <source>Automatically save your project</source>
         <translation>自动保存项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="388"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="399"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="405"/>
         <source>Time (in minutes) between autosaves</source>
         <translation>自动保存之间的时间间隔（以分钟为单位）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="415"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="426"/>
         <source>Show mesh when selecting FFD</source>
         <translation>选择FFD时显示网格</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="422"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="433"/>
         <source>On copy send keys to the clipboard</source>
         <translation>复制时将按键发送到剪贴板</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="429"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="440"/>
         <source>Enforce ID check on asset download</source>
         <translation>在下载素材时强制进行ID检查</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="436"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="447"/>
         <source>Ignore export warnings</source>
         <translation>忽略导出警告</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="443"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="454"/>
         <source>Force project to load</source>
         <translation>强制装入工程</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="448"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="450"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="459"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="461"/>
         <source>Timeline format</source>
         <translation>时间轴格式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="470"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="476"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="481"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="487"/>
         <source>Global keybind delay (ms)</source>
         <translation>全局快捷键延迟（ms）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="506"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="517"/>
         <source>Invert zoom direction</source>
         <translation type="unfinished"></translation>
     </message>
@@ -491,7 +497,7 @@
         <translation type="vanished">反转时间轴滚动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="513"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="524"/>
         <source>Middle mouse moves canvas</source>
         <translation>鼠标中键移动画布</translation>
     </message>
@@ -4122,60 +4128,60 @@ Open it?</source>
         <translation type="vanished">需要 %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1770"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1833"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1933"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1978"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2028"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2055"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2086"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1775"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1838"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1938"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1983"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2033"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2060"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2091"/>
         <source>Export Error</source>
         <translation>导出错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1771"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1776"/>
         <source>Unknown export destination: %1</source>
         <translation>未知的导出目的地：%1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1862"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1867"/>
         <source>File exists</source>
         <translation>文件已存在</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1868"/>
         <source>The file &quot;%1&quot; already exists. Overwrite?</source>
         <translation>文件“%1”已存在。要覆盖吗？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1934"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1939"/>
         <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
         <translation>%1限制了文件大小，这意味着需要多次编码，而这需要把全部%2帧都放在内存中（约%3 MB）。请减少导出帧数，或选择没有体积限制的目的地。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1952"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1957"/>
         <source>Fitting under %1&apos;s %2 KB limit...</source>
         <translation>正在适配%1的%2 KB上限...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1965"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1970"/>
         <source>Export Canceled</source>
         <translation>导出已取消</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1966"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1971"/>
         <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
         <translation>在适配%1的体积上限时导出被中止。已写入的文件是最后一次尝试的结果，可能超出该上限。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1979"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1984"/>
         <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
 %4</source>
         <translation>%1把文件限制在%2 KB以内，而即使最小的设置也放不进（%3 KB）。
 %4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1987"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1992"/>
         <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
         <translation>经过%2次尝试后适配到%1字节（%3x%4）。</translation>
     </message>
@@ -5379,19 +5385,24 @@ Open it?</source>
         <translation type="vanished">时间轴格式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>System</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>Dark</source>
         <translation>深色</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="260"/>
+        <source>Default</source>
+        <translation>默认</translation>
     </message>
     <message>
         <source>Theme</source>
@@ -5446,12 +5457,12 @@ Open it?</source>
         <translation type="vanished">从历史记录中删除所有项目</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="323"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="323"/>
         <source>All entries have been successfully removed</source>
         <translation>所有条目删除成功</translation>
     </message>
@@ -5654,7 +5665,7 @@ Check FFmpeg palette generation 🗸</source>
         <translation type="vanished">鼠标中键移动画布</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="116"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="117"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
@@ -6340,37 +6351,37 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">工具库</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="937"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="942"/>
         <source>Theme changed</source>
         <translation>主题已更改</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="939"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="944"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>更换主题后可能会出现视觉障碍，建议重新启动应用程序。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1161"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1166"/>
         <source> has been modified. Save changes?</source>
         <translation> 已改动。保存变动？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1163"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1168"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>一些项目已被修改。保存修改？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1171"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1176"/>
         <source>Save Changes</source>
         <translation>保存更改</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1172"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1177"/>
         <source>Discard Changes</source>
         <translation>放弃修改</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1173"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1178"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -6383,57 +6394,57 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">重置 : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1316"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1395"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1428"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1501"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1321"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1400"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1433"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1506"/>
         <source>Loading Error</source>
         <translation>加载错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1369"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1374"/>
         <source>Open File</source>
         <translation>打开文件</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1515"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1520"/>
         <source>Save File</source>
         <translation>保存文件</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2164"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2169"/>
         <source>Exported %1 (%2 KB)</source>
         <translation>已导出 %1（%2 KB）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2174"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
         <source> (%1 of %2 KB allowed for %3)</source>
         <translation> （%1，%3 的上限为 %2 KB）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2184"/>
         <source>; OVER THE LIMIT, it will be rejected</source>
         <translation>；已超出上限，将被拒收</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2218"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2223"/>
         <source>All files (*)</source>
         <translation>所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2219"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2224"/>
         <source>%1 files (*.%2)</source>
         <translation>%1 文件 (*.%2)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2972"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2977"/>
         <source>Nothing is docked on the %1</source>
         <translation>%1上没有停靠的面板</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="455"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2971"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2973"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2976"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2978"/>
         <source>Show or hide the %1</source>
         <translation>显示或隐藏%1</translation>
     </message>
@@ -6522,12 +6533,12 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation>底部</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1448"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1453"/>
         <source>Recover unsaved project?</source>
         <translation>恢复未保存的项目？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1449"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1454"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -6618,8 +6629,8 @@ Open it?</source>
         <translation type="vanished">标签图片</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2212"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2291"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2217"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2296"/>
         <source>Export Folder</source>
         <translation>导出文件</translation>
     </message>
@@ -6636,7 +6647,7 @@ Open it?</source>
         <translation type="vanished">导出错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2220"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2225"/>
         <source>Export File</source>
         <translation>导出文件</translation>
     </message>

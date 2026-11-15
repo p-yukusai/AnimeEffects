@@ -249,6 +249,17 @@ Item {
                         }
                     }
 
+                    AeFieldLabel { text: qsTr("Interface font (needs restart)") }
+                    AeComboBox {
+                        objectName: qsTr("Interface font (needs restart)")
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 260
+                        overlay: root
+                        options: generalSettingModel.fontFamilyOptions
+                        index: generalSettingModel.fontFamilyIndex
+                        onActivated: (index) => generalSettingModel.fontFamilyIndex = index
+                    }
+
                     AeFieldLabel { text: qsTr("Default keyframe easing") }
                     AeComboBox {
                         objectName: qsTr("Default keyframe easing")

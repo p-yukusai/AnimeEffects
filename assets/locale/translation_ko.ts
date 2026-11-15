@@ -177,7 +177,7 @@
         <location filename="../../src/gui/qml/NewProjectDialog.qml" line="350"/>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="384"/>
         <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="280"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="563"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="574"/>
         <source>Cancel</source>
         <translation>취소</translation>
     </message>
@@ -330,7 +330,7 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="389"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="568"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="579"/>
         <source>OK</source>
         <translation>확인</translation>
     </message>
@@ -390,95 +390,101 @@
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="252"/>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="254"/>
-        <source>Default keyframe easing</source>
-        <translation>기본 키프레임 이징</translation>
+        <source>Interface font (needs restart)</source>
+        <translation>인터페이스 글꼴(재시작 필요)</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="263"/>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="265"/>
+        <source>Default keyframe easing</source>
+        <translation>기본 키프레임 이징</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="274"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="276"/>
         <source>Default keyframe range</source>
         <translation>기본 키프레임 범위</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="279"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="290"/>
         <source>Theme</source>
         <translation>테마</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="310"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="321"/>
         <source>Accent color</source>
         <translation>강조 색</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="326"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="337"/>
         <source>Accent color %1</source>
         <translation>강조 색 %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="347"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="358"/>
         <source>Allow donation menu</source>
         <translation>기부 메뉴 허용</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="359"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="370"/>
         <source>Reset recent files list</source>
         <translation>최근 파일 목록 초기화</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="365"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="376"/>
         <source>Deletes all project entries from your recents</source>
         <translation>최근 항목에서 모든 프로젝트 항목을 삭제합니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="383"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
         <source>Automatically save your project</source>
         <translation>프로젝트 자동 저장</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="388"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="399"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="405"/>
         <source>Time (in minutes) between autosaves</source>
         <translation>자동 저장 간격(분)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="415"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="426"/>
         <source>Show mesh when selecting FFD</source>
         <translation>FFD 선택 시 메시 표시</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="422"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="433"/>
         <source>On copy send keys to the clipboard</source>
         <translation>복사 시 키를 클립보드로 전송</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="429"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="440"/>
         <source>Enforce ID check on asset download</source>
         <translation>에셋 다운로드 시 ID 확인 강제</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="436"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="447"/>
         <source>Ignore export warnings</source>
         <translation>내보내기 경고 무시</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="443"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="454"/>
         <source>Force project to load</source>
         <translation>프로젝트 강제 로드</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="448"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="450"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="459"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="461"/>
         <source>Timeline format</source>
         <translation>타임라인 형식</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="470"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="476"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="481"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="487"/>
         <source>Global keybind delay (ms)</source>
         <translation>전역 키 바인딩 지연(ms)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="506"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="517"/>
         <source>Invert zoom direction</source>
         <translation type="unfinished"></translation>
     </message>
@@ -491,7 +497,7 @@
         <translation type="vanished">타임라인 스크롤 반전</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="513"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="524"/>
         <source>Middle mouse moves canvas</source>
         <translation>가운데 마우스 버튼으로 캔버스 이동</translation>
     </message>
@@ -4106,60 +4112,60 @@ Open it?</source>
         <translation type="vanished">%1 필요</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1770"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1833"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1933"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1978"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2028"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2055"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2086"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1775"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1838"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1938"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1983"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2033"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2060"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2091"/>
         <source>Export Error</source>
         <translation>내보내기 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1771"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1776"/>
         <source>Unknown export destination: %1</source>
         <translation>알 수 없는 내보내기 대상: %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1862"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1867"/>
         <source>File exists</source>
         <translation>파일이 이미 있음</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1868"/>
         <source>The file &quot;%1&quot; already exists. Overwrite?</source>
         <translation>파일 &quot;%1&quot;이(가) 이미 있습니다. 덮어쓰시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1934"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1939"/>
         <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
         <translation>%1은 파일 크기를 제한하므로 두 번 이상 인코딩해야 하고, 그러려면 %2개 프레임을 모두 메모리에 올려야 합니다(약 %3 MB). 프레임 수를 줄여 내보내거나 크기 제한이 없는 대상을 고르세요.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1952"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1957"/>
         <source>Fitting under %1&apos;s %2 KB limit...</source>
         <translation>%1의 %2 KB 제한에 맞추는 중...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1965"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1970"/>
         <source>Export Canceled</source>
         <translation>내보내기 취소됨</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1966"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1971"/>
         <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
         <translation>%1의 크기 제한에 맞추는 중에 내보내기가 중단되었습니다. 이미 기록된 파일은 마지막 시도 결과이며 제한을 넘을 수 있습니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1979"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1984"/>
         <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
 %4</source>
         <translation>%1은 파일을 %2 KB로 제한하는데 가장 작은 설정으로도 맞추지 못했습니다(%3 KB).
 %4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1987"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1992"/>
         <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
         <translation>%2회 시도 만에 %1바이트에 맞췄습니다(%3x%4).</translation>
     </message>
@@ -5335,19 +5341,24 @@ Open it?</source>
         <translation type="vanished">타임라인 형식</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>System</source>
         <translation>시스템</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>Light</source>
         <translation>라이트</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>Dark</source>
         <translation>다크</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="260"/>
+        <source>Default</source>
+        <translation>기본값</translation>
     </message>
     <message>
         <source>Theme</source>
@@ -5402,12 +5413,12 @@ Open it?</source>
         <translation type="vanished">최근 항목에서 모든 프로젝트 항목을 삭제합니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="323"/>
         <source>Success</source>
         <translation>성공</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="323"/>
         <source>All entries have been successfully removed</source>
         <translation>모든 항목이 성공적으로 제거되었습니다</translation>
     </message>
@@ -5566,7 +5577,7 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">가운데 마우스 버튼으로 캔버스 이동</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="116"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="117"/>
         <source>Settings</source>
         <translation>설정</translation>
     </message>
@@ -6262,49 +6273,49 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation>아래쪽</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="937"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="942"/>
         <source>Theme changed</source>
         <translation>테마 변경됨</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="939"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="944"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>테마를 변경한 후 시각적 아티팩트가 나타날 수 있습니다. 애플리케이션을 다시 시작하는 것이 좋습니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1161"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1166"/>
         <source> has been modified. Save changes?</source>
         <translation> 이(가) 수정되었습니다. 변경 내용을 저장하시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1163"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1168"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>일부 프로젝트가 수정되었습니다. 변경 내용을 저장하시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1171"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1176"/>
         <source>Save Changes</source>
         <translation>변경 내용 저장</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1172"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1177"/>
         <source>Discard Changes</source>
         <translation>변경 내용 무시</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1173"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1178"/>
         <source>Cancel</source>
         <translation>취소</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2972"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2977"/>
         <source>Nothing is docked on the %1</source>
         <translation>%1에 도킹된 패널이 없습니다</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="455"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2971"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2973"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2976"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2978"/>
         <source>Show or hide the %1</source>
         <translation>%1 표시/숨기기</translation>
     </message>
@@ -6317,25 +6328,25 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">다시 실행됨: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1316"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1395"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1428"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1501"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1321"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1400"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1433"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1506"/>
         <source>Loading Error</source>
         <translation>불러오기 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1369"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1374"/>
         <source>Open File</source>
         <translation>파일 열기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1448"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1453"/>
         <source>Recover unsaved project?</source>
         <translation>저장되지 않은 프로젝트를 복구하시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1449"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1454"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -6346,32 +6357,32 @@ Open it?</source>
 여시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1515"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1520"/>
         <source>Save File</source>
         <translation>파일 저장</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2164"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2169"/>
         <source>Exported %1 (%2 KB)</source>
         <translation>%1 내보냄 (%2 KB)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2174"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
         <source> (%1 of %2 KB allowed for %3)</source>
         <translation> (%3에 허용된 %2 KB 중 %1)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2184"/>
         <source>; OVER THE LIMIT, it will be rejected</source>
         <translation>; 제한을 초과하여 거부됩니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2218"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2223"/>
         <source>All files (*)</source>
         <translation>모든 파일 (*)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2219"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2224"/>
         <source>%1 files (*.%2)</source>
         <translation>%1 파일 (*.%2)</translation>
     </message>
@@ -6484,8 +6495,8 @@ Open it?</source>
         <translation type="vanished">Tagged Image</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2212"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2291"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2217"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2296"/>
         <source>Export Folder</source>
         <translation>내보내기 폴더</translation>
     </message>
@@ -6502,7 +6513,7 @@ Open it?</source>
         <translation type="vanished">내보내기 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2220"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2225"/>
         <source>Export File</source>
         <translation>파일 내보내기</translation>
     </message>

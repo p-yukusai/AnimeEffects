@@ -2286,3 +2286,12 @@ target_include_directories(bezier_text PRIVATE .. ../src)
 target_compile_definitions(bezier_text PRIVATE
     AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1)
 target_link_libraries(bezier_text PRIVATE Qt6::Core)
+
+# The shipped Noto Sans CJK collection, its glyph coverage, and the locale policy.
+# The font is read from the source tree: the app embeds it in its own resource, not
+# in assets.qrc, because that qrc is compiled into every test target.
+add_executable(cjk_fonts cjk_fonts.cpp ../src/gui/LocaleFonts.cpp)
+target_include_directories(cjk_fonts PRIVATE .. ../src)
+target_compile_definitions(cjk_fonts PRIVATE
+    AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1)
+target_link_libraries(cjk_fonts PRIVATE Qt6::Gui)

@@ -1,6 +1,7 @@
 #include <QLocale>
 #include <QSettings>
 #include "gui/LocaleDecider.h"
+#include "gui/LocaleFonts.h"
 
 namespace gui {
 
@@ -61,16 +62,34 @@ LocaleDecider::LocaleDecider(): mLocaleParam(), mTranslator(), mHasTranslator() 
         }
     }
 
-    // Locale font defaults: the bundled Geist family everywhere; the size is
-    // per-locale (zh uses a larger face for CJK). Stored in QSettings so they
-    // are tunable without a shipped file; these are the shipped defaults.
+    // Locale font defaults: a CJK interface uses the shipped face for its region
+    // (JP/KR/SC); a Latin one keeps Geist and carries the JP face as a fallback, so
+    // a Japanese layer name still renders without a system CJK font. The size is
+    // per-locale (zh uses a larger face). Both are stored in QSettings so they stay
+    // tunable without a shipped file; these are the shipped defaults.
     {
         const QString sizeDefault = (locAbb == QLatin1String("zh")) ? QStringLiteral("10pt") : QStringLiteral("8pt");
+        const QString localeGroup = locAbb.isEmpty() ? QStringLiteral("default") : locAbb;
+        const QString defaultFamily = locale_fonts::defaultFamilyForLanguage(locAbb);
+
         QSettings settings;
-        settings.beginGroup("locale");
-        settings.beginGroup(locAbb.isEmpty() ? QStringLiteral("default") : locAbb);
-        mLocaleParam.fontFamily = settings.value("fontFamily", QStringLiteral("Geist")).toString();
-        mLocaleParam.fontSize = settings.value("fontSize", sizeDefault).toString();
+        // The interface-font setting is the user's explicit choice and wins over
+        // the locale group.
+        const QString customFamily = settings.value("generalsettings/ui/fontFamily").toString().trimmed();
+        QString family;
+        {
+            settings.beginGroup("locale");
+            settings.beginGroup(localeGroup);
+            family = settings.value("fontFamily", defaultFamily).toString().trimmed();
+            mLocaleParam.fontSize = settings.value("fontSize", sizeDefault).toString();
+        }
+        if (!customFamily.isEmpty())
+            family = customFamily;
+        if (family.isEmpty())
+            family = defaultFamily;
+
+        mLocaleParam.fontFamily = family;
+        mLocaleParam.fallbackFamilies = locale_fonts::fallbackFamiliesFor(family);
     }
 }
 

@@ -177,7 +177,7 @@
         <location filename="../../src/gui/qml/NewProjectDialog.qml" line="350"/>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="384"/>
         <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="280"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="563"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="574"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -330,7 +330,7 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="389"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="568"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="579"/>
         <source>OK</source>
         <translation>ОК</translation>
     </message>
@@ -390,95 +390,101 @@
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="252"/>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="254"/>
-        <source>Default keyframe easing</source>
-        <translation>Интерполяция ключевого кадра по умолчанию</translation>
+        <source>Interface font (needs restart)</source>
+        <translation>Шрифт интерфейса (требуется перезапуск)</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="263"/>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="265"/>
+        <source>Default keyframe easing</source>
+        <translation>Интерполяция ключевого кадра по умолчанию</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="274"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="276"/>
         <source>Default keyframe range</source>
         <translation>Диапазон ключевого кадра по умолчанию</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="279"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="290"/>
         <source>Theme</source>
         <translation>Тема</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="310"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="321"/>
         <source>Accent color</source>
         <translation>Акцентный цвет</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="326"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="337"/>
         <source>Accent color %1</source>
         <translation>Акцентный цвет %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="347"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="358"/>
         <source>Allow donation menu</source>
         <translation>Разрешить меню пожертвований</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="359"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="370"/>
         <source>Reset recent files list</source>
         <translation>Сбросить список недавних файлов</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="365"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="376"/>
         <source>Deletes all project entries from your recents</source>
         <translation>Удаляет все записи проектов из списка недавних</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="383"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
         <source>Automatically save your project</source>
         <translation>Автоматически сохранять проект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="388"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="399"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="405"/>
         <source>Time (in minutes) between autosaves</source>
         <translation>Интервал между автосохранениями (в минутах)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="415"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="426"/>
         <source>Show mesh when selecting FFD</source>
         <translation>Показывать сетку при выборе FFD</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="422"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="433"/>
         <source>On copy send keys to the clipboard</source>
         <translation>При копировании отправлять ключи в буфер обмена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="429"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="440"/>
         <source>Enforce ID check on asset download</source>
         <translation>Принудительно проверять ID при загрузке ресурсов</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="436"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="447"/>
         <source>Ignore export warnings</source>
         <translation>Игнорировать предупреждения при экспорте</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="443"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="454"/>
         <source>Force project to load</source>
         <translation>Принудительно загружать проект</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="448"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="450"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="459"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="461"/>
         <source>Timeline format</source>
         <translation>Формат временной шкалы</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="470"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="476"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="481"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="487"/>
         <source>Global keybind delay (ms)</source>
         <translation>Задержка глобальных сочетаний клавиш (мс)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="506"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="517"/>
         <source>Invert zoom direction</source>
         <translation type="unfinished"></translation>
     </message>
@@ -491,7 +497,7 @@
         <translation type="vanished">Инвертировать прокрутку шкалы времени</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="513"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="524"/>
         <source>Middle mouse moves canvas</source>
         <translation>Перемещение холста средней кнопкой мыши</translation>
     </message>
@@ -4116,60 +4122,60 @@ Open it?</source>
         <translation type="vanished">требуется %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1770"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1833"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1933"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1978"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2028"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2055"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2086"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1775"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1838"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1938"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1983"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2033"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2060"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2091"/>
         <source>Export Error</source>
         <translation>Ошибка экспорта</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1771"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1776"/>
         <source>Unknown export destination: %1</source>
         <translation>Неизвестное назначение экспорта: %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1862"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1867"/>
         <source>File exists</source>
         <translation>Файл существует</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1868"/>
         <source>The file &quot;%1&quot; already exists. Overwrite?</source>
         <translation>Файл «%1» уже существует. Заменить его?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1934"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1939"/>
         <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
         <translation>%1 ограничивает размер файла, а значит файл придётся кодировать несколько раз, и для этого все %2 кадров должны находиться в памяти (~%3 MB). Экспортируйте меньше кадров или выберите назначение без ограничения размера.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1952"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1957"/>
         <source>Fitting under %1&apos;s %2 KB limit...</source>
         <translation>%1: подгонка под лимит %2 KB...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1965"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1970"/>
         <source>Export Canceled</source>
         <translation>Экспорт отменён</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1966"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1971"/>
         <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
         <translation>Экспорт остановлен во время подгонки под ограничение размера (%1). Уже записанный файл является последней попыткой и может превышать лимит.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1979"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1984"/>
         <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
 %4</source>
         <translation>%1 ограничивает размер файла значением %2 KB, и даже минимальные настройки не уложились в него (%3 KB).
 %4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1987"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1992"/>
         <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
         <translation>Подогнано до %1 байт; попыток: %2 (%3x%4).</translation>
     </message>
@@ -5357,19 +5363,24 @@ Open it?</source>
         <translation type="vanished">Формат временной шкалы</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>System</source>
         <translation>Системная</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>Light</source>
         <translation>Светлая</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>Dark</source>
         <translation>Тёмная</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="260"/>
+        <source>Default</source>
+        <translation>По умолчанию</translation>
     </message>
     <message>
         <source>Theme</source>
@@ -5424,12 +5435,12 @@ Open it?</source>
         <translation type="vanished">Удаляет все записи проектов из списка недавних</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="323"/>
         <source>Success</source>
         <translation>Успешно</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="323"/>
         <source>All entries have been successfully removed</source>
         <translation>Все записи успешно удалены</translation>
     </message>
@@ -5604,7 +5615,7 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">Перемещение холста средней кнопкой мыши</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="116"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="117"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
@@ -6276,37 +6287,37 @@ If we forgot to include you please let us know or open a PR!</source>
 <context>
     <name>gui::MainWindow</name>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="937"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="942"/>
         <source>Theme changed</source>
         <translation>Тема изменена</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="939"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="944"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>После смены темы могут появиться визуальные артефакты, рекомендуем перезапустить приложение.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1161"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1166"/>
         <source> has been modified. Save changes?</source>
         <translation> был изменён. Сохранить изменения?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1163"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1168"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>Некоторые проекты были изменены. Сохранить изменения?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1171"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1176"/>
         <source>Save Changes</source>
         <translation>Сохранить изменения</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1172"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1177"/>
         <source>Discard Changes</source>
         <translation>Отбросить изменения</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1173"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1178"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -6319,57 +6330,57 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">Повторено: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1316"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1395"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1428"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1501"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1321"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1400"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1433"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1506"/>
         <source>Loading Error</source>
         <translation>Ошибка загрузки</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1369"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1374"/>
         <source>Open File</source>
         <translation>Открыть файл</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1515"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1520"/>
         <source>Save File</source>
         <translation>Сохранить файл</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2164"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2169"/>
         <source>Exported %1 (%2 KB)</source>
         <translation>Экспортировано %1 (%2 KB)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2174"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
         <source> (%1 of %2 KB allowed for %3)</source>
         <translation> (%1 из %2 KB, лимит: %3)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2184"/>
         <source>; OVER THE LIMIT, it will be rejected</source>
         <translation>; ВЫШЕ ЛИМИТА, файл будет отклонён</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2218"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2223"/>
         <source>All files (*)</source>
         <translation>Все файлы (*)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2219"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2224"/>
         <source>%1 files (*.%2)</source>
         <translation>Файлы %1 (*.%2)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2972"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2977"/>
         <source>Nothing is docked on the %1</source>
         <translation>%1: ничего не закреплено</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="455"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2971"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2973"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2976"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2978"/>
         <source>Show or hide the %1</source>
         <translation>%1: показать или скрыть</translation>
     </message>
@@ -6436,12 +6447,12 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation>нижняя сторона</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1448"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1453"/>
         <source>Recover unsaved project?</source>
         <translation>Восстановить несохранённый проект?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1449"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1454"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -6532,8 +6543,8 @@ Open it?</source>
         <translation type="vanished">Tagged Image</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2212"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2291"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2217"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2296"/>
         <source>Export Folder</source>
         <translation>Папка экспорта</translation>
     </message>
@@ -6550,7 +6561,7 @@ Open it?</source>
         <translation type="vanished">Ошибка экспорта</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2220"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2225"/>
         <source>Export File</source>
         <translation>Экспорт файла</translation>
     </message>

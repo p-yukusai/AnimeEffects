@@ -7,6 +7,7 @@
 #include <QQuickWidget>
 #include <QQuickWindow>
 
+#include "gui/LocaleFonts.h"
 #include "gui/LocaleParam.h"
 
 namespace gui {
@@ -21,22 +22,13 @@ namespace gui {
 // using `Qt.application.font` left every row at 9pt, and 12px literals were neither
 // the dock's size nor its family.
 inline QFont qmlUiFont(const LocaleParam& aLocale) {
-    QFont font(QApplication::font());
-    if (!aLocale.fontFamily.isEmpty())
-        font.setFamily(aLocale.fontFamily);
-    const QString size = aLocale.fontSize.trimmed();
-    bool ok = false;
-    if (size.endsWith(QStringLiteral("pt"), Qt::CaseInsensitive)) {
-        const qreal pt = size.left(size.size() - 2).toDouble(&ok);
-        if (ok) font.setPointSizeF(pt);
-    } else if (size.endsWith(QStringLiteral("px"), Qt::CaseInsensitive)) {
-        const int px = size.left(size.size() - 2).toInt(&ok);
-        if (ok) font.setPixelSize(px);
-    } else if (!size.isEmpty()) {
-        const qreal pt = size.toDouble(&ok);
-        if (ok) font.setPointSizeF(pt);
-    }
-    return font;
+    // THE DOCK IS NOT THE PROCESS. QApplication::font() is the platform default (9pt
+    // here) while the docks draw at the locale's 8pt Geist: widgets get that through
+    // standard.ssa, a Qt Quick scene does not, because QML's Qt.application.font IS
+    // QApplication::font(). So every QML dock is handed this font as a context property
+    // (uiFont) and its text sets `font: uiFont`. The families include the shipped CJK
+    // fallback, so a Latin UI still draws a Japanese name.
+    return locale_fonts::fontFor(aLocale);
 }
 
 // A QQuickWidget that hands the application the keys its scene has no use for.

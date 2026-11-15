@@ -15,6 +15,7 @@
 #include <QQmlContext>
 #include <QScreen>
 #include <QSettings>
+#include <QFontDatabase>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QVariantMap>
@@ -136,6 +137,10 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
         if (uiScale.isValid())
             init.uiScalePercent = uiScale.toInt();
 
+        auto fontFamily = settings.value("generalsettings/ui/fontFamily");
+        if (fontFamily.isValid())
+            init.fontFamily = fontFamily.toString();
+
         // ONE resolver for both stored forms (the enum ordinal of the shared-table
         // refactor and the older canonical NAME): a stored "Auto" or the retired
         // ordinal 14 meant the automatic (CLAMPED) handle pair, which the option
@@ -243,6 +248,31 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
             accents.append(map);
         }
         mModel->setAccentOptions(accents);
+    }
+    {
+        // The interface font list is the font database's own families, after the
+        // bundled Geist weights and the CJK collection were registered at startup.
+        // "Default" (empty) means the locale's family; a saved family that is no
+        // longer installed is kept in the list so the user can see what is selected
+        // instead of silently landing on Default.
+        QVariantList fonts;
+        QVariantMap defaultItem;
+        defaultItem.insert(QStringLiteral("label"), tr("Default"));
+        defaultItem.insert(QStringLiteral("value"), QString());
+        fonts.append(defaultItem);
+
+        QStringList families = QFontDatabase::families();
+        families.sort(Qt::CaseInsensitive);
+        const QString saved = mModel->fontFamily();
+        if (!saved.isEmpty() && !families.contains(saved))
+            families.push_front(saved);
+        for (const QString& family : families) {
+            QVariantMap map;
+            map.insert(QStringLiteral("label"), family);
+            map.insert(QStringLiteral("value"), family);
+            fonts.append(map);
+        }
+        mModel->setFontFamilyOptions(fonts);
     }
 
     mTheme = new QmlTheme(this);
@@ -394,6 +424,10 @@ void GeneralSettingDialog::saveSettings() {
         // Applied at the next start: QT_SCALE_FACTOR is read when QApplication is
         // constructed, which is why the row says "needs restart".
         settings.setValue("generalsettings/ui/uiScale", mModel->uiScalePercent());
+    }
+    if (mModel->fontFamilyHasChanged()) {
+        // Read by LocaleDecider at the next start; the row says so too.
+        settings.setValue("generalsettings/ui/fontFamily", mModel->fontFamily());
     }
     if (donationHasChanged()) {
         settings.setValue("generalsettings/ui/donationAllowed", mModel->donationAllowed());

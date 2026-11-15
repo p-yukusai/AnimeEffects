@@ -177,7 +177,7 @@
         <location filename="../../src/gui/qml/NewProjectDialog.qml" line="350"/>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="384"/>
         <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="280"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="563"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="574"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
@@ -330,7 +330,7 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="389"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="568"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="579"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
@@ -390,95 +390,101 @@
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="252"/>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="254"/>
-        <source>Default keyframe easing</source>
-        <translation>デフォルトのキーフレームイージング</translation>
+        <source>Interface font (needs restart)</source>
+        <translation>インターフェースフォント（再起動が必要）</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="263"/>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="265"/>
+        <source>Default keyframe easing</source>
+        <translation>デフォルトのキーフレームイージング</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="274"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="276"/>
         <source>Default keyframe range</source>
         <translation>デフォルトのキーフレーム範囲</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="279"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="290"/>
         <source>Theme</source>
         <translation>テーマ</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="310"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="321"/>
         <source>Accent color</source>
         <translation>アクセントカラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="326"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="337"/>
         <source>Accent color %1</source>
         <translation>アクセントカラー %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="347"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="358"/>
         <source>Allow donation menu</source>
         <translation>寄付メニューを許可する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="359"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="370"/>
         <source>Reset recent files list</source>
         <translation>最近使ったファイル一覧をリセットする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="365"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="376"/>
         <source>Deletes all project entries from your recents</source>
         <translation>すべてのプロジェクトのエントリーを履歴から削除します</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="383"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
         <source>Automatically save your project</source>
         <translation>プロジェクトを自動で保存する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="388"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="399"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="405"/>
         <source>Time (in minutes) between autosaves</source>
         <translation>オートセーブまでの時間（分）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="415"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="426"/>
         <source>Show mesh when selecting FFD</source>
         <translation>FFD選択時にメッシュを自動で表示する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="422"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="433"/>
         <source>On copy send keys to the clipboard</source>
         <translation>キーをクリップボードに自動でコピーする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="429"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="440"/>
         <source>Enforce ID check on asset download</source>
         <translation>アセットダウンロード時のIDチェックを強制する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="436"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="447"/>
         <source>Ignore export warnings</source>
         <translation>エクスポート警告を無視</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="443"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="454"/>
         <source>Force project to load</source>
         <translation>強制的にプロジェクトをロードする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="448"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="450"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="459"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="461"/>
         <source>Timeline format</source>
         <translation>タイムライン形式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="470"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="476"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="481"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="487"/>
         <source>Global keybind delay (ms)</source>
         <translation>グローバルキーバインドディレイ(ミリ秒)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="506"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="517"/>
         <source>Invert zoom direction</source>
         <translation type="unfinished"></translation>
     </message>
@@ -491,7 +497,7 @@
         <translation type="vanished">タイムラインの拡縮を逆にする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="513"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="524"/>
         <source>Middle mouse moves canvas</source>
         <translation>マウス中ボタンでキャンバスを移動</translation>
     </message>
@@ -4122,60 +4128,60 @@ Open it?</source>
         <translation type="vanished">%1 が必要</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1770"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1833"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1933"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1978"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2028"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2055"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2086"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1775"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1838"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1938"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1983"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2033"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2060"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2091"/>
         <source>Export Error</source>
         <translation>エクスポートエラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1771"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1776"/>
         <source>Unknown export destination: %1</source>
         <translation>不明な出力先: %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1862"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1867"/>
         <source>File exists</source>
         <translation>ファイルが存在します</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1868"/>
         <source>The file &quot;%1&quot; already exists. Overwrite?</source>
         <translation>ファイル &quot;%1&quot; はすでに存在します。上書きしますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1934"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1939"/>
         <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
         <translation>%1 はファイルサイズに上限を設けているため、エンコードを複数回行う必要があり、そのためには %2 フレームすべてをメモリに保持する必要があります（約 %3 MB）。フレーム数を減らすか、サイズ制限のない出力先を選んでください。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1952"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1957"/>
         <source>Fitting under %1&apos;s %2 KB limit...</source>
         <translation>%1 の %2 KB の上限に収まるよう調整中...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1965"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1970"/>
         <source>Export Canceled</source>
         <translation>エクスポート中止</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1966"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1971"/>
         <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
         <translation>%1 のサイズ上限に収める処理の途中でエクスポートが中止されました。すでに書き出されたファイルは最後の試行の結果であり、上限を超えている可能性があります。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1979"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1984"/>
         <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
 %4</source>
         <translation>%1 はファイルを %2 KB に制限していますが、最小の設定でも収まりませんでした（%3 KB）。
 %4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1987"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1992"/>
         <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
         <translation>%1 バイトに収まりました（%2 回の試行、%3x%4）。</translation>
     </message>
@@ -5379,19 +5385,24 @@ Open it?</source>
         <translation type="vanished">タイムライン形式</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>System</source>
         <translation>システム</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>Light</source>
         <translation>ライト</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="220"/>
         <source>Dark</source>
         <translation>ダーク</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="260"/>
+        <source>Default</source>
+        <translation>デフォルト</translation>
     </message>
     <message>
         <source>Theme</source>
@@ -5446,12 +5457,12 @@ Open it?</source>
         <translation type="vanished">すべてのプロジェクトのエントリーを履歴から削除します</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="323"/>
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="323"/>
         <source>All entries have been successfully removed</source>
         <translation>すべてのエントリーが正常に削除されました</translation>
     </message>
@@ -5664,7 +5675,7 @@ FFmpegのパレット生成の確認 ... 🗸</translation>
         <translation type="vanished">マウス中ボタンでキャンバスを移動</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="116"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="117"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
@@ -6374,37 +6385,37 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">ツールドック</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="937"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="942"/>
         <source>Theme changed</source>
         <translation>テーマ変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="939"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="944"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>テーマを変更した後、視覚的な不具合が発生する可能性があります。アプリケーションを再起動することをお勧めします。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1161"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1166"/>
         <source> has been modified. Save changes?</source>
         <translation> は変更が加えられてます。変更を保存しますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1163"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1168"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>いくつかのプロジェクトは変更が加えられてます。変更を保存しますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1171"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1176"/>
         <source>Save Changes</source>
         <translation>変更を保存する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1172"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1177"/>
         <source>Discard Changes</source>
         <translation>変更を破棄する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1173"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1178"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
@@ -6417,57 +6428,57 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">やり直す : </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1316"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1395"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1428"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1501"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1321"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1400"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1433"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1506"/>
         <source>Loading Error</source>
         <translation>読み込みエラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1369"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1374"/>
         <source>Open File</source>
         <translation>ファイルを開く</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1515"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1520"/>
         <source>Save File</source>
         <translation>ファイルを保存する</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2164"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2169"/>
         <source>Exported %1 (%2 KB)</source>
         <translation>%1 をエクスポートしました（%2 KB）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2174"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
         <source> (%1 of %2 KB allowed for %3)</source>
         <translation>（%3 に許される %2 KB のうち %1）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2184"/>
         <source>; OVER THE LIMIT, it will be rejected</source>
         <translation>。上限を超えているため拒否されます</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2218"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2223"/>
         <source>All files (*)</source>
         <translation>すべてのファイル (*)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2219"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2224"/>
         <source>%1 files (*.%2)</source>
         <translation>%1 ファイル (*.%2)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2972"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2977"/>
         <source>Nothing is docked on the %1</source>
         <translation>%1には何もドッキングされていません</translation>
     </message>
     <message>
         <location filename="../../src/gui/MainWindow.cpp" line="455"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2971"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2973"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2976"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2978"/>
         <source>Show or hide the %1</source>
         <translation>%1の表示/非表示</translation>
     </message>
@@ -6556,12 +6567,12 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation>下部</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1448"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1453"/>
         <source>Recover unsaved project?</source>
         <translation>未保存のプロジェクトを復元しますか？</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1449"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1454"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -6652,8 +6663,8 @@ Open it?</source>
         <translation type="vanished">タグ画像</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2212"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2291"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2217"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2296"/>
         <source>Export Folder</source>
         <translation>出力フォルダ</translation>
     </message>
@@ -6670,7 +6681,7 @@ Open it?</source>
         <translation type="vanished">出力エラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2220"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2225"/>
         <source>Export File</source>
         <translation>出力ファイル</translation>
     </message>

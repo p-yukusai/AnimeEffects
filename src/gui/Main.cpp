@@ -11,6 +11,7 @@
 #include "gui/GUIResources.h"
 #include "gui/MSVCBackTracer.h"
 #include "gui/LocaleDecider.h"
+#include "gui/LocaleFonts.h"
 #include "gui/UiScale.h"
 #include "util/NetworkUtil.h"
 #include <QLoggingCategory>
@@ -196,18 +197,18 @@ int entryPoint(int argc, char* argv[]) {
     const QString appDir = QApplication::applicationDirPath();
     #endif
 
-    // Register the bundled font so the Geist family resolves on every
-    // platform instead of falling back to a system font (the digit glyphs
-    // have tabular widths baked in, so number fields never shift layout).
-    // The fonts are embedded into the binary (see assets/assets.qrc).
+    // Register the bundled faces so their families resolve on every platform
+    // instead of falling back to a system font: the four static Geist weights
+    // (tabular digits, so number fields never shift layout) and the Noto Sans CJK
+    // collection (JP/KR/SC/TC/HK). The fonts are embedded (assets/assets.qrc).
+    // The application font itself is set below, once LocaleDecider has chosen the
+    // locale's family and its CJK fallback.
     {
         const QDir fontsDir(":/fonts");
-        for (const QString& file : fontsDir.entryList(QStringList() << "*.ttf", QDir::Files)) {
+        const QStringList filters = { QStringLiteral("*.ttf"), QStringLiteral("*.ttc"), QStringLiteral("*.otf") };
+        for (const QString& file : fontsDir.entryList(filters, QDir::Files)) {
             QFontDatabase::addApplicationFont(fontsDir.absoluteFilePath(file));
         }
-        QFont appFont(QApplication::font());
-        appFont.setFamily("Geist");
-        QApplication::setFont(appFont);
     }
 
     // Organization and application name are set at the top, before QApplication, so
@@ -226,6 +227,11 @@ int entryPoint(int argc, char* argv[]) {
     // live in QSettings.
     QScopedPointer<gui::LocaleDecider> locale(new gui::LocaleDecider());
     if (locale->translator()) { QCoreApplication::installTranslator(locale->translator()); }
+
+    // The process font: the locale's primary family and its CJK fallback. Widgets
+    // without an explicit family inherit it; standard.ssa adds the locale's size,
+    // and the QML docks receive the same font as uiFont.
+    QApplication::setFont(gui::locale_fonts::fontFor(locale->localeParam()));
 
     {
         // load constant gui resources; the theme reads its icons/stylesheet

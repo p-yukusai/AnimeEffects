@@ -40,6 +40,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     KeyCommandInvoker.cpp KeyCommandInvoker.h
     KeyCommandMap.cpp KeyCommandMap.h
     LocaleDecider.cpp LocaleDecider.h
+    LocaleFonts.cpp LocaleFonts.h
     UiScale.cpp UiScale.h
     LocaleParam.h
     LeakSuppressions.cpp
@@ -145,6 +146,9 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     HeaderBar.cpp HeaderBar.h
     QmlHost.h
     ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+    # The 32 MB CJK collection is app-only: assets.qrc is embedded into every
+    # test target, and the font there generated a 162 MB C++ file per target.
+    ${CMAKE_SOURCE_DIR}/assets/fonts/NotoSansCJK.qrc
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     ..
