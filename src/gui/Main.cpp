@@ -129,53 +129,20 @@ int entryPoint(int argc, char* argv[]) {
     XC_DEBUG_REPORT() << "exe path =" << app.applicationFilePath();
 
     // application path
-    #ifdef Q_OS_DARWIN
-    QString cur = app.applicationDirPath();
-    if (!QDir(cur + "/.AECache").exists() || !QDir(cur + "/.AECache/data").exists()) {
-        if (!QDir(cur + "/.AECache").exists()) {
-            void (QDir().mkdir(cur + "/.AECache"));
-        }
-        QFile::copy(cur + "/data", QDir::homePath() + "/.AECache/data");
-    }
-    QDir::setCurrent(QDir::homePath() + "./AECache");
-    //app.setAttribute(Qt::AA_DontUseNativeDialogs);
-    #endif
-
     #if defined(Q_OS_DARWIN)
     const QString appDir = app.applicationDirPath();
     QApplication::addLibraryPath(appDir + "/Contents/MacOS");
     QApplication::addLibraryPath(appDir + "/../PlugIns/");
-    QApplication::addLibraryPath(appDir + "/Contents/MacOS/data");
     #else
     const QString appDir = QApplication::applicationDirPath();
     #endif
-    QString resourceDir(appDir + "/data");
-    QDir dataDir = QDir(resourceDir);
-    if(!dataDir.exists() || !dataDir.isReadable() || dataDir.absoluteFilePath("sample.psd").isEmpty()){
-        QString newResDir;
-        QSettings settings;
-        QVariant customDataFolder = settings.value("customDataFolder");
-        if(customDataFolder.isValid()){
-            QDir cdf = QDir(customDataFolder.toString());
-            if(cdf.exists() && !cdf.isEmpty()){
-                newResDir = customDataFolder.toString();
-            }
-        }
-        if(newResDir.isEmpty() || !QDir(newResDir).exists() || dataDir.absoluteFilePath("sample.psd").isEmpty()){
-            newResDir = QFileDialog::getExistingDirectory(app.activeWindow(), QCoreApplication::translate("data_load", "Unable to locate data folder, please select it"),
-                                                appDir,
-                                                QFileDialog::ShowDirsOnly
-                                                | QFileDialog::DontResolveSymlinks);
-            settings.setValue("customDataFolder", newResDir);
-        }
-        resourceDir = newResDir;
-    }
 
     // Register the bundled font so the Geist family resolves on every
     // platform instead of falling back to a system font (the digit glyphs
     // have tabular widths baked in, so number fields never shift layout).
+    // The fonts are embedded into the binary (see assets/assets.qrc).
     {
-        const QDir fontsDir(resourceDir + "/fonts");
+        const QDir fontsDir(":/fonts");
         for (const QString& file : fontsDir.entryList(QStringList() << "*.ttf", QDir::Files)) {
             QFontDatabase::addApplicationFont(fontsDir.absoluteFilePath(file));
         }
@@ -194,24 +161,24 @@ int entryPoint(int argc, char* argv[]) {
     const QString cacheDir = !stdCacheDir.isEmpty() ? stdCacheDir : (appDir + "/cache");
 
 
-    // initialize current
-    QDir::setCurrent(appDir);
-
     // set fatal error handler
     static AEErrorHandler aeErrorHandler;
     gXCErrorHandler = &aeErrorHandler;
 
 
-    // language
+    // language: the .qm are embedded under :/i18n; the locale font defaults
+    // live in QSettings.
     QScopedPointer<gui::LocaleDecider> locale(new gui::LocaleDecider());
     if (locale->translator()) { QCoreApplication::installTranslator(locale->translator()); }
 
     {
-        // load constant gui resources
-        QScopedPointer<gui::GUIResources> resources(new gui::GUIResources(resourceDir));
+        // load constant gui resources; the theme reads its icons/stylesheet
+        // from the embedded :/ resources (see assets/assets.qrc), not the
+        // external data folder.
+        QScopedPointer<gui::GUIResources> resources(new gui::GUIResources(QStringLiteral(":")));
 
         // create system logic core
-        QScopedPointer<ctrl::System> system(new ctrl::System(resourceDir, cacheDir));
+        QScopedPointer<ctrl::System> system(new ctrl::System(cacheDir));
 
         // create main window
         QScopedPointer<gui::MainWindow> mainWindow(new gui::MainWindow(*system, *resources, locale->localeParam()));
@@ -228,8 +195,7 @@ int entryPoint(int argc, char* argv[]) {
 
 #ifdef QT_DEBUG
         qDebug() << "Launching debug project";
-        const QString testPath = resourceDir + "/sample.psd";
-        mainWindow->testNewProject(testPath);
+        mainWindow->testNewProject(QStringLiteral(AE_SAMPLE_PSD));
 #endif
         // assoc handle
         auto arguments = QCoreApplication::arguments();

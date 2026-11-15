@@ -29,7 +29,7 @@ public:
         explicit operator bool() const { return project; }
     };
 
-    System(const QString& aResourceDir, const QString& aCacheDir);
+    System(const QString& aCacheDir);
     ~System();
 
     void setAnimator(core::Animator& aAnimator);
@@ -75,7 +75,6 @@ private:
     static bool makeSureCacheDirectory(const QString& aCacheDir);
     static bool safeRename(const QString& aSrc, const QString& aDst);
 
-    const QString mResourceDir;
     const QString mCacheDir;
     QVector<core::Project*> mProjects;
     core::Animator* mAnimator;

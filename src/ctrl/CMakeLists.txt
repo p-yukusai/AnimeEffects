@@ -124,5 +124,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     img
     thr
     util
+    media
         pugixml
 )

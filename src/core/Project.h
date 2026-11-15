@@ -27,24 +27,35 @@ public:
     class Attribute {
     public:
         Attribute();
-        void setImageSize(const QSize& aSize) { mImageSize = aSize; }
+
+        // Attribute setters are OBSERVABLE: changing a value emits the owning
+        // project's onProjectAttributeModified (with a matching event type), so
+        // a value change is a first-class notification independent of any undo
+        // command. The settings dialog and the attribute commands both set the
+        // attribute and get the same re-sync; undo is a separate grain that
+        // records the before/after of a session.
+        void setImageSize(const QSize& aSize);
         const QSize& imageSize() const { return mImageSize; }
         // The project's frame range (inclusive). Everything playback-related
         // (transport, the playhead, the playback tick) is bounded by it; the
         // temporary playback window (ctrl::TimeLineEditor) overrides it while
         // active.
-        void setFrameRange(const util::Range& aRange) { mFrameRange = aRange; }
+        void setFrameRange(const util::Range& aRange);
         const util::Range& frameRange() const { return mFrameRange; }
-        void setFps(int aFps) { mFps = aFps; }
+        void setFps(int aFps);
         int fps() const { return mFps; }
-        void setLoop(bool aLoop) { mLoop = aLoop; }
+        void setLoop(bool aLoop);
         bool loop() const { return mLoop; }
+
+        // Wire the observable change notification (called by the owning Project).
+        void setChangeNotifier(std::function<void(ProjectEvent::Type)> aNotifier) { mChangeNotifier = std::move(aNotifier); }
 
     private:
         QSize mImageSize;
         util::Range mFrameRange;
         int mFps;
         bool mLoop;
+        std::function<void(ProjectEvent::Type)> mChangeNotifier;
     };
 
     class Hook {

@@ -278,10 +278,10 @@ static void fBuildLayerDrawingVariant(
     int aNonSeparable, int aPremultipliedSrc
 ) {
     gl::ExtendShader source;
-    if (!source.openFromFileVert("./data/shader/LayerDrawingVert.glsl")) {
+    if (!source.openFromFileVert(":/shaders/LayerDrawingVert.glsl")) {
         XC_FATAL_ERROR("FileIO Error", "Failed to open vertex shader file.", source.log());
     }
-    if (!source.openFromFileFrag("./data/shader/LayerDrawingFrag.glsl")) {
+    if (!source.openFromFileFrag(":/shaders/LayerDrawingFrag.glsl")) {
         XC_FATAL_ERROR("FileIO Error", "Failed to open fragment shader file.", source.log());
     }
     source.setVariationValue("BLEND_FUNC", aBlendFunc);

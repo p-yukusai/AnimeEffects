@@ -43,9 +43,12 @@ private:
 
     void onPlayBackButtonPushed(PlayBackWidget::PushType aType);
     void openAnimationSettings();
-    void applyAnimChange();
-    void applyAnimState(int aFps, const util::Range& aRange, bool aLoop,
-                        int pFps, const util::Range& pRange, bool pLoop);
+    // Live, non-undoable re-sync: apply the current dialog state to the project
+    // attribute (which drives onProjectAttributeModified) and let the timeline
+    // react immediately. Fires on every edit, including each drag tick.
+    void applyAnimLive();
+    // One undoable command for the whole popup session, pushed when it closes.
+    void applyAnimCommit();
     void refreshAnimationSettings();
 
     core::Project* mProject;

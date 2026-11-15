@@ -13,6 +13,30 @@ namespace core {
 //-------------------------------------------------------------------------------------------------
 Project::Attribute::Attribute(): mImageSize(), mFrameRange(1, kDefaultFrameCount), mFps(kStandardFps), mLoop(false) {}
 
+// Observable setters: emit the owning project's onProjectAttributeModified only
+// when a value actually changes, so re-sync (bone caches, timeline, display,
+// driver) is driven by the value being set rather than by each call site.
+void Project::Attribute::setImageSize(const QSize& aSize) {
+    if (mImageSize == aSize) return;
+    mImageSize = aSize;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeImageSize);
+}
+void Project::Attribute::setFrameRange(const util::Range& aRange) {
+    if (mFrameRange == aRange) return;
+    mFrameRange = aRange;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeFrameRange);
+}
+void Project::Attribute::setFps(int aFps) {
+    if (mFps == aFps) return;
+    mFps = aFps;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeFps);
+}
+void Project::Attribute::setLoop(bool aLoop) {
+    if (mLoop == aLoop) return;
+    mLoop = aLoop;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeLoop);
+}
+
 //-------------------------------------------------------------------------------------------------
 Project::Project(QString aFileName, Animator& aAnimator, Hook* aHookGrabbed):
     mLifeLink(),
@@ -48,6 +72,12 @@ Project::Project(QString aFileName, Animator& aAnimator, Hook* aHookGrabbed):
     onTreeRestructured.connect(&mObjectTree, &ObjectTree::onTreeRestructured);
     onResourceModified.connect(&mObjectTree, &ObjectTree::onResourceModified);
     onProjectAttributeModified.connect(&mObjectTree, &ObjectTree::onProjectAttributeModified);
+    // Attribute setters drive onProjectAttributeModified; the bool (undo) is not
+    // consumed by any listener, so a forward re-sync is all that's needed here.
+    mAttribute.setChangeNotifier([this](ProjectEvent::Type aType) {
+        ProjectEvent event(*this, aType);
+        onProjectAttributeModified(event, false);
+    });
 
 #ifdef UNUSE_PARALLEL
 #else

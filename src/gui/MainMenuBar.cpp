@@ -14,7 +14,6 @@
 #include "gui/EasyDialog.h"
 #include "gui/KeyBindingDialog.h"
 #include "gui/GeneralSettingDialog.h"
-#include "gui/MouseSettingDialog.h"
 #include "util/NetworkUtil.h"
 #include <algorithm>
 #include <limits>
@@ -28,7 +27,7 @@
 namespace gui {
 //-------------------------------------------------------------------------------------------------
 QDomDocument getVideoExportDocument() {
-    QFile file("./data/encode/VideoEncode.txt");
+    QFile file(":/encode/VideoEncode.txt");
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qDebug() << file.errorString();
@@ -312,12 +311,11 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
 
     auto preferenceMenu = new QMenu(tr("Preferences"), this);
     {
-        auto general = new QAction(tr("General settings"), this);
-        auto mouse = new QAction(tr("Mouse settings"), this);
+        auto general = new QAction(tr("Settings"), this);
         auto keyBind = new QAction(tr("Keybindings"), this);
 
         connect(general, &QAction::triggered, [&](bool) {
-            auto generalSettingsDialog = new GeneralSettingDialog(mGUIResources, this);
+            auto generalSettingsDialog = new GeneralSettingDialog(mGUIResources, aViaPoint, this);
             QScopedPointer<GeneralSettingDialog> dialog(generalSettingsDialog);
             if (dialog->exec() == QDialog::DialogCode::Accepted) {
                 if (generalSettingsDialog->timeFormatHasChanged())
@@ -332,11 +330,6 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
             }
         });
 
-        connect(mouse, &QAction::triggered, [&](bool) {
-            QScopedPointer<MouseSettingDialog> dialog(new MouseSettingDialog(aViaPoint, this));
-            dialog->exec();
-        });
-
         connect(keyBind, &QAction::triggered, [&](bool) {
             XC_PTR_ASSERT(aViaPoint.keyCommandMap());
             QScopedPointer<KeyBindingDialog> dialog(new KeyBindingDialog(*aViaPoint.keyCommandMap(), this));
@@ -344,7 +337,6 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
         });
 
         preferenceMenu->addAction(general);
-        preferenceMenu->addAction(mouse);
         preferenceMenu->addAction(keyBind);
     }
 
@@ -362,6 +354,11 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
                 tr("### AnimeEffects for ") + platform + tr(" version ") + versionString + "<br />" +
                 tr("An easy to use 2D animation software maintained by the [AnimeEffectsDevs](https://github.com/AnimeEffectsDevs)."
                    "<br />Licensed under the GPL v3.0 and powered by various open source libraries.");
+            msgStr.append(
+                tr("<br /><br />Video/audio encoding uses the FFmpeg libraries "
+                   "(https://ffmpeg.org), which are licensed under the GNU Lesser GPL "
+                   "v2.1+ (or GPL, depending on the build). Their corresponding source "
+                   "is available as required by that license."));
             msgStr.append(
                 tr("<br /><br />Contributors:<br />"
                 "[Hidefuku](https://github.com/hidefuku), "
@@ -525,8 +522,11 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow, ViaPoint& aViaPoint, GUIResour
             auto nonAscii = QRegularExpression("[^\\x00-\\x7F]+");
             QString hasUnicode = QApplication::applicationFilePath().contains(nonAscii) ? "True" : "False";
             detail += tr("Location Has Unicode: ") + hasUnicode + "\n";
-            // Write Check
-            QFile file(QApplication::applicationDirPath() + R"(\data\shader\TestBlurVert.glsl)");
+            // Write Check: the app's writable storage is the cache (and
+            // QSettings); probe the cache dir rather than the old co-located
+            // data dir (which no longer exists).
+            QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+            QFile file(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/.writeTest");
             bool isWritable = true;
             if (!file.open(QIODevice::WriteOnly)) {
                 isWritable = false;
@@ -797,15 +797,11 @@ void MainMenuBar::onProjectSettingsTriggered() {
             auto command = new cmnd::Delegatable(
                 [=]() {
                     projectPtr->attribute().setImageSize(newSize);
-                    auto event = core::ProjectEvent::imageSizeChangeEvent(*projectPtr);
-                    projectPtr->onProjectAttributeModified(event, false);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 },
                 [=]() {
                     projectPtr->attribute().setImageSize(curSize);
-                    auto event = core::ProjectEvent::imageSizeChangeEvent(*projectPtr);
-                    projectPtr->onProjectAttributeModified(event, true);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 }
@@ -822,15 +818,11 @@ void MainMenuBar::onProjectSettingsTriggered() {
             auto command = new cmnd::Delegatable(
                 [=]() {
                     projectPtr->attribute().setFrameRange(newRange);
-                    auto event = core::ProjectEvent::frameRangeChangeEvent(*projectPtr);
-                    projectPtr->onProjectAttributeModified(event, false);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 },
                 [=]() {
                     projectPtr->attribute().setFrameRange(curRange);
-                    auto event = core::ProjectEvent::frameRangeChangeEvent(*projectPtr);
-                    projectPtr->onProjectAttributeModified(event, true);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 }
@@ -847,15 +839,11 @@ void MainMenuBar::onProjectSettingsTriggered() {
             auto command = new cmnd::Delegatable(
                 [=]() {
                     projectPtr->attribute().setLoop(newLoop);
-                    auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
-                    projectPtr->onProjectAttributeModified(event, false);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 },
                 [=]() {
                     projectPtr->attribute().setLoop(curLoop);
-                    auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
-                    projectPtr->onProjectAttributeModified(event, true);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 }
@@ -873,15 +861,11 @@ void MainMenuBar::onProjectSettingsTriggered() {
             auto command = new cmnd::Delegatable(
                 [=]() {
                     projectPtr->attribute().setFps(newFPS);
-                    auto event = core::ProjectEvent::fpsChangeEvent(*projectPtr);
-                    projectPtr->onProjectAttributeModified(event, false);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 },
                 [=]() {
                     projectPtr->attribute().setFps(curFPS);
-                    auto event = core::ProjectEvent::fpsChangeEvent(*projectPtr);
-                    projectPtr->onProjectAttributeModified(event, true);
                     this->onProjectAttributeUpdated();
                     this->onVisualUpdated();
                 }

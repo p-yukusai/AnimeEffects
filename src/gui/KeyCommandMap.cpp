@@ -5,12 +5,12 @@
 namespace gui {
 
 //-------------------------------------------------------------------------------------------------
-KeyCommandMap::KeyCommand::KeyCommand(): key(), group(), label(), binding(), invokers(), releasers() {}
+KeyCommandMap::KeyCommand::KeyCommand(): key(), group(), label(), binding(), defaultBinding(), invokers(), releasers() {}
 
 KeyCommandMap::KeyCommand::KeyCommand(
     const QString& aKey, const QString& aGroup, const QString& aLabel, const ctrl::KeyBinding& aBinding
 ):
-    key(aKey), group(aGroup), label(aLabel), binding(aBinding), invokers(), releasers() {}
+    key(aKey), group(aGroup), label(aLabel), binding(aBinding), defaultBinding(aBinding), invokers(), releasers() {}
 
 //-------------------------------------------------------------------------------------------------
 KeyCommandMap::KeyCommandMap(QWidget& aParent):
@@ -105,34 +105,26 @@ void KeyCommandMap::addNewKey(
 }
 
 void KeyCommandMap::readFrom(const QSettings& aSrc) {
-    QSettings settings;
-    if (settings.value("keybindReset").isValid() && settings.value("keybindReset").toBool()) {
-        // this->deleteFrom(aSrc);
-        for (auto command : mCommands) {
-            if (aSrc.value(command->key).isValid()) {
-                aSrc.value(command->key).clear();
-            }
-        }
-        settings.value("keybindReset").clear();
-        settings.sync();
-        return;
-    }
-
+    // Reset every binding to its shipped default first, so a repeated read is
+    // idempotent and a removed/absent override cannot leave a stale binding
+    // behind. Only user differences are then re-applied.
     for (auto command : mCommands) {
+        command->binding = command->defaultBinding;
         readValue(aSrc, *command);
     }
     resetSubKeyCommands();
 }
 
-void KeyCommandMap::deleteFrom(const QSettings& aSrc) {
-    for (auto command : mCommands) {
-        eraseValue(aSrc, *command);
-    }
-}
-
 void KeyCommandMap::writeTo(QSettings& aDest) {
+    // The store holds only overrides — differences from the shipped default.
+    // Resetting to defaults therefore simply drops every entry, which is the
+    // correct end state and needs no restart.
     for (auto command : mCommands) {
-        writeValue(aDest, *command);
+        if (command->binding.matchesExactlyWith(command->defaultBinding)) {
+            aDest.remove(command->key);
+        } else {
+            aDest.setValue(command->key, command->binding.serialValue());
+        }
     }
     resetSubKeyCommands();
 }
@@ -140,16 +132,6 @@ void KeyCommandMap::writeTo(QSettings& aDest) {
 void KeyCommandMap::readValue(const QSettings& aSrc, KeyCommand& aCommand) {
     auto v = aSrc.value(aCommand.key);
     aCommand.binding.setSerialValue(v.isValid() ? v.toString() : QString());
-}
-
-void KeyCommandMap::eraseValue(const QSettings& aSrc, KeyCommand& aCommand) {
-    if (aSrc.value(aCommand.key).isValid()) {
-        aSrc.value(aCommand.key).clear();
-    };
-}
-
-void KeyCommandMap::writeValue(QSettings& aDest, const KeyCommand& aCommand) {
-    aDest.setValue(aCommand.key, aCommand.binding.serialValue());
 }
 
 void KeyCommandMap::resetSubKeyCommands() {

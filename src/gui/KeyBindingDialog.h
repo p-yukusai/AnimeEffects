@@ -27,6 +27,7 @@ private:
         const QString& group() const { return mOrigin.group; }
         void updateText(const QString& aConflictInfo);
         void flushToOrigin();
+        void resetToDefault();
 
     private:
         virtual void keyPressEvent(QKeyEvent* aEvent);
@@ -42,6 +43,7 @@ private:
     QFormLayout* createTab(const QString& aTitle);
     void updateKeyTexts();
     void saveSettings();
+    void resetToDefaults();
 
     KeyCommandMap& mKeyCommandMap;
     QVector<KeyEdit*> mKeys;

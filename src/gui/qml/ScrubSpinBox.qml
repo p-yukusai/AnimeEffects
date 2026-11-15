@@ -25,8 +25,11 @@ Item {
     // drop the button/release signal that would normally keep `pressed` true.
     property bool scrubbing: false
 
-    // Emitted when the value is finalized (drag released, Enter, or focus out) —
-    // NOT on every scrub step, so a live-apply consumer commits once per edit.
+    // Emitted on every live value change (each scrub tick, and on a typed
+    // commit) so the model can track the field and the owner can re-sync while
+    // the edit is still happening — NOT only on release.
+    signal changed(real value)
+    // Emitted when the value is finalized (drag released, Enter, or focus out).
     signal committed(real value)
 
     implicitWidth: 72
@@ -111,6 +114,7 @@ Item {
                 const divisor = fine ? 40.0 : 4.0; // ~4px/step normally, ~40 with shift
                 root.value = root.clampNv(root.value + (mouseX - lastX) / divisor * root.step);
                 lastX = mouseX;
+                root.changed(root.value);
             }
         }
         onReleased: {
@@ -170,6 +174,7 @@ Item {
                     cancelEdit = false;
                 } else {
                     root.commitText(text);
+                    root.changed(root.value);
                     root.committed(root.value);
                 }
             }

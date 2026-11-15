@@ -29,6 +29,7 @@ public:
 private:
     gl::EasyShaderProgram mShader;
     QScopedPointer<gl::BufferObject> mIndices;
+    bool mInitialized = false; // init() is idempotent (safe to call more than once)
 };
 
 } // namespace gl

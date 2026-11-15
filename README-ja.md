@@ -1,3 +1,5 @@
+[English](./README.md) · 日本語 · [简体中文](./README-zh.md) · [正體中文](./README-zh-t.md) · [Español](./README-es.md)
+
 # AnimeEffects
 
 ## ダウンロード
@@ -5,14 +7,6 @@
 |                                                                                                                                                               安定版(v1.6)                                                                                                                                                                |                                                                                                                                                                                    ナイトリー                                                                                                                                                                                    |                                         ソース コード                                          |
 | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------: |
 | [Windows](https://github.com/AnimeEffectsDevs/AnimeEffects/releases/download/v1.6/AnimeEffects-Installer-Windows.exe) - [MacOS](https://github.com/AnimeEffectsDevs/AnimeEffects/releases/download/v1.6/AnimeEffects-MacOS.zip) - [Linux](https://github.com/AnimeEffectsDevs/AnimeEffects/releases/download/v1.6/AnimeEffects-Linux.zip) | [Windows](https://nightly.link/AnimeEffectsDevs/AnimeEffects/workflows/build-windows.yaml/master/AnimeEffects-Windows-x64.zip) - [MacOS](https://nightly.link/AnimeEffectsDevs/AnimeEffects/workflows/build_mac_intel.yaml/master/AnimeEffects-MacOS.zip) - [Linux](https://nightly.link/AnimeEffectsDevs/AnimeEffects/workflows/build_linux.yaml/master/AnimeEffects-Linux.zip) | [Download ZIP](https://github.com/AnimeEffectsDevs/AnimeEffects/archive/refs/heads/master.zip) |
-
-## 🌐 README 🌐
-
-[English](./README.md) - Up-to-date <br>
-[日本語](./README-ja.md) - 時代遅れ <br>
-[简体中文](./README-zh.md) - 最新 <br>
-[正體中文](./README-zh-t.md) - 尚未提供 <br>
-[Español](./README-es.md) - Actualizado <br>
 
 ## 説明
 
@@ -63,6 +57,7 @@ AnimeEffects は、安定版リリースが出てきたらすぐに通知しま�
 ## 開発要件
 
 - Qt 6.6.X
+- Qt の `LinguistTools` CMake コンポーネント（`aqtinstall` に含まれます。システム Qt を使用する場合は、ディストリビューションの Qt `-dev` パッケージをインストールしてください）
 - Vulkan Headers
 - CMake 3.16 以降
 - MSVC/GCC/CLang (64 ビット)
@@ -80,6 +75,8 @@ sudo apt install -y libgl1-mesa-dev file libvulkan-dev openssl python3 python3-p
 pip install -U pip
 pip install aqtinstall
 aqt install-qt linux desktop 6.6.2 gcc_64 -m qtimageformats qtmultimedia qt5compat
+
+> システム Qt（`aqt` ではなく）を使用する場合は、`qt6-tools-dev` もインストールしてください（`LinguistTools` CMake コンポーネントが含まれます）。
 git clone https://github.com/AnimeEffectsDevs/AnimeEffects
 cd AnimeEffects
 cmake -S . -B build -G "Ninja Multi-Config"
@@ -87,7 +84,6 @@ cmake --build build --config Release
 cd build/src/gui/Release
 mkdir -p appdir
 cp AnimeEffects appdir
-cp -R ../data appdir/data
 cp -R ../../../../dist appdir/dist
 cp ../../../../dist/AnimeEffects.png appdir
 find appdir/
@@ -112,7 +108,6 @@ cmake --build build --config Release
 cd build/src/gui/Release
 mkdir .\AnimeEffects-Windows-x64
 windeployqt --dir .\AnimeEffects-Windows-x64 .\AnimeEffects.exe
-Copy-Item -Path "..\data" -Destination ".\AnimeEffects-Windows-x64\" -recurse -Force
 Copy-Item ".\AnimeEffects.exe" ".\AnimeEffects-Windows-x64\"
 ```
 
@@ -134,7 +129,6 @@ cmake --build build --config Release
 cd build/src/gui/Release
 mkdir -p appdir/usr/lib
 cp -R AnimeEffects.app appdir/AnimeEffects.app
-cp -R ../data appdir/data
 cp -R ../../../../dist appdir/dist
 find appdir/
 cd appdir

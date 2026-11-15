@@ -8,6 +8,9 @@
 #include <QTabWidget>
 #include <QFrame>
 #include <QApplication>
+#include <QVBoxLayout>
+#include <QPushButton>
+#include <QMessageBox>
 #include "XC.h"
 #include "gui/KeyBindingDialog.h"
 
@@ -66,6 +69,12 @@ void KeyBindingDialog::KeyEdit::flushToOrigin() {
     mAllowsSubKey = false;
 }
 
+void KeyBindingDialog::KeyEdit::resetToDefault() {
+    mBinding = mOrigin.defaultBinding;
+    mText = mBinding.text();
+    mAllowsSubKey = false;
+}
+
 //-------------------------------------------------------------------------------------------------
 KeyBindingDialog::KeyBindingDialog(KeyCommandMap& aMap, QWidget* aParent):
     EasyDialog(tr("Key Bindings"), aParent),
@@ -91,7 +100,35 @@ KeyBindingDialog::KeyBindingDialog(KeyCommandMap& aMap, QWidget* aParent):
         form->addRow(keyEdit->label(), keyEdit);
     }
 
-    this->setMainWidget(mTabs, false);
+    // The reset action is a whole-set operation, so it sits above the binding
+    // tabs as the dialog's top-level action rather than being buried inside a
+    // command group. It reverts every binding to its default and is destructive,
+    // so it asks for confirmation first. The changes persist when the dialog is
+    // confirmed (OK).
+    auto resetButton = new QPushButton(tr("Reset keybinds"), this);
+    resetButton->setToolTip(tr("Reset all keybindings to their default values."));
+    connect(resetButton, &QPushButton::clicked, [=]() {
+        auto answer = QMessageBox::question(
+            this,
+            tr("Reset keybindings"),
+            tr("Reset all keybindings to their default values? This will discard any custom bindings."),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No
+        );
+        if (answer == QMessageBox::Yes) {
+            this->resetToDefaults();
+        }
+    });
+
+    auto container = new QWidget(this);
+    auto layout = new QVBoxLayout(container);
+    layout->setContentsMargins(0, 0, 0, 0);
+    // Gap between the top-level reset action and the binding tabs.
+    layout->setSpacing(8);
+    layout->addWidget(resetButton, 0, Qt::AlignLeft);
+    layout->addWidget(mTabs, 1);
+    this->setMainWidget(container, false);
+
     this->setOkCancel([=](int aResult) -> bool {
         if (aResult == 0) {
             this->saveSettings();
@@ -156,6 +193,13 @@ void KeyBindingDialog::saveSettings() {
     settings.beginGroup("keybindings");
     mKeyCommandMap.writeTo(settings);
     settings.endGroup();
+}
+
+void KeyBindingDialog::resetToDefaults() {
+    for (auto key : mKeys) {
+        key->resetToDefault();
+    }
+    updateKeyTexts();
 }
 
 } // namespace gui

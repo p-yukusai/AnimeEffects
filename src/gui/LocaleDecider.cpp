@@ -1,6 +1,4 @@
-#include <QFile>
 #include <QLocale>
-#include <QTextStream>
 #include <QSettings>
 #include "gui/LocaleDecider.h"
 
@@ -50,39 +48,21 @@ LocaleDecider::LocaleDecider(): mLocaleParam(), mTranslator(), mHasTranslator() 
     }
 
     if (!locAbb.isEmpty()) {
-        if (mTranslator.load("translation_" + locAbb, "data/locale")) {
+        if (mTranslator.load("translation_" + locAbb, ":/i18n")) {
             mHasTranslator = true;
         }
     }
 
+    // Locale font defaults: the bundled Geist family everywhere; the size is
+    // per-locale (zh uses a larger face for CJK). Stored in QSettings so they
+    // are tunable without a shipped file; these are the shipped defaults.
     {
-#if defined(Q_OS_WIN)
-        const QString opt = "_win";
-#elif defined(Q_OS_MAC)
-        const QString opt = "_mac";
-#else
-        const QString opt = "";
-#endif
-
-        const QString preference = locAbb.isEmpty() ? "preference" : "preference_" + locAbb;
-
-        QFile file("./data/locale/" + preference + ".txt");
-        if (file.open(QIODevice::ReadOnly)) {
-            QTextStream in(&file);
-            while (!in.atEnd()) {
-                auto kv = in.readLine().split('=');
-                if (kv.count() != 2)
-                    continue;
-                auto key = kv[0].trimmed();
-                auto value = kv[1].trimmed();
-
-                if (key == "font_family" + opt) {
-                    mLocaleParam.fontFamily = value;
-                } else if (key == "font_size" + opt) {
-                    mLocaleParam.fontSize = value;
-                }
-            }
-        }
+        const QString sizeDefault = (locAbb == QLatin1String("zh")) ? QStringLiteral("10pt") : QStringLiteral("8pt");
+        QSettings settings;
+        settings.beginGroup("locale");
+        settings.beginGroup(locAbb.isEmpty() ? QStringLiteral("default") : locAbb);
+        mLocaleParam.fontFamily = settings.value("fontFamily", QStringLiteral("Geist")).toString();
+        mLocaleParam.fontSize = settings.value("fontSize", sizeDefault).toString();
     }
 }
 

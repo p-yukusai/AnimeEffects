@@ -28,6 +28,11 @@ public:
     QString icodec;
     QString command;
     QList<VideoCodec> codecs;
+
+    // Load the embedded export preset (:/encode/VideoEncode.txt) and return the
+    // format with the given name (e.g. "mp4"). Returns a format with an empty
+    // name if not found. Used by the exporter to map a format to its codecs.
+    static VideoFormat find(const QString& aName);
 };
 
 } // namespace ctrl

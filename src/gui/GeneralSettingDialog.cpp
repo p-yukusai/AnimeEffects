@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "MainWindow.h"
 #include "gui/GeneralSettingDialog.h"
+#include "gui/ViaPoint.h"
 #include "util/NetworkUtil.h"
 #include "util/Easing.h"
 #include <QComboBox>
@@ -175,8 +176,8 @@ QString indexToTimeFormat(int aComboIndex) {
 
 namespace gui {
 
-GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget* aParent):
-    EasyDialog(tr("General Settings"), aParent),
+GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint& aViaPoint, QWidget* aParent):
+    EasyDialog(tr("Settings"), aParent),
     mTabs(new QTabWidget(this)),
     mInitialLanguageIndex(),
     mLanguageBox(),
@@ -186,7 +187,12 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
     mAccentGroup(),
     mInitialThemeKey("dark"),
     mThemeGroup(),
-    mGUIResources(aGUIResources) {
+    mInitialMouseValues(),
+    mInvertMainViewScalingBox(),
+    mInvertTimeLineScalingBox(),
+    mMiddleMouseMoveCanvas(),
+    mGUIResources(aGUIResources),
+    mViaPoint(aViaPoint) {
     // read current settings
     {
         QSettings settings;
@@ -261,6 +267,8 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
 
         auto isAutoShowMesh = settings.value("generalsettings/tools/autoshowmesh");
         bAutoShowMesh = isAutoShowMesh.isValid()? isAutoShowMesh.toBool() : false;
+
+        mInitialMouseValues.load();
     }
 
     auto form = new QFormLayout();
@@ -421,234 +429,27 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget*
         mKeyDelayBox->setRange(0, 10000);
         mKeyDelayBox->setValue(mKeyDelay);
         keybindingSettings->addRow(tr("Global keybind delay (ms)"), mKeyDelayBox);
-
-        mResetKeybindsButton = new QPushButton(tr("Reset keybinds"));
-        mResetKeybindsButton->setToolTip(tr("Reset all keybinds, a restart is required."));
-        connect(mResetKeybindsButton, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.setValue("keybindReset",
-                !settings.value("keybindReset").isValid() || !settings.value("keybindReset").toBool()
-            );
-            MainWindow::showInfoPopup(
-                tr("Keybinds reset status"),
-                settings.value("keybindReset").toBool() ? tr("The keybinds will be reset when you restart.")
-                                                        : tr("The keybinds will not be reset when you restart."),
-                "Info"
-            );
-        });
-        keybindingSettings->addRow(mResetKeybindsButton);
     }
 
-    auto ffmpegSettings = new QFormLayout();
+    auto mouseSettings = new QFormLayout();
     {
-        ffmpegTroubleshoot = new QPushButton(tr("Troubleshoot FFmpeg"));
-        connect(ffmpegTroubleshoot, &QPushButton::clicked, [=]() {
-            QMessageBox ffmpegNotif;
+        mInvertMainViewScalingBox = new QCheckBox();
+        mInvertMainViewScalingBox->setChecked(mInitialMouseValues.invertMainViewScaling);
+        mouseSettings->addRow(tr("Inverse canvas scrolling"), mInvertMainViewScalingBox);
 
-            QString ffmpeg = getFFmpeg();
-            bool ffmpegWorks = ffmpegCheck(ffmpeg, this);
-            if (!ffmpegWorks) {
-                ffmpegCheckFailed(this);
-                return;
-            }
-            ffmpegNotif.setWindowTitle(tr("FFmpeg test success"));
-            ffmpegNotif.setText(tr("All tests have passed, FFmpeg is working correctly."));
-            ffmpegNotif.setDetailedText(
-                tr("FFmpeg at: ") + ffmpeg + "\n" +
-                tr("Check FFmpeg response ✓\n"
-                "Check FFmpeg exporting ✓\n"
-                "Check FFmpeg palette generation ✓")
-            );
-            ffmpegNotif.addButton(QMessageBox::Ok);
-            ffmpegNotif.exec();
-        });
+        mInvertTimeLineScalingBox = new QCheckBox();
+        mInvertTimeLineScalingBox->setChecked(mInitialMouseValues.invertTimeLineScaling);
+        mouseSettings->addRow(tr("Inverse timeline scrolling"), mInvertTimeLineScalingBox);
 
-        selectFromExe = new QPushButton(tr("Select executable and automatically set up"));
-        selectFromExe->setToolTip(
-            tr("This will remove previous instances of FFmpeg from your tools directory"
-               " and replace them with your custom executable, please make sure this is a valid FFmpeg executable.")
-        );
-        connect(selectFromExe, &QPushButton::clicked, [=]() {
-            #ifdef Q_OS_LINUX
-            auto dir = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-            dir = QDir(dir.absolutePath() + "/AnimeEffects");
-            #else
-            QDir dir = QDir("./tools");
-            #endif
-            if (!dir.exists()) {}
-            QString file = util::NetworkUtil::os() == "win" ? "/ffmpeg.exe" : "/ffmpeg";
-
-            if (QFileInfo::exists(dir.absolutePath() + file)) {
-                QFile(dir.absolutePath() + file).moveToTrash();
-            }
-
-            QFileInfo ffmpeg = QFileInfo(QFileDialog::getOpenFileName(nullptr, "Select FFmpeg executable"));
-            qDebug() << "Selected exe: " << ffmpeg.fileName() << " | " << ffmpeg.absoluteFilePath();
-            QFile(ffmpeg.absoluteFilePath()).copy(dir.absolutePath() + file);
-
-            QMessageBox success;
-            success.setText(tr("Operation successful"));
-            success.setWindowTitle(tr("Success"));
-            success.addButton(QMessageBox::Ok);
-            success.exec();
-        });
-
-
-        autoSetup = new QPushButton(tr("Download and automatically set up"));
-        connect(autoSetup, &QPushButton::clicked, [=]() {
-            #ifdef Q_OS_LINUX
-            auto dir = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-            dir = QDir(dir.absolutePath() + "/AnimeEffects/");
-            #else
-            QDir dir = QDir("./tools");
-            #endif
-            if (!dir.exists()) {
-                if (dir.mkpath(dir.absolutePath())) {
-                    qDebug() << "Directory created : " << dir.absolutePath();
-                } else {
-                    qDebug() << "Directory creation failed, assumed protected : " << dir.absolutePath();
-                    QMessageBox error;
-                    error.setWindowTitle(tr("Unable to create directory"));
-                    error.setText(
-                        tr("An error has occurred while creating the tools directory in ") + dir.absolutePath() +
-                        tr(" the application will use a fallback but if this doesn't work please run the app as "
-                           "administrator or use a folder that isn't write protected.")
-                    );
-                    error.addButton(QMessageBox::Ok);
-                    error.exec();
-                }
-            }
-            const QString file = util::NetworkUtil::os() == "win" ? "/ffmpeg.exe" : "/ffmpeg";
-            if (QFileInfo::exists(dir.absolutePath() + file)) {
-                QFile(dir.absolutePath() + file).moveToTrash();
-            }
-            const QString os = util::NetworkUtil::os();
-            QString gitFile;
-            // ID checking is probably overkill, but security is important!
-            int id;
-            if (os == "win") {
-                gitFile = "ffmpeg-win64.exe";
-                id = 222521524;
-            } else if (os == "linux") {
-                gitFile = "ffmpeg-linux64";
-                id = 222521700;
-            } else {
-                gitFile = "ffmpeg-macos";
-                id = 222521413;
-            }
-
-            const QFileInfo ffmpeg = util::NetworkUtil::downloadGithubFile(
-                "https://api.github.com/repos/AnimeEffectsDevs/ffmpeg-bin/releases/latest", gitFile, id, this
-                );
-            qDebug() << "Download name : " << ffmpeg.fileName() << "\nDownload is executable : " << ffmpeg.isExecutable();
-            bool pathSetAttempted = false;
-            bool ffmpegMoveAttempted = false;
-            if (ffmpeg.isExecutable()) {
-                if(!dir.exists() || !dir.isReadable() || !QFileInfo(dir.absolutePath()).isWritable()){
-                    // We'll attempt a global installation as a fallback in cases where the folder is write protected
-                    auto appdata = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-                    auto anieFolder = QDir(appdata.absolutePath() + "/AnimeEffects");
-                    if (!anieFolder.exists() || !QFileInfo(anieFolder.absolutePath()).isWritable()) {
-                        if (!appdata.mkdir(appdata.absolutePath() + "/AnimeEffects")) {
-                            qDebug(
-                                "AnimeEffects folder creation failed in AppData, attempting to locate in Documents..."
-                            );
-                            appdata = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-                            anieFolder = QDir(appdata.absolutePath() + "/AnimeEffects");
-                            if (!anieFolder.exists() || !QFileInfo(anieFolder.absolutePath()).isWritable()) {
-                                if (!appdata.mkdir(appdata.absolutePath() + "/AnimeEffects")) {
-                                    qDebug("AnimeEffects folder creation failed, skipping...");
-                                }
-                            } else {
-                                appdata = anieFolder;
-                            }
-                        } else {
-                            appdata = anieFolder;
-                        }
-                    }
-                    else {
-                        appdata = anieFolder;
-                    }
-                    const QString fileInAppDataLoc = appdata.absolutePath() + file;
-                    QFile(ffmpeg.absoluteFilePath()).rename(fileInAppDataLoc);
-                    qDebug() << "FFmpeg moved : " << QFile(fileInAppDataLoc).exists();
-                    if (QFile(fileInAppDataLoc).exists()) {
-                        QProcess pathSet;
-                        QString console;
-                        QStringList instruct;
-                        if(os == "linux" || os == "mac"){
-                            console = "sh";
-                            instruct.append("export");
-                            instruct.append("PATH=$PATH:" + fileInAppDataLoc);
-                        }
-                        else{
-                            console = "cmd";
-                            instruct.append("set");
-                            instruct.append("PATH=%PATH%;" + fileInAppDataLoc);
-                        }
-                        pathSet.start(console, instruct);
-                        pathSet.waitForFinished(2*1000);
-                        if (pathSet.exitCode() == 0) {
-                            QMessageBox success;
-                            success.setWindowTitle(tr("Success"));
-                            success.setText(tr("FFmpeg was successfully set up. Please restart AnimeEffects"));
-                            success.exec();
-                            return;
-                        }
-                        pathSetAttempted = true;
-                        qDebug("FFmpeg path setup errored, continuing...");
-                    }
-                    else {
-                        ffmpegMoveAttempted = true;
-                        qDebug("FFmpeg move errored, continuing...");
-                    }
-                }
-                QFile(ffmpeg.absoluteFilePath()).rename(dir.absolutePath() + file);
-                qDebug() << "FFmpeg moved : " << QFile(dir.absolutePath() + file).exists();
-                #ifdef Q_OS_LINUX
-                QMessageBox info;
-                info.setWindowTitle(tr("FFmpeg installed"));
-                info.setText(tr("FFmpeg was installed but it requires to be set as executable, please right click "
-                                "\"ffmpeg\" go to properties and allow it to be executable as a program."));
-                info.exec();
-                QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
-                #endif
-                if (QFile(dir.absolutePath() + file).exists()) {
-                    QMessageBox success;
-                    success.setWindowTitle(tr("Success"));
-                    success.setText(tr("FFmpeg was successfully set up."));
-                    success.exec();
-                    return;
-                }
-            }
-            QMessageBox error;
-            error.setWindowTitle(tr("Error"));
-            error.setText(tr("While setting up FFmpeg an unexpected error has occurred, please send the below information to our devs."));
-            QString platform = QSysInfo::productType(); platform[0] = platform[0].toUpper();
-            error.setDetailedText(
-                QString("Operating system: ") + platform + " " + QSysInfo::productVersion() +
-                "\nCPU: " + QSysInfo::currentCpuArchitecture() +
-                "\nFile requested: " + gitFile + " - Hardcoded file ID: " + QString::number(id) +
-                "\nFile received: " + ffmpeg.absoluteFilePath() +
-                "\nFile is executable: " + (ffmpeg.isExecutable()? "True" : "False") +
-                "\nFile is readable: " + (ffmpeg.isReadable()? "True": "False") +
-                "\nFile is writable: " + (ffmpeg.isWritable()? "True": "False") +
-                "\nRequested base folders : " + dir.absolutePath() + " | " + QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + " | " + QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-                "\nFallback path set errored: " + (pathSetAttempted? "True" : "False") +
-                "\nFallback FFmpeg move errored: " + (ffmpegMoveAttempted? "True" : "False")
-            );
-            error.exec();
-        });
-
-        ffmpegSettings->addRow(ffmpegTroubleshoot);
-        ffmpegSettings->addRow(selectFromExe);
-        ffmpegSettings->addRow(autoSetup);
+        mMiddleMouseMoveCanvas = new QCheckBox();
+        mMiddleMouseMoveCanvas->setChecked(mInitialMouseValues.middleMouseMoveCanvas);
+        mouseSettings->addRow(tr("Middle mouse moves canvas"), mMiddleMouseMoveCanvas);
     }
 
     createTab(tr("General"), form);
     createTab(tr("QoL"), projectSaving);
-    createTab(tr("FFmpeg"), ffmpegSettings);
-    createTab(tr("Keybindings"), keybindingSettings);
+    createTab(tr("Keyboard"), keybindingSettings);
+    createTab(tr("Mouse"), mouseSettings);
 
 
     this->setMainWidget(mTabs, false);
@@ -719,146 +520,15 @@ bool GeneralSettingDialog::accentHasChanged() {
 }
 
 
-QString GeneralSettingDialog::getFFmpeg() {
-    QFileInfo ffmpeg_file;
-    QString ffmpeg;
-    if (util::NetworkUtil::os() == "win") { ffmpeg_file = QFileInfo("./tools/ffmpeg.exe"); }
-    else { ffmpeg_file = QFileInfo("./tools/ffmpeg"); }
-    const auto file = util::NetworkUtil::os() == "win" ? "ffmpeg.exe" : "ffmpeg";
-    auto appdata = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-    auto anieFolder = QDir(appdata.absolutePath() + "/AnimeEffects");
-    if (!ffmpeg_file.exists() || !ffmpeg_file.isExecutable()) {
-        qDebug() << "FFmpeg not found, attempting backup...";
-        ffmpeg_file = QFileInfo(anieFolder.absolutePath() + "/" + file);
-        ffmpeg = ffmpeg_file.absoluteFilePath();
-        if (!anieFolder.exists() || !QFileInfo(anieFolder.absolutePath()).isReadable()) {
-            qDebug() << "AnimeEffects not found in appdata, attempting backup...";
-            appdata = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-            anieFolder = QDir(appdata.absolutePath() + "/AnimeEffects");
-            ffmpeg_file = QFileInfo(anieFolder.absolutePath() + "/" + file);
-            ffmpeg = ffmpeg_file.absoluteFilePath();
-            if (!anieFolder.exists() || !QFileInfo(anieFolder.absolutePath()).isReadable()) {
-                qDebug() << "AnimeEffects not found in documents, attempting back up...";
-                appdata = QApplication::applicationDirPath();
-                ffmpeg_file = QFileInfo(appdata.absolutePath() + "/" + file);
-                ffmpeg = ffmpeg_file.absoluteFilePath();
-                if (!appdata.exists() || !ffmpeg_file.isReadable()) {
-                    qDebug() << "AnimeEffects not found in appdir, stopping...";
-                    ffmpeg = "ffmpeg";
-                }
-                else { qDebug("FFmpeg found in appdir, initializing..."); }
-            }
-            else{ qDebug("FFmpeg found in documents, initializing..."); }
-        } else { qDebug("FFmpeg found in appdata, initializing..."); }
-    }
-    else {
-        qDebug() << "FFmpeg found in tools, initializing...";
-        ffmpeg = ffmpeg_file.absoluteFilePath();
-    }
-    qDebug() << "FFmpeg at: " << ffmpeg;
-    return ffmpeg;
-}
-void GeneralSettingDialog::ffmpegCheckFailed(GeneralSettingDialog* aDialog) {
-    QMessageBox message;
-    message.setIcon(QMessageBox::Warning);
-    message.setText(tr("FFmpeg was not found."));
-    auto infoText =
-        tr("Exporting video requires FFmpeg to be installed on your computer, "
-           "FFmpeg is a free tool that AnimeEffects uses to create video files.\n"
-           "In the following screen you can instruct AnimeEffects to download and install it automatically for "
-           "you, "
-           "or you can download it by yourself and tell AnimeEffects where it is.");
-    message.setInformativeText(infoText);
-    message.setStandardButtons(QMessageBox::Ok);
-    message.setDefaultButton(QMessageBox::Ok);
-    message.exec();
-    aDialog->selectTab(2);
-    aDialog->exec();
-}
-
-bool GeneralSettingDialog::ffmpegCheck(const QString& ffmpeg, GeneralSettingDialog* generalSettingsDialog) {
-    QSettings settings;
-    auto ffCheck = settings.value("ffmpeg_check");
-    if (ffCheck.isValid() && !ffCheck.toBool()) {
-        return true;
-    }
-    const bool libExists = util::NetworkUtil::libExists(ffmpeg, "-version");
-    const bool pathExists = util::NetworkUtil::libExists("ffmpeg");
-
-    if (!libExists && !pathExists) {
-        return false;
-    }
-    // Test FFmpeg functionality
-    QMessageBox ffmpegNotif;
-    ffmpegNotif.setIcon(QMessageBox::Critical);
-
-    QTemporaryDir tempDir;
-    QDir ffmpegOutputDir = tempDir.isValid() ? tempDir.path() : QDir::temp();
-
-    // Noise to GIF conversion test
-    QProcess gif;
-    QString gifLoc = ffmpegOutputDir.absoluteFilePath("gif.gif");
-    qDebug() << "Gif loc: " << gifLoc;
-    gif.start(ffmpeg, {"-f", "bin", "-i", "pipe:", "-y", gifLoc}, QProcess::ReadWrite);
-    std::string testData = "Test";
-    for (auto x = 0; x < 2; x++) {
-        gif.write(testData.c_str(), testData.size());
-        gif.waitForBytesWritten();
-    }
-    gif.closeWriteChannel();
-    gif.waitForFinished();
-    qDebug() << gif.readAllStandardOutput();
-    bool exportSuccess = gif.exitStatus() == 0 && QFileInfo::exists(gifLoc);
-    qDebug() << "Gif exists: " << QFileInfo::exists(gifLoc) << "| Gif remove: " << QFile(gifLoc).remove();
-    gif.deleteLater();
-    if (!exportSuccess) {
-        ffmpegNotif.setWindowTitle(tr("FFmpeg doesn't export"));
-        ffmpegNotif.setText(tr("FFmpeg was unable to export, please troubleshoot."));
-        ffmpegNotif.setDetailedText(
-            "File exists: " + QString(QFileInfo::exists("./data/icons/file.png")? "True" : "False") +
-            "\nFile readable: " + QString(QFileInfo("./data/icons/file.png").isReadable()? "True" : "False") +
-            "\nFile writeable: " + QString(QFileInfo("./data/icons/file.png").isWritable()? "True" : "False") +
-            "\nFolder writeable: " + QString(QDir("./data/icons/").exists() ? "True" : "False") +
-            "\nFolder readable: " + QString(QDir("./data/icons/").isReadable() ? "True" : "False")
-            );
-        ffmpegNotif.addButton(QMessageBox::Ok);
-        ffmpegNotif.exec();
-        generalSettingsDialog->selectTab(2);
-        generalSettingsDialog->exec();
-        ffCheck.setValue(true);
-        return false;
-    }
-    // Palettegen test
-    QProcess palettegen;
-    QString palettegenLoc = ffmpegOutputDir.absoluteFilePath("palette.gif");
-    qDebug() << "Palette loc: " << palettegenLoc;
-    palettegen.start(ffmpeg, {"-f", "bin", "-i", "pipe:", "-y", "-vf", "palettegen", palettegenLoc}, QProcess::ReadWrite);
-    for (auto x = 0; x < 2; x++) {
-        palettegen.write(testData.c_str(), testData.size());
-        palettegen.waitForBytesWritten();
-    }
-    palettegen.closeWriteChannel();
-    palettegen.waitForFinished();
-    qDebug() << palettegen.readAllStandardOutput();
-    bool pGenSuccess = palettegen.exitStatus() == 0 && QFileInfo::exists(palettegenLoc);
-    if (!pGenSuccess) {
-        ffmpegNotif.setWindowTitle(tr("FFmpeg doesn't generate palettes"));
-        ffmpegNotif.setText(tr("FFmpeg was unable to generate palettes, please troubleshoot."));
-        ffmpegNotif.addButton(QMessageBox::Ok);
-        ffmpegNotif.exec();
-        generalSettingsDialog->selectTab(2);
-        generalSettingsDialog->exec();
-        ffCheck.setValue(true);
-        return false;
-    }
-    qDebug() << "Palette exists: " << QFileInfo::exists(palettegenLoc)
-             << "| Palette remove: " << QFile(palettegenLoc).remove();
-    palettegen.deleteLater();
-    return true;
-}
-
-
 bool GeneralSettingDialog::keyDelayHasChanged() { return mKeyDelay != mKeyDelayBox->value(); }
+
+bool GeneralSettingDialog::mouseHasChanged() {
+    MouseSetting currentValues;
+    currentValues.invertMainViewScaling = mInvertMainViewScalingBox->isChecked();
+    currentValues.invertTimeLineScaling = mInvertTimeLineScalingBox->isChecked();
+    currentValues.middleMouseMoveCanvas = mMiddleMouseMoveCanvas->isChecked();
+    return mInitialMouseValues != currentValues;
+}
 
 void GeneralSettingDialog::saveSettings() {
     QSettings settings;
@@ -910,6 +580,14 @@ void GeneralSettingDialog::saveSettings() {
     }
     if (keyDelayHasChanged()) {
         settings.setValue("generalsettings/keybindings/keyDelay", mKeyDelayBox->value());
+    }
+    if (mouseHasChanged()) {
+        MouseSetting newValues;
+        newValues.invertMainViewScaling = mInvertMainViewScalingBox->isChecked();
+        newValues.invertTimeLineScaling = mInvertTimeLineScalingBox->isChecked();
+        newValues.middleMouseMoveCanvas = mMiddleMouseMoveCanvas->isChecked();
+        newValues.save();
+        mViaPoint.mouseSetting() = newValues;
     }
 }
 } // namespace gui

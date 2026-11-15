@@ -59,8 +59,8 @@ QString System::LoadResult::messages() const {
 }
 
 //-------------------------------------------------------------------------------------------------
-System::System(const QString& aResourceDir, const QString& aCacheDir):
-    mResourceDir(aResourceDir), mCacheDir(aCacheDir), mProjects(), mAnimator() {}
+System::System(const QString& aCacheDir):
+    mCacheDir(aCacheDir), mProjects(), mAnimator() {}
 
 System::~System() { closeAllProjects(); }
 

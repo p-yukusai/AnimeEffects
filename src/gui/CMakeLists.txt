@@ -46,7 +46,6 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     MainViewSetting.h
     MainWindow.cpp MainWindow.h
     MouseSetting.cpp MouseSetting.h
-    MouseSettingDialog.cpp MouseSettingDialog.h
     AnimationSettingDialog.cpp AnimationSettingDialog.h
     NewProjectDialog.cpp NewProjectDialog.h
     AppStyle.cpp AppStyle.h
@@ -116,6 +115,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
         prop/bezierCurveEditor.cpp
     qml/QmlTheme.cpp qml/QmlTheme.h
     qml/AnimationSettingViewModel.cpp qml/AnimationSettingViewModel.h
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     ..
@@ -138,6 +138,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         AE_MICRO_VERSION=1
     USE_GL_CORE_PROFILE
     $<$<CONFIG:Debug>:QT_DEBUG>
+    # Path to the bundled sample project (a debug/dev fixture auto-opened under
+    # QT_DEBUG); it is not shipped in any runtime data directory.
+    AE_SAMPLE_PSD="${CMAKE_SOURCE_DIR}/assets/sample.psd"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -145,34 +148,31 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
         Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
         Qt6::Quick Qt6::Qml Qt6::QuickWidgets
-        cmnd core ctrl gl img thr util
+        cmnd core ctrl gl img thr util media
 )
+
+# i18n (Qt LinguistTools, loaded in the root CMakeLists): regenerates the
+# translation sources under assets/locale/translation_<locale>.ts (via the
+# update_translations target) and builds the .qm (via release_translations).
+# The .qm are embedded into the binary under :/i18n below, so the translator
+# resolves them regardless of where the executable lives; translators only
+# ever edit the committed .ts.
+qt_add_translations(${PROJECT_NAME}
+    TS_FILE_BASE translation
+    TS_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/assets/locale
+    QM_FILES_OUTPUT_VARIABLE qm_files
+)
+# Embed the build-produced .qm (they are build artifacts, not source) under
+# :/i18n so the app stays self-contained for its translations.
+qt_add_resources(${PROJECT_NAME} "translations"
+    PREFIX "/i18n"
+    BASE "${CMAKE_CURRENT_BINARY_DIR}"
+    FILES ${qm_files}
+)
+# rcc needs the .qm present when it runs; they are produced by lrelease.
+add_dependencies(${PROJECT_NAME} release_translations)
 
 install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-
-message("Copying data")
-# the app chdirs to its executable directory (Main.cpp: QDir::setCurrent(appDir))
-# and opens ./data from there, so data must sit next to the exe. Multi-config
-# generators put the exe in a per-config subdir, hence $<CONFIG>. Wipe the
-# destination first so deleted source files do not linger (copy_directory only
-# ever adds/updates).
-if (APPLE)
-    set(AE_DATA_SUBDIR AnimeEffects.app/Contents/MacOS/data)
-else ()
-    set(AE_DATA_SUBDIR data)
-endif ()
-if (CMAKE_CONFIGURATION_TYPES)
-    set(AE_DATA_DEST ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${AE_DATA_SUBDIR})
-else ()
-    set(AE_DATA_DEST ${CMAKE_CURRENT_BINARY_DIR}/${AE_DATA_SUBDIR})
-endif ()
-add_custom_target(copy_data
-        COMMAND ${CMAKE_COMMAND} -E rm -rf ${AE_DATA_DEST}
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${AE_DATA_DEST}
-)
-message("Data copied")
-add_dependencies(${PROJECT_NAME} copy_data)
-

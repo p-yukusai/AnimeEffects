@@ -42,7 +42,9 @@ public:
     // aAnchor (clamped to the screen) and show it.
     void showAt(const QPoint& aAnchor, const util::Range& aRange, int aFps, bool aLoop);
 
-    // The QML scrub fields call these to mark a scrub drag as active/inactive.
+    // The QML scrub fields call these to mark a scrub drag as active/inactive,
+    // and to bracket the drag as one session-undo gesture (matching
+    // EasingPickWidget's begin/endGesture).
     // (No grabMouse: that cannot keep the drag alive — Qt's popup path
     // re-targets an outside move with buttons()=NoButton, so the QML scene
     // stops the scrub. Instead the dialog forwards those moves to the
@@ -51,7 +53,13 @@ public:
     Q_INVOKABLE void endScrub();
 
 signals:
+    // Live draft change (fires on every edit, including each scrub tick and each
+    // session undo/redo). The owner uses it to re-sync the model live (the
+    // timeline reacts immediately); it does NOT create an undo step.
     void changed();
+    // Committed once when the popup closes (✕ or outside click), only if the
+    // draft moved since open. The owner pushes ONE undo command for the session.
+    void applied();
 
 protected:
     // Forward the popup's re-targeted (outside) mouse events to the QQuickWidget

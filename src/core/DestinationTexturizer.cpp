@@ -159,11 +159,11 @@ void DestinationTexturizer::createShader() {
     auto shader = &mShader;
 
     gl::ExtendShader source;
-    if (!source.openFromFileVert("./data/shader/PartialScreenCopyingVert.glsl")) {
+    if (!source.openFromFileVert(":/shaders/PartialScreenCopyingVert.glsl")) {
         XC_FATAL_ERROR("FileIO Error", "Current location: " + QDir::currentPath() +
                            "\nFailed to open vertex shader file.\n", source.log());
     }
-    if (!source.openFromFileFrag("./data/shader/PartialScreenCopyingFrag.glsl")) {
+    if (!source.openFromFileFrag(":/shaders/PartialScreenCopyingFrag.glsl")) {
         XC_FATAL_ERROR("FileIO Error", "Current location: " + QDir::currentPath() +
                            "\nFailed to open fragment shader file.\n", source.log());
     }

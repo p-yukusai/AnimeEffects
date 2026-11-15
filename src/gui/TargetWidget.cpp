@@ -125,13 +125,15 @@ void TargetWidget::openAnimationSettings() {
     // (the EasingPickWidget idiom). The dialog is a pure view created ONCE and
     // reused for every open: it shows/hides (a popup auto-hides on an outside
     // click) and is never destroyed/recreated, so its QML scene is not torn
-    // down per-open (which is what produced the repeated
-    // "Cannot read property 'X' of null" teardown errors). The current
-    // project/loop state is passed in to showAt() on each open.
+    // down per-open. The current project/loop state is passed in to showAt() on
+    // each open, and is captured as the undo baseline (mLastAnim*) for the
+    // single session command pushed on close.
     if (!mAnimSettings) {
         mAnimSettings = new AnimationSettingDialog(this);
         connect(mAnimSettings, &AnimationSettingDialog::changed,
-                this, &TargetWidget::applyAnimChange);
+                this, &TargetWidget::applyAnimLive);
+        connect(mAnimSettings, &AnimationSettingDialog::applied,
+                this, &TargetWidget::applyAnimCommit);
     }
     mLastAnimFps = curFPS;
     mLastAnimRange = curRange;
@@ -142,43 +144,51 @@ void TargetWidget::openAnimationSettings() {
     mAnimSettings->showAt(anchor, curRange, curFPS, curLoop);
 }
 
-void TargetWidget::applyAnimChange() {
+void TargetWidget::applyAnimLive() {
     if (!mAnimSettings || !mProject)
         return;
+    // Live, non-undoable apply: the attribute setters drive onProjectAttributeModified
+    // (bone caches) and refreshAnimationSettings() re-syncs the timeline/display/
+    // driver, so the effect is visible while the popup is still open. Fires on
+    // every edit, including each tick of a scrub drag.
+    const int fps = mAnimSettings->fps();
+    const util::Range range = mAnimSettings->frameRange();
+    const bool loop = mAnimSettings->isLoopChecked();
+
+    mProject->attribute().setFps(fps);
+    mProject->attribute().setFrameRange(range);
+    mPlayBack->checkLoop(loop);
+    mTimeLine->setPlayBackLoop(loop);
+    refreshAnimationSettings();
+}
+
+void TargetWidget::applyAnimCommit() {
+    if (!mAnimSettings || !mProject)
+        return;
+    // The whole popup session is ONE undo step: push a single command that
+    // transitions the project attribute from the pre-open baseline (mLastAnim*)
+    // to the current draft. No net change -> nothing to record.
     const int fps = mAnimSettings->fps();
     const util::Range range = mAnimSettings->frameRange();
     const bool loop = mAnimSettings->isLoopChecked();
     if (fps == mLastAnimFps && range == mLastAnimRange && loop == mLastAnimLoop)
         return;
-    applyAnimState(fps, range, loop, mLastAnimFps, mLastAnimRange, mLastAnimLoop);
-    mLastAnimFps = fps;
-    mLastAnimRange = range;
-    mLastAnimLoop = loop;
-}
 
-void TargetWidget::applyAnimState(int aFps, const util::Range& aRange, bool aLoop,
-                                  int pFps, const util::Range& pRange, bool pLoop) {
-    // One undoable command per applied change (undo reverts to the previous
-    // committed state). The side effects match the original dialog's batch.
     cmnd::ScopedMacro macro(mProject->commandStack(), CmndName::tr("Change animation settings"));
     core::Project* projectPtr = mProject;
     auto* command = new cmnd::Delegatable(
         [=]() {
-            projectPtr->attribute().setFps(aFps);
-            projectPtr->attribute().setFrameRange(aRange);
-            mPlayBack->checkLoop(aLoop);
-            mTimeLine->setPlayBackLoop(aLoop);
-            auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
-            projectPtr->onProjectAttributeModified(event, false);
+            projectPtr->attribute().setFps(fps);
+            projectPtr->attribute().setFrameRange(range);
+            mPlayBack->checkLoop(loop);
+            mTimeLine->setPlayBackLoop(loop);
             this->refreshAnimationSettings();
         },
         [=]() {
-            projectPtr->attribute().setFps(pFps);
-            projectPtr->attribute().setFrameRange(pRange);
-            mPlayBack->checkLoop(pLoop);
-            mTimeLine->setPlayBackLoop(pLoop);
-            auto event = core::ProjectEvent::loopChangeEvent(*projectPtr);
-            projectPtr->onProjectAttributeModified(event, true);
+            projectPtr->attribute().setFps(mLastAnimFps);
+            projectPtr->attribute().setFrameRange(mLastAnimRange);
+            mPlayBack->checkLoop(mLastAnimLoop);
+            mTimeLine->setPlayBackLoop(mLastAnimLoop);
             this->refreshAnimationSettings();
         });
     projectPtr->commandStack().push(command);

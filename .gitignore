@@ -31,6 +31,10 @@
 # Qt
 *.*.user
 
+# Qt Linguist .qm are build artifacts (compiled from the committed .ts by
+# release_translations); they belong in build dirs, never in source.
+assets/locale/*.qm
+
 # Build Directory
 build*/
 /src/AnimeEffects-Windows/

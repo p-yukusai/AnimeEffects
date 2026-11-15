@@ -18,7 +18,11 @@ endif()
 include(GNUInstallDirs)
 # You need to add the Qt directory to your path, otherwise you'll have a very bad time
 # On MacOS Tahoe please remove AGL from the framework list when linking
-find_package(Qt6 REQUIRED COMPONENTS Core5Compat Core Gui OpenGL OpenGLWidgets Svg Xml Concurrent Widgets Multimedia Quick Qml QuickWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Core5Compat Core Gui OpenGL OpenGLWidgets Svg Xml Concurrent Widgets Multimedia Quick Qml QuickWidgets LinguistTools)
+# Qt's i18n CMake support: declares the translated languages lupdate/lrelease
+# operate on, and enables the qt_add_translations/update_translations targets.
+# The translation sources live in data/locale/translation_<locale>.ts.
+qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES es ja ko ru zh)
 # Get sources
 add_subdirectory(src/util)
 add_subdirectory(src/thr)
@@ -26,6 +30,7 @@ add_subdirectory(src/cmnd)
 add_subdirectory(src/gl)
 add_subdirectory(src/img)
 add_subdirectory(src/core)
+add_subdirectory(src/media)
 add_subdirectory(src/ctrl)
 add_subdirectory(src/gui)
 add_subdirectory(src/deps/pugixml)

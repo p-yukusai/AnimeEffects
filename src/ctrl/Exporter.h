@@ -6,8 +6,9 @@
 #include <functional>
 #include <QString>
 #include <QSize>
+#include <QList>
+#include <QImage>
 #include <QFileInfo>
-#include <QProcess>
 #include <QOpenGLFramebufferObject>
 #include "util/Range.h"
 #include "util/IProgressReporter.h"
@@ -20,6 +21,8 @@
 #include "core/FilterFrame.h"
 #include "core/DestinationTexturizer.h"
 #include "ctrl/VideoFormat.h"
+#include "media/VideoEncoder.h"
+#include "media/AudioMixer.h"
 
 namespace ctrl {
 
@@ -31,9 +34,9 @@ public:
         ResultCode_Success,
         ResultCode_Canceled,
         ResultCode_InvalidOperation,
-        ResultCode_FFMpegFailedToStart,
-        ResultCode_FFMpegError,
-        ResultCode_UnclassfiedError,
+        ResultCode_EncoderOpenFailed,   // encoder could not be opened for the target/codec
+        ResultCode_EncodeError,         // write/encode/mux error mid-export
+        ResultCode_UnclassfiedError,    // (kept as-is; original spelling)
         ResultCode_TERM
     };
 
@@ -57,16 +60,21 @@ public:
     struct VideoParam {
         VideoParam();
         VideoFormat format;
-        int codecIndex;
-        int colorIndex;
-        int bps;
-        QString pixfmt;
+        int codecIndex;    // index into format.codecs, or -1
+        int colorIndex;    // colorspace box index (set by the quick-export dialog); exporter
+                           // does not apply colorspace yet (see the UI follow-up)
+        int bps;           // bitrate in kbps (exporter converts to bits/sec)
+        QString pixfmt;    // e.g. "yuv420p"; empty = per-codec auto
+        QString codec;     // explicit encoder (friendly or libav name); empty = Auto/default
+        bool transparent;  // honor alpha when the codec/container allow it
     };
 
     struct GifParam {
         GifParam();
-        bool optimizePalette;
-        int intermediateBps;
+        bool optimizePalette;   // legacy no-op (the in-process encoder always builds a palette)
+        int intermediateBps;    // legacy no-op
+        QString palettePath;    // optional PNG palette (pixels are the colors); empty = adaptive
+        bool transparent = false; // honor alpha (reserve a transparent palette entry)
     };
 
     struct ImageParam {
@@ -83,6 +91,15 @@ public:
     void setProgressReporter(util::IProgressReporter& aReporter);
     void setUILogger(ctrl::UILogger& aLogger);
 
+    // Supply the multi-track audio to mix and mux alongside the video. Call
+    // before execute(); ignored for image/GIF exports. The tracks are in
+    // PROJECT frame coordinates; they are shifted into the export window (the
+    // exported frame 0 == the export range's minimum frame) at mix time.
+    // sampleRate/channels are the mix target (e.g. 48000 stereo).
+    void setAudioTracks(const QVector<media::AudioMixer::Track>& aTracks,
+                        int aSampleRate = 48000, int aChannels = 2);
+    bool hasAudio() const { return mHasAudio; }
+
     Result execute(const CommonParam& aCommon, const ImageParam& aImage);
     Result execute(const CommonParam& aCommon, const GifParam& aGif);
     Result execute(const CommonParam& aCommon, const VideoParam& aVideo);
@@ -93,27 +110,6 @@ public:
 private:
     typedef std::unique_ptr<QOpenGLFramebufferObject> FramebufferPtr;
     typedef std::list<FramebufferPtr> FramebufferList;
-
-    class FFMpeg {
-    public:
-        FFMpeg();
-        bool start(const QString& aArgments);
-        void write(const QByteArray& aBytes);
-        bool finish(const std::function<bool()>& aWaiter);
-        bool execute(const QString& aArgments, const std::function<bool()>& aWaiter);
-        bool errorOccurred() const { return mErrorOccurred; }
-        QString errorString() const { return mErrorString; }
-        QProcess::ProcessError errorCode() const { return mErrorCode; }
-        QString popLog();
-
-    private:
-        QScopedPointer<QProcess> mProcess;
-        bool mFinished;
-        bool mErrorOccurred;
-        QString mErrorString;
-        QProcess::ProcessError mErrorCode;
-        QStringList mLogs;
-    };
 
     int mTick = 0;
     Result execute();
@@ -147,8 +143,17 @@ private:
     const char* mVideoInCodec;
     int mVideoInCodecQuality;
     bool mVideoExporting;
+    // GIF path: collect rendered frames (no live encoder) and encode with the
+    // in-process media::GifEncoder (replaces the legacy CLI palette subprocess).
+    bool mCollectFrames = false;
+    QList<QImage> mGifFrames;
+    QString mGifPalettePath;   // optional custom palette PNG (empty = adaptive)
+    bool mGifTransparent = false; // honor alpha on GIF (reserve a transparent entry)
 
-    FFMpeg mFFMpeg;
+    media::VideoEncoder mVideoEncoder;
+    QVector<media::AudioMixer::Track> mAudioTracks;    int mAudioSampleRate = 48000;
+    int mAudioChannels = 2;
+    bool mHasAudio = false;
     bool mExporting;
     int mIndex;
     int mDigitCount;
