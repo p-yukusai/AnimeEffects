@@ -155,6 +155,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         cmnd core ctrl gl img thr util media
 )
 
+# Win32 libraries the platform code calls directly: DwmSetWindowAttribute (the
+# popup rounding in gui/PopupWindow.h) and the user32 entry points around it.
+# Upstream's gui target links these too; this branch's rewrite of this file had
+# dropped the block, which only shows up when linking for Windows.
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE user32 dwmapi)
+endif()
+
 # i18n (Qt LinguistTools, loaded in the root CMakeLists): regenerates the
 # translation sources under assets/locale/translation_<locale>.ts (via the
 # update_translations target) and builds the .qm (via release_translations).

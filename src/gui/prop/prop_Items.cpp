@@ -322,9 +322,11 @@ namespace prop {
 
         // The picker popover: a floating Qt::Popup (top-level native window).
         // Rounded corners need a translucent backing — on X11/Wayland the
-        // compositor composites it; on Windows the masked rounded paint in
-        // paintEvent clips the corner cut. The widget itself sets the flags in
-        // its ctor (see EasingPickWidget), so setting them here too is a no-op.
+        // compositor composites it, on Windows the frameless flag makes Qt
+        // layer the window so the alpha is honoured, and the popup is shaped
+        // either by DWM (11 22H2+) or by the paintEvent mask. The widget itself
+        // sets the flags in its ctor (see EasingPickWidget), so setting them
+        // here too is a no-op.
         mPicker = new EasingPickWidget(mStamp);
         mPicker->setWindowFlags(mPicker->windowFlags() | Qt::Popup | Qt::FramelessWindowHint);
         mPicker->setAttribute(Qt::WA_TranslucentBackground, true);

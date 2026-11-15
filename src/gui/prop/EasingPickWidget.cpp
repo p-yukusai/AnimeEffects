@@ -10,6 +10,7 @@
 #include <functional>
 #include <QLinearGradient>
 #include "gui/AppStyle.h"
+#include "gui/PopupWindow.h"
 #include "gui/prop/bezierCurveEditor.h"
 #include <cmath>
 
@@ -411,8 +412,11 @@ EasingPickWidget::EasingPickWidget(const util::Easing::Param& aInitial, QWidget*
     // Rounded corners need a real-alpha window: a Qt::Popup (top-level) plus
     // a translucent backing, with FramelessWindowHint so the backing is a
     // composited alpha surface rather than an opaque square (on X11/Wayland
-    // the compositor handles the alpha; on Windows the masked paint in
-    // paintEvent clips the corner). Setting the flags here means the widget
+    // the compositor handles the alpha; on Windows this flag is what makes Qt
+    // layer the window at all, so the alpha is honoured — an unlayered window
+    // drops it and paints the corner cut black). Shaping is done either by the
+    // platform (Windows 11 22H2+, see showEvent) or by the paintEvent mask.
+    // Setting the flags here means the widget
     // is also a correct popup when created standalone (tests), independent of
     // the owner also setting them (setting twice is a no-op).
     if (!testAttribute(Qt::WA_TranslucentBackground))
@@ -1080,6 +1084,11 @@ void EasingPickWidget::forwardBlendCursorEvent(QMouseEvent* aEvent) {
 
 void EasingPickWidget::showEvent(QShowEvent* aEvent) {
     QFrame::showEvent(aEvent);
+    // The window flags are final by now, so this is the safe point to ask the
+    // platform to round the popup (it forces the native window to exist); on
+    // platforms that don't do it themselves this is a no-op and the paintEvent
+    // mask does the shaping instead. See gui/PopupWindow.h.
+    roundPopupWindow(this);
     if (mAnimTimer) mAnimTimer->start();
     // On reopen the popup keeps its previous (possibly tall Custom) height
     // while the content returns to the applied (non-Custom) state — re-fit.
@@ -1213,21 +1222,26 @@ void EasingPickWidget::paintEvent(QPaintEvent* aEvent) {
         QPaintEvent ev(aEvent->rect());
         QFrame::paintEvent(&ev);
     }
-    // Rounded window mask — cheap and compositor-independent. On Windows the
-    // translucent backing would otherwise show the square corner cut as black;
-    // the mask clips it reliably on every compositor (including offscreen /
-    // platform mismatches). A single cached mask, refreshed on size change.
-    static QSize sMaskSize;
-    if (sMaskSize != size()) {
-        sMaskSize = size();
-        QBitmap mask(size());
-        mask.fill(Qt::color0);
-        QPainter mp(&mask);
-        mp.setRenderHint(QPainter::Antialiasing, true);
-        mp.setBrush(Qt::color1);
-        mp.setPen(Qt::NoPen);
-        mp.drawRoundedRect(QRect(QPoint(0, 0), size()), kRadius, kRadius);
-        setMask(mask);
+    // Rounded window mask — cheap and compositor-independent, but only where the
+    // platform does not round the popup itself: on Windows 11 22H2+ DWM rounds
+    // the window (see showEvent), and a window region would prevent exactly that
+    // (Microsoft lists "window regions" among the things that make a window
+    // un-roundable). Elsewhere the mask rounds the corner cut reliably on every
+    // compositor (including offscreen / platform mismatches). A single cached
+    // mask, refreshed on size change.
+    if (!usesSystemPopupRounding()) {
+        static QSize sMaskSize;
+        if (sMaskSize != size()) {
+            sMaskSize = size();
+            QBitmap mask(size());
+            mask.fill(Qt::color0);
+            QPainter mp(&mask);
+            mp.setRenderHint(QPainter::Antialiasing, true);
+            mp.setBrush(Qt::color1);
+            mp.setPen(Qt::NoPen);
+            mp.drawRoundedRect(QRect(QPoint(0, 0), size()), kRadius, kRadius);
+            setMask(mask);
+        }
     }
 }
 

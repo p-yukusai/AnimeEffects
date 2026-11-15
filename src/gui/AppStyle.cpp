@@ -1,4 +1,5 @@
 #include "gui/AppStyle.h"
+#include "gui/PopupWindow.h"
 #include "gui/theme/Colors.h"
 #include "gui/theme/Icons.h"
 
@@ -44,6 +45,9 @@ AppStyle::AppStyle(QStyle* aBaseStyle): QProxyStyle(aBaseStyle) {}
 bool AppStyle::eventFilter(QObject* aWatched, QEvent* aEvent) {
     if (aWatched && aWatched->isWidgetType()) {
         auto* w = static_cast<QWidget*>(aWatched);
+        // Mask path only: this filter is installed from polish() where the
+        // platform does not round popups itself (see gui/PopupWindow.h), which
+        // on Windows means below 11 22H2.
         // Only QMenu gets the rounded mask. The combo drop-down
         // (QComboBoxPrivateContainer) must NOT: Qt's
         // QComboBoxPrivateContainer::paintEvent draws the popup panel
@@ -78,20 +82,32 @@ void AppStyle::polish(QWidget* aWidget) {
     // alpha window, so mark them translucent at polish time — before the
     // platform window is created. The combo popup (QComboBoxPrivateContainer)
     // draws the same PE_PanelMenu and needs the same treatment.
-    // On Windows Qt6 WA_TranslucentBackground only composites when
-    // FramelessWindowHint is also set (otherwise the corner cut is filled
-    // black) — see QTBUG and the Breeze/PortProton fixes.
     const bool isFloater = qobject_cast<QMenu*>(aWidget) || aWidget->inherits("QComboBoxPrivateContainer");
     if (isFloater) {
         // Keep Qt::Popup behavior (auto-close on outside click, grab) —
         // FramelessWindowHint alone would make it a normal top-level. OR
         // with existing flags rather than replacing, so Qt::Popup is kept.
+        // It is also what makes the translucency real on Windows: Qt only
+        // layers a translucent window that has no native frame
+        // (QWindowsWindow::setWindowLayered: hasAlpha && hasNoNativeFrame ->
+        // UpdateLayeredWindow), and an unlayered window drops the alpha
+        // channel, so the corner cut would come out black.
         aWidget->setWindowFlags(aWidget->windowFlags() | Qt::FramelessWindowHint);
         aWidget->setAttribute(Qt::WA_TranslucentBackground, true);
         aWidget->setAttribute(Qt::WA_NoSystemBackground, true);
-        // Mask must track resizes/shows — install filter on the popup itself.
-        aWidget->removeEventFilter(this);
-        aWidget->installEventFilter(this);
+        // Shape the popup itself. On Windows 11 (22H2+) DWM rounds the window,
+        // which is also what makes the system-drawn shadow follow the 8px
+        // panel; elsewhere a region mask does the shaping. The two are mutually
+        // exclusive — a window region is exactly what makes a window
+        // un-roundable for DWM — see gui/PopupWindow.h.
+        if (usesSystemPopupRounding()) {
+            roundPopupWindow(aWidget);
+        } else {
+            // Mask must track resizes/shows — install filter on the popup
+            // itself.
+            aWidget->removeEventFilter(this);
+            aWidget->installEventFilter(this);
+        }
     }
     // The combo popup paints its items as CE_MenuItem through Qt's
     // QComboMenuDelegate, which builds the style option from the VIEW's

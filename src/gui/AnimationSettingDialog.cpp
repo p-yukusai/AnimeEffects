@@ -1,4 +1,5 @@
 #include "gui/AnimationSettingDialog.h"
+#include "gui/PopupWindow.h"
 #include "gui/qml/AnimationSettingViewModel.h"
 #include "gui/qml/QmlTheme.h"
 #include <QBitmap>
@@ -94,15 +95,22 @@ AnimationSettingDialog::AnimationSettingDialog(QWidget* aParent)
     setFixedSize(kDialogWidth, kDialogHeight);
 
     // Rounded mask: clips the window so the (transparent) corner cut is
-    // click-through and the compositor knows the shape.
-    QBitmap mask(size());
-    mask.fill(Qt::color0);
-    QPainter mp(&mask);
-    mp.setRenderHint(QPainter::Antialiasing, true);
-    mp.setBrush(Qt::color1);
-    mp.setPen(Qt::NoPen);
-    mp.drawRoundedRect(QRect(QPoint(0, 0), size()), kDialogRadius, kDialogRadius);
-    setMask(mask);
+    // click-through and the compositor knows the shape. Only where the platform
+    // does not round the popup itself — on Windows 11 22H2+ DWM rounds the
+    // window (which also rounds the system shadow), and a window region would
+    // prevent exactly that. See gui/PopupWindow.h.
+    if (usesSystemPopupRounding()) {
+        roundPopupWindow(this);
+    } else {
+        QBitmap mask(size());
+        mask.fill(Qt::color0);
+        QPainter mp(&mask);
+        mp.setRenderHint(QPainter::Antialiasing, true);
+        mp.setBrush(Qt::color1);
+        mp.setPen(Qt::NoPen);
+        mp.drawRoundedRect(QRect(QPoint(0, 0), size()), kDialogRadius, kDialogRadius);
+        setMask(mask);
+    }
 
     // The QML close button calls model.reject(); dismiss the popup.
     connect(mModel, &AnimationSettingViewModel::rejected, this, &QWidget::hide);
@@ -215,6 +223,16 @@ void AnimationSettingDialog::showAt(const QPoint& aAnchor, const util::Range& aR
     move(topLeft);
     show();
     raise();
+    // Qt shows a Qt::Popup with SW_SHOWNOACTIVATE on Windows (QWindowsWindow::
+    // setVisible) and only forces it to the foreground when the application has
+    // no focus window at all, so a popup opened from a focused main window never
+    // becomes the active window there. Widget-based fields do not care — focus
+    // is per-window for them — but a Qt Quick scene does: Item::activeFocus
+    // requires an *active* window, and this dialog gates its text-edit mode on
+    // exactly that (ScrubSpinBox: `visible: activeFocus`). Without this call,
+    // clicking a value field on Windows does nothing, while it works on
+    // X11/Wayland, where the compositor activates the popup.
+    activateWindow();
 }
 
 } // namespace gui
