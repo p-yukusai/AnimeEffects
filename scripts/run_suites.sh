@@ -11,6 +11,12 @@ CFG=${1:-Debug}
 declare -A SKIP=(
   [roundtrip]=1            # needs .anie arguments
   [easing_picker_shot]=1   # writes screenshots
+  # pose_pull_crash drives the real ctrl::Driver with the Pose tool's "Pull
+  # bones" mode against a project of the caller's choosing; with no .anie it
+  # only prints usage and exits 2, which a suite would read as a failure. It is
+  # the reproduction tool for the TreeUtil::deleteAll heap corruption, not a
+  # gate -- tests/treeutil_delete_uaf.cpp is the gate for that fix.
+  [pose_pull_crash]=1
   # picker_probe used to be skipped here. It constructs widgets (no display needed:
   # it runs under QT_QPA_PLATFORM=offscreen) and it now EXITS NON-ZERO on a
   # mismatch, so it is a gate: it reported a stale height expectation for months

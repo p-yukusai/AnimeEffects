@@ -35,12 +35,20 @@ public:
         return shadow;
     }
 
+    // Deletes aObj and its whole subtree.
+    //
+    // Each child is detached from aObj's list BEFORE it is deleted. The list
+    // holds raw pointers and TreeChildren::clear() writes into every node it
+    // still holds (setParent/setSibling), so clearing after the deletion loop
+    // wrote 24 bytes into each already-freed child: a use-after-free write on
+    // the shadow tree of ctrl::pose::BoneDynamics, i.e. inside every drag of
+    // the pose editor's "Pull bones" tool. Detaching as we go keeps every write
+    // on a live object, and leaves the list empty before its owner is deleted.
     template<typename tObj>
     static void deleteAll(tObj* aObj) {
-        for (auto child : aObj->children()) {
-            deleteAll<tObj>(child);
+        while (!aObj->children().empty()) {
+            deleteAll<tObj>(aObj->children().popFront());
         }
-        aObj->children().clear();
 
         delete aObj;
     }

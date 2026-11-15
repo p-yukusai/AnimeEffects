@@ -21,6 +21,30 @@ target_link_libraries(bonekey_regression PRIVATE
     cmnd core ctrl gl img thr util pugixml
 )
 
+# Regression test for the util::TreeUtil::deleteAll use-after-free write (the
+# pre-fix body cleared the child list only AFTER deleting the children, so
+# TreeChildren::clear() wrote 24 bytes into every already-freed child). Catches
+# it with no sanitizer via a poison-and-leak Node allocator. See
+# treeutil_delete_uaf.cpp.
+#
+# It exercises only header-only code (util/TreeUtil.h + util/TreeNodeBase.h), so
+# it needs no library beyond Qt6::Core -- no `util` (which would drag in Widgets/
+# Gui/OpenGL) and no other module. The `../src` include dir is what resolves
+# "XCAssert.h" and "util/...", the same way the `util` target exports it.
+add_executable(treeutil_delete_uaf treeutil_delete_uaf.cpp)
+target_include_directories(treeutil_delete_uaf PRIVATE ../src)
+target_link_libraries(treeutil_delete_uaf PRIVATE Qt6::Core)
+
+# Contract test for the cmnd::Gesture seam (src/cmnd/Gesture.h): the open edit that
+# owns one coalescing command. Pins the semantics every editor relies on -- the
+# builder runs inside the edit's macro, the gate (continues()) survives in-place
+# rewrites, undo/redo/clear close the edit, the grabbed listener executes once per
+# commit, and a gesture that is never committed pushes nothing. Headless: QtCore
+# only, no display, no assets. See cmnd_gesture.cpp.
+add_executable(cmnd_gesture cmnd_gesture.cpp)
+target_include_directories(cmnd_gesture PRIVATE ..)
+target_link_libraries(cmnd_gesture PRIVATE cmnd)
+
 # Round-trip project loader/saver harness (open -> serialize -> reload -> close).
 # Takes .anie paths on the command line; used to exercise real project files.
 #
@@ -83,6 +107,29 @@ target_compile_definitions(creation_select_keys PRIVATE
     USE_GL_CORE_PROFILE
 )
 target_link_libraries(creation_select_keys PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Headless reproduction of the "Pull bones" (PoseEditMode_Draw -> pose::
+# DrawBoneMode) crash. Loads a real .anie, builds the real ctrl::Driver with the
+# Pose tool, and feeds synthetic left-button press/drag/release frames through
+# core::AbstractCursor. Run under gdb (and xvfb-run for the GL context):
+#   xvfb-run -a gdb -batch -ex run -ex "bt 25" --args \
+#       build/tests/Debug/pose_pull_crash <file.anie>
+# See pose_pull_crash.cpp.
+add_executable(pose_pull_crash pose_pull_crash.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(pose_pull_crash PRIVATE ..)
+target_compile_definitions(pose_pull_crash PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(pose_pull_crash PRIVATE
     Qt6::Core Qt6::Core5Compat Qt6::Widgets
     Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
     Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
