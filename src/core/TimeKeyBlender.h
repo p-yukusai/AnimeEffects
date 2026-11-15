@@ -56,10 +56,12 @@ private:
     void blendOpaKey(PositionType aPos, const TimeInfo& aTime);
     void blendHSVKey(PositionType aPos, const TimeInfo& aTime);
     void blendBlurKey(PositionType aPos, const TimeInfo& aTime);
+    void blendWaveKey(PositionType aPos, const TimeInfo& aTime);
     void blendBoneKey(PositionType aPos, const TimeInfo& aTime);
     void blendPoseKey(PositionType aPos, const TimeInfo& aTime);
     void blendMeshKey(PositionType aPos, const TimeInfo& aTime);
     void blendFFDKey(PositionType aPos, const TimeInfo& aTime);
+    void blendMaskKey(PositionType aPos, const TimeInfo& aTime);
     void blendImageKey(PositionType aPos, const TimeInfo& aTime);
     // void buildPosePalette(ObjectNode& aNode, PosePalette::KeyPairs& aPairs);
     void buildPosePalette(ObjectNode& aNode, PosePalette::KeyPair aPair);

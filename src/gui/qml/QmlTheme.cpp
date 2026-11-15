@@ -6,16 +6,6 @@
 
 namespace gui {
 
-namespace {
-// The semantic roles have no cell in the Tailwind token table (which is
-// achromatic surfaces plus the selectable accent row), so they are the one
-// place a literal colour is right. Tailwind red/amber: the 600 step on the
-// pale theme, the 400 step on the deep one, so both clear their background.
-QColor semantic(bool aDark, const char* aLightHex, const char* aDarkHex) {
-    return QColor(QString::fromLatin1(aDark ? aDarkHex : aLightHex));
-}
-} // namespace
-
 QmlTheme::QmlTheme(QObject* aParent) : QObject(aParent) {}
 
 void QmlTheme::refresh() {
@@ -46,13 +36,17 @@ QColor QmlTheme::selectionText() const { return theme::Colors::current().selecti
 QColor QmlTheme::floaterBody() const { return theme::Colors::current().floaterBody; }
 QColor QmlTheme::floaterEdge() const { return theme::Colors::current().floaterEdge; }
 
-QColor QmlTheme::danger() const {
-    return semantic(theme::Colors::current().isDark, "#dc2626", "#f87171");
+// The semantic roles are tokens in theme::Colors (its own red/amber rows, never
+// the neutral or accent row) so the QML facts rows and the command log's warning
+// badge share one ink. They used to be literals right here, which is why a theme
+// change could not re-ink them anywhere but QML.
+QColor QmlTheme::maskKey() const {
+    return theme::keyTypeColor(theme::Colors::current(), core::TimeKeyType_Mask);
 }
 
-QColor QmlTheme::warning() const {
-    return semantic(theme::Colors::current().isDark, "#b45309", "#fbbf24");
-}
+QColor QmlTheme::danger() const { return theme::Colors::current().danger; }
+
+QColor QmlTheme::warning() const { return theme::Colors::current().warning; }
 
 QUrl QmlTheme::closeIcon() const { return QUrl::fromLocalFile(theme::iconDir() + "/x.svg"); }
 

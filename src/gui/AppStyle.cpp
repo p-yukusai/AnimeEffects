@@ -261,8 +261,13 @@ void AppStyle::drawControl(ControlElement aElement, const QStyleOption* aOption,
         // QMenu::item rules do not reach them (the popup container is not a
         // QMenu), so without this the selected row shows Fusion's stock
         // highlight-with-border. Draw the same treatment QMenu gets from
-        // QSS: flat rounded accent for the selected row, a centered 1px
-        // hairline for separators.
+        // QSS: flat rounded accent for the selected row and a centered 1px
+        // rule for separators. The rule's ink is floaterEdge to stay
+        // identical to QMenu::separator in standard.ssa: a rule ON the
+        // popup surface must take that surface's own edge token, because
+        // hairline shares the floater body's palette cell in dark (both
+        // neutral column 8, #262626, so the line would be invisible) while
+        // floaterEdge is one step above the body in both themes.
         const auto* opt = qstyleoption_cast<const QStyleOptionMenuItem*>(aOption);
         if (!opt)
             return QProxyStyle::drawControl(aElement, aOption, aPainter, aWidget);
@@ -273,7 +278,7 @@ void AppStyle::drawControl(ControlElement aElement, const QStyleOption* aOption,
             const int inset = 8;
             aPainter->save();
             aPainter->setPen(Qt::NoPen);
-            aPainter->setBrush(theme::Colors::current().hairline);
+            aPainter->setBrush(theme::Colors::current().floaterEdge);
             aPainter->drawRect(QRect(r.left() + inset, r.center().y(), r.width() - inset * 2, 1));
             aPainter->restore();
             return;

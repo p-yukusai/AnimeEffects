@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+:root{
+  --base:#171717; --raised:#262626; --recessed:#0a0a0a; --hairline:#262626;
+  --outline:#404040; --text:#f5f5f5; --muted:#a3a3a3; --disabled:#737373;
+  --move:#818cf8; --rotate:#c084fc; --scale:#e879f9; --depth:#fb7185;
+  --opa:#fbbf24; --image:#38bdf8; --ffd:#22d3ee;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0f0f0f;color:var(--text);font:12px/1.35 Inter,"Segoe UI",sans-serif}
+.panel{width:340px;min-height:900px;background:var(--base);border-left:1px solid #262626}
+.dock-title{padding:12px 16px 10px;font-weight:600;color:var(--text)}
+.sep{height:1px;background:var(--hairline)}
+.section-title{display:flex;align-items:center;gap:6px;padding:16px 16px 6px 36px;color:var(--muted);font-weight:600;font-size:11px}
+.section-title .caret{color:var(--muted);width:10px}
+.row{display:flex;align-items:center;padding-left:36px;padding-right:16px;min-height:30px}
+.row .label{width:88px;white-space:nowrap}
+.row .dot{width:18px;height:20px;margin-left:6px;display:grid;place-items:center;flex:0 0 18px}
+.row .dot i{display:block;width:8px;height:8px;border:1px solid var(--move);border-radius:50%}
+.row .dot.rotate i{border-color:var(--rotate)} .row .dot.scale i{border-color:var(--scale)}
+.row .dot.depth i{border-color:var(--depth)} .row .dot.opa i{border-color:var(--opa)}
+.row .dot.image i{border-color:var(--image)} .row .dot.ffd i{border-color:var(--ffd)}
+.row .dot.keyed i{background:var(--move)} .row .dot.rotate.keyed i{background:var(--rotate)}
+.row .field{flex:1;min-width:0;margin-left:10px;display:flex;gap:6px;justify-content:flex-end}
+.input{height:23px;width:144px;max-width:144px;background:var(--raised);border:1px solid var(--outline);border-radius:4px;color:var(--text);display:flex;align-items:center;justify-content:flex-end;padding:0 7px;white-space:nowrap;overflow:hidden}
+.input.wide{width:100%;max-width:144px}
+.input.two{width:69px;max-width:69px;flex:1}
+.subrow{display:flex;align-items:center;padding-left:60px;padding-right:16px;min-height:27px}
+.subrow .label{width:88px;text-align:right;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2px}
+.subrow .field{margin-left:10px;display:flex;gap:6px;flex:1;justify-content:flex-start}
+.subrow .input.two{width:69px}
+.asset .input{width:126px}
+.asset .browse{width:16px;height:23px;border:1px solid var(--outline);border-radius:4px;margin-left:2px}
+.chev{color:var(--muted);font-size:9px}
+.deform{margin-top:10px}
+.filter-head{display:flex;align-items:center;padding:18px 16px 8px 36px;color:var(--text);font-weight:600}
+.filter-head .plus{margin-left:auto;color:var(--muted);font-size:16px}
+.muted{padding:2px 16px 8px 36px;color:var(--muted)}
+</style></head><body>
+<div class="panel">
+  <div class="dock-title">Properties</div>
+  <div class="section-title"><span class="caret">▾</span>Constants</div>
+  <div class="section-title" style="padding-left:50px;padding-top:2px"><span class="caret">▾</span>Rendering</div>
+  <div class="row"><span class="keycell"></span><span class="label">Blend</span><span class="field"><span class="input wide">Normal</span></span></div>
+  <div class="row"><span class="keycell"></span><span class="label">Clipped</span><span class="field"><span class="input" style="width:14px;max-width:14px;height:14px;border-radius:50%"></span></span></div>
+  <div class="sep" style="margin-top:10px"></div>
+
+  <div class="section-title">Transform</div>
+  <div class="row"><span class="keycell"><span class="dot"><i></i></span></span><span class="label">Move</span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Spline</span><span class="field"><span class="input wide">Linear</span></span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Position</span><span class="field"><span class="input two">357.5</span><span class="input two">1096</span></span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Centroid</span><span class="field"><span class="input two">0</span><span class="input two">0</span></span></div>
+
+  <div class="row"><span class="keycell"><span class="dot rotate"><i></i></span></span><span class="label">Rotation</span><span class="field"><span class="input">0</span></span></div>
+  <div class="row"><span class="keycell"><span class="dot scale keyed"><i></i></span></span><span class="label">Scale</span><span class="field"><span class="input two">1</span><span class="input two">1</span></span></div>
+  <div class="row"><span class="keycell"><span class="dot depth"><i></i></span></span><span class="label">Depth</span><span class="field"><span class="input">-10</span></span></div>
+  <div class="row"><span class="keycell"><span class="dot opa"><i></i></span></span><span class="label">Opacity</span><span class="field"><span class="input">1</span></span></div>
+
+  <div class="row"><span class="keycell"><span class="dot image"><i></i></span></span><span class="label">Image</span></div>
+  <div class="subrow asset"><span class="keycell"></span><span class="label">Asset</span><span class="field"><span class="input">Paint Layer 1</span><span class="browse"></span></span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Center</span><span class="field"><span class="input two">336.5</span><span class="input two">72</span></span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Cell size</span><span class="field"><span class="input">16</span></span></div>
+
+  <div class="section-title deform">Deform</div>
+  <div class="row"><span class="keycell"><span class="dot ffd"><i></i></span></span><span class="label">FFD</span></div>
+
+  <div class="filter-head"><span class="chev">▾</span>&nbsp;Filters<span class="plus">+</span></div>
+  <div class="muted">No filters</div>
+</div>
+</body></html>

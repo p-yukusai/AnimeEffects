@@ -21,12 +21,24 @@ public:
 
     struct LoadResult {
         core::Project* project;
+        // Failure: the lines to show in the error box, innermost first.
+        // Success: the importer's warnings -- conditions the user should know
+        // about (a PSD layer kind AnimeEffects cannot reproduce, ignored layer
+        // masks) that did not stop the project from opening. Empty means the
+        // import was exact and nothing should be shown.
         QStringList message;
         LoadResult();
         LoadResult(core::Project*, const QString&);
         LoadResult(core::Project*, const QStringList&);
         QString messages() const;
         explicit operator bool() const { return project; }
+
+        // The title and one-line summary of the popup shown for a successful
+        // import whose warnings are non-empty. They live beside the list, in a
+        // context the translation catalogs already carry, so the GUI only has to
+        // hand the lines over.
+        static QString warningTitle();
+        static QString warningSummary();
     };
 
     System(const QString& aCacheDir);

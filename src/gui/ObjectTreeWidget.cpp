@@ -24,6 +24,9 @@
 #include "ctrl/ImageFileLoader.h"
 #include "gui/ResourceDialog.h"
 #include "gui/ProjectHook.h"
+#include "core/ImageKey.h"
+#include "core/MaskKey.h"
+#include "gui/ThumbnailCache.h"
 #include "gui/theme/Colors.h"
 #include "gui/obj/obj_MoveItem.h"
 #include "gui/obj/obj_InsertItem.h"
@@ -55,6 +58,9 @@ static const int kColumnDecorationGap = 4;
 // operator==, so setIcon would always emit dataChanged -> updateColumnWidth
 // (O(N) per row), making a full refresh O(N^2) per selection change.
 constexpr int kIconFadeRole = Qt::UserRole + 1;
+// The thumbnail's identity: the fade guard alone cannot see a REIMPORT, which hands the
+// layer a different buffer while the fade (and the selection) stay exactly the same.
+constexpr int kIconThumbRole = Qt::UserRole + 2;
 // Scrollable space kept after the last row so collapsing a branch near the
 // bottom doesn't make the view jump when the content height shrinks.
 static const int kBottomPadding = 12;
@@ -95,6 +101,52 @@ public:
             }
         }
     }
+
+    // THE MATTE CHIP: a row says whether its node carries a mask, without being
+    // selected and without the inspector being open. It draws WHAT IS HIDDEN in the
+    // canvas overlay's ink (the same rule as the inspector's thumbnail), so an
+    // untouched mask is an empty frame and a painted one is a shape - and only a
+    // node that HAS a mask costs anything, which is why most rows pay one null test.
+    void paint(QPainter* aPainter, const QStyleOptionViewItem& aOption, const QModelIndex& aIndex) const override {
+        QStyledItemDelegate::paint(aPainter, aOption, aIndex);
+
+        auto* tree = qobject_cast<const QTreeWidget*>(aOption.widget);
+        if (!tree)
+            return;
+        auto* item = gui::obj::Item::cast(tree->itemFromIndex(aIndex));
+        if (!item)
+            return;
+        const core::TimeLine* line = item->node().timeLine();
+        if (!line)
+            return;
+        const core::MaskKey::Data& mask = line->current().mask();
+        if (!mask.isValid() || !mask.isPainted())
+            return;
+
+        constexpr int kChip = 14;
+        constexpr int kMargin = 6;
+        const QRect row = aOption.rect;
+        const QRect chip(
+            row.right() - kMargin - kChip, row.center().y() - kChip / 2, kChip, kChip
+        );
+        if (chip.width() < kChip)
+            return;
+
+        // THE MATTE ITSELF at 14px: white = visible, black = hidden, the same reading as
+        // the inspector's thumbnail and as an alpha channel anywhere
+        const QImage preview =
+            mask.field().scaled(kChip, kChip, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+        aPainter->save();
+        aPainter->setRenderHint(QPainter::Antialiasing, false);
+        // the frame is the row's own hairline, so the chip reads as a field even while
+        // the matte inside it is still empty
+        aPainter->setPen(QPen(theme::Colors::current().hairline, 1));
+        aPainter->setBrush(Qt::NoBrush);
+        aPainter->drawRect(chip.adjusted(0, 0, -1, -1));
+        aPainter->drawImage(chip.topLeft() + QPoint(1, 1), preview);
+        aPainter->restore();
+    }
 };
 } // namespace
 
@@ -125,6 +177,10 @@ ObjectTreeWidget::ObjectTreeWidget(ViaPoint& aViaPoint, GUIResources& aResources
     this->setContextMenuPolicy(Qt::CustomContextMenu);
     this->setSelectionMode(ExtendedSelection);
     this->setHeaderHidden(true);
+    // WITHOUT THIS the view asks the style for its icon size (measured: PM_SmallIconSize
+    // = 16px) and Qt RESCALES the 22px cell down to it - a second resample, and a
+    // downscale at that. The cell is rendered at exactly this size now, in device pixels.
+    this->setIconSize(QSize(kItemSize, kItemSize));
     this->setAnimated(true);
     this->setUniformRowHeights(false);
     this->setDragDropMode(InternalMove);
@@ -435,8 +491,27 @@ void ObjectTreeWidget::updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bo
     }
     aItem->setForeground(kItemColumn, QBrush(textColor));
 
+    // A LAYER SHOWS ITS OWN PIXELS; a folder (and a layer with no image, such as a fill
+    // or adjustment layer) keeps the glyph. Recognition only: the source image is what
+    // identifies a layer, and it is what the importer already has on the CPU - a
+    // rendered thumbnail would need a GL readback per row and would go blank for a
+    // masked-out layer, which is the opposite of a navigator's job.
     const bool isFolder = (aItem->flags() & Qt::ItemIsDropEnabled) != 0;
-    QIcon icon = mGUIResources.icon(isFolder ? "folder" : "file");
+    QIcon icon;
+    const obj::Item* objItem = obj::Item::cast(aItem);
+    const core::LayerNode* layer =
+        objItem && !isFolder ? dynamic_cast<const core::LayerNode*>(&objItem->node()) : nullptr;
+    const core::TimeLine* line = layer ? layer->timeLine() : nullptr;
+    const core::TimeKey* imageKey = line ? line->defaultKey(core::TimeKeyType_Image) : nullptr;
+    const img::ResourceData* resource =
+        imageKey ? static_cast<const core::ImageKey*>(imageKey)->data().resource().get() : nullptr;
+    const qreal dpr = this->devicePixelRatioF();
+    // THE 22px SLOT: a 20px cell with a 1px gap on each side. The gap is load-bearing -
+    // at kItemSize the cells touched and a column of layers read as one continuous strip.
+    // The frame now lives INSIDE the cell (over its own edge), so it costs no extra pixel.
+    constexpr int kThumbBox = kItemSize - 2;
+    const quint64 thumbKey =
+        resource && resource->hasImage() ? ThumbnailCache::key(resource->image(), kThumbBox, dpr) : 0;
     // file/folder icons rest at 2/3 of the text's presence, so the labels
     // carry the hierarchy; hidden items fade further on top of that, and a
     // selected hidden item fades less than an unselected one (same rule as
@@ -446,22 +521,46 @@ void ObjectTreeWidget::updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bo
     // next to the full-brightness label.
     const qreal baseOpacity = 0.66;
     const qreal fade = aVisible ? (selected ? 1.2 : 1.0) : (selected ? 0.7 : 0.45);
+    // A THUMBNAIL IS CONTENT, NOT A GLYPH: the 0.66 rest exists so a file/folder icon stays
+    // quiet beside its label, and applying it to an image washed the layer's own pixels out
+    // (measured: a checker token of #363636 landed as #323232 on screen, which is what
+    // "the darker ones are 31 instead of 36" was). The glyph keeps the rest; the thumbnail
+    // is drawn at its own visibility.
+    const qreal thumbnailOpacity = aVisible ? 1.0 : 0.45;
     const qreal effectiveFade = baseOpacity * fade;
     // Skip the rebuild when the fade is unchanged (selection refreshes run
     // over every row): the foreground above already early-returns on an equal
     // brush, but setIcon cannot — QIcon has no operator==.
-    if (qFuzzyCompare(aItem->data(kItemColumn, kIconFadeRole).toReal(), effectiveFade))
+    if (qFuzzyCompare(aItem->data(kItemColumn, kIconFadeRole).toReal(), effectiveFade)
+        && aItem->data(kItemColumn, kIconThumbRole).toULongLong() == thumbKey)
         return;
     aItem->setData(kItemColumn, kIconFadeRole, effectiveFade);
-    const QPixmap pm = icon.pixmap(kItemSize, kItemSize);
-    QPixmap faded(pm.size());
+    aItem->setData(kItemColumn, kIconThumbRole, QVariant::fromValue<qulonglong>(thumbKey));
+
+    // the thumbnail is already at row size; the glyph needs its own pixmap at that size
+    QPixmap pm;
+    if (thumbKey != 0)
+        pm = mThumbnails.layerThumbnail(resource->image(), kThumbBox, dpr);
+    if (pm.isNull())
+        pm = mGUIResources.icon(isFolder ? "folder" : "file").pixmap(kItemSize, kItemSize);
+    // the fade is applied to the whole cell either way, so a thumbnail dims exactly like
+    // a glyph did when its layer is hidden
+    const qreal drawOpacity = (thumbKey != 0) ? thumbnailOpacity : (baseOpacity * fade);
+    QPixmap faded(kItemSize, kItemSize);
     faded.fill(Qt::transparent);
+    // centre in LOGICAL units: the thumbnail's width() is device pixels, so its logical
+    // extent is width()/dpr - drawing it at (kItemSize - width())/2 would push a 2x cell
+    // off the left edge
+    const qreal pmDpr = pm.devicePixelRatio() > 0.0 ? pm.devicePixelRatio() : 1.0;
+    const QSizeF logical(pm.width() / pmDpr, pm.height() / pmDpr);
     QPainter painter(&faded);
-    painter.setOpacity(baseOpacity * fade);
-    painter.drawPixmap(0, 0, pm);
+    painter.setOpacity(drawOpacity);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+    painter.drawPixmap(
+        QPointF((kItemSize - logical.width()) / 2.0, (kItemSize - logical.height()) / 2.0), pm
+    );
     painter.end();
-    icon = QIcon(faded);
-    aItem->setIcon(kItemColumn, icon);
+    aItem->setIcon(kItemColumn, QIcon(faded));
 }
 
 obj::Item* ObjectTreeWidget::createFolderItem(core::ObjectNode& aNode) {
@@ -665,6 +764,20 @@ void ObjectTreeWidget::onThemeUpdated(theme::Theme& aTheme) {
 //-------------------------------------------------------------------------------------------------
 void ObjectTreeWidget::onTimeLineModified(core::TimeLineEvent& aEvent, bool) {
     auto type = aEvent.type();
+
+    // A MATTE'S FIELD CHANGED (a brush stroke, an invert): nothing about the rows'
+    // geometry changes, but the row's chip draws the field - and a value event was
+    // ignored here, so the chip would stay blank until some unrelated repaint.
+    if (type == core::TimeLineEvent::Type_ChangeKeyValue) {
+        for (const auto& target : aEvent.targets()) {
+            if (target.pos.type() == core::TimeKeyType_Mask) {
+                this->viewport()->update();
+                break;
+            }
+        }
+        return;
+    }
+
     if (type != core::TimeLineEvent::Type_PushKey && type != core::TimeLineEvent::Type_RemoveKey) {
         return;
     }

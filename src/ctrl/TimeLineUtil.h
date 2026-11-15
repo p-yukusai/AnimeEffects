@@ -13,6 +13,7 @@
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
 #include "core/BlurKey.h"
+#include "core/WaveKey.h"
 #include "core/DepthKey.h"
 #include "core/OpaKey.h"
 #include "core/HsvKey.h"
@@ -21,6 +22,7 @@
 #include "core/FFDKey.h"
 #include "core/MeshKey.h"
 #include "core/ImageKey.h"
+#include "core/MaskKey.h"
 
 namespace ctrl {
 
@@ -311,6 +313,10 @@ namespace TimeLineUtil {
         core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const core::BlurKey::Data& aNewData
     );
 
+    void assignWaveKeyData(
+        core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const core::WaveKey::Data& aNewData
+    );
+
     void assignPoseKeyEasing(
         core::Project& aProject, core::ObjectNode& aTarget, int aFrame, const util::Easing::Param& aNewData
     );
@@ -342,6 +348,8 @@ namespace TimeLineUtil {
     void pushNewHSVKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::HSVKey* aKey);
     void pushNewBlurKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::BlurKey* aKey);
 
+    void pushNewWaveKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::WaveKey* aKey);
+
     void pushNewPoseKey(
         core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::PoseKey* aKey, core::BoneKey* aParentKey
     );
@@ -351,6 +359,78 @@ namespace TimeLineUtil {
     );
 
     void pushNewImageKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame, core::ImageKey* aKey);
+
+    // A filter lane's PAINTED MASK (core/FilterMask.h), cleared back to its neutral
+    // value as ONE undo step. The field stays allocated (a later paint reuses it);
+    // undoing restores the pixels the command carries.
+    void clearFilterMask(
+        core::Project& aProject, core::ObjectNode& aTarget, core::TimeKeyType aType,
+        core::FilterMaskChannel aChannel
+    );
+    bool hasFilterMask(const core::ObjectNode& aTarget, core::TimeKeyType aType, core::FilterMaskChannel aChannel);
+
+    // --- the filter stack -------------------------------------------------
+    // The stack is ORDER + ENABLED on the timeline; values stay in the HSV/Blur
+    // key maps. Every operation is one undo step and announces
+    // core::TimeLineEvent::Type_FilterStack, so the property board refreshes even
+    // when the operation touches no key.
+    //
+    // addFilter appends a filter that has no key yet (the row exists, identity
+    // values; the first field edit creates the key). removeFilter also removes
+    // every explicit key of that filter's lane, because a stack entry is what
+    // makes the lane meaningful. moveFilter moves one entry to a new index in the
+    // effective stack (0 = top). setFilterEnabled flips one entry's eye.
+    // ---- the node's MATTE (core::MaskKey) -------------------------------------
+    //
+    // One mask per node, and the four edits every surface calls: the inspector's
+    // card, the tree's chip and the Mask tool all go through these, so the states
+    // they paint and the states they show cannot drift.
+    //
+    // A mask starts at REVEAL ALL (the field is 255 everywhere), so adding one
+    // changes nothing on screen until it is painted - unlike a filter mask, whose
+    // neutral is per input.
+    // The KEY a stroke may write: the one at aFrame, else the default key, else
+    // nullptr (nothing to paint - the card's "Add mask" is the entry, and the tool
+    // does not invent a mask behind the user's back).
+    core::MaskKey* maskKeyForPaint(core::ObjectNode& aTarget, int aFrame);
+
+    // One undoable write of a mask key's whole field. The brush captures the field
+    // before its stroke and calls this at the end, so a stroke is ONE undo step and
+    // undo restores the pixels exactly (a matte is too big to re-derive).
+    class AssignMaskField: public cmnd::Stable {
+    public:
+        AssignMaskField(core::MaskKey* aKey, const core::MaskKey::Data& aNext);
+        // Both states given: a STROKE writes the key in place and pushes this at the
+        // release, so the field it captured before the first stamp is what undo restores.
+        AssignMaskField(core::MaskKey* aKey, const core::MaskKey::Data& aPrev,
+                        const core::MaskKey::Data& aNext);
+        virtual bool redoable() const;
+        virtual bool undoable() const;
+        virtual void redo();
+        virtual void undo();
+
+    private:
+        core::MaskKey* mKey;
+        core::MaskKey::Data mPrev;
+        core::MaskKey::Data mNext;
+    };
+
+    // Clears a mask key's field back to REVEAL ALL (the matte's neutral).
+    void resetMaskField(core::Project& aProject, core::ObjectNode& aTarget, core::MaskKey* aKey);
+
+    void addMask(core::Project& aProject, core::ObjectNode& aTarget);
+    // Remove the mask and all its keys. Undoable, like removing a filter.
+    void removeMask(core::Project& aProject, core::ObjectNode& aTarget);
+    // Invert the matte at the key it would be painted on (that key's own field).
+    void invertMask(core::Project& aProject, core::ObjectNode& aTarget, int aFrame);
+    // Hollow dot -> a key at aFrame holding the current blend (a hold); filled dot ->
+    // remove that frame's key. The same rule every other channel's dot follows.
+    void toggleMaskKey(core::Project& aProject, core::ObjectNode& aTarget, int aFrame);
+
+    void addFilter(core::Project& aProject, core::ObjectNode& aTarget, core::TimeKeyType aType);
+    void removeFilter(core::Project& aProject, core::ObjectNode& aTarget, core::TimeKeyType aType);
+    void moveFilter(core::Project& aProject, core::ObjectNode& aTarget, core::TimeKeyType aType, int aIndex);
+    void setFilterEnabled(core::Project& aProject, core::ObjectNode& aTarget, core::TimeKeyType aType, bool aEnabled);
 
 } // namespace TimeLineUtil
 

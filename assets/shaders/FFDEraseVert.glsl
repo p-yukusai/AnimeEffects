@@ -1,6 +1,8 @@
 #version 330
 
-#variation HARDNESS 0
+// uBrushHardness, uBrushAmount and brushFalloff() are prepended by
+// ffd::TaskResource - the same function the deformer uses, so an erase has the
+// shape its paint had.
 
 in vec3 inPosition;
 in vec3 inWorldPosition;
@@ -16,21 +18,10 @@ uniform float uBrushPressure;
 void main(void)
 {
     float distance = length(inWorldPosition.xy - uBrushCenter);
+    float weight = brushFalloff(distance, uBrushRadius, uBrushHardness) * uBrushAmount;
     float linearRate = min(distance / uBrushRadius, 1.0);
-    float rate = linearRate;
 
-#if HARDNESS == 0
-    rate *= rate;
-#elif HARDNESS == 1
-    rate *= rate;
-    rate *= rate;
-#elif HARDNESS == 2
-    rate *= rate;
-    rate *= rate;
-    rate *= rate;
-#endif
-
-    float power = uBrushPressure * (1.0 - rate);
+    float power = uBrushPressure * weight;
     outPosition = inOriginPosition + (1.0 - power) * (inPosition - inOriginPosition);
-    outPower = 1.0 - linearRate;
+    outPower = weight;
 }

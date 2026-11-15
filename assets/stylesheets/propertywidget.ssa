@@ -127,11 +127,6 @@ QAbstractButton#keyGroupHeader {
 
 
 /* field labels sit a step below the values they describe */
-QLabel#attrLabel {
-    /* transparent: same rationale as the knocker label */
-    background-color: transparent;
-    color: @text@;
-}
 QFrame#attrGroup {
     border-radius:0;
     margin: 0;

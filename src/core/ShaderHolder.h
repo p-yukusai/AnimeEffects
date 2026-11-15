@@ -13,10 +13,18 @@ public:
     ShaderHolder();
     ~ShaderHolder();
 
-    gl::EasyShaderProgram& reserveShader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV);
+    // aUseLayerMask compiles the node's own matte into the draw (LAYER_MASK): a
+    // node whose mask has a field needs one more variant than a node without one.
+    gl::EasyShaderProgram& reserveShader(
+        img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV, bool aUseLayerMask
+    );
     void reserveShaders(img::BlendMode aBlendMode);
-    gl::EasyShaderProgram& shader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV);
-    const gl::EasyShaderProgram& shader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV) const;
+    gl::EasyShaderProgram& shader(
+        img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV, bool aUseLayerMask
+    );
+    const gl::EasyShaderProgram& shader(
+        img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV, bool aUseLayerMask
+    ) const;
 
     gl::EasyShaderProgram& reserveGridShader();
     gl::EasyShaderProgram& gridShader();

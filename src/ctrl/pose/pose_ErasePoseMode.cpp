@@ -20,26 +20,36 @@ namespace pose {
         mKeyOwner(aKey),
         mGesture(mProject.commandStack()),
         mBrush(),
-        mBrushPressure(),
+        mParam(),
+        mStroke(),
+        mCursorPos(),
         mIsBrushDrawing() {
         XC_PTR_ASSERT(mKeyOwner.key);
     }
 
     void ErasePoseMode::updateParam(const PoseParam& aParam) {
-        mBrush.setRadius(aParam.eiRadius);
-        mBrushPressure = aParam.eiPressure;
+        // the shared influence brush (ctrl/Brush.h): a pose erase is a stamp like
+        // any other, with the pen's pressure and the brush hardness
+        mParam = aParam;
+        mParam.brush.erase = true;
+        mBrush.setRadius(aParam.brush.radius);
     }
 
     bool ErasePoseMode::updateCursor(const CameraInfo&, const AbstractCursor& aCursor) {
-        mBrush.setCenter(aCursor.worldPos());
+        mCursorPos = aCursor.worldPos();
+        mBrush.setCenter(mCursorPos);
+        mBrush.setRadius(mParam.brush.radius);
 
         if (aCursor.emitsLeftPressedEvent()) {
             mIsBrushDrawing = true;
             mGesture.end();
-            updatePaint();
+            mStroke.begin(mParam.brush, mCursorPos, aCursor.pressure(), [this](const BrushStamp& aStamp) {
+                updatePaint(aStamp);
+            });
         } else if (aCursor.emitsLeftDraggedEvent()) {
-            updatePaint();
+            mStroke.move(mCursorPos, aCursor.pressure());
         } else if (aCursor.emitsLeftReleasedEvent()) {
+            mStroke.end();
             mIsBrushDrawing = false;
             mGesture.end();
         }
@@ -47,7 +57,7 @@ namespace pose {
         return true;
     }
 
-    void ErasePoseMode::updatePaint() {
+    void ErasePoseMode::updatePaint(const BrushStamp& aStamp) {
         cmnd::Stack& stack = mProject.commandStack();
         TimeLine& timeLine = *mTarget.timeLine();
         const int frame = mProject.animator().currentFrame().get();
@@ -55,18 +65,17 @@ namespace pose {
 
         QVector<float> nextRots;
         {
-            auto eraseRate = 1.0f - mBrushPressure;
-
             for (auto topBone : topBones) {
                 Bone2::ConstIterator itr(topBone);
                 while (itr.hasNext()) {
                     auto ptr = itr.next();
                     auto worldPos = mTargetMtx.map(QVector3D(ptr->worldPos()));
-                    if (mBrush.isInside(worldPos.toVector2D())) {
-                        nextRots.push_back(ptr->rotate() * eraseRate);
-                    } else {
-                        nextRots.push_back(ptr->rotate());
-                    }
+                    // the shared falloff at this stamp: the core erases hardest and
+                    // the band fades out, instead of a hard disc with one rate
+                    const float distance = (worldPos.toVector2D() - aStamp.center).length();
+                    const float weight =
+                        aStamp.amount * brushFalloff(distance, aStamp.radius, aStamp.hardness);
+                    nextRots.push_back(ptr->rotate() * (1.0f - weight));
                 }
             }
         }
@@ -112,7 +121,7 @@ namespace pose {
             renderer.renderBones(bone);
         }
 
-        renderer.renderBrush(mBrush, mIsBrushDrawing);
+        renderer.renderBrush(mBrush, mIsBrushDrawing, mParam.brush.hardness);
     }
 
 } // namespace pose

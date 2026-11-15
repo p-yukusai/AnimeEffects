@@ -52,9 +52,14 @@ public:
     Q_PROPERTY(QColor floaterEdge READ floaterEdge NOTIFY themeChanged)
     // Semantic colors. Deliberately NOT accent tokens: the accent is the user's
     // chosen hue (it can be green), and an error has to read as an error whatever
-    // that hue is. They are the two roles the token table (achromatic surfaces +
-    // the accent row) has no cell for.
+    // that hue is. They are tokens in theme::Colors now (red/amber rows at their
+    // own theme column), not literals here, so the command log's warning badge
+    // and these properties cannot disagree.
     Q_PROPERTY(QColor danger READ danger NOTIFY themeChanged)
+    // The MATTE's own hue, from the same key-type table the timeline inks its keys
+    // with: a mask key dot in the panel's text colour read as "no state" beside every
+    // other channel's hue.
+    Q_PROPERTY(QColor maskKey READ maskKey NOTIFY themeChanged)
     Q_PROPERTY(QColor warning READ warning NOTIFY themeChanged)
     Q_PROPERTY(QUrl closeIcon READ closeIcon NOTIFY themeChanged)
 
@@ -82,6 +87,7 @@ public:
     QColor floaterBody() const;
     QColor floaterEdge() const;
     QColor danger() const;
+    QColor maskKey() const;
     QColor warning() const;
     // The tinted phosphor x close glyph (theme::iconDir()/x.svg), for a
     // popover close button in QML.

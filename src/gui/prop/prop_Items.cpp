@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include <QDebug>
 #include <QCursor>
 #include <QPainter>
@@ -8,6 +9,7 @@
 #include <QHeaderView>
 #include <QStandardItem>
 #include <QApplication>
+#include <QStyle>
 #include <cstdio>
 #include "util/SelectArgs.h"
 #include "cmnd/ScopedMacro.h"
@@ -34,6 +36,8 @@ namespace prop {
 
     SpinBox::SpinBox(QWidget* parent): QSpinBox(parent), mTriggeredByArrows(false) {
         setAccelerated(true);
+        // Numeric values read as one column, not as floating text in a wide box.
+        setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         // fill the shared form field column (ExpandingFieldsGrow)
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
@@ -43,6 +47,7 @@ namespace prop {
     //-------------------------------------------------------------------------------------------------
     DoubleSpinBox::DoubleSpinBox(QWidget* parent): QDoubleSpinBox(parent), mTriggeredByArrows(false) {
         setAccelerated(true);
+        setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         // Always a dot separator: the project data (.anie/JSON) uses '.', so
         // the display must round-trip what you type/save regardless of the
         // system locale (a comma-locale would show "0,5" and reject the dot).
@@ -713,35 +718,6 @@ namespace prop {
     }
 
     //-------------------------------------------------------------------------------------------------
-    BrowseItem::BrowseItem(QWidget* aParent): mLayout(), mLine(), mButton() {
-        mLayout = new QHBoxLayout();
-        // mLayout->setSpacing(2);
-
-        mLine = new QLineEdit(aParent);
-        // mLine->setEnabled(false);
-        mLine->setReadOnly(true);
-        mLine->setFocusPolicy(Qt::NoFocus);
-        // the line fills the shared field column, the browser button stays fixed
-        mLayout->addWidget(mLine, 1);
-        mButton = new QPushButton(aParent);
-        mButton->connect(mButton, &QPushButton::clicked, [=]() { this->onButtonPushed(); });
-        mButton->setObjectName("browser");
-        mButton->setFocusPolicy(Qt::NoFocus);
-        mButton->setCursor(Qt::PointingHandCursor);
-        mLayout->addWidget(mButton);
-    }
-
-    void BrowseItem::setValue(const QString& aValue) { mLine->setText(aValue); }
-
-    void BrowseItem::setItemEnabled(bool aEnable) {
-        mLine->setEnabled(aEnable);
-        mButton->setEnabled(aEnable);
-    }
-
-    void BrowseItem::setItemVisible(bool aVisible) {
-        mLine->setVisible(aVisible);
-        mButton->setVisible(aVisible);
-    }
 
 } // namespace prop
 } // namespace gui

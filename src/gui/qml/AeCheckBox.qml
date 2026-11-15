@@ -68,6 +68,8 @@ CheckBox {
     // label's offset. One property rather than the number three times - the label
     // cannot read the box's width, see the ReferenceError above.
     readonly property int boxSize: 16
+    // Dialog controls keep 12px; the inspector passes the app font (8pt Geist).
+    property font textFont: Qt.font({ pixelSize: 12 })
 
     implicitHeight: 24
     implicitWidth: root.boxSize + (root.text === "" ? 0 : 8 + label.implicitWidth)
@@ -138,7 +140,7 @@ CheckBox {
         visible: root.text !== ""
         text: root.text
         color: root.enabled ? theme.text : theme.textDisabled
-        font.pixelSize: 12
+        font: root.textFont
     }
 
     HoverHandler {

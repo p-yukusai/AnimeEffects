@@ -14,13 +14,8 @@ namespace tool {
         mResources(aResources),
         mParam(),
         mTypeGroup(),
-        mHardnessGroup(),
-        mRadius(),
-        mPressure(),
-        mBlur(),
-        mEraseHardnessGroup(),
-        mEraseRadius(),
-        mErasePressure() {
+        mBrush(),
+        mBlur() {
         this->setTitle(tr("FFD"));
         mResources.onThemeChanged.connect(this, &FFDPanel::onThemeUpdated);
         createBrush();
@@ -31,16 +26,6 @@ namespace tool {
         mTypeGroup->setIcons(
             QVector<QIcon>() << mResources.icon("navigation-arrow") << mResources.icon("pencil-simple") << mResources.icon("eraser")
         , QSize(18, 18));
-        mHardnessGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("hardness-1") << mResources.icon("hardness-2")
-                             << mResources.icon("hardness-3"),
-            QSize(18, 18)
-        );
-        mEraseHardnessGroup->setIcons(
-            QVector<QIcon>() << mResources.icon("hardness-1") << mResources.icon("hardness-2")
-                             << mResources.icon("hardness-3"),
-            QSize(18, 18)
-        );
     }
 
     void FFDPanel::onThemeUpdated(theme::Theme&) {
@@ -58,79 +43,29 @@ namespace tool {
             this->onParamUpdated(true);
         });
 
-        // hardness
-        mHardnessGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
-        mHardnessGroup->setChoice(mParam.hardness);
-        mHardnessGroup->setToolTips(QStringList() << tr("Soft") << tr("Normal") << tr("Hard"));
-        mHardnessGroup->connect([=](int aIndex) {
-            this->mParam.hardness = aIndex;
-            this->onParamUpdated(false);
-        });
+        // the shared brush rows. Size is content px, hardness/flow are percentages,
+        // so this tool's numbers mean what the mask brush's numbers mean.
+        mBrush.reset(new BrushPanel(this, mParam.brush, BrushPanel::Row_Size | BrushPanel::Row_Hardness |
+                                                         BrushPanel::Row_Flow | BrushPanel::Row_Pressure));
+        mBrush->onParamUpdated.connect([=](bool) { this->onParamUpdated(false); });
 
         static const int kScale = 100;
 
-        // radius
-        mRadius.reset(new SliderItem(tr("Radius"), this->palette(), this));
-        mRadius->setAttribute(util::Range(5, 1000), mParam.radius, 50);
-        mRadius->connectOnAny([=](int aValue) {
-            this->mParam.radius = aValue;
-            this->onParamUpdated(false);
-        });
-
-        // pressure
-        mPressure.reset(new SliderItem(tr("Pressure"), this->palette(), this));
-        mPressure->setAttribute(util::Range(0, kScale), mParam.pressure * kScale, kScale / 10);
-        mPressure->connectOnAny([=](int aValue) {
-            this->mParam.pressure = (float)aValue / kScale;
-            this->onParamUpdated(false);
-        });
-
-        // blur
+        // blur (the pencil's smoothing pass; not part of the brush model)
         mBlur.reset(new SliderItem(tr("Blur"), this->palette(), this));
         mBlur->setAttribute(util::Range(0, kScale), mParam.blur * kScale, kScale / 10);
         mBlur->connectOnAny([=](int aValue) {
             this->mParam.blur = (float)aValue / kScale;
             this->onParamUpdated(false);
         });
-
-        // erase hardness
-        mEraseHardnessGroup.reset(new SingleOutItem(3, QSize(kButtonSpace, kButtonSpace), this));
-        mEraseHardnessGroup->setChoice(mParam.eraseHardness);
-        mEraseHardnessGroup->setToolTips(QStringList() << tr("Soft") << tr("Normal") << tr("Hard"));
-        mEraseHardnessGroup->connect([=](int aIndex) {
-            this->mParam.eraseHardness = aIndex;
-            this->onParamUpdated(false);
-        });
-
-        // erase radius
-        mEraseRadius.reset(new SliderItem(tr("Radius"), this->palette(), this));
-        mEraseRadius->setAttribute(util::Range(5, 1000), mParam.eraseRadius, 50);
-        mEraseRadius->connectOnAny([=](int aValue) {
-            this->mParam.eraseRadius = aValue;
-            this->onParamUpdated(false);
-        });
-
-        // erase pressure
-        mErasePressure.reset(new SliderItem(tr("Pressure"), this->palette(), this));
-        mErasePressure->setAttribute(util::Range(0, kScale), mParam.erasePressure * kScale, kScale / 10);
-        mErasePressure->connectOnAny([=](int aValue) {
-            this->mParam.erasePressure = (float)aValue / kScale;
-            this->onParamUpdated(false);
-        });
     }
 
     void FFDPanel::updateTypeParam(ctrl::FFDParam::Type aType) {
-        const bool showPencil = (aType == ctrl::FFDParam::Type_Pencil);
-        const bool showEraser = (aType == ctrl::FFDParam::Type_Eraser);
-
-        mHardnessGroup->setVisible(showPencil);
-        mRadius->setVisible(showPencil);
-        mPressure->setVisible(showPencil);
-        mBlur->setVisible(showPencil);
-
-        mEraseHardnessGroup->setVisible(showEraser);
-        mEraseRadius->setVisible(showEraser);
-        mErasePressure->setVisible(showEraser);
+        // Drag has no brush and no blur; both painting modes share ONE parameter
+        // set now, so switching between them keeps the size and hardness.
+        const bool painting = (aType == ctrl::FFDParam::Type_Pencil || aType == ctrl::FFDParam::Type_Eraser);
+        mBrush->setVisible(painting);
+        mBlur->setVisible(aType == ctrl::FFDParam::Type_Pencil);
     }
 
     int FFDPanel::updateGeometry(const QPoint& aPos, int aWidth) {
@@ -144,22 +79,13 @@ namespace tool {
         // type
         curPos.setY(mTypeGroup->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
 
+        // the brush block answers an ABSOLUTE bottom edge, the blur rows answer an
+        // extent: hence the bare gap on the first and `+ curPos.y()` on the second
+        if (mParam.type == ctrl::FFDParam::Type_Pencil || mParam.type == ctrl::FFDParam::Type_Eraser) {
+            curPos.setY(mBrush->updateGeometry(curPos, itemWidth) + 5);
+        }
         if (mParam.type == ctrl::FFDParam::Type_Pencil) {
-            // hardness
-            curPos.setY(mHardnessGroup->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-            // radius
-            curPos.setY(mRadius->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-            // pressure
-            curPos.setY(mPressure->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-            // blur
             curPos.setY(mBlur->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-        } else if (mParam.type == ctrl::FFDParam::Type_Eraser) {
-            // erase hardness
-            curPos.setY(mEraseHardnessGroup->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-            // eraseRadius
-            curPos.setY(mEraseRadius->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-            // erasePressure
-            curPos.setY(mErasePressure->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
         }
 
         // myself: card height = content extent + bottom padding (see ViewPanel)

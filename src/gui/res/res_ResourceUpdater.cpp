@@ -316,6 +316,28 @@ namespace gui::res {
 
         mPSDFormat = std::move(reader.format());
 
+        // The relink walker must name a layer's kind the same way the import does
+        // (img::psdUnsupportedLayerName). Such a layer is not unreadable -- a fill
+        // or adjustment layer simply has no RGB planes, and a text or smart object
+        // only has its flattened raster -- so the generic "could not be read" note
+        // below would be the wrong explanation for the empty node it produces.
+        for (const auto& layer : mPSDFormat->layerAndMaskInfo().layers) {
+            if (layer->entryType != img::PSDFormat::LayerEntryType_Layer) {
+                continue;
+            }
+            const auto kind = img::psdUnsupportedLayerKind(*layer);
+            if (kind == img::PsdUnsupportedLayer_None) {
+                continue;
+            }
+            const QString name =
+                QString::fromStdString(layer->unicodeName.empty() ? layer->name : layer->unicodeName);
+            mViaPoint.pushLog(
+                tr("Layer \"%1\" is not supported (%2); AnimeEffects cannot reproduce it.")
+                    .arg(name, QString::fromLatin1(img::psdUnsupportedLayerName(kind))),
+                ctrl::UILogType_Warn
+            );
+        }
+
         // create resource tree
         return img::Util::createResourceNodes(*mPSDFormat, aLoadImage);
     }

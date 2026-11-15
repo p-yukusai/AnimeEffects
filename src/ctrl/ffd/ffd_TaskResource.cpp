@@ -6,6 +6,31 @@
 namespace ctrl {
 namespace ffd {
 
+    // THE ONE GLSL COPY of ctrl::brushFalloff (src/ctrl/Brush.h): a flat core of
+    // radius*hardness and a smoothstep band to the rim. Prepended to every brush
+    // shader so the deformer, the eraser and the raster targets share one edge;
+    // the C++ definition is the reference and tests/brush_stroke.cpp pins it.
+    static const char* kBrushGlsl =
+        "uniform float uBrushHardness;\n"
+        "uniform float uBrushAmount;\n"
+        "float brushFalloff(float aDistance, float aRadius, float aHardness) {\n"
+        "  if (aRadius <= 0.0 || aDistance >= aRadius) return 0.0;\n"
+        "  float h = clamp(aHardness, 0.0, 1.0);\n"
+        "  float core = aRadius * h;\n"
+        "  if (aDistance <= core) return 1.0;\n"
+        "  float t = (aRadius - aDistance) / (aRadius - core);\n"
+        "  return t * t * (3.0 - 2.0 * t);\n"
+        "}\n";
+
+    // Inserts the shared snippet AFTER the #version directive, which must stay the
+    // first non-comment text of a shader.
+    static QString withBrushGlsl(QString aCode) {
+        const int lineEnd = aCode.indexOf(QLatin1Char('\n'));
+        if (lineEnd < 0)
+            return QString::fromLatin1(kBrushGlsl) + aCode;
+        return aCode.left(lineEnd + 1) + QString::fromLatin1(kBrushGlsl) + aCode.mid(lineEnd + 1);
+    }
+
     //-------------------------------------------------------------------------------------------------
     TaskResource::TaskResource() {}
 
@@ -16,20 +41,14 @@ namespace ffd {
         {
             QString code;
             loadFile(aBrushPath, code);
-
-            for (int hard = 0; hard < kHardness; ++hard) {
-                buildShader(mProgram[kTypeDeformer * kHardness + hard], code, kTypeDeformer, hard);
-            }
+            buildShader(mProgram[kTypeDeformer], withBrushGlsl(code), kTypeDeformer);
         }
 
         // load eraser shader
         {
             QString code;
             loadFile(aEraserPath, code);
-
-            for (int hard = 0; hard < kHardness; ++hard) {
-                buildShader(mProgram[kTypeEraser * kHardness + hard], code, kTypeEraser, hard);
-            }
+            buildShader(mProgram[kTypeEraser], withBrushGlsl(code), kTypeEraser);
         }
 
         // load focuser shader
@@ -37,7 +56,7 @@ namespace ffd {
             QString code;
             loadFile(aFocuserPath, code);
 
-            buildShader(mProgram[kTypeFocuser * kHardness], code, kTypeFocuser, 0);
+            buildShader(mProgram[kTypeFocuser], code, kTypeFocuser);
         }
 
         // load blur path
@@ -48,28 +67,28 @@ namespace ffd {
         }
     }
 
-    gl::EasyShaderProgram& TaskResource::program(int aType, int aHard) {
+    gl::EasyShaderProgram& TaskResource::program(int aType) {
         switch (aType) {
         case kTypeDeformer:
-            return mProgram[kTypeDeformer * kHardness + aHard];
+            return mProgram[kTypeDeformer];
         case kTypeEraser:
-            return mProgram[kTypeEraser * kHardness + aHard];
+            return mProgram[kTypeEraser];
         case kTypeFocuser:
-            return mProgram[kTypeFocuser * kHardness + 0];
+            return mProgram[kTypeFocuser];
         default:
             XC_ASSERT(0);
             return mProgram[0];
         }
     }
 
-    const gl::EasyShaderProgram& TaskResource::program(int aType, int aHard) const {
+    const gl::EasyShaderProgram& TaskResource::program(int aType) const {
         switch (aType) {
         case kTypeDeformer:
-            return mProgram[kTypeDeformer * kHardness + aHard];
+            return mProgram[kTypeDeformer];
         case kTypeEraser:
-            return mProgram[kTypeEraser * kHardness + aHard];
+            return mProgram[kTypeEraser];
         case kTypeFocuser:
-            return mProgram[kTypeFocuser * kHardness + 0];
+            return mProgram[kTypeFocuser];
         default:
             XC_ASSERT(0);
             return mProgram[0];
@@ -86,18 +105,13 @@ namespace ffd {
         aDstCode = in.readAll();
     }
 
-    void TaskResource::buildShader(gl::EasyShaderProgram& aProgram, const QString& aCode, int aType, int aHard) {
+    void TaskResource::buildShader(gl::EasyShaderProgram& aProgram, QString aCode, int aType) {
         gl::Global::Functions& ggl = gl::Global::functions();
 
         gl::ExtendShader source;
 
         // parse shader source
         source.openFromTextVert(aCode);
-
-        // set variation
-        if (aType != kTypeFocuser) {
-            source.setVariationValue("HARDNESS", QString::number(aHard));
-        }
 
         // resolve variation
         if (!source.resolveVariation()) {

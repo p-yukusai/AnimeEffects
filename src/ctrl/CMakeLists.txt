@@ -9,6 +9,10 @@ add_library(${PROJECT_NAME}
     BoneEditMode.h
     BoneEditor.cpp BoneEditor.h
     BoneParam.h
+    AssignPixels.h
+    Brush.cpp Brush.h
+    MaskEditor.cpp MaskEditor.h
+    MaskParam.h
     CmndName.cpp CmndName.h
     Driver.cpp Driver.h
     DriverResources.cpp DriverResources.h

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 
 // Hand-rolled Blender-style numeric input: drag horizontally to scrub the
 // value, click to type a value directly. Not a QC2 SpinBox: a SpinBox could
@@ -17,6 +18,12 @@ Item {
     property real to: 100
     property real step: 1
     property int decimals: 0
+    // The inspector uses the app's 8pt Geist face, not the dialog controls'
+    // fixed 11px. Callers that do not set this keep the dialog look.
+    property font textFont: Qt.font({ pixelSize: 11 })
+    // The property inspector shows 357.5, not 357.500. Off by default: the
+    // dialogs that asked for fixed decimals keep their exact display.
+    property bool trimTrailingZeros: false
     // Optional C++ host object with beginScrub()/endScrub(). The dialog uses it
     // so it knows a scrub is active and forwards the Qt::Popup re-targeted mouse
     // moves back to the scene with the held button restored — because inside a
@@ -27,6 +34,20 @@ Item {
     // export dialog shows the codec's "Auto" and the still writer's "Auto" this
     // way), in which case the number underneath must not show through it.
     property bool showValue: true
+    // In-field labels: Figma-style axis letters (X/Y/W/H), an optional leading
+    // glyph, and a trailing unit (the inspector's angle °). Dialog fields leave
+    // all three empty and keep their original geometry.
+    property string prefix: ""
+    property string prefixIcon: ""
+    property string suffix: ""
+    // Every inspector field reserves the same small lead-in, so an X/Y glyph (or
+    // no glyph at all) cannot move the number horizontally. Dialog fields keep
+    // their compact 8px inset.
+    property bool reservePrefix: false
+    readonly property int contentLeft: reservePrefix ? 24
+                                              : (prefixIcon !== "" ? 24 : (prefix !== "" ? 18 : 8))
+    readonly property int prefixSlotLeft: reservePrefix ? 4 : 8
+    readonly property int prefixSlotWidth: reservePrefix ? 15 : Math.max(0, contentLeft - prefixSlotLeft)
     // NOTE: the enabled state is Item.enabled itself, deliberately NOT redeclared:
     // a `property bool enabled` here would shadow the base property, the item would
     // never report disabled to the accessibility tree, and a probe could not tell a
@@ -49,7 +70,12 @@ Item {
     implicitWidth: 72
     implicitHeight: 24
 
-    function fmt(v) { return Number(v).toFixed(root.decimals); }
+    function fmt(v) {
+        var text = Number(v).toFixed(root.decimals);
+        if (root.trimTrailingZeros && text.indexOf(".") >= 0)
+            text = text.replace(/0+$/, "").replace(/\.$/, "");
+        return text === "-0" ? "0" : text;
+    }
     function clampNv(v) { return Math.max(root.from, Math.min(root.to, v)); }
     function commitText(t) {
         const n = parseFloat(t);
@@ -91,13 +117,48 @@ Item {
     Text {
         id: shown
         anchors.fill: parent
-        anchors.leftMargin: 8
+        anchors.leftMargin: root.contentLeft
         anchors.rightMargin: 8
         verticalAlignment: Text.AlignVCenter
         color: root.enabled ? theme.text : theme.textDisabled
-        font.pixelSize: 11
-        text: root.fmt(root.value)
+        font: root.textFont
+        text: root.fmt(root.value) + (root.showValue && root.suffix !== "" ? root.suffix : "")
         visible: !editInput.activeFocus && root.showValue
+    }
+
+    Item {
+        id: prefixSlot
+        x: root.prefixSlotLeft
+        width: root.prefixSlotWidth
+        height: parent.height
+        visible: root.showValue && (root.prefix !== "" || root.prefixIcon !== "")
+        Text {
+            anchors.centerIn: parent
+            visible: root.prefix !== ""
+            text: root.prefix
+            color: theme.textMutedDim
+            opacity: root.enabled ? 1.0 : 0.45
+            font: root.textFont
+        }
+        Image {
+            // 15px is the largest integer glyph that centers exactly in the
+            // 23px field (4px above, 4px below); 14px left it on a half pixel.
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: Math.floor((parent.height - height) / 2)
+            visible: root.prefixIcon !== ""
+            width: 15
+            height: 15
+            source: root.prefixIcon === "" ? "" : theme.iconUrl(root.prefixIcon)
+            // SVG sourceSize is in PIXELS. Size the raster to the icon's
+            // physical footprint so a high-DPI screen does not stretch a 14px
+            // bitmap; at scale 1 this is the same 14px that removes the
+            // four-times-downsample blur of the old 64px source.
+            sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+            sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            opacity: root.enabled ? 1.0 : 0.45
+        }
     }
 
     // Hover feedback for the field (HoverHandler matches the checkbox/buttons).
@@ -191,14 +252,14 @@ Item {
     TextInput {
         id: editInput
         anchors.fill: parent
-        anchors.leftMargin: 8
+        anchors.leftMargin: root.contentLeft
         anchors.rightMargin: 8
         verticalAlignment: Text.AlignVCenter
         color: theme.text
         // F33: the selection is the theme's selection pair, like AeTextField.
         selectionColor: theme.selection
         selectedTextColor: theme.selectionText
-        font.pixelSize: 11
+        font: root.textFont
         visible: activeFocus
         enabled: root.enabled
         selectByMouse: true

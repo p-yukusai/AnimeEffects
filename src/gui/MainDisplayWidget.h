@@ -21,6 +21,7 @@
 #include "core/ClippingFrame.h"
 #include "core/DestinationTexturizer.h"
 #include "core/FilterFrame.h"
+#include "ctrl/Brush.h"
 #include "ctrl/Driver.h"
 #include "ctrl/Painter.h"
 #include "gui/MainViewSetting.h"
@@ -150,6 +151,21 @@ public:
     void onViewSettingChanged(const MainViewSetting&);
     void onProjectAttributeUpdated();
 
+    // THE TEMPORARY EYEDROPPER'S RESULT: the mask tool sampled the field under the
+    // cursor (Alt + left click) and hands the value here. The modifier state lives in
+    // this widget, so this is where the gesture is recognised; the panel is the one
+    // that owns the value.
+    util::Signaler<void(float)> onMaskValueSampled;
+
+    // THE BRUSH SIZE/HARDNESS DRAG (Alt + RIGHT over the viewport): horizontal is
+    // the size, vertical the hardness, in whole steps of one notch. Right button on
+    // purpose - the compositor owns Alt + LEFT drag to move windows (measured), so
+    // the familiar gesture survives on this platform. Photoshop's own version is a
+    // 2D PAD (both values follow the pointer, no snap); ctrl::BrushDrag adds a
+    // dominant-axis lock after 4px because the old handler moved both values on a
+    // drag aimed at one, and the comment there states why.
+    util::Signaler<void(int, int)> onBrushDragAdjusted;
+
 private:
     class GLContextAccessor: public gl::ContextAccessor {
         MainDisplayWidget* mOwner;
@@ -202,6 +218,8 @@ private:
     // without the panel and in a window without the dock.
     void refreshGraphPanel();
     QSize deviceSize() const { return this->size() * mDevicePixelRatio; }
+    // true while a tool that owns the shared brush is active (the brush drags)
+    bool brushToolActive() const;
 
     ViaPoint& mViaPoint;
     gl::DeviceInfo mGLDeviceInfo;
@@ -219,6 +237,7 @@ private:
     core::RenderInfo* mRenderInfo;
     core::AbstractCursor mAbstractCursor;
     ctrl::Driver* mDriver;
+    ctrl::ToolType mToolType;
     ProjectTabBar* mProjectTabBar;
     // The ONE channel list this widget owns (showGraphChannelMenu): created on the
     // first open, parented here, hidden and re-filled for every open after that.
@@ -227,6 +246,10 @@ private:
     // (see setTimeLineWidget), and the connection to its view-range signal.
     TimeLineWidget* mTimeLine;
     util::SlotId mTimeLineRangeSlot;
+    // the Alt+right-drag gesture in flight, owned by ctrl::BrushDrag: the latch,
+    // the slop and the fractional banks all live in the brush model (ctrl/Brush.h),
+    // so the gesture is one decision instead of three literals in this event handler
+    ctrl::BrushDrag mBrushDrag;
     // The timeline surface's playWindowChanged -> syncGraphPanelSharedState connection
     // (see setTimeLineWidget). Dropped with the old timeline; auto-dropped when this
     // widget dies.

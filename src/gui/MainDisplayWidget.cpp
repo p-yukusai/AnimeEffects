@@ -18,6 +18,7 @@
 #include "gui/TimeLineEditorWidget.h"
 #include "gui/ViaPoint.h"
 #include "gui/ProjectTabBar.h"
+#include "ctrl/MaskEditor.h"
 #include "gui/KeyCommandMap.h"
 #include "gui/MouseSetting.h"
 #ifdef AE_ENABLE_IMGUI
@@ -74,6 +75,8 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
     mChannelPopup(nullptr),
     mTimeLine(),
     mTimeLineRangeSlot(),
+    mBrushDrag(),
+    mPlayWindowConnection(),
     mViewportBackground(),
     mUsingTablet(false),
     mViewSetting(),
@@ -85,6 +88,20 @@ MainDisplayWidget::MainDisplayWidget(ViaPoint& aViaPoint, QWidget* aParent):
     this->setObjectName(QStringLiteral("MainDisplayWidget"));
     this->setMouseTracking(true);
     this->setAutoFillBackground(false); // avoid autofill on QPainter::begin()
+
+    // THE VIEWPORT TAKES THE KEYBOARD BACK ON A PRESS.
+    //
+    // Qt::NoFocus was the default here (QWidget's), and it made the keyboard a
+    // one-way door: once the inspector's Qt Quick scene held focus, a click on the
+    // artwork moved nothing, so every rebindable command stayed with the panel - and
+    // Ctrl+Z with it (see KeyForwardingQuickWidget in PropertyWidget.cpp for the
+    // other half of that fix). The timeline surface uses Qt::ClickFocus for exactly
+    // this reason: it is the widget the document's own gestures live in, so a press
+    // there must make it the focus widget again. ClickFocus, not StrongFocus: Tab
+    // traversal must not start landing on the canvas. Nothing depended on the old
+    // policy - this widget's keyPressEvent ignores its events, so the window's key
+    // map still receives every key pressed over the artwork.
+    this->setFocusPolicy(Qt::ClickFocus);
 
     // key binding
     if (mViaPoint.keyCommandMap()) {
@@ -511,6 +528,16 @@ void MainDisplayWidget::setViewportBackground(const QColor& aColor) {
     }
 }
 
+bool MainDisplayWidget::brushToolActive() const {
+    if (!mDriver)
+        return false;
+    if (mToolType == ctrl::ToolType_Cursor)
+        return false;
+    // the four painting tools share the brush rows (ctrl/Brush.h)
+    return mDriver->maskEditor() != nullptr || mToolType == ctrl::ToolType_FFD
+        || mToolType == ctrl::ToolType_Bone || mToolType == ctrl::ToolType_Pose;
+}
+
 void MainDisplayWidget::updateRender() { this->update(); }
 
 void MainDisplayWidget::initializeGL() {
@@ -641,6 +668,31 @@ void MainDisplayWidget::paintGL() {
         mRenderInfo->destTexturizer = mDestinationTexturizer.data();
         mRenderInfo->filterFrame = mFilterFrame.data();
         mRenderInfo->opacityScale = 1.0f;
+
+        // THE MASK PREVIEW: while the Mask tool is up, the field it paints is drawn as
+        // a tint over its target's content (the tint is the deviation from the
+        // channel's neutral value, so unpainted areas stay clean).
+        mRenderInfo->maskPreview = nullptr;
+        mRenderInfo->maskPreviewKey = nullptr;
+        mRenderInfo->maskPreviewTarget = nullptr;
+        if (mDriver) {
+            if (ctrl::MaskEditor* editor = mDriver->maskEditor()) {
+                mRenderInfo->maskPreview = editor->previewMask();
+                mRenderInfo->maskPreviewKey = editor->previewMaskKey();
+                if (mRenderInfo->maskPreview || mRenderInfo->maskPreviewKey) {
+                    mRenderInfo->maskPreviewTarget = editor->previewTarget();
+                    // the same rubylith the thumbnail and the tree chip use
+                    // 0.6, not 0.45: over pale artwork a 45% wash reads as the art's own
+                    // colour (measured: a rubylith disc over a character's blush was
+                    // indistinguishable from the blush), and a mask overlay has to be
+                    // unmistakable while you paint it
+                    mRenderInfo->maskPreviewColor =
+                        QColor(theme::Colors::current().danger.red(),
+                               theme::Colors::current().danger.green(),
+                               theme::Colors::current().danger.blue(), 153);
+                }
+            }
+        }
         XC_ASSERT(mRenderInfo->framebuffer != 0);
         XC_ASSERT(mRenderInfo->dest != 0);
         mRenderInfo->camera.setFlip(mViewSetting.flipCanvas);
@@ -744,6 +796,36 @@ void MainDisplayWidget::applyCanvasMoverDragMode() {
 }
 
 void MainDisplayWidget::mouseMoveEvent(QMouseEvent* aEvent) {
+    if (mBrushDrag.isActive()) {
+        // The decision - the 4px slop, the dominant-axis latch, the px-per-step
+        // rates and the remainder - is ctrl::BrushDrag's (ctrl/Brush.h); this only
+        // forwards the whole steps. The old handler banked both axes on every move,
+        // which is why a vertical drag with a couple of pixels of jitter changed the
+        // size as well.
+        int sizeSteps = 0;
+        int hardnessSteps = 0;
+        if (mBrushDrag.move(aEvent->position(), sizeSteps, hardnessSteps)) {
+            onBrushDragAdjusted(sizeSteps, hardnessSteps);
+        }
+        // THE RING FOLLOWS THE POINTER, position only. The press and every move above
+        // return before setMousePress/setMouseMove reach the tools, so without this
+        // the two-ring cursor would sit frozen at the press point while the values
+        // change. A move event marks no button as pressed (AbstractCursor tracks that
+        // in setMousePress/setMouseRelease, neither of which this gesture calls), so
+        // the tools' updateCursor only re-reads the position: no stroke begins and no
+        // tool state moves. The release needs no matching call for the same reason.
+        if (mRenderInfo) {
+            if (mDriver) {
+                mDriver->setGraphModifiers(aEvent->modifiers());
+            }
+            if (mAbstractCursor.setMouseMove(aEvent, mRenderInfo->camera)) {
+                updateCursor();
+            }
+        }
+        aEvent->accept();
+        return;
+    }
+
     if (mRenderInfo) {
         // The panel's own gestures read the modifier state from here: neither
         // core::AbstractCursor nor the editor's updateCursor carries modifiers, so
@@ -771,6 +853,34 @@ void MainDisplayWidget::mouseMoveEvent(QMouseEvent* aEvent) {
 }
 
 void MainDisplayWidget::mousePressEvent(QMouseEvent* aEvent) {
+    // THE TEMPORARY EYEDROPPER, before anything else can claim the press: Alt + left
+    // click samples the field the mask tool paints and consumes the event, so no
+    // stroke begins. A CLICK, not a drag: the compositor owns Alt+drag (measured, see
+    // AGENTS.md), which is exactly why the eyedropper is the click.
+    if (mRenderInfo && mDriver && mDriver->maskEditor() && aEvent->button() == Qt::MouseButton::LeftButton
+        && (aEvent->modifiers() & Qt::AltModifier)) {
+        ctrl::MaskEditor* editor = mDriver->maskEditor();
+        const QVector2D world = mRenderInfo->camera.toWorldPos(
+            QVector2D(float(aEvent->position().x()), float(aEvent->position().y()))
+        );
+        const float sampled = editor->sampleValue(world);
+        if (0.0f <= sampled)
+            onMaskValueSampled(sampled);
+        aEvent->accept();
+        return;
+    }
+
+    // THE BRUSH SIZE/HARDNESS DRAG claims the press before the tools see it: it is a
+    // viewport gesture over any brush tool, not a tool gesture. The press only starts
+    // the gesture - nothing fires until the pointer has left the slop and latched an
+    // axis (ctrl::BrushDrag).
+    if (mRenderInfo && mDriver && aEvent->button() == Qt::MouseButton::RightButton
+        && (aEvent->modifiers() & Qt::AltModifier) && brushToolActive()) {
+        mBrushDrag.begin(aEvent->position());
+        aEvent->accept();
+        return;
+    }
+
     if (mRenderInfo) {
         if (mDriver) {
             mDriver->setGraphModifiers(aEvent->modifiers());
@@ -800,6 +910,15 @@ void MainDisplayWidget::mousePressEvent(QMouseEvent* aEvent) {
 }
 
 void MainDisplayWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
+    if (mBrushDrag.isActive()) {
+        // The right button, or Alt coming up first, ends the gesture: the latch and
+        // the banks go with it, so the next drag starts from the press point again.
+        if (aEvent->button() == Qt::MouseButton::RightButton || !(aEvent->modifiers() & Qt::AltModifier))
+            mBrushDrag.end();
+        aEvent->accept();
+        return;
+    }
+
     if (mRenderInfo) {
         if (mDriver) {
             mDriver->setGraphModifiers(aEvent->modifiers());
@@ -895,6 +1014,9 @@ void MainDisplayWidget::focusOutEvent(QFocusEvent* aEvent) { QOpenGLWidget::focu
 void MainDisplayWidget::onVisualUpdated() { updateRender(); }
 
 void MainDisplayWidget::onToolChanged(ctrl::ToolType aType) {
+    // which tool owns the viewport decides whether the brush SIZE/HARDNESS drag
+    // claims a right press (see brushToolActive)
+    mToolType = aType;
     if (aType == ctrl::ToolType_Cursor) {
         this->setCursor(Qt::OpenHandCursor);
         mMovingCanvasByTool = true;

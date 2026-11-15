@@ -57,6 +57,16 @@ QString System::LoadResult::messages() const {
     return msgs;
 }
 
+QString System::LoadResult::warningTitle() {
+    return QCoreApplication::translate("ctrl::System", "Import Warnings");
+}
+
+QString System::LoadResult::warningSummary() {
+    return QCoreApplication::translate(
+        "ctrl::System", "The project opened, but some layers could not be reproduced exactly."
+    );
+}
+
 //-------------------------------------------------------------------------------------------------
 System::System(const QString& aCacheDir):
     mCacheDir(aCacheDir), mProjects(), mAnimator() {}
@@ -89,7 +99,11 @@ System::LoadResult System::newProject(
 
     if (loader.load(aFileName, *projectScope, aReporter)) {
         mProjects.push_back(projectScope.release());
-        return LoadResult(mProjects.back(), "Success.");
+        // The project opened, but the importer may have had to degrade a layer it
+        // cannot reproduce. Carry those notes out on the result instead of
+        // dropping them: the GUI shows them on success, which is the only moment
+        // the user can learn why the file looks different from its source.
+        return LoadResult(mProjects.back(), loader.warnings());
     }
 
     LoadResult result;

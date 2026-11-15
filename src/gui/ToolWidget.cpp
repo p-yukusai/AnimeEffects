@@ -23,7 +23,8 @@ ToolWidget::ToolWidget(
     mFFDPanel(),
     mBonePanel(),
     mPosePanel(),
-    mMeshPanel() {
+    mMeshPanel(),
+    mMaskPanel() {
     setObjectName("toolWidget"); // QSS id for the dock surface
     createViewPanel();
 
@@ -55,6 +56,14 @@ ToolWidget::ToolWidget(
     mMeshPanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
     mMeshPanel->hide();
 
+    mMaskPanel = new tool::MaskPanel(this, mResources);
+    mMaskPanel->onParamUpdated.connect(this, &ToolWidget::onParamUpdated);
+    mMaskPanel->onClearRequested.connect([this]() {
+        if (mDriver)
+            mDriver->clearMask();
+    });
+    mMaskPanel->hide();
+
     updateGeometry();
 
     // key binding
@@ -83,6 +92,26 @@ ToolWidget::ToolWidget(
             auto key = mViaPoint.keyCommandMap()->get("SelectMesh");
             if (key)
                 key->addListener([=]() { this->mModePanel->pushButton(ctrl::ToolType_Mesh); });
+        }
+        {
+            auto key = mViaPoint.keyCommandMap()->get("BrushSizeIncrease");
+            if (key)
+                key->addListener([=]() { this->adjustBrush(+1, 0); });
+        }
+        {
+            auto key = mViaPoint.keyCommandMap()->get("BrushSizeDecrease");
+            if (key)
+                key->addListener([=]() { this->adjustBrush(-1, 0); });
+        }
+        {
+            auto key = mViaPoint.keyCommandMap()->get("BrushHardnessIncrease");
+            if (key)
+                key->addListener([=]() { this->adjustBrush(0, +1); });
+        }
+        {
+            auto key = mViaPoint.keyCommandMap()->get("BrushHardnessDecrease");
+            if (key)
+                key->addListener([=]() { this->adjustBrush(0, -1); });
         }
         {
             auto key = mViaPoint.keyCommandMap()->get("SelectFFD");
@@ -215,6 +244,7 @@ void ToolWidget::onModePanelPushed(ctrl::ToolType aType, bool aChecked) {
         mBonePanel->hide();
         mPosePanel->hide();
         mMeshPanel->hide();
+        mMaskPanel->hide();
 
         QSettings settings;
         auto autoshowmesh = settings.value("generalsettings/tools/autoshowmesh");
@@ -240,11 +270,62 @@ void ToolWidget::onModePanelPushed(ctrl::ToolType aType, bool aChecked) {
             mFFDPanel->show();
         } else if (mToolType == ctrl::ToolType_Mesh) {
             mMeshPanel->show();
+        } else if (mToolType == ctrl::ToolType_Mask) {
+            mMaskPanel->show();
         }
         onParamUpdated(false);
 
         onVisualUpdated();
     }
+}
+
+void ToolWidget::beginMaskPaint(core::TimeKeyType aLane, core::FilterMaskChannel aChannel) {
+    if (!mMaskPanel)
+        return;
+    // the panel is the authority for lane and channel; select them, then press the
+    // tool button so the whole switch goes through the normal route
+    mMaskPanel->setLaneAndChannel(aLane, aChannel);
+    mModePanel->pushButton(ctrl::ToolType_Mask);
+    // ...and PUSH THE PARAM AGAIN: onParamUpdated only forwards while the Mask tool is
+    // already current, so a panel filled in BEFORE the switch leaves the freshly created
+    // editor on the default parameter - measured as a stroke that painted nothing at all
+    // (the editor still thought it was writing the Wave filter's mask, which this layer
+    // does not have).
+    onParamUpdated(false);
+}
+
+void ToolWidget::beginLayerMaskPaint() {
+    if (!mMaskPanel)
+        return;
+    mMaskPanel->setLayerMask();
+    mModePanel->pushButton(ctrl::ToolType_Mask);
+    onParamUpdated(false);   // see beginMaskPaint: the editor is created by the switch
+}
+
+void ToolWidget::adjustBrush(int aSizeSteps, int aHardnessSteps) {
+    // the ACTIVE tool's brush: the same rows are shared, but each panel owns its own
+    // BrushParam, so the adjustment has to go to the one on screen
+    tool::BrushPanel* brush = nullptr;
+    if (mToolType == ctrl::ToolType_FFD)
+        brush = mFFDPanel->brushPanel();
+    else if (mToolType == ctrl::ToolType_Bone)
+        brush = mBonePanel->brushPanel();
+    else if (mToolType == ctrl::ToolType_Pose)
+        brush = mPosePanel->brushPanel();
+    else if (mToolType == ctrl::ToolType_Mask)
+        brush = mMaskPanel->brushPanel();
+    if (!brush)
+        return;
+
+    brush->adjustSize(aSizeSteps);
+    brush->adjustHardness(aHardnessSteps);
+    onParamUpdated(false);
+}
+
+void ToolWidget::setMaskValue(float aValue) {
+    if (!mMaskPanel || mToolType != ctrl::ToolType_Mask)
+        return;
+    mMaskPanel->setValue(aValue);
 }
 
 void ToolWidget::onParamUpdated(bool aLayoutChanged) {
@@ -268,6 +349,9 @@ void ToolWidget::onParamUpdated(bool aLayoutChanged) {
         } else if (mToolType == ctrl::ToolType_Mesh) {
             mDriver->updateParam(mMeshPanel->param());
             onVisualUpdated();
+        } else if (mToolType == ctrl::ToolType_Mask) {
+            mDriver->updateParam(mMaskPanel->param());
+            onVisualUpdated();
         }
     }
 }
@@ -290,6 +374,7 @@ void ToolWidget::updateGeometry() {
     mPosePanel->updateGeometry(QPoint(3, height), width);
     mFFDPanel->updateGeometry(QPoint(3, height), width);
     mMeshPanel->updateGeometry(QPoint(3, height), width);
+    mMaskPanel->updateGeometry(QPoint(3, height), width);
 }
 
 } // namespace gui

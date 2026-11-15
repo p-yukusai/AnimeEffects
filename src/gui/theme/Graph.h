@@ -97,8 +97,10 @@ public:
     // drawKeyContextMenu). Its appearance is the application's own context menu's:
     // gui::AppStyle draws a QMenu as a rounded floater (radius 8) filled with
     // floaterBody and edged with floaterEdge, highlights a row with accentHover
-    // under accentText text, and separates with the hairline - and these tokens are
-    // those five decisions plus the disabled text. applyPanelStyle (declared in
+    // under accentText text, and separates with the same floaterEdge (a rule on
+    // the floater body cannot use hairline: in dark that is the body's own
+    // palette cell) - and these tokens are those five decisions plus the
+    // disabled text. applyPanelStyle (declared in
     // gui/GraphPanelFrame.h) copies them, and the panel's geometry tokens below, into
     // ImGui's style; that is the ONE place the palette meets ImGuiStyle, and it is
     // re-applied on every frame so a runtime palette or accent change is picked up

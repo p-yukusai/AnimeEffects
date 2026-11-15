@@ -5,6 +5,7 @@
 
 #include <QFileInfo>
 #include <QString>
+#include <QStringList>
 #include <QScopedPointer>
 #include "util/IProgressReporter.h"
 #include "gl/DeviceInfo.h"
@@ -34,6 +35,15 @@ public:
 
     [[nodiscard]] const QString& log() const { return mLog; }
 
+    // What the import had to accept in order to open the file at all: a layer
+    // kind this renderer cannot reproduce (the layer is then empty, or is kept
+    // as a flattened raster), and the layer masks that were parsed and then
+    // ignored. Deliberately separate from log(): log() is the one failure
+    // message, and a headless caller (verify_blur, the exporters) treats a
+    // non-failing load as silent. An empty list means the file imported exactly
+    // as authored.
+    [[nodiscard]] const QStringList& warnings() const { return mWarnings; }
+
 private:
     bool createEmptyCanvas(core::Project& aProject, const QString& aTopName, const QSize& aCanvasSize);
 
@@ -48,6 +58,7 @@ private:
     bool checkTextureSizeError(uint32 aWidth, uint32 aHeight);
 
     QString mLog;
+    QStringList mWarnings;
     QFileInfo mFileInfo;
     gl::DeviceInfo mGLDeviceInfo;
     QSize mCanvasSize;

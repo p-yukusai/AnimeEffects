@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AnimeEffects — Properties Inspector mockups</title>
+<style>
+  :root{
+    --base:#171717; --raised:#262626; --raisedHover:#333333; --hairline:#404040;
+    --text:#f5f5f5; --muted:#a3a3a3; --disabled:#737373; --accent:#8b5cf6;
+    --key:#f5f5f5; --field:#2e2e2e; --fieldEdge:#4a4a4a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0f0f0f;color:var(--text);font:12px/1.35 Inter, "Segoe UI", sans-serif;}
+  .page{display:flex;gap:28px;padding:28px;align-items:flex-start;}
+  .variant{width:360px;background:var(--base);border:1px solid #303030;border-radius:8px;overflow:hidden;box-shadow:0 12px 40px #0008;}
+  .variant h2{font-size:12px;font-weight:600;margin:0;padding:12px 16px;border-bottom:1px solid #303030;background:#1b1b1b;}
+  .variant .note{padding:8px 16px;color:var(--muted);font-size:11px;border-bottom:1px solid #303030;}
+  .panel{background:var(--base)}
+  .section{padding:8px 0 10px;}
+  .section + .section{border-top:1px solid #2a2a2a}
+  .section-title{display:flex;align-items:center;gap:6px;padding:6px 16px;color:var(--muted);font-weight:600;font-size:11px;}
+  .section-title .caret{color:#8b8b8b;font-size:9px}
+  .section-title .plus{margin-left:auto;color:var(--muted);font-size:15px;line-height:1}
+  .row{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 16px;min-height:32px}
+  .row:hover{background:#222}
+  .row .label{width:88px;color:var(--text);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .field{flex:1;display:flex;gap:6px;min-width:0}
+  .input{height:23px;background:var(--field);border:1px solid var(--fieldEdge);border-radius:4px;color:var(--text);display:flex;align-items:center;padding:0 7px;min-width:0;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .input.small{flex:0 0 64px}
+  .key{width:16px;height:16px;flex:0 0 16px;display:grid;place-items:center;color:var(--disabled);font-size:11px;cursor:default}
+  .key.solid{color:var(--accent)}
+  .key.animated{color:var(--accent);opacity:.8}
+  .key.none{color:#565656}
+  .key .diamond{width:7px;height:7px;border:1px solid currentColor;border-radius:50%;background:transparent}
+  .key.solid .diamond{background:currentColor}
+  .key.animated .diamond{background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+  .filters .row .label{width:auto;text-align:left;flex:0 0 auto}
+  .filters .row .summary{margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap}
+  .filters .row.selected{background:var(--raisedHover)}
+  .grip{width:12px;flex:0 0 12px;color:#4d4d4d;font-size:10px;letter-spacing:-2px;text-align:left;cursor:grab}
+  .eye{width:16px;flex:0 0 16px;color:var(--disabled);text-align:center}
+  .trash{width:16px;flex:0 0 16px;color:var(--disabled);text-align:center}
+  .name{font-weight:600;white-space:nowrap}
+  .keydot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;margin-left:-2px}
+  .card{margin:2px 0;border-radius:6px;overflow:hidden}
+  .card .row.selected{background:#262626}
+  .detail{margin:0;padding:10px 12px 12px 16px;background:var(--base);border-top:1px solid #262626}
+  .detail-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .detail-title{font-weight:600}
+  .chip{margin-left:auto;border:1px solid #3c3c3c;border-radius:4px;padding:2px 6px;color:var(--accent);font-size:10px}
+  .fieldrow{display:flex;align-items:center;gap:10px;margin:5px 0}
+  .fieldrow .label{width:76px;color:var(--text);text-align:right}
+  .fieldrow .input{height:23px}
+  .empty{color:var(--muted);padding:5px 16px 9px}
+  .timeline{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #303030;border-bottom:1px solid #303030;background:#1b1b1b;}
+  .tl-tab{padding:4px 7px;border-radius:4px;background:var(--raised);color:var(--text);font-size:10px}
+  .tl-tab.off{background:transparent;color:var(--muted)}
+  .tl-spacer{flex:1}
+  .autokey{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:10px;border:1px solid #3a3a3a;border-radius:4px;padding:3px 6px}
+  .autokey .dot{width:6px;height:6px;border-radius:50%;background:#7a3434}
+  .autokey.on{color:#fca5a5;border-color:#7a3434}
+  .autokey.on .dot{background:#ef4444}
+  .legend{width:320px;color:var(--muted);font-size:11px;line-height:1.55;padding-top:6px}
+  .legend h3{color:var(--text);font-size:12px;margin:18px 0 6px}
+  .legend b{color:var(--text);font-weight:600}
+  .diamond-key{display:inline-block;width:7px;height:7px;border:1px solid var(--text);border-radius:50%;vertical-align:0}
+  .diamond-key.solid{background:var(--text)}
+  .diamond-key.empty{border-color:#565656}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="variant">
+    <h2>Recommended — one Inspector, model 2</h2>
+    <div class="note">No Default Keys panel. One row per property. Values are evaluated at the playhead.</div>
+    <div class="panel">
+      <div class="section">
+        <div class="section-title"><span class="caret">▾</span>Transform</div>
+        <div class="row"><div class="label">Position</div><div class="field"><div class="input">461</div><div class="input">430</div></div><div class="key none" title="No keys: editing changes the static value"><span class="diamond"></span></div></div>
+        <div class="row"><div class="label">Rotation</div><div class="field"><div class="input">0°</div></div><div class="key solid" title="Keyed at this frame"><span class="diamond"></span></div></div>
+        <div class="row"><div class="label">Scale</div><div class="field"><div class="input">0.23</div><div class="input">0.23</div></div><div class="key animated" title="Animated between keys"><span class="diamond"></span></div></div>
+        <div class="row"><div class="label">Depth</div><div class="field"><div class="input">-1</div></div><div class="key none"><span class="diamond"></span></div></div>
+        <div class="row"><div class="label">Opacity</div><div class="field"><div class="input">1</div></div><div class="key solid"><span class="diamond"></span></div></div>
+      </div>
+      <div class="section filters">
+        <div class="section-title"><span class="caret">▾</span>Filters<span class="plus">+</span></div>
+        <div class="row"><span class="grip">⋮⋮</span><span class="eye">◉</span><span class="name">Blur</span><span class="keydot"></span><span class="summary">24.0 px</span><span class="trash">🗑</span></div>
+        <div class="card">
+          <div class="row selected"><span class="grip">⋮⋮</span><span class="eye">◉</span><span class="name">HSV</span><span class="key solid"><span class="diamond"></span></span><span class="summary">H 180  S 150  V 100</span><span class="trash">🗑</span></div>
+          <div class="detail">
+            <div class="fieldrow"><div class="label">Hue</div><div class="input">180</div></div>
+            <div class="fieldrow"><div class="label">Saturation</div><div class="input">150</div></div>
+            <div class="fieldrow"><div class="label">Value</div><div class="input">100</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <h2>Variant — Inspector + global Auto-key</h2>
+    <div class="note">Same inspector; the timeline header carries a prominent, default-off mode.</div>
+    <div class="timeline">
+      <span class="tl-tab">Timeline</span><span class="tl-tab off">Graph</span><span class="tl-spacer"></span>
+      <span class="autokey on"><span class="dot"></span>Auto-key</span>
+    </div>
+    <div class="panel">
+      <div class="section">
+        <div class="section-title"><span class="caret">▾</span>Transform</div>
+        <div class="row"><div class="label">Position</div><div class="field"><div class="input">461</div><div class="input">430</div></div><div class="key none"><span class="diamond"></span></div></div>
+        <div class="row"><div class="label">Rotation</div><div class="field"><div class="input">0°</div></div><div class="key solid"><span class="diamond"></span></div></div>
+        <div class="row"><div class="label">Scale</div><div class="field"><div class="input">0.23</div><div class="input">0.23</div></div><div class="key animated"><span class="diamond"></span></div></div>
+        <div class="row"><div class="label">Depth</div><div class="field"><div class="input">-1</div></div><div class="key none"><span class="diamond"></span></div></div>
+        <div class="row"><div class="label">Opacity</div><div class="field"><div class="input">1</div></div><div class="key solid"><span class="diamond"></span></div></div>
+      </div>
+      <div class="section filters">
+        <div class="section-title"><span class="caret">▾</span>Filters<span class="plus">+</span></div>
+        <div class="row"><span class="grip">⋮⋮</span><span class="eye">◉</span><span class="name">Blur</span><span class="keydot"></span><span class="summary">24.0 px</span><span class="trash">🗑</span></div>
+        <div class="row selected"><span class="grip">⋮⋮</span><span class="eye">◉</span><span class="name">HSV</span><span class="summary">H 180  S 150  V 100</span><span class="trash">🗑</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <b>What changed from the current panel</b>
+    <h3>One value, one place</h3>
+    Default Keys and Current Keys disappear. Sections are for groups of related settings; a single property is a ROW, not a collapsible section. The row shows the value at the playhead. Editing follows model 2: a static property changes its base value; an animated property creates/updates a key at the current frame.
+    <h3>Key state is visible</h3>
+    The affordance is the timeline's dot, not a second diamond vocabulary:
+    <br><span class="diamond-key empty"></span> no keys, editing changes the static value.<br>
+    <span class="diamond-key solid"></span> keyed at this frame.<br>
+    <span class="diamond-key"></span> animated between keys.
+    <h3>Filters stay a stack</h3>
+    Filter order, mute, remove, and the searchable add action live here, not as top-level HSV/Blur property sections.
+    <h3>Auto-key verdict</h3>
+    The recommended variant has no global Auto-key. In model 2, animation is already auto-keyed once a property is animated; a global “off” would make edits to animated values ambiguous or non-persistent. Blender’s toggle is a power mode with a loud warning state; add it later only if a real workflow demands it.
+  </div>
+</div>
+</body>
+</html>

@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QString>
 #include <QScopedPointer>
+#include <QPointer>
 #include <vector>
 #include "util/SlotId.h"
 #include "util/Easing.h"
@@ -195,7 +196,14 @@ private:
     // The timeline's surface widget, found inside mTimeLine: the ONE easing picker
     // and the chip's state both live there, and the timeline itself hands out its
     // editor, not its surface.
-    TimeLineEditorWidget* mInner;
+    //
+    // QPointer, NOT A BARE POINTER. The surface is a CHILD of the timeline, so the
+    // dock's child sweep frees it in creation order - before this bar, which the dock
+    // creates last. A raw pointer here reads as non-null on freed memory, and the
+    // destructor's `mInner->...` then walks a freed signaller (measured: exit 139 on
+    // every quit, stack in util::Signaler::disconnect). The self-nulling handle makes
+    // every use below null-guarded by construction instead of by an ordering promise.
+    QPointer<TimeLineEditorWidget> mInner;
     // The live key selection's own change notification (ctrl::time::Selection::
     // onChanged, off the timeline's editor), which is what re-reads the quick easings
     // whichever view moved the selection - the same source the chip is pushed from.

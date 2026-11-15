@@ -1,6 +1,8 @@
 #version 330
 
-#variation HARDNESS 0
+// uBrushHardness, uBrushAmount and brushFalloff() are prepended by
+// ffd::TaskResource (the ONE GLSL copy of ctrl::brushFalloff, shared with the
+// eraser shader): the mesh brush's edge is the raster brush's edge.
 
 #define BLUR_GRID 5
 #define BLUR_GET_GRID 4
@@ -25,19 +27,7 @@ void main(void)
     vec3 worldPos = inWorldPosition;
 
     float distance = length(worldPos.xy - uBrushCenter);
-    float linearRate = min(distance / uBrushRadius, 1.0);
-    float rate = linearRate;
-
-#if HARDNESS == 0
-    rate *= rate;
-#elif HARDNESS == 1
-    rate *= rate;
-    rate *= rate;
-#elif HARDNESS == 2
-    rate *= rate;
-    rate *= rate;
-    rate *= rate;
-#endif
+    float weight = brushFalloff(distance, uBrushRadius, uBrushHardness) * uBrushAmount;
 
     vec3 vel;
     {
@@ -48,7 +38,7 @@ void main(void)
         vel.z = 0.0;
     }
 
-    float power = uBrushPressure * (1.0 - rate);
+    float power = uBrushPressure * weight;
     outPosition = inPosition + power * vel;
     float blurRate = min(max(distance - uBrushRadius, 0.0) / (0.5 * uBrushRadius), 1.0);
     outWeight = (1.0 - blurRate);

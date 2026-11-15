@@ -32,6 +32,7 @@ Usage (see any probe_*.sh):
 Every command exits non-zero with a message when the widget is not there, so a
 probe fails loudly instead of clicking whatever happens to be at that pixel.
 """
+import os
 import sys
 import time
 import warnings
@@ -46,6 +47,20 @@ gi.require_version("Atspi", "2.0")
 from gi.repository import Atspi  # noqa: E402
 
 TIMEOUT = float(10.0)
+
+# AE_UI_ANY=1 lets a probe address a control the SHOWING state denies.
+#
+# The filter exists because Qt Quick FORMS keep hidden controls in the tree (every
+# field the export form hides for the selected artifact is still reachable), so
+# "the widget exists" proves nothing about what the user can see. But the same state
+# is simply WRONG for the Qt Quick items inside the Properties dock's QQuickWidget:
+# measured 2026-10-26, the inspector's own "Position X" spin button reports
+# showing=False while its rectangle is plainly on screen at (1084, 37) inside the
+# dock that sits at x=960 - every control in that panel is therefore unreachable to
+# `extents`/`click`/`set`, which is why no probe has ever driven the QML Properties
+# scene. This is an OPT-IN so the default stays "a hidden control is not a target",
+# which is the answer dialogs need.
+ANY_WIDGET = os.environ.get("AE_UI_ANY", "").strip() not in ("", "0")
 
 
 def _roots():
@@ -244,7 +259,7 @@ def candidates(name, role=None, visible=True):
     for depth, r, _n, node in _walk(app):
         if role is not None and r != role:
             continue
-        if visible and not showing(node):
+        if visible and not ANY_WIDGET and not showing(node):
             continue
         tier = match_tier(node, name)
         if tier is not None:

@@ -17,6 +17,18 @@
 
 set -u
 
+# THE OUTER SHELL HAS NO DISPLAY, ON PURPOSE. Every probe runs its application
+# inside `xvfb-run`, which sets DISPLAY (and an XAUTHORITY cookie) for that child
+# only. This script keeps running in the caller's shell, which on a normal desktop
+# HAS a DISPLAY - so any line that escapes the `bash -c` body (the apostrophe trap
+# documented below) would reach the person's real session. Measured 2026-10-25: a
+# leaked `import -window root` under a Wayland session raised a screen-capture
+# permission prompt on the desktop while the probe was supposed to be offscreen.
+# With the variables unset here, a leaked command has no display to reach and
+# fails instead of touching anything.
+unset DISPLAY
+unset WAYLAND_DISPLAY
+
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 APP="$ROOT/build/src/gui/Debug/AnimeEffects"
 SHOTS="${AE_SHOTS:-$ROOT/build/shots}"
@@ -293,6 +305,66 @@ ae_memory_cap() { # ae_memory_cap <pid> [limit_kb]
 # another (llvmpipe, plus whatever else the machine is doing), and every assertion
 # after the sleep then runs against the loading splash - a slow machine reported as a
 # broken application.
+# SIZE THE WINDOW, because nothing else will.
+#
+# There is no window manager under Xvfb, so nothing maximises the application: it maps
+# at whatever its own size hint asks for with a FRESH settings sandbox (this file points
+# XDG_CONFIG_HOME at a temp dir, so there is no remembered geometry either). Measured
+# 2026-10-26 on a 1600x1000 Xvfb: the window came up 795x337 - less than half the screen
+# - which is why a screenshot taken without this step shows a cramped layout, and why a
+# probe that aims at a pixel computed from the SCREEN lands outside the window.
+#
+# The toplevel is found by GEOMETRY, not by name: `xdotool search --name AnimeEffects`
+# returns the Qt selection-owner (3x3) and a 1x1 helper first, and `windowsize` on
+# those quietly does nothing (the same trap the resize note in AGENTS.md records).
+# `xwininfo -root -tree` lists them all, so the largest one wins.
+#
+# Default: fill the screen, which is what a maximised window looks like and what the
+# screenshots a reviewer reads should show. AE_WINDOW_SIZE="WxH" overrides it;
+# AE_NO_RESIZE=1 keeps the application's own size for a probe that tests it.
+ae_size_window() { # ae_size_window [WxH]
+    if [ "${AE_NO_RESIZE:-}" = "1" ]; then
+        return 0
+    fi
+    local want="${1:-${AE_WINDOW_SIZE:-}}"
+    if [ -z "$want" ]; then
+        # the screen's own size, read from the X server rather than assumed
+        local sw sh
+        sw=$(xdotool getdisplaygeometry 2>/dev/null | awk '{print $1}')
+        sh=$(xdotool getdisplaygeometry 2>/dev/null | awk '{print $2}')
+        [ -n "${sw:-}" ] && [ -n "${sh:-}" ] && want="${sw}x${sh}"
+    fi
+    [ -n "$want" ] || return 0
+
+    local win
+    win=$(xwininfo -root -tree 2>/dev/null | awk '
+        /[0-9]+x[0-9]+[+-]/ {
+            geom = ""
+            for (i = 1; i <= NF; ++i)
+                if ($i ~ /^[0-9]+x[0-9]+[+-]/) geom = $i
+            if (geom == "") next
+            split(geom, a, "x")
+            w = a[1] + 0
+            h = a[2]
+            sub(/[+-].*/, "", h)
+            h = h + 0
+            if (w * h > best) { best = w * h; bestline = $1 }
+        }
+        END { print bestline }')
+    [ -n "${win:-}" ] || return 0
+
+    local have
+    have=$(xwininfo -id "$win" 2>/dev/null | awk '/Width:/ {print $2} /Height:/ {print $2}' | paste -sd x -)
+    [ "$have" = "$want" ] && return 0
+
+    xdotool windowsize "$win" "${want%x*}" "${want#*x}" 2>/dev/null || return 0
+    # the application needs one event-loop pass to relayout its docks
+    sleep 1
+    local now
+    now=$(xwininfo -id "$win" 2>/dev/null | awk '/Width:/ {print $2} /Height:/ {print $2}' | paste -sd x -)
+    echo "window: was ${have:-unknown}, asked ${want}, now ${now:-unknown}"
+}
+
 wait_ready() { # wait_ready [seconds]
     # Guarded HERE rather than only in ae_press/ae_drag: every probe calls this
     # inside its xvfb-run body BEFORE its first raw `xdotool`, and the probes use
@@ -309,7 +381,12 @@ wait_ready() { # wait_ready [seconds]
     [ -n "$app_pid" ] && ae_memory_cap "$app_pid"
     local limit=${1:-120} i
     for i in $(seq 1 "$limit"); do
-        ae wait "File" >/dev/null 2>&1 && return 0
+        if ae wait "File" >/dev/null 2>&1; then
+            # THE WINDOW IS SIZED HERE, once per run, before any probe aims at a pixel:
+            # see ae_size_window for why nothing else does it under Xvfb.
+            ae_size_window
+            return 0
+        fi
         sleep 1
     done
     return 1
@@ -499,4 +576,5 @@ export -f ae ae_center ae_press ae_activate ae_report ae_report_asked check requ
 # "environment: line 3: ae_memory_cap: command not found" and the resident-memory
 # ceiling described above was started by nobody. The cap the comment block above says
 # every probe is covered by was, in fact, applied to no probe at all.
-export -f ae_y ae_drag wait_ready ae_guard_display ae_memory_cap
+# ae_size_window is called by wait_ready from the same child shell, for the same reason.
+export -f ae_y ae_drag wait_ready ae_guard_display ae_memory_cap ae_size_window

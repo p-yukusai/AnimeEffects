@@ -208,6 +208,16 @@ public:
             // setters, so the cache holds ints by the time it is read.
             return static_cast<float>(expans.hsv().hsv().at(comp));
         case core::TimeKeyType_Image: return (comp == 0) ? expans.imageOffset().x() : expans.imageOffset().y();
+        case core::TimeKeyType_Wave: {
+            const core::WaveKey::Data& wave = expans.wave();
+            switch (comp) {
+            case 0: return wave.strength();
+            case 1: return wave.wavelength();
+            case 2: return wave.angleDeg();
+            case 3: return wave.phase();
+            default: return wave.mix();
+            }
+        }
         default: return 0.0f;
         }
     }
@@ -298,7 +308,9 @@ int sectionChannelTable() {
     // types dropped: the image key leads (it renders first) and the easing types
     // follow in timeline order.
     const QVector<TimeKeyType> types = Channel::graphableTypes();
-    CHECK(types.size() == 8);
+    // Nine: the eight easing types plus the Wave deform filter, which publishes
+    // five graphable components (strength, wavelength, direction, phase, mix).
+    CHECK(types.size() == 9);
     CHECK(types.at(0) == core::TimeKeyType_Image);
     CHECK(types.at(1) == core::TimeKeyType_Move);
     CHECK(types.at(2) == core::TimeKeyType_Rotate);
@@ -307,6 +319,7 @@ int sectionChannelTable() {
     CHECK(types.at(5) == core::TimeKeyType_Opa);
     CHECK(types.at(6) == core::TimeKeyType_HSV);
     CHECK(types.at(7) == core::TimeKeyType_Blur);
+    CHECK(types.at(8) == core::TimeKeyType_Wave);
 
     // Exactly one graphable channel is step-held: the image offset, which
     // playback holds rather than blends (see section 5).
@@ -510,7 +523,10 @@ int sectionSamplerMatchesPlayback() {
     // The image channel has no keys here (a real one cannot be built headless,
     // see section 5), so its curve only participates through the no-key case.
     const QVector<ctrl::graph::Curve> curves = allCurves(*node.timeLine());
-    CHECK(curves.size() == 15); // 2+2+1+2+1+1+3+3 components
+    // 2+2+1+2+1+1+3+3 components plus the wave's five (strength, wavelength,
+    // direction, phase, mix), which have no keys here and so exercise the
+    // no-key/default-key path on both sides of the comparison.
+    CHECK(curves.size() == 20);
 
     for (int frame = 1; frame <= 19; ++frame) {
         const BlenderOracle oracle(node, core::Frame(frame));
@@ -753,6 +769,29 @@ int sectionMoveSpline() {
         const BlenderOracle oracle(node, core::Frame(frame));
         CHECK(matchesPlayback(oracle, cx, core::Frame(frame)));
         CHECK(matchesPlayback(oracle, cy, core::Frame(frame)));
+    }
+
+    // AND THE DRAWN PATH IS THE SAMPLED PATH for a Move channel too. The polyline prepares
+    // one segment (its Catmull-Rom knots and the spline's linearization table) and then walks
+    // it per point, so the point of this assertion is the pair "prepared once / evaluated per
+    // point" - the shape that changed - against sample()'s one-shot evaluation, fractional
+    // frames included.
+    {
+        QVector<QPointF> line;
+        cy.buildPolyline(core::Frame(0), core::Frame(10), 8, line);
+        int compared = 0;
+        int fractional = 0;
+        for (const QPointF& point : line) {
+            const float x = static_cast<float>(point.x());
+            CHECK(nearly(static_cast<float>(point.y()),
+                         cy.sample(core::Frame::fromDecimal(x))));
+            ++compared;
+            if (std::fabs(x - std::floor(x + 0.5)) > 1e-6) ++fractional;
+        }
+        std::printf("MEASURED Move polyline: %d points compared with sample(), %d of them fractional\n",
+                    compared, fractional);
+        CHECK(compared >= 10);
+        CHECK(fractional > 5);   // the assertion must reach the interpolated points
     }
 
     // A Linear spline on either end drops the neighbour from the Catmull-Rom

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include "util/EasingName.h"
+#include "util/EasingSegment.h"
 #include "util/UnitBezier.h"
 
 namespace {
@@ -327,24 +328,17 @@ float Easing::calculate(
 #undef RETURN_BY_EASING_FUNCTION
 }
 
+// THE THIRDS IDENTITY, its float bound, the exact-equality rule and the measured cost all
+// live in util/EasingSegment.{h,cpp} - this file is the ONE-SHOT surface over that type, so
+// there is one statement of the rule rather than a copy per funnel and a third in the
+// graph. `calculateBezier` below is what remains of the old fast path: two lines.
+
 float calculateBezier(const Easing::Param& aParam, const float t, const float b, const float c, const float d) {
-    auto [x1, y1, x2, y2] = aParam.cubicBezier;
-    // Normalized progress (frame offset / duration). This is the x fed to the
-    // curve; it must NOT depend on weight.
-    const float x = t / d;
-    // The solver is built per evaluation: constructing a UnitBezier is 11 Horner
-    // evals plus a handful of multiplies, and this keeps Easing stateless (no
-    // cache, no shared mutable state on the frame path).
-    const UnitBezier bezier(x1, y1, x2, y2);
-    // The unit cubic solve returns the curve value; scale onto the key range.
-    // Weight is deliberately NOT applied here: a custom bezier is exactly the
-    // drawn curve, and its handles already span every shape weight could reach.
-    // Custom mode has no blend control in the picker at all (its own panel
-    // replaces the normal one); the stepped holds do show one whose weight this
-    // math ignores. Keeping weight out of the maths means a stale weight on a
-    // Custom key (a value left over from another easing type, or one read from a
-    // saved file) can never silently skew a curve.
-    return b + c * static_cast<float>(bezier.solve(x, UnitBezier::kBezierEpsilon));
+    // ONE-SHOT over the prepared segment: the thirds decision, the coefficients and the
+    // solver live in util::EasingSegment (see there for the identity and the measured
+    // cost), so a caller that samples a segment 600 times prepares it once instead of 600
+    // times. A single evaluation pays one construction - a UnitBezier is ~4 ns.
+    return b + c * EasingSegment(aParam, d).rate(t);
 }
 
 float Easing::calculate(const Param& aParam, const float t, const float b, const float c, const float d) {
@@ -364,16 +358,10 @@ float Easing::calculate(
     if (aParam.type != Type_Custom) {
         return calculate(aParam, t, b, c, d);
     }
-    // Same solve a stored Custom pair gets, over control points that each side
-    // derives by its own mode (see controlPoint). aCtx.inMode is the TO key's
-    // incoming mode: the arriving side belongs to the TO key even though its
-    // stored value lives in aParam.
-    const QPointF first = controlPoint(aParam, aCtx.inMode, aCtx, d, 0);
-    const QPointF second = controlPoint(aParam, aCtx.inMode, aCtx, d, 1);
-    const UnitBezier bezier(
-        static_cast<float>(first.x()), static_cast<float>(first.y()),
-        static_cast<float>(second.x()), static_cast<float>(second.y()));
-    return b + c * static_cast<float>(bezier.solve(t / d, UnitBezier::kBezierEpsilon));
+    // The derivation (aCtx.inMode is the TO key's incoming mode), the thirds decision and
+    // the evaluation are all EasingSegment's - the SAME code the stored pair takes, so a
+    // derived curve and a stored one cannot be evaluated by two different formulas.
+    return b + c * EasingSegment(aParam, aCtx, d).rate(t);
 }
 
 //-------------------------------------------------------------------------------------------------

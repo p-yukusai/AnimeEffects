@@ -11,6 +11,7 @@
 #include "core/OpaKey.h"
 #include "core/HsvKey.h"
 #include "core/BlurKey.h"
+#include "core/WaveKey.h"
 #include "core/PoseKey.h"
 #include "core/FFDKey.h"
 #include "core/Bone2.h"
@@ -57,6 +58,8 @@ const util::Easing::Param* paramOf(const core::TimeKey& aKey, int aComponent) {
         return &static_cast<const core::ScaleKey&>(aKey).data().easing(aComponent);
     case core::TimeKeyType_Blur:
         return &static_cast<const core::BlurKey&>(aKey).data().easing(aComponent);
+    case core::TimeKeyType_Wave:
+        return &static_cast<const core::WaveKey&>(aKey).data().easing(aComponent);
     case core::TimeKeyType_HSV:
         return &static_cast<const core::HSVKey&>(aKey).data().easing(aComponent);
     case core::TimeKeyType_Rotate:
@@ -102,6 +105,17 @@ bool valueOf(
         case 0: aOut = val.blurX(); return true;
         case 1: aOut = val.blurY(); return true;
         case 2: aOut = val.angleDeg(); return true;
+        default: return false;
+        }
+    }
+    case core::TimeKeyType_Wave: {
+        const core::WaveKey::Data& val = static_cast<const core::WaveKey&>(aKey).data();
+        switch (aComponent) {
+        case 0: aOut = val.strength(); return true;
+        case 1: aOut = val.wavelength(); return true;
+        case 2: aOut = val.angleDeg(); return true;
+        case 3: aOut = val.phase(); return true;
+        case 4: aOut = val.mix(); return true;
         default: return false;
         }
     }

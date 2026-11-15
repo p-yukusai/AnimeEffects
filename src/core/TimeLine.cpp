@@ -6,13 +6,16 @@
 #include "core/TimeKeyExpans.h"
 #include "core/DepthKey.h"
 #include "core/BlurKey.h"
+#include "core/WaveKey.h"
+#include "core/MaskKey.h"
 #include "core/Project.h"
 
 namespace {
 
 constexpr int kMaxLengthOfTimeKeyName = 8;
 constexpr std::array<const char*, core::TimeKeyType_TERM> kTimeKeyNames = {
-    "Move", "Rotate", "Scale", "Depth", "Opa", "Bone", "Pose", "Mesh", "FFD", "Image", "HSV", "Blur"};
+    "Move", "Rotate", "Scale", "Depth", "Opa", "Bone", "Pose", "Mesh", "FFD", "Image", "HSV", "Blur",
+    "Wave", "Mask"};
 
 constexpr std::array<core::TimeKeyType, core::TimeKeyType_TERM> kTimeKeyTypeInOrderOfOperations = {
     core::TimeKeyType_Image,
@@ -26,7 +29,11 @@ constexpr std::array<core::TimeKeyType, core::TimeKeyType_TERM> kTimeKeyTypeInOr
     core::TimeKeyType_Depth,
     core::TimeKeyType_Opa,
     core::TimeKeyType_HSV,
-    core::TimeKeyType_Blur};
+    core::TimeKeyType_Blur,
+    core::TimeKeyType_Wave,
+    // A mask multiplies the PRESENT alpha, i.e. it is the last thing applied to
+    // a node, so it resolves after every filter.
+    core::TimeKeyType_Mask};
 
 } // namespace
 
@@ -36,9 +43,10 @@ namespace core {
 QString TimeLine::getTimeKeyName(const TimeKeyType aType) { return {kTimeKeyNames.at(aType)}; }
 
 QString TimeLine::getTimeKeyDisplayName(const TimeKeyType aType) {
-    if (aType == TimeKeyType_Opa) {
+    if (aType == TimeKeyType_Opa)
         return QStringLiteral("Opacity");
-    }
+    if (aType == TimeKeyType_Move)
+        return QStringLiteral("Position");
     return getTimeKeyName(aType);
 }
 
@@ -90,6 +98,88 @@ int TimeLine::validTypeCount() const {
 
 const TimeLine::MapType& TimeLine::map(TimeKeyType aType) const { return mMap.at(aType); }
 
+QVector<FilterEntry> TimeLine::filters() const {
+    // Stored order first (including an entry added before its first key), then
+    // every filter lane that exists but was never written to the stack. The
+    // canonical tail is the renderer's historical order, so a legacy project
+    // opens in the order it rendered before stacks existed.
+    QVector<FilterEntry> out;
+    QSet<TimeKeyType> seen;
+    for (const FilterEntry& entry : mFilters) {
+        if (!isFilterType(entry.type) || seen.contains(entry.type))
+            continue;
+        out.append(entry);
+        seen.insert(entry.type);
+    }
+    for (const TimeKeyType type : { TimeKeyType_Blur, TimeKeyType_HSV, TimeKeyType_Wave }) {
+        if (!mMap.at(type).isEmpty() && !seen.contains(type)) {
+            out.append(FilterEntry(type, true));
+            seen.insert(type);
+        }
+    }
+    return out;
+}
+
+FilterMask* TimeLine::filterMask(TimeKeyType aType, FilterMaskChannel aChannel) {
+    if (!isFilterType(aType) || aChannel < 0 || FilterMaskChannel_TERM <= aChannel)
+        return nullptr;
+    return mFilterMasks.at(aType).at(aChannel).get();
+}
+
+const FilterMask* TimeLine::filterMask(TimeKeyType aType, FilterMaskChannel aChannel) const {
+    if (!isFilterType(aType) || aChannel < 0 || FilterMaskChannel_TERM <= aChannel)
+        return nullptr;
+    return mFilterMasks.at(aType).at(aChannel).get();
+}
+
+FilterMask& TimeLine::ensureFilterMask(TimeKeyType aType, FilterMaskChannel aChannel, const QRectF& aContentRect) {
+    XC_ASSERT(isFilterType(aType));
+    XC_ASSERT(0 <= aChannel && aChannel < FilterMaskChannel_TERM);
+    auto& slot = mFilterMasks.at(aType).at(aChannel);
+    if (!slot)
+        slot.reset(new FilterMask());
+    if (slot->isEmpty() || slot->contentRect() != aContentRect)
+        slot->reset(aContentRect, filterMaskNeutral(aChannel));
+    return *slot;
+}
+
+void TimeLine::removeFilterMask(TimeKeyType aType, FilterMaskChannel aChannel) {
+    if (isFilterType(aType) && 0 <= aChannel && aChannel < FilterMaskChannel_TERM)
+        mFilterMasks.at(aType).at(aChannel).reset();
+}
+
+bool TimeLine::filterEnabled(TimeKeyType aType) const {
+    if (!isFilterType(aType))
+        return false;
+    for (const FilterEntry& entry : mFilters) {
+        if (entry.type == aType)
+            return entry.enabled;
+    }
+    // A lane that exists without a stored entry is a filter the user has not
+    // touched from the stack yet; it is enabled.
+    return !mMap.at(aType).isEmpty();
+}
+
+bool TimeLine::hasFilter(TimeKeyType aType) const {
+    for (const FilterEntry& entry : filters()) {
+        if (entry.type == aType)
+            return true;
+    }
+    return false;
+}
+
+void TimeLine::setFilterEntries(const QVector<FilterEntry>& aEntries) {
+    QVector<FilterEntry> normalized;
+    QSet<TimeKeyType> seen;
+    for (const FilterEntry& entry : aEntries) {
+        if (!isFilterType(entry.type) || seen.contains(entry.type))
+            continue;
+        normalized.append(entry);
+        seen.insert(entry.type);
+    }
+    mFilters = normalized;
+}
+
 TimeKey* TimeLine::timeKey(TimeKeyType aType, int aIndex) {
     if (mMap.at(aType).contains(aIndex)) {
         return mMap[aType][aIndex];
@@ -116,6 +206,12 @@ TimeKey* TimeLine::defaultKey(TimeKeyType aType) { return mDefaultKeys.at(aType)
 const TimeKey* TimeLine::defaultKey(TimeKeyType aType) const { return mDefaultKeys.at(aType).data(); }
 
 void TimeLine::clear() {
+    mFilters.clear();
+    for (auto& lane : mFilterMasks) {
+        for (auto& mask : lane) {
+            mask.reset();
+        }
+    }
     for (int i = 0; i < TimeKeyType_TERM; ++i) {
         mDefaultKeys[i].reset();
 
@@ -316,6 +412,39 @@ bool TimeLine::serialize(Serializer& aOut) const {
         aOut.endBlock(mapPos);
     }
 
+    // filter stack (0.17): order + enabled flags. The filter VALUES are the key
+    // maps above; this block is only the stack.
+    const QVector<FilterEntry> stack = filters();
+    aOut.write(static_cast<int>(stack.size()));
+    for (const FilterEntry& entry : stack) {
+        aOut.write(getTimeKeyName(entry.type));
+        aOut.write(entry.enabled);
+    }
+
+    // paintable filter masks (0.19): one field per lane that has one
+    {
+        int maskCount = 0;
+        for (const auto& lane : mFilterMasks) {
+            for (const auto& mask : lane) {
+                if (mask && !mask->isEmpty())
+                    ++maskCount;
+            }
+        }
+        aOut.write(maskCount);
+        for (int i = 0; i < TimeKeyType_TERM; ++i) {
+            for (int c = 0; c < FilterMaskChannel_TERM; ++c) {
+                const auto& mask = mFilterMasks[i][c];
+                if (!mask || mask->isEmpty())
+                    continue;
+                aOut.write(getTimeKeyName(static_cast<TimeKeyType>(i)));
+                aOut.write(c);
+                if (!mask->serialize(aOut)) {
+                    return false;
+                }
+            }
+        }
+    }
+
     aOut.endBlock(pos);
 
     return aOut.checkStream();
@@ -339,6 +468,10 @@ bool TimeLine::serializeTimeKey(Serializer& aOut, const TimeKey& aTimeKey) const
         aOut.write(proportional->rightId);
         aOut.write(proportional->timeValid);
         aOut.write(proportional->timeWeight);
+        // The payload's length is a format fact: 0.16-0.17 wrote three values,
+        // 0.18 writes kMaxProportionalComponents (a Wave key has five). A newer
+        // file therefore cannot be read by an older build, which is what the
+        // format version is for.
         for (int c = 0; c < TimeKey::kMaxProportionalComponents; ++c) {
             aOut.write(proportional->valueValid[c]);
             aOut.write(proportional->valueWeight[c]);
@@ -418,6 +551,57 @@ bool TimeLine::deserialize(Deserializer& aIn) {
         aIn.popLogScope();
     }
 
+    // filter stack (0.17). A legacy file has no block: its filters are the lanes
+    // that already exist, in the order the renderer used (blur then HSV).
+    mFilters.clear();
+    if (aIn.version().majorVersion() == 0 && aIn.version().minorVersion() >= 17) {
+        int filterCount = 0;
+        aIn.read(filterCount);
+        for (int i = 0; i < filterCount; ++i) {
+            QString typeName;
+            aIn.read(typeName, kMaxLengthOfTimeKeyName);
+            const TimeKeyType type = getTimeKeyType(typeName);
+            bool enabled = true;
+            aIn.read(enabled);
+            if (isFilterType(type))
+                mFilters.append(FilterEntry(type, enabled));
+        }
+        setFilterEntries(mFilters);
+    } else {
+        for (const TimeKeyType type : { TimeKeyType_Blur, TimeKeyType_HSV, TimeKeyType_Wave }) {
+            if (!mMap.at(type).isEmpty())
+                mFilters.append(FilterEntry(type, true));
+        }
+    }
+
+    // paintable filter masks (0.19). Old files have none: a filter lane without a
+    // mask renders exactly as it did before masks existed.
+    for (auto& lane : mFilterMasks) {
+        for (auto& mask : lane) {
+            mask.reset();
+        }
+    }
+    if (aIn.version().majorVersion() == 0 && aIn.version().minorVersion() >= 19) {
+        int maskCount = 0;
+        aIn.read(maskCount);
+        if (maskCount < 0 || TimeKeyType_TERM * FilterMaskChannel_TERM < maskCount) {
+            return aIn.errored("invalid filter mask count");
+        }
+        for (int i = 0; i < maskCount; ++i) {
+            QString typeName;
+            aIn.read(typeName, kMaxLengthOfTimeKeyName);
+            int channel = 0;
+            aIn.read(channel);
+            const TimeKeyType type = getTimeKeyType(typeName);
+            auto mask = std::make_unique<FilterMask>();
+            if (!mask->deserialize(aIn)) {
+                return false;
+            }
+            if (isFilterType(type) && 0 <= channel && channel < FilterMaskChannel_TERM)
+                mFilterMasks.at(type).at(channel) = std::move(mask);
+        }
+    }
+
     // check block end
     if (!aIn.endBlock()) {
         return false;
@@ -443,6 +627,10 @@ bool TimeLine::deserializeTimeKey(Deserializer& aIn, TimeKeyType aType, int aInd
         key = new HSVKey();
     } else if (aType == TimeKeyType_Blur) {
         key = new BlurKey();
+    } else if (aType == TimeKeyType_Wave) {
+        key = new WaveKey();
+    } else if (aType == TimeKeyType_Mask) {
+        key = new MaskKey();
     } else if (aType == TimeKeyType_Bone) {
         key = new BoneKey();
     } else if (aType == TimeKeyType_Pose) {
@@ -482,7 +670,12 @@ bool TimeLine::deserializeTimeKey(Deserializer& aIn, TimeKeyType aType, int aInd
             aIn.read(proportionalState.rightId);
             aIn.read(proportionalState.timeValid);
             aIn.read(proportionalState.timeWeight);
-            for (int c = 0; c < TimeKey::kMaxProportionalComponents; ++c) {
+            // 0.16-0.17 stored three component weights; 0.18 (the Wave filter)
+            // stores kMaxProportionalComponents. Reading the wrong count would
+            // silently shift the rest of the stream by two pairs.
+            const int storedComponents = (aIn.version().minorVersion() >= 18)
+                ? TimeKey::kMaxProportionalComponents : 3;
+            for (int c = 0; c < storedComponents; ++c) {
                 aIn.read(proportionalState.valueValid[c]);
                 aIn.read(proportionalState.valueWeight[c]);
             }
@@ -512,7 +705,7 @@ bool TimeLine::deserializeTimeKey(Deserializer& aIn, TimeKeyType aType, int aInd
             TimeKey* child = static_cast<TimeKey*>(aPtr);
             key->children().pushBack(child);
         };
-        if (key->type() == TimeKeyType_HSV) {
+        if (key->type() == TimeKeyType_HSV || key->type() == TimeKeyType_Wave) {
             return true;
         }
         if (!aIn.orderIDData(solver)) {

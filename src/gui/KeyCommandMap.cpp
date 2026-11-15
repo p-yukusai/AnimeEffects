@@ -87,6 +87,28 @@ KeyCommandMap::KeyCommandMap(QWidget& aParent):
 
     addNewKey("SelectFFD", tools, tr("Select FFD editor"), ctrl::KeyBinding(Qt::Key_6));
 
+    // The painter's brush keys (Photoshop and Clip Studio Paint agree on [ and ]):
+    // one notch per press, Shift for the hardness. The same adjustments are on the
+    // Alt + right-drag gesture in the viewport.
+    addNewKey(
+        "BrushSizeIncrease", tools, tr("Increase the brush size"), ctrl::KeyBinding(Qt::Key_BracketRight)
+    );
+    addNewKey(
+        "BrushSizeDecrease", tools, tr("Decrease the brush size"), ctrl::KeyBinding(Qt::Key_BracketLeft)
+    );
+    addNewKey(
+        "BrushHardnessIncrease",
+        tools,
+        tr("Increase the brush hardness"),
+        ctrl::KeyBinding(Qt::Key_BracketRight, Qt::ShiftModifier)
+    );
+    addNewKey(
+        "BrushHardnessDecrease",
+        tools,
+        tr("Decrease the brush hardness"),
+        ctrl::KeyBinding(Qt::Key_BracketLeft, Qt::ShiftModifier)
+    );
+
     addNewKey("MoveFrameLeft", timeline, tr("Move one frame to the left"), ctrl::KeyBinding(Qt::Key_1, Qt::AltModifier));
 
     addNewKey("MoveFrameRight", timeline, tr("Move one frame to the right"), ctrl::KeyBinding(Qt::Key_3, Qt::AltModifier));

@@ -4,6 +4,7 @@
 #include <QMatrix4x4>
 #include "cmnd/Gesture.h"
 #include "util/Circle.h"
+#include "ctrl/Brush.h"
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/BoneKey.h"
@@ -25,7 +26,7 @@ namespace pose {
         virtual void renderQt(const core::RenderInfo& aInfo, QPainter& aPainter);
 
     private:
-        void updatePaint();
+        void updatePaint(const BrushStamp& aStamp);
 
         core::Project& mProject;
         core::ObjectNode& mTarget;
@@ -34,7 +35,9 @@ namespace pose {
         KeyOwner& mKeyOwner;
         cmnd::Gesture<RotateAllBones> mGesture;
         util::Circle mBrush;
-        float mBrushPressure;
+        PoseParam mParam;
+        BrushStroke mStroke;
+        QVector2D mCursorPos;
         bool mIsBrushDrawing;
     };
 

@@ -22,7 +22,9 @@ namespace bone {
         void renderBones(const core::Bone2* aTopBone);
         void renderJoint(const core::Bone2& aBone);
         void renderInfluence(const core::Bone2* aTopBone);
-        void renderBrush(const util::Circle& aBrush, bool aPressed);
+        // the brush circle, with the HARD CORE ring when aHardness > 0 (the same two
+        // rings ctrl/Brush.h defines, so every painting tool's cursor reads alike)
+        void renderBrush(const util::Circle& aBrush, bool aPressed, float aHardness = 0.0f);
 
         static std::array<QPointF, 4> getBoneQuad(const QPointF& aFrom, const QPointF& aTo);
 

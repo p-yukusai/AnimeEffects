@@ -1106,8 +1106,14 @@ int main(int argc, char** argv) {
                 spin(900); // the new owner is a new tooltip and gets its own delay
                 const qreal rowY2 = rowItem->mapToItem(window.contentItem(), 0, 0).y();
                 const qreal tipY2 = tip->mapToItem(window.contentItem(), 0, 0).y();
-                check(tip->property("revealed").toBool()
-                          && tip->parentItem()->property("hoveredRow").toInt() == rowIdx,
+                // Since 2026-10-26 the bubble is mounted in the window OVERLAY,
+                // so `parentItem()` is the overlay - it has no `hoveredRow` and
+                // its frame is not the list area's. The labelled item is the
+                // explicit `ownerItem` role instead.
+                auto* tipOwner =
+                    qobject_cast<QQuickItem*>(tip->property("ownerItem").value<QObject*>());
+                check(tip->property("revealed").toBool() && tipOwner
+                          && tipOwner->property("hoveredRow").toInt() == rowIdx,
                       "precondition (E27/scroll): the tooltip is revealed again on the same row "
                       "after the scroll");
                 // THE FIX, measured two ways:
@@ -1116,12 +1122,14 @@ int main(int argc, char** argv) {
                 //      CONTENT is not where the row is drawn; the contentY read in
                 //      the binding is what makes the difference, and it is 982px of
                 //      scroll here, so a stale binding is not a subtle failure.
-                check(near(tip->property("ownerY").toReal(),
-                           rowItem->mapToItem(tip->parentItem(), 0, 0).y()),
+                //      ownerY is in OWNER coordinates (the list area), which is
+                //      why the row is mapped there rather than into the overlay.
+                check(tipOwner && near(tip->property("ownerY").toReal(),
+                                       rowItem->mapToItem(tipOwner, 0, 0).y()),
                       QStringLiteral("E27: the tooltip's owner is the row's DRAWN position "
                                      "(ownerY %1 vs the row's %2 in the list area, at contentY %3)")
                           .arg(tip->property("ownerY").toReal())
-                          .arg(rowItem->mapToItem(tip->parentItem(), 0, 0).y())
+                          .arg(tipOwner ? rowItem->mapToItem(tipOwner, 0, 0).y() : -1)
                           .arg(after));
                 //  (2) what a person sees: the bubble follows its row, in window
                 //      coordinates, over the scroll - same side, same gap.

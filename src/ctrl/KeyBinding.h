@@ -6,6 +6,13 @@
 
 namespace ctrl {
 
+// A Shift binding is SPELLED on the unshifted key ("Shift + ]" is a binding on
+// BracketRight) while Qt DELIVERS the shifted symbol (BraceRight + Shift). This
+// folds the symbol back onto its key so the two spellings meet; callers build the
+// event's binding through it. Measured: without it every Shift+punctuation binding
+// silently never fired.
+int unshiftedKeyForShift(int aKey);
+
 class KeyBinding {
     int mKeyCode;
     int mSubKeyCode;

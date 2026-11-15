@@ -2458,6 +2458,19 @@ namespace ctrl {
             TimeLineUtil::pushNewHSVKey(*mProject, aTarget, frame, static_cast<core::HSVKey*>(seed.release()));
             break;
         }
+        case core::TimeKeyType_Wave: {
+            auto* key = static_cast<core::WaveKey*>(seed.get());
+            // The five drawn channels are seeded from the curves; the shape
+            // fields (speed, crest, the dual wave, the deform mode) keep the
+            // template's, exactly like HSV's absolute flag.
+            key->setStrength(sampledChannelValue(aLine, type, 0, aFrame));
+            key->setWavelength(sampledChannelValue(aLine, type, 1, aFrame));
+            key->setAngleDeg(sampledChannelValue(aLine, type, 2, aFrame));
+            key->setPhase(sampledChannelValue(aLine, type, 3, aFrame));
+            key->setMix(sampledChannelValue(aLine, type, 4, aFrame));
+            TimeLineUtil::pushNewWaveKey(*mProject, aTarget, frame, static_cast<core::WaveKey*>(seed.release()));
+            break;
+        }
         case core::TimeKeyType_Image: {
             auto* key = static_cast<core::ImageKey*>(seed.get());
             key->setImageOffset(QVector2D(

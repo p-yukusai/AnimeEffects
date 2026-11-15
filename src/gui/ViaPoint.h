@@ -2,7 +2,6 @@
 #define GUI_VIAPOINT_H
 
 #include <QWidget>
-#include <QPlainTextEdit>
 #include <QScopedPointer>
 #include "util/NonCopyable.h"
 #include "gl/DeviceInfo.h"
@@ -32,6 +31,9 @@ class MainViewSetting;
 namespace gui {
 class MouseSetting;
 }
+namespace gui {
+class CommandLogView;
+}
 
 namespace gui {
 
@@ -55,10 +57,22 @@ public:
 
     img::ResourceNode* requireOneResource();
 
-    void setLogView(QPlainTextEdit* aLogView);
-    virtual void pushLog(const QString& aText, ctrl::UILogType aType);
-    void pushUndoneLog(const QString& aText);
-    void pushRedoneLog(const QString& aText);
+    // The Properties panel's command log. It is the concrete view rather than a
+    // plain QPlainTextEdit because the log must be TOLD the kind of a line (a
+    // warning and an undo are not the same ink) and must re-ink itself on a theme
+    // switch - neither of which the old plain-text/HTML appends could do.
+    void setLogView(CommandLogView* aLogView);
+    CommandLogView* logView() const { return mLogView; }
+
+    // Editor messages (ctrl::UILogger). The type is no longer discarded: a
+    // UILogType_Warn line renders with the warning ink and a badge, which is the
+    // difference the old appendPlainText() could not show.
+    void pushLog(const QString& aText, ctrl::UILogType aType) override;
+
+    // One undo/redo step. aName is cmnd::Base::name(), which plain commands leave
+    // empty - the view renders the badge alone in that case instead of the old
+    // dangling "Undone : ".
+    void pushCommandLog(bool aRedo, const QString& aName);
 
     void setGLDeviceInfo(const gl::DeviceInfo&);
     const gl::DeviceInfo& glDeviceInfo() const;
@@ -90,7 +104,7 @@ private:
     MainMenuBar* mMainMenuBar;
     ResourceDialog* mResDialog;
     ObjectTreeWidget* mObjectTree;
-    QPlainTextEdit* mLogView;
+    CommandLogView* mLogView;
     gl::DeviceInfo mGLDeviceInfo;
     KeyCommandMap* mKeyCommandMap;
     KeyCommandInvoker* mKeyCommandInvoker;

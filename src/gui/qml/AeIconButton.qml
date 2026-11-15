@@ -80,7 +80,7 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()
     }
-    AeToolTip { text: root.label; shown: root.showTip && mouse.containsMouse && root.enabled }
+    AeToolTip { ownerItem: root; text: root.label; shown: root.showTip && mouse.containsMouse && root.enabled }
 
     activeFocusOnTab: true
     Keys.onSpacePressed: if (root.enabled) { root.clicked(); event.accepted = true }

@@ -4,6 +4,9 @@
 #include <QChar>
 #include <QString>
 #include <QStringList>
+#include <QVarLengthArray>
+#include <algorithm>
+#include <cstdlib>
 
 namespace gui {
 namespace fuzzy {
@@ -99,6 +102,37 @@ inline QStringList words(const QString& aText) {
     return out;
 }
 
+// Damerau-Levenshtein (optimal-string-alignment) distance, ABANDONED as soon as it is
+// certain to exceed `aLimit`: the caller only ever asks "is this within N edits", so the
+// full table is never worth building. Adjacent transposition counts as ONE edit, because
+// swapping two letters is the most common way a short word is mistyped.
+inline int boundedDistance(const QString& a, const QString& b, int aLimit) {
+    const int n = a.size();
+    const int m = b.size();
+    if (std::abs(n - m) > aLimit) return aLimit + 1;
+    QVarLengthArray<int, 32> prev2(n + 1);
+    QVarLengthArray<int, 32> prev(n + 1);
+    QVarLengthArray<int, 32> cur(n + 1);
+    for (int i = 0; i <= n; ++i) prev[i] = i;
+    for (int j = 1; j <= m; ++j) {
+        cur[0] = j;
+        int rowMin = cur[0];
+        for (int i = 1; i <= n; ++i) {
+            const int cost = (a.at(i - 1) == b.at(j - 1)) ? 0 : 1;
+            int value = std::min(std::min(prev[i] + 1, cur[i - 1] + 1), prev[i - 1] + cost);
+            if (j > 1 && i > 1 && a.at(i - 1) == b.at(j - 2) && a.at(i - 2) == b.at(j - 1))
+                value = std::min(value, prev2[i - 2] + 1);
+            cur[i] = value;
+            rowMin = std::min(rowMin, value);
+        }
+        if (rowMin > aLimit) return aLimit + 1;
+        // rotate: prev2 <- prev <- cur
+        std::swap(prev2, prev);
+        std::swap(prev, cur);
+    }
+    return prev[n];
+}
+
 // Scores ONE field: -1 (`kNoMatch`) when the token does not match the word list;
 // otherwise the score, higher is better. aWords is a single field's words -- the
 // caller splits the haystack (queryScore below) -- so rules 1-6 are all confined to
@@ -151,6 +185,29 @@ inline int tokenScore(const QStringList& aWords, const QString& aToken) {
             if (matched == L) {
                 const int span = last - first + 1;
                 if (span <= 2 * L + 2) bump(200 + 8 * L - 4 * (span - L));
+            }
+        }
+
+        // 7. ONE TYPO (two in a long token). This is the rule the catalog needs and the
+        // one the matcher did not have: the filter list answered an EMPTY LIST to
+        // "blurr", because every rule above needs the token to be a subsequence of the
+        // word and a longer token cannot be one. A search box that goes blank on a typo
+        // reads as broken, and the fix is a bounded edit distance rather than a special
+        // case for one word.
+        //
+        // Deliberately narrow, because a tolerant matcher that matches everything is
+        // worse than none: the token must be at least 4 characters (three letters are one
+        // edit away from too many words), the word or one of its PREFIXES inside
+        // [L - limit, L + limit] must be within the limit, and the score band sits BELOW
+        // rule 6 so a real subsequence match always outranks a correction.
+        if (L >= 4) {
+            const int limit = (L >= 7) ? 2 : 1;
+            const int lo = std::max(1, L - limit);
+            const int hi = std::min(wordLen, L + limit);
+            for (int len = lo; len <= hi; ++len) {
+                const int distance = boundedDistance(word.left(len), token, limit);
+                if (distance <= limit)
+                    bump(120 + 8 * L - 60 * distance);
             }
         }
     }

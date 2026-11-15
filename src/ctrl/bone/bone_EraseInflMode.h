@@ -2,6 +2,7 @@
 #define CTRL_BONE_ERASEINFLMODE_H
 
 #include "util/Circle.h"
+#include "ctrl/Brush.h"
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/BoneKey.h"
@@ -23,7 +24,7 @@ namespace bone {
 
     private:
         std::pair<float, float> getSink(const core::Bone2& aBone, const util::Circle& aBrush) const;
-        bool updatePaint();
+        bool updatePaint(const BrushStamp& aStamp);
         void assignInfluence(
             core::Bone2& aTarget, const std::array<QVector2D, 2>& aPrev, const std::array<QVector2D, 2>& aNext
         );
@@ -37,7 +38,9 @@ namespace bone {
         FuzzyAssignInfluence* mCommandRef;
 
         util::Circle mBrush;
-        float mBrushPressure;
+        BoneParam mParam;
+        BrushStroke mStroke;
+        QVector2D mCursorPos;
         bool mIsBrushDrawing;
     };
 

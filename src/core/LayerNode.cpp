@@ -16,7 +16,9 @@
 #include "core/ClippingFrame.h"
 #include "core/WorldBlurMath.h"
 #include "core/DestinationTexturizer.h"
+#include "core/FilterActivity.h"
 #include "core/FilterFrame.h"
+#include "core/WavePass.h"
 
 namespace core {
 
@@ -104,10 +106,14 @@ void LayerNode::prerender(const RenderInfo& aInfo, const TimeCacheAccessor& aAcc
 void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor) {
     if (!mIsVisible || aAccessor.get(mTimeLine).opa().isZero()) return;
 
-    bool useHSV = !mTimeLine.isEmpty(TimeKeyType_HSV) && aInfo.time.frame.get() >= mTimeLine.map(TimeKeyType_HSV).values().first()->frame();
+    // The direct path's HSV comes from the BLENDED value, like every other filter
+    // decision: an HSV edited on its default key must bake into the layer shader
+    // even though the lane has no explicit key at all.
+    const bool useHSV = mTimeLine.filterEnabled(TimeKeyType_HSV)
+        && filterValueIsActive(TimeKeyType_HSV, aAccessor.get(mTimeLine));
     const QList<int> hsvData = useHSV ? aAccessor.get(mTimeLine).hsv().hsv() : QList<int>{};
 
-    if (!aInfo.isGrid && isCompositeLayer(aInfo.time, aAccessor)) {
+    if (!aInfo.isGrid && (isCompositeLayer(aAccessor) || isPreviewTarget(aInfo))) {
         renderComposite(aInfo, aAccessor);
     } else {
         renderLayer(aInfo, aAccessor, useHSV, hsvData);
@@ -118,23 +124,49 @@ void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccess
     renderClippees(aInfo, aAccessor);
 }
 
-bool LayerNode::hasActiveBlurKey(const TimeInfo& aTime) const {
-    return !mTimeLine.isEmpty(TimeKeyType_Blur)
-        && aTime.frame.get() >= mTimeLine.map(TimeKeyType_Blur).values().first()->frame();
+bool LayerNode::hasActiveHsvMask(const TimeCacheAccessor& aAccessor) const {
+    // An HSV whose BLENDED value changes color AND a painted amount mask: the
+    // adjustment then has to become a stack pass (per pixel), which is what
+    // isolates the layer. Both halves are read from the same value the direct
+    // path bakes, so a static HSV with a mask isolates too.
+    if (!filterValueIsActive(TimeKeyType_HSV, aAccessor.get(mTimeLine)))
+        return false;
+    const FilterMask* mask = mTimeLine.filterMask(TimeKeyType_HSV, FilterMaskChannel_Amount);
+    return mask && !mask->isEmpty();
 }
 
-bool LayerNode::isCompositeLayer(const TimeInfo& aTime, const TimeCacheAccessor& aAccessor) const {
-    // a BlurKey whose blended radius is at or below the epsilon has no visible effect
-    // (identity kernel, see FilterFrame::kMinActiveBlurRadius), so it must not force
-    // the layer onto the composite path (mirrors the folder gate); the epsilon keeps
-    // interpolations ramping in smoothly from zero
-    return hasActiveBlurKey(aTime)
-        && aAccessor.get(mTimeLine).maxBlurRadius() > FilterFrame::kMinActiveBlurRadius;
+bool LayerNode::isPreviewTarget(const RenderInfo& aInfo) const {
+    // the Mask tool paints THIS node: isolate it so the preview can be drawn over its
+    // content, whatever the filter's own enabled state says. BOTH kinds count - a
+    // filter input AND the node's own matte - because the isolation is what gives the
+    // overlay a surface to draw on (a matte preview on a plain layer stayed on the
+    // DIRECT path while this tested only maskPreview, so the rubylith never appeared).
+    return aInfo.maskPreviewTarget == this
+        && (aInfo.maskPreview != nullptr || aInfo.maskPreviewKey != nullptr);
 }
 
-// A blurred layer is isolated: the layer draws into a composite slot (its own HSV, blend
-// mode and clipping preserved), the isolated content is blurred, and the result is
-// presented onto the scene with the layer's blend mode at the layer's accumulated opacity.
+bool LayerNode::isCompositeLayer(const TimeCacheAccessor& aAccessor) const {
+    // Only an ENABLED filter whose BLENDED value is above its epsilon isolates the
+    // layer (filterValueIsActive carries each type's test: HSV's inert Data,
+    // FilterFrame::kMinActiveBlurRadius, WaveKey::Data::isActive). Testing the
+    // blended value - not "some key exists at or before this frame" - is what keeps
+    // a filter edited on its default key from being dropped here. The composite
+    // path then applies the whole stack in order; HSV alone stays on the direct
+    // path, where it is baked into the layer shader exactly as before.
+    const TimeKeyExpans& expans = aAccessor.get(mTimeLine);
+    if (mTimeLine.filterEnabled(TimeKeyType_Blur)
+        && filterValueIsActive(TimeKeyType_Blur, expans))
+        return true;
+    if (mTimeLine.filterEnabled(TimeKeyType_Wave)
+        && filterValueIsActive(TimeKeyType_Wave, expans))
+        return true;
+    return mTimeLine.filterEnabled(TimeKeyType_HSV) && hasActiveHsvMask(aAccessor);
+}
+
+// A FILTERED layer is isolated: the layer draws into a composite slot (its own HSV,
+// blend mode and clipping preserved), the stack is applied to that isolated content in
+// order, and the result is presented onto the scene with the layer's blend mode at the
+// layer's accumulated opacity.
 void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor) {
     XC_PTR_ASSERT(aInfo.filterFrame);
     auto& frame = *aInfo.filterFrame;
@@ -149,9 +181,10 @@ void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor
     if (worldOpacity <= 0.0f)
         return;
 
-    const bool useHSV = !mTimeLine.isEmpty(TimeKeyType_HSV)
-        && aInfo.time.frame.get() >= mTimeLine.map(TimeKeyType_HSV).values().first()->frame();
-    const QList<int> hsvData = useHSV ? expans.hsv().hsv() : QList<int>{};
+    // 1. render the layer WITHOUT its HSV into a composite slot at full opacity: the
+    // stack applies HSV as an explicit pass, so the order (HSV before blur or after)
+    // is the user's. The direct (no blur) path still bakes HSV for efficiency.
+    const QList<int> hsvData;
 
     // 1. render the layer into a composite slot at full opacity (its opacity is applied
     // at presentation so the blur samples the crisp shape, not a faded one)
@@ -167,69 +200,206 @@ void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor
         childInfo.framebuffer = composite.framebuffer();
         childInfo.dest = composite.texture();
         childInfo.opacityScale = 1.0f / worldOpacity;
-        renderLayer(childInfo, aAccessor, useHSV, hsvData);
+        renderLayer(childInfo, aAccessor, false, hsvData);
     }
 
-    // 2. blur the isolated content (same radius space as the folder filter: the amount is
-    // in the layer's content pixels - a content-space ellipse when directional; the
-    // content ellipse maps to an ellipse in the composite via the accumulated world
-    // transform M (composed as M*E), so the separable passes run along its principal axes
-    // with the resulting singular values as radii, scaled by the camera zoom)
+    // 2. apply the stack IN ORDER to the isolated content. Blur reuses the current
+    // slot (its direct path is a two-pass in-place filter); HSV takes a scratch slot
+    // because it samples the source while drawing.
     GLuint srcTexture = composite.texture();
-    if (expans.maxBlurRadius() > FilterFrame::kMinActiveBlurRadius && hasActiveBlurKey(aInfo.time)) {
-        const WorldBlurEllipse ellipse = worldBlurEllipse(
-            aAccessor, this, expans.blurX(), expans.blurY(), expans.angleDeg());
-        const float zoom = aInfo.camera.scale();
-        const float radiusX = ellipse.majorRadius * zoom;
-        const float radiusY = ellipse.minorRadius * zoom;
+    int srcSlot = composite.slot();
+    const QVector<FilterEntry> stack = mTimeLine.filters();
+    std::vector<std::unique_ptr<FilterFrame::ScopedSlot>> scratchSlots;
 
-        // map the world-space ellipse directions into the composite slot's screen space:
-        // the slot holds the scene as rendered through the camera, whose view linear part
-        // is R(rotate) * diag(flip ? -1 : 1, 1) (zoom is isotropic, directions stay unit)
-        const float flipX = aInfo.camera.flip ? -1.0f : 1.0f;
-        const float cr = std::cos(aInfo.camera.rotate());
-        const float sr = std::sin(aInfo.camera.rotate());
-        const auto screenDir = [=](const QVector2D& d) {
-            const float x = flipX * d.x();
-            const float y = d.y();
-            return QVector2D(cr * x - sr * y, sr * x + cr * y);
-        };
-        const QVector2D majorScreen = screenDir(ellipse.majorDir);
-        const QVector2D minorScreen = screenDir(ellipse.minorDir);
+    // The wave's field lives in the layer's own image pixels, so its mapping is
+    // built once from the matrices the layer was DRAWN with: the world transform
+    // (bone-aware, like MeshTransformer's choice) times the camera's view, plus
+    // the image offset that turns an ImageKey texcoord into content space. The
+    // sample may not leave the image rectangle - that clamp is the
+    // texture-space clamp an image effect has, and it is what stops a displaced
+    // sample from tearing a transparent hole at the silhouette.
+    WavePassParams waveParams;
+    bool waveReady = false;
+    if (mTimeLine.filterEnabled(TimeKeyType_Wave)
+        && filterValueIsActive(TimeKeyType_Wave, expans)) {
+        QMatrix4x4 world = expans.srt().worldCSRTMatrix();
+        if (!aInfo.nonPosed && expans.bone().isAffectedByBinding())
+            world = expans.bone().outerMatrix();
+        const QSize textureSize = expans.areaTexture()->size();
+        // The clamp is the image's texel-centre range: one half texel inside its
+        // outline, so a saturated sample lands on the edge texel instead of on the
+        // boundary between it and the transparent composite around it.
+        waveParams = wavePassFor(
+            aInfo.camera, aInfo.time, QSizeF(frame.size()), expans.wave(), world, expans.imageOffset(),
+            QVector2D(0.5f, 0.5f),
+            QVector2D(float(textureSize.width()) - 0.5f, float(textureSize.height()) - 0.5f)
+        );
+        // A transform that collapses a dimension cannot be inverted; wavePassFor
+        // zeroes the strength for it rather than dividing by it, and a pass that
+        // would copy its own input is not run at all.
+        waveReady = waveParams.strength != 0.0f;
 
-        if (FilterFrame::blurLadderLevel(radiusX, radiusY, frame.size()) > 0) {
-            srcTexture = frame.blurApply(
-                composite.slot(), majorScreen, radiusX, minorScreen, radiusY);
-        } else {
-            // the composite slot holds the screen image y-flipped (texture row = H - screen
-            // y), so a screen-space direction (dx, dy) appears in slot space as (dx, -dy);
-            // the ladder path needs no adjustment (its first downsample flips back)
-            FilterFrame::BlurParams h;
-            h.direction = QVector2D(majorScreen.x(), -majorScreen.y());
-            h.radiusTexels = radiusX;
-            FilterFrame::BlurParams v;
-            v.direction = QVector2D(minorScreen.x(), -minorScreen.y());
-            v.radiusTexels = radiusY;
+        // PAINTED MASKS: the amount mask scales the displacement, the time-offset
+        // mask delays the phase (its scale is the wave key's own field). Both are
+        // sampled in the same content space as the field, so the mask sticks to the
+        // artwork exactly like the wave does.
+        if (FilterMask* mask = mTimeLine.filterMask(TimeKeyType_Wave, FilterMaskChannel_Amount)) {
+            if (!mask->isEmpty()) {
+                waveParams.amountMask = mask->texture();
+                waveParams.amountMaskRect = mask->contentRect();
+            }
+        }
+        if (FilterMask* mask = mTimeLine.filterMask(TimeKeyType_Wave, FilterMaskChannel_TimeOffset)) {
+            if (!mask->isEmpty()) {
+                waveParams.timeMask = mask->texture();
+                waveParams.timeMaskRect = mask->contentRect();
+                waveParams.timeMaskCycles = expans.wave().timeOffset();
+            }
+        }
+    }
+    // One predicate pair for both decisions - the isolation above and the pass
+    // here: the type's stack entry is enabled AND its BLENDED value is above the
+    // type's epsilon. Sharing it is what keeps a wave-isolated layer from
+    // skipping a live static blur (or the reverse).
+    const auto live = [&](TimeKeyType aType) {
+        return mTimeLine.filterEnabled(aType) && filterValueIsActive(aType, expans);
+    };
 
-            FilterFrame::ScopedSlot hSlot(frame);
-            frame.bind(hSlot.slot());
-            gl::Util::setViewportAsActualPixels(frame.size());
-            gl::Util::resetRenderState();
-            gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
-            frame.drawQuad(srcTexture, FilterFrame::Kind_Blur, QList<int>(), h, 1.0f);
+    // ONE content-space mapping, shared by every filter input that lives there (the
+    // wave's field and the HSV amount mask): the inverse of the matrices the layer
+    // was drawn with.
+    QMatrix4x4 screenToLayer;
+    bool haveMapping = false;
+    const auto contentMapping = [&]() -> const QMatrix4x4& {
+        if (!haveMapping) {
+            QMatrix4x4 world = expans.srt().worldCSRTMatrix();
+            if (!aInfo.nonPosed && expans.bone().isAffectedByBinding())
+                world = expans.bone().outerMatrix();
+            const QMatrix4x4 toScreen =
+                waveContentToScreen(aInfo.camera, QSizeF(frame.size()), world, expans.imageOffset());
+            bool invertible = false;
+            screenToLayer = toScreen.inverted(&invertible);
+            haveMapping = true;
+        }
+        return screenToLayer;
+    };
 
-            // the vertical pass writes back into the composite slot (the same reuse the
-            // ladder path applies on its final upsample), so the direct blur holds one
-            // scratch slot instead of two
-            frame.bind(composite.slot());
-            gl::Util::setViewportAsActualPixels(frame.size());
-            gl::Util::resetRenderState();
-            gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
-            frame.drawQuad(hSlot.texture(), FilterFrame::Kind_Blur, QList<int>(), v, 1.0f);
+    for (const FilterEntry& entry : stack) {
+        if (!entry.enabled)
+            continue;
+        if (entry.type == TimeKeyType_HSV) {
+            if (!live(TimeKeyType_HSV))
+                continue;
+            auto slot = std::make_unique<FilterFrame::ScopedSlot>(frame);
+            MaskInput mask;
+            const FilterMask* maskField = mTimeLine.filterMask(TimeKeyType_HSV, FilterMaskChannel_Amount);
+            if (maskField && !maskField->isEmpty()) {
+                mask.texture = const_cast<FilterMask*>(maskField)->texture();
+                mask.rect = maskField->contentRect();
+                mask.neutral = float(maskField->neutral()) / 255.0f;
+            }
+            srcTexture = frame.hsvTexture(
+                slot->slot(), srcTexture, expans.hsv().hsv(), mask, mask.isValid() ? contentMapping() : QMatrix4x4()
+            );
+            srcSlot = slot->slot();
+            scratchSlots.push_back(std::move(slot));
+        } else if (entry.type == TimeKeyType_Blur) {
+            if (!live(TimeKeyType_Blur))
+                continue;
+            const WorldBlurEllipse ellipse = worldBlurEllipse(
+                aAccessor, this, expans.blurX(), expans.blurY(), expans.angleDeg());
+            const float zoom = aInfo.camera.scale();
+            const float radiusX = ellipse.majorRadius * zoom;
+            const float radiusY = ellipse.minorRadius * zoom;
+            const float flipX = aInfo.camera.flip ? -1.0f : 1.0f;
+            const float cr = std::cos(aInfo.camera.rotate());
+            const float sr = std::sin(aInfo.camera.rotate());
+            const auto screenDir = [=](const QVector2D& d) {
+                const float x = flipX * d.x();
+                const float y = d.y();
+                return QVector2D(cr * x - sr * y, sr * x + cr * y);
+            };
+            const QVector2D majorScreen = screenDir(ellipse.majorDir);
+            const QVector2D minorScreen = screenDir(ellipse.minorDir);
+            // A MASKED blur cannot vary its kernel per pixel: render the blurred
+            // result into a scratch slot, keep the sharp composite, and mix the two
+            // by the field (one extra pass, no extra blur taps). The ladder blur
+            // writes its input slot in place, which is why the sharp source is copied
+            // first only on that path.
+            const FilterMask* blurMask = mTimeLine.filterMask(TimeKeyType_Blur, FilterMaskChannel_Amount);
+            if (blurMask && !blurMask->isEmpty()) {
+                MaskInput mask;
+                mask.texture = const_cast<FilterMask*>(blurMask)->texture();
+                mask.rect = blurMask->contentRect();
+                mask.neutral = float(blurMask->neutral()) / 255.0f;
 
-            srcTexture = composite.texture();
+                auto blurred = std::make_unique<FilterFrame::ScopedSlot>(frame);
+                const bool ladder =
+                    FilterFrame::blurLadderLevel(radiusX, radiusY, frame.size()) > 0;
+                GLuint blurredSrc = srcTexture;
+                if (ladder) {
+                    // keep the sharp content: blur a COPY in the scratch slot
+                    auto copy = std::make_unique<FilterFrame::ScopedSlot>(frame);
+                    srcTexture = frame.copyTexture(copy->slot(), srcTexture);
+                    blurredSrc = srcTexture;
+                    scratchSlots.push_back(std::move(copy));
+                }
+                frame.blurTexture(
+                    blurred->slot(), blurredSrc, majorScreen, radiusX, minorScreen, radiusY
+                );
+
+                auto mixed = std::make_unique<FilterFrame::ScopedSlot>(frame);
+                srcTexture =
+                    frame.mixTexture(mixed->slot(), srcTexture, frame.texture(blurred->slot()), mask, contentMapping());
+                srcSlot = mixed->slot();
+                scratchSlots.push_back(std::move(blurred));
+                scratchSlots.push_back(std::move(mixed));
+            } else {
+                srcTexture = frame.blurTexture(
+                    srcSlot, srcTexture, majorScreen, radiusX, minorScreen, radiusY
+                );
+            }
+        } else if (entry.type == TimeKeyType_Wave) {
+            if (!waveReady)
+                continue;
+            // A wave SAMPLES its source, so it needs a scratch slot exactly like
+            // HSV (writing back into the source slot would read what it just
+            // wrote for the pixels it has already covered).
+            auto slot = std::make_unique<FilterFrame::ScopedSlot>(frame);
+            srcTexture = frame.waveTexture(slot->slot(), srcTexture, waveParams);
+            srcSlot = slot->slot();
+            scratchSlots.push_back(std::move(slot));
+        }
+    }
+
+    // 2b. THE MASK PREVIEW, and the two kinds are shown differently on purpose:
+    //   * a FILTER input is a VALUE field, and the artist wants to see it over the
+    //     artwork - a tint where it deviates from its neutral (unchanged behaviour);
+    //   * a LAYER MASK is the node's VISIBILITY, so painting it shows the RUBYLITH: a
+    //     flat translucent overlay on what the matte hides, over the content and over
+    //     nothing. A tint cannot do that - it only lands where the composite has
+    //     colour, which dyed the artwork's own lines.
+    if (isPreviewTarget(aInfo)) {
+        auto slot = std::make_unique<FilterFrame::ScopedSlot>(frame);
+        if (aInfo.maskPreviewKey) {
+            if (const gl::Texture* keyTexture = aInfo.maskPreviewKey->data().textureId()) {
+                srcTexture = frame.maskOverlayTexture(
+                    slot->slot(), srcTexture, keyTexture->id(), aInfo.maskPreviewKey->data().contentRect(),
+                    contentMapping(), aInfo.maskPreviewColor
+                );
+                srcSlot = slot->slot();
+                scratchSlots.push_back(std::move(slot));
+            }
+        } else if (aInfo.maskPreview) {
+            MaskInput preview;
+            preview.texture = const_cast<FilterMask*>(aInfo.maskPreview)->texture();
+            preview.rect = aInfo.maskPreview->contentRect();
+            preview.neutral = float(aInfo.maskPreview->neutral()) / 255.0f;
+            srcTexture = frame.tintTexture(
+                slot->slot(), srcTexture, preview, contentMapping(), aInfo.maskPreviewColor
+            );
+            srcSlot = slot->slot();
+            scratchSlots.push_back(std::move(slot));
         }
     }
 
@@ -364,6 +534,23 @@ void LayerNode::transformShape(const RenderInfo& aInfo, const TimeCacheAccessor&
     mCurrentMesh = mesh;
 }
 
+// The inverse of the matrices this layer is drawn with: screen pixels -> the
+// layer's content pixels. The filter passes build it for their content-space fields
+// (the wave's, the HSV mask's); a layer mask needs it on the DIRECT path too.
+QMatrix4x4 LayerNode::contentMappingFor(
+    const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor, const QSize& aTargetSize
+) const {
+    const auto& expans = aAccessor.get(mTimeLine);
+    QMatrix4x4 world = expans.srt().worldCSRTMatrix();
+    if (!aInfo.nonPosed && expans.bone().isAffectedByBinding())
+        world = expans.bone().outerMatrix();
+    const QMatrix4x4 toScreen =
+        waveContentToScreen(aInfo.camera, QSizeF(aTargetSize), world, expans.imageOffset());
+    bool invertible = false;
+    const QMatrix4x4 inverted = toScreen.inverted(&invertible);
+    return invertible ? inverted : QMatrix4x4();
+}
+
 void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor, bool useHSV, QList<int> HSVData = {}) {
     if (!mCurrentMesh)
         return;
@@ -381,7 +568,18 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
     auto blendMode = expans.blendMode();
     const QMatrix4x4 viewMatrix = aInfo.camera.viewMatrix();
 
-    auto& shader = aInfo.isGrid ? mShaderHolder.gridShader() : mShaderHolder.shader(blendMode, isClippee, useHSV);
+    // THE NODE'S MATTE. A mask with a field compiles into the draw (LAYER_MASK), so
+    // the multiply is one texture read in the layer's own fragment shader and needs
+    // no isolated composite: a masked layer still draws on the direct path.
+    const MaskKey::Data& maskData = expans.mask();
+    // a matte at its neutral changes nothing, so it does not even take the masked
+    // shader variant: adding a mask stays a no-op until the first stroke
+    const bool previewingMask = aInfo.maskPreviewTarget == this
+        && (aInfo.maskPreview != nullptr || aInfo.maskPreviewKey != nullptr);
+    const bool useLayerMask =
+        !aInfo.isGrid && !previewingMask && maskData.isValid() && maskData.isPainted();
+    auto& shader = aInfo.isGrid ? mShaderHolder.gridShader()
+                                : mShaderHolder.shader(blendMode, isClippee, useHSV, useLayerMask);
 
     // update destination color
     XC_PTR_ASSERT(aInfo.destTexturizer);
@@ -431,6 +629,26 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
         if (isClippee) {
             shader.setUniformValue("uClippingId", (int)aInfo.clippingId);
             shader.setUniformValue("uClippingTexture", 2);
+        }
+
+        if (useLayerMask) {
+            if (const gl::Texture* maskTexture = maskData.textureId()) {
+                // unit 3: 0 is the layer, 1 the destination, 2 the clipping frame
+                ggl.glActiveTexture(GL_TEXTURE3);
+                ggl.glBindTexture(GL_TEXTURE_2D, maskTexture->id());
+                ggl.glActiveTexture(GL_TEXTURE0);
+                shader.setUniformValue("uLayerMask", 3);
+                const QRectF rect = maskData.contentRect();
+                shader.setUniformValue(
+                    "uLayerMaskRect",
+                    QVector4D(
+                        float(rect.x()), float(rect.y()), float(rect.width()), float(rect.height())
+                    )
+                );
+                shader.setUniformValue(
+                    "uScreenToLayer", waveAffine3(contentMappingFor(aInfo, aAccessor, aInfo.camera.deviceScreenSize()))
+                );
+            }
         }
 
         if (useHSV && !HSVData.isEmpty()) {

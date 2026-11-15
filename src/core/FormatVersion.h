@@ -41,8 +41,28 @@
 //                bound ids + per-axis weights (see core/TimeKey.h /
 //                core/TimeLine.cpp). Older files carry neither: the loader
 //                keeps the fresh constructor id and the absolute default
+//   0.16 -> 0.17 the TimeLine block carries the filter stack: each filter's type
+//                token and its enabled flag, in application order. The filter
+//                VALUES remain the existing HSV/Blur key maps. Older files have
+//                no stack and derive one from the filter lanes that exist, in
+//                the historical blur-then-HSV order
+//   0.17 -> 0.18 the Wave deform filter (core/WaveKey.h: five graphable
+//                components). Its key layout is new in this version. The
+//                PROPORTIONAL payload also grows from three component weights
+//                to five (core/TimeKey::kMaxProportionalComponents), because a
+//                Wave key has five components; the reader takes the count from
+//                the version, so a 0.16/0.17 file still reads three
+//   0.18 -> 0.19 the TimeLine block carries the PAINTED FILTER MASKS: after the
+//                filter stack, one entry per lane that has a field (type token,
+//                content rect, texel size, PNG blob). Older files have none, and
+//                a lane without a mask renders exactly as before
+//   0.19 -> 0.20 the LAYER MASK key type (core/MaskKey.h): a node's matte as an
+//                8-bit alpha field in its content space, with the node's content
+//                rect and texel grid, and the key's single shared easing. The
+//                type name in the TimeKeyMap block is "Mask". Older files have
+//                no layer mask, and a node without one renders as before
 #define AE_PROJECT_FORMAT_MAJOR_VERSION 0
-#define AE_PROJECT_FORMAT_MINOR_VERSION 16
+#define AE_PROJECT_FORMAT_MINOR_VERSION 20
 
 #define AE_PROJECT_FORMAT_OLDEST_MAJOR_VERSION 0
 #define AE_PROJECT_FORMAT_OLDEST_MINOR_VERSION 4

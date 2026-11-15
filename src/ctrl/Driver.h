@@ -12,6 +12,8 @@
 #include "ctrl/FFDEditor.h"
 #include "ctrl/BoneEditor.h"
 #include "ctrl/PoseEditor.h"
+#include "ctrl/MaskEditor.h"
+#include "ctrl/MaskParam.h"
 #include "ctrl/MeshEditor.h"
 #include "ctrl/GraphEditor.h"
 #include "ctrl/GraphicStyle.h"
@@ -49,12 +51,16 @@ public:
     // modifiers (see GraphEditor::setModifiers for what each one means).
     void setGraphModifiers(Qt::KeyboardModifiers aModifiers);
     GraphEditor* graphEditor() { return mGraphEditor.data(); }
+    MaskEditor* maskEditor() { return mMaskEditor; }
 
     void updateParam(const SRTParam& aParam);
     void updateParam(const FFDParam& aParam);
     void updateParam(const BoneParam& aParam);
     void updateParam(const PoseParam& aParam);
     void updateParam(const MeshParam& aParam);
+    void updateParam(const MaskParam& aParam);
+    // clears the mask the mask tool is editing (one undo step)
+    void clearMask();
 
 private:
     static void drawOutline(const core::RenderInfo& aRenderInfo, QPainter& aPainter) ;
@@ -70,6 +76,7 @@ private:
     // Unlike mEditor this is not owned by the tool: the graph is a HUD that
     // outlives every tool switch, so it is created once and never reset.
     QScopedPointer<GraphEditor> mGraphEditor;
+    MaskEditor* mMaskEditor;
     core::ObjectNode* mCurrentNode;
     int mOnUpdating;
     bool mRejectedTarget;

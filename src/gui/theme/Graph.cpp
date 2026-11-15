@@ -129,7 +129,11 @@ void Graph::assignFrom(const Colors& aColors) {
     mMenuTextDisabled = aColors.textDisabled;
     mMenuHover = aColors.accentHover;
     mMenuHoverText = aColors.accentText;
-    mMenuSeparator = aColors.hairline;
+    // A rule on the floater body takes the floater's edge token, not hairline:
+    // hairline shares the dark body's palette cell (invisible at 1px), while
+    // floaterEdge is one step above the body in both themes. Same decision as
+    // QMenu::separator (standard.ssa) and AppStyle's combo popup.
+    mMenuSeparator = aColors.floaterEdge;
 
     // Tangent handles: a stored pair is filled with the raised surface the reference
     // fills it with; its stroke and stem take the CHANNEL's own hue where they are
@@ -163,6 +167,7 @@ void Graph::assignFrom(const Colors& aColors) {
     mKeyColors[core::TimeKeyType_Image] = aColors.imageKey;
     mKeyColors[core::TimeKeyType_HSV] = aColors.HSVKey;
     mKeyColors[core::TimeKeyType_Blur] = aColors.blurKey;
+    mKeyColors[core::TimeKeyType_Wave] = aColors.waveKey;
 }
 
 QColor Graph::channelColor(core::TimeKeyType aType, int aComponent) const {

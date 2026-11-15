@@ -22,6 +22,9 @@
 #include "XC.h"
 #include "cmnd/Stack.h"
 #include "core/Deserializer.h"
+#include "core/FormatVersion.h"
+#include "core/TimeKeyType.h"
+#include "core/MaskKey.h"
 #include "core/MoveKey.h"
 #include "core/Serializer.h"
 #include "core/TimeKeyType.h"
@@ -86,6 +89,13 @@ int main(int argc, char** argv) {
     check(line.hasTimeKey(core::TimeKeyType_Move, 2), "the proportional key is in the map");
     check(line.hasTimeKey(core::TimeKeyType_Move, 4), "the right absolute key is in the map");
 
+    // The stack is a separate 0.17 record: order and eye survive, and the values
+    // remain the ordinary key lanes.
+    line.setFilterEntries({
+        core::FilterEntry(core::TimeKeyType_HSV, false),
+        core::FilterEntry(core::TimeKeyType_Blur, true),
+    });
+
     middle->setPos(QVector2D(12.0f, -4.0f));
     core::TimeKey::Proportional state;
     state.leftId = left->id();
@@ -97,6 +107,26 @@ int main(int argc, char** argv) {
     state.valueValid[1] = true;
     state.valueWeight[1] = 0.75f;
     middle->setProportionalState(state);
+
+    // A LAYER MASK key: the field itself is the payload, so this is the record
+    // that proves a matte survives a save. The field is filled with a gradient
+    // and carries a rect that is not the texel size's aspect, because a mask's
+    // content rect is authored, not derived.
+    core::MaskKey* mask = new core::MaskKey();
+    stack.push(line.createPusher(core::TimeKeyType_Mask, 0, mask));
+    const QRectF maskRect(3.5, -12.25, 640.0, 480.0);
+    {
+        QImage field(64, 48, QImage::Format_Grayscale8);
+        for (int y = 0; y < field.height(); ++y) {
+            uchar* row = field.scanLine(y);
+            for (int x = 0; x < field.width(); ++x)
+                row[x] = uchar((x * 255) / (field.width() - 1));
+        }
+        mask->data().write(field, maskRect);
+        mask->data().easing(0).type = util::Easing::Type_Cubic;
+        mask->data().easing(0).range = util::Easing::Range_Out;
+    }
+    check(mask->data().isValid(), "the authored mask holds a field");
 
     std::ostringstream bytes;
     util::StreamWriter writer(bytes);
@@ -112,11 +142,20 @@ int main(int argc, char** argv) {
     NullReporter reporter;
     gl::DeviceInfo device;
     core::Deserializer in(
-        reader, solver, data.size() + 1, QVersionNumber(0, 16), device, reporter, 0
+        reader, solver, data.size() + 1, QVersionNumber(0, AE_PROJECT_FORMAT_MINOR_VERSION), device, reporter,
+        0
     );
     core::TimeLine loaded;
     const bool deserialized = loaded.deserialize(in);
-    check(deserialized, "the timeline deserializes at 0.16");
+    check(deserialized, "the timeline deserializes at the current format");
+
+    check(loaded.filters().size() == 2, "both filter entries survive");
+    if (loaded.filters().size() == 2) {
+        check(loaded.filters().at(0).type == core::TimeKeyType_HSV, "the stack order survives (HSV first)");
+        check(!loaded.filters().at(0).enabled, "a muted filter stays muted");
+        check(loaded.filters().at(1).type == core::TimeKeyType_Blur, "the stack order survives (Blur second)");
+        check(loaded.filters().at(1).enabled, "an enabled filter stays enabled");
+    }
 
     const core::TimeLine::MapType& map = loaded.map(core::TimeKeyType_Move);
     check(map.size() == 3, "three keys survive the round trip");
@@ -149,8 +188,39 @@ int main(int argc, char** argv) {
         }
     }
 
+    // the mask's own record
+    const core::TimeLine::MapType& maskMap = loaded.map(core::TimeKeyType_Mask);
+    check(maskMap.size() == 1, "the mask key survives the round trip");
+    if (const core::MaskKey* loadedMask = dynamic_cast<const core::MaskKey*>(maskMap.value(0))) {
+        const core::MaskKey::Data& data = loadedMask->data();
+        check(data.isValid(), "the mask still holds a field");
+        check(data.texelSize() == QSize(64, 48), "the mask's texel grid survives");
+        check(data.contentRect() == maskRect, "the mask's content rect survives");
+        check(data.easing(0).type == util::Easing::Type_Cubic, "the mask's shared easing type survives");
+        check(data.easing(0).range == util::Easing::Range_Out, "the mask's easing range survives");
+        if (data.isValid() && data.texelSize() == QSize(64, 48)) {
+            // the FIELD itself, not just its geometry: a reader that restored an
+            // empty or neutral field would pass every assertion above
+            int wrong = 0;
+            for (int y = 0; y < 48; ++y) {
+                const uchar* row = data.field().constScanLine(y);
+                for (int x = 0; x < 64; ++x) {
+                    if (row[x] != uchar((x * 255) / 63))
+                        ++wrong;
+                }
+            }
+            std::printf("MEASURED mask field: %d of %d texels differ after the round trip\n", wrong, 64 * 48);
+            check(wrong == 0, "every texel of the mask field survives");
+        }
+    } else {
+        check(false, "the loaded mask key is a MaskKey");
+    }
+
     if (failures == 0)
-        std::printf("timekey_roundtrip: ids, proportional bounds and stored weights survive 0.16\n");
+        std::printf(
+            "timekey_roundtrip: ids, proportional bounds, stored weights and the layer-mask field "
+            "survive the current format\n"
+        );
     else
         std::printf("timekey_roundtrip: %d FAILED\n", failures);
     return failures == 0 ? 0 : 1;

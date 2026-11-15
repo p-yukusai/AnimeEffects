@@ -136,6 +136,33 @@ TargetWidget::TargetWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidge
 }
 
 TargetWidget::~TargetWidget() {
+    // THE HEADER GOES FIRST, AND THE ORDER IS LOAD-BEARING. The header subscribes to
+    // the timeline editor's selection signaller (TimeLineHeader::mSelectionSlot), and
+    // the signaller is a plain std::list of subscribers inside the editor with no
+    // liveness registry: a disconnect on a freed signaller walks freed memory and
+    // crashes. Its dtor has to run while that signaller is alive, so it cannot be
+    // left to the child sweep.
+    //
+    // The sweep is why. A destructor BODY runs before QObject::~QObject deletes the
+    // children, but the sweep deletes them in CREATION ORDER - and the dock creates
+    // the timeline subtree at the top of its constructor (mSurfaceStack/mTimeLine)
+    // while mHeader is created last. So the sweep frees the editor (and the header's
+    // own QPointer target) BEFORE the header, which is exactly the order this delete
+    // reverses. Measured before it existed: exit 139 and one core per quit, with the
+    // stack in util::Signaler::disconnect from TimeLineHeader::~TimeLineHeader.
+    //
+    // THE INVARIANT THIS ENCODES, for anything else the dock grows: a widget that
+    // subscribes to a signaller OWNED BY ANOTHER WIDGET must either be destroyed
+    // first - its owner deletes it explicitly, as the header is deleted here - or hold
+    // its publisher through a self-nulling handle (QPointer, see
+    // TimeLineHeader::mInner). A bare pointer plus "it is destroyed first" is only a
+    // promise, and the child sweep does not keep promises.
+    //
+    // mHeader is initialised to nullptr in the init list, and `delete nullptr` is a
+    // no-op, so no separate guard is needed; the store keeps a stale pointer out of
+    // the rest of this body.
+    delete mHeader;
+    mHeader = nullptr;
 #ifdef AE_ENABLE_IMGUI
     // The signaler lives in the timeline widget, the receiver is the panel; both are
     // children destroyed after this body, and the connection is dropped here so nothing

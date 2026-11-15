@@ -6,6 +6,7 @@
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/BlurKey.h"
+#include "core/WaveKey.h"
 #include "core/TimeLineEvent.h"
 
 namespace gui {
@@ -58,6 +59,12 @@ namespace prop {
         void assignBlurDirectional(bool aIsDirectional);
         core::BlurKey::Data blurData() const;
 
+        // wave deform: the whole Data is written at once because nine fields
+        // (five graph channels and four shape decisions) share one key, and a
+        // per-field setter would have to be kept in step with the key's layout
+        void assignWave(const core::WaveKey::Data& aData);
+        core::WaveKey::Data waveData() const;
+
         // pose
         void assignPoseEasing(util::Easing::Param);
 
@@ -77,9 +84,16 @@ namespace prop {
         void knockNewOpacity();
         void knockNewHSV();
         void knockNewBlur();
+        void knockNewWave();
         void knockNewPose();
         void knockNewFFD();
         void knockNewImage(const img::ResourceHandle& aHandle);
+
+        // The key dot is a TOGGLE, not an add-only button: a filled dot removes
+        // the explicit key at the current frame (one undo step). The default
+        // key is untouched, so a property that loses its last explicit key
+        // becomes static again rather than losing its value.
+        void removeKey(core::TimeKeyType aType);
 
     private:
         bool isValid() const { return mProject && mTarget && mTarget->timeLine(); }

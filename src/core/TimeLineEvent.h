@@ -21,6 +21,10 @@ public:
         Type_CopyKey,
         Type_ChangeKeyValue,
         Type_ChangeKeyProportional,
+        // The filter STACK changed (add/remove/reorder/enable). It carries no key
+        // targets; PropertyWidget refreshes the filter panel from this type, so an
+        // undo/redo of a stack-only edit reaches the UI without inventing a key.
+        Type_FilterStack,
         Type_TERM
     };
 

@@ -22,8 +22,13 @@ namespace {
 constexpr auto kValueMarker = "aeAccessibleValue";
 constexpr auto kComboMarker = "aeAccessibleCombo";
 constexpr auto kOptionMarker = "aeAccessibleOption";
+// A disclosure (the filter card's header): press toggles the card. It exists because
+// the header is a MouseArea - not a keyboard stop, and with no accessibility protocol
+// of its own - so without this marker a card could not be expanded by anything but a
+// mouse, and no probe could expand one either.
+constexpr auto kDisclosureMarker = "aeAccessibleDisclosure";
 
-enum class Kind { Value, Combo, Option };
+enum class Kind { Value, Combo, Option, Disclosure };
 
 class FormAccessible : public QAccessibleObject,
                        public QAccessibleValueInterface,
@@ -40,6 +45,7 @@ public:
         case Kind::Value: return QAccessible::SpinBox;
         case Kind::Combo: return QAccessible::ComboBox;
         case Kind::Option: return QAccessible::ListItem;
+        case Kind::Disclosure: return QAccessible::Button;
         }
         return QAccessible::NoRole;
     }
@@ -141,6 +147,9 @@ public:
         case Kind::Option:
             QMetaObject::invokeMethod(item(), "accessibleChoose");
             break;
+        case Kind::Disclosure:
+            QMetaObject::invokeMethod(item(), "accessiblePress");
+            break;
         }
     }
     QStringList keyBindingsForAction(const QString&) const override {
@@ -158,6 +167,8 @@ QAccessibleInterface* formFactory(const QString&, QObject* aObject) {
     if (name == QLatin1String(kValueMarker)) return new FormAccessible(item, Kind::Value);
     if (name == QLatin1String(kComboMarker)) return new FormAccessible(item, Kind::Combo);
     if (name == QLatin1String(kOptionMarker)) return new FormAccessible(item, Kind::Option);
+    if (name == QLatin1String(kDisclosureMarker))
+        return new FormAccessible(item, Kind::Disclosure);
     return nullptr;
 }
 

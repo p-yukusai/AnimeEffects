@@ -23,8 +23,12 @@ public:
     // set on load), so files are byte-compatible.
     static constexpr int kDefaultKeyIndex = std::numeric_limits<int>::min();
 
-    // Blur and HSV carry three graphable components; no key type has more.
-    static constexpr int kMaxProportionalComponents = 3;
+    // Blur and HSV carry three graphable components, Wave five; no key type has
+    // more. This is the size of the serialized per-component weight arrays, so
+    // growing it is a FORMAT change: TimeLine writes kMaxProportionalComponents
+    // entries and reads the count the file's version implies (0.16-0.17 stored
+    // three, 0.18 stores five).
+    static constexpr int kMaxProportionalComponents = 5;
 
     // A proportional key keeps stored fractional weights between its nearest
     // ABSOLUTE neighbours of the same type, so the resolved frame and values
@@ -36,8 +40,8 @@ public:
         int rightId = 0;
         bool timeValid = false;
         float timeWeight = 0.0f;
-        bool valueValid[kMaxProportionalComponents] = {false, false, false};
-        float valueWeight[kMaxProportionalComponents] = {0.0f, 0.0f, 0.0f};
+        bool valueValid[kMaxProportionalComponents] = {};
+        float valueWeight[kMaxProportionalComponents] = {};
     };
 
     typedef util::TreeNodeBase<TimeKey>::Children ChildrenType;

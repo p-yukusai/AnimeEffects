@@ -8,6 +8,7 @@
 #include "core/KeyEasing.h"
 #include "core/KeyEasingAccess.h"
 #include "core/BlurKey.h"
+#include "core/WaveKey.h"
 #include "core/TimeFormat.h"
 #include "cmnd/BasicCommands.h"
 #include "ctrl/CmndName.h"
@@ -835,6 +836,26 @@ QJsonObject getKeyTypeSerialized(int keyType, core::TimeKey* timeKey, core::Obje
         blur["Angle"] = data.angleDeg();
         return blur;
     }
+    case core::TimeKeyType_Wave: {
+        auto data = dynamic_cast<const core::WaveKey*>(timeKey)->data();
+        // Data types: Strength, Wavelength, Direction, Phase, Mix (floats, the
+        // five graph channels) and the step-held shape (Speed, Crest, the dual
+        // wave's angle and scale, the deform mode's name).
+        QJsonObject wave;
+        addStandardToObj(&wave, data, keyType, timeKey);
+        wave["Strength"] = data.strength();
+        wave["Wavelength"] = data.wavelength();
+        wave["Direction"] = data.angleDeg();
+        wave["Phase"] = data.phase();
+        wave["Mix"] = data.mix();
+        wave["Speed"] = data.speed();
+        wave["Crest"] = data.crest();
+        wave["DualAngle"] = data.dualAngleDeg();
+        wave["DualScale"] = data.dualScale();
+        wave["Deform"] = data.deform() == core::WaveKey::Deform_Sway
+            ? QStringLiteral("Sway") : QStringLiteral("Ripple");
+        return wave;
+    }
     default: {
         return {};
     }
@@ -1094,6 +1115,8 @@ static QString keyToString(const core::TimeKeyType key) {
         return "HSV";
     case core::TimeKeyType_Blur:
         return "Blur";
+    case core::TimeKeyType_Wave:
+        return "Wave";
     case core::TimeKeyType_FFD:
         return "FFD";
     case core::TimeKeyType_Depth:

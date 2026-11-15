@@ -474,10 +474,17 @@ QPlainTextEdit
 
 QMenu::separator
 {
-    /* a 1px hairline in the @hairline@ token, like every other separator */
+    /* A 1px rule that sits ON the menu's floater body, so it takes the
+       floater's own edge token, not @hairline@: in dark @hairline@ and
+       @floaterBody@ are the same palette cell (both neutral column 8,
+       #262626 - contrast 1.00:1) and the rule vanishes; @floaterEdge@ is
+       exactly one step above the body in BOTH themes (dark #404040, 1.46:1)
+       and in light it is pixel-identical to the hairline it replaces. Every
+       other @hairline@ use - dock sashes, splitters, tree branch guides, the
+       ruler line, row seams - draws on @base@ and stays as it is. */
     height: 1px;
     margin: 0;
-    background-color: @hairline@;
+    background-color: @floaterEdge@;
     padding-left: 0.2em;
     margin-top: 0.375em;
     margin-bottom: 0.375em;
@@ -773,7 +780,9 @@ QComboBox QAbstractItemView
        the panel shows instead of a base card. The item rows are drawn by
        the popup's CE_MenuItem path (the ::item QSS rules do not reach
        them); the proxy draws the selected row flat/rounded like a QMenu
-       item and separators as centered hairlines. */
+       item and separators as centered 1px rules in the floater's edge tone
+       (floaterEdge, matching QMenu::separator - a rule on the floater body,
+       not the @hairline@ the base-surface separators use). */
     background-color: transparent;
     outline-color: 0em;
     border-radius: 0.5em;

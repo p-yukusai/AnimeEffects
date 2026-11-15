@@ -342,6 +342,7 @@ namespace prop {
         QVector2D value() const;
         void setValue(QVector2D aValue);
         void setRange(float aMin, float aMax);
+        QDoubleSpinBox& box(int aIndex) { return *mBox[aIndex]; }
 
         virtual QLayout* itemLayout() { return mLayout; }
         virtual void setItemEnabled(bool aEnable);
@@ -356,28 +357,6 @@ namespace prop {
         DoubleSpinBox* mBox[2];
         QVector2D mStamp;
         bool mSignal;
-    };
-
-    //-------------------------------------------------------------------------------------------------
-    class BrowseItem: public ItemBase {
-    public:
-        typedef std::function<void()> UpdateType;
-
-        BrowseItem(QWidget* aParent);
-
-        QString value() const { return mLine->text(); }
-        void setValue(const QString& aValue);
-
-        virtual QLayout* itemLayout() { return mLayout; }
-        virtual void setItemEnabled(bool aEnable);
-        virtual void setItemVisible(bool aVisible);
-
-        UpdateType onButtonPushed;
-
-    private:
-        QHBoxLayout* mLayout;
-        QLineEdit* mLine;
-        QPushButton* mButton;
     };
 
 } // namespace prop

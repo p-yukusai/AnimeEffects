@@ -241,26 +241,14 @@ Item {
             // visibleArea instead of arithmetic, parented OUTSIDE the clip (the
             // shell) so the clip cannot cut it, and shown only when the content
             // overflows the tab's rows.
-            ScrollBar.vertical: ScrollBar {
+            ScrollBar.vertical: AeScrollBar {
                 id: vbar
                 parent: shell
                 anchors.right: list.right
                 anchors.top: list.top
                 anchors.bottom: list.bottom
-                width: 8
                 orientation: Qt.Vertical
-                policy: ScrollBar.AsNeeded
-                visible: size < 1.0
-                hoverEnabled: true
-                minimumSize: height > 0 ? 28 / height : 0
-                background: Rectangle { color: "transparent" }
-                contentItem: Rectangle {
-                    implicitWidth: 6
-                    radius: 3
-                    color: vbar.pressed ? theme.textMuted
-                         : vbar.hovered ? theme.textMuted
-                         : theme.raisedHover
-                }
+                width: 12
             }
         }
 

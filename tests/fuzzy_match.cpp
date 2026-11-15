@@ -103,6 +103,49 @@ int main() {
           QStringLiteral("rule 5 (joined without separator): {discord, animated, image} x "
                          "\"discordanim\" -> %1").arg(acrossWords));
 
+    // --- rule 7: a typo that is not a SUBSEQUENCE matches by edit distance ---
+    //
+    // This is the rule the filter catalog needed and did not have: "blurr" has one
+    // letter TOO MANY, so it cannot be a subsequence of "blur" and every rule above
+    // answered nothing - the catalog's list went empty on a typo. These cases are the
+    // discriminating ones (each printed), and the NEGATIVES matter as much: a tolerant
+    // matcher that matches everything is worse than none.
+    {
+        const int extra = tokenScore({"blur"}, "blurr");
+        check(extra != kNoMatch,
+              QStringLiteral("rule 7 (one letter too many): {blur} x \"blurr\" -> %1").arg(extra));
+        const int swapped = tokenScore({"blur"}, "bulr");
+        check(swapped != kNoMatch,
+              QStringLiteral("rule 7 (adjacent transposition): {blur} x \"bulr\" -> %1").arg(swapped));
+        const int wrongLetter = tokenScore({"generic"}, "generoc");
+        check(wrongLetter != kNoMatch,
+              QStringLiteral("rule 7 (one wrong letter): {generic} x \"generoc\" -> %1").arg(wrongLetter));
+        const int shortToken = tokenScore({"hsv"}, "hsb");
+        check(shortToken == kNoMatch,
+              QStringLiteral("rule 7 stays out of 3-letter tokens: {hsv} x \"hsb\" -> %1").arg(shortToken));
+        const int unrelated = tokenScore({"blur"}, "zzzz");
+        check(unrelated == kNoMatch,
+              QStringLiteral("rule 7 does not match an unrelated token: {blur} x \"zzzz\" -> %1").arg(unrelated));
+        // ONE edit below 7 characters, TWO at 7 and above - and both halves asserted, so
+        // a change to either limit fails here instead of silently widening the search.
+        const int twoOffShort = tokenScore({"blur"}, "bxxr");
+        check(twoOffShort == kNoMatch,
+              QStringLiteral("rule 7 allows ONE edit under 7 characters: {blur} x \"bxxr\" -> %1")
+                  .arg(twoOffShort));
+        const int oneOffLong = tokenScore({"discord"}, "diskord");
+        check(oneOffLong != kNoMatch,
+              QStringLiteral("rule 7 accepts one edit at 7 characters: {discord} x \"diskord\" -> %1")
+                  .arg(oneOffLong));
+        const int twoOffLong = tokenScore({"discord"}, "dzskord");
+        check(twoOffLong != kNoMatch,
+              QStringLiteral("rule 7 accepts two edits at 7 characters: {discord} x \"dzskord\" -> %1")
+                  .arg(twoOffLong));
+    }
+
+    // --- ORDER: any real rule still beats a correction ---
+    checkGreater(tokenScore({"blur"}, "blu"), tokenScore({"blur"}, "blurr"),
+                 QStringLiteral("prefix \"blu\" > typo \"blurr\" against {blur}"));
+
     // --- rule 6: one typo matches a single word ---
     const int typo = tokenScore({"telegram"}, "telegrm");
     check(typo != kNoMatch,

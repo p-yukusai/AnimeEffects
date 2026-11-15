@@ -4,6 +4,7 @@
 #include <climits>
 #include <QSet>
 #include "core/BlurKey.h"
+#include "core/WaveKey.h"
 #include "core/KeyEasing.h"
 #include "core/KeyEasingAccess.h"
 #include "core/TimeKeyExpans.h"
@@ -801,6 +802,24 @@ static TimeKey* getKeyFromObj(QJsonObject obj, util::LifeLink::Pointee<Project> 
             }
             blurKey->setFrame(obj["Frame"].toInt());
             return blurKey;
+        }
+        case TimeKeyType_Wave: {
+            auto* waveKey = new WaveKey;
+            assignClipboardEasing(waveKey, TimeLineEditor::easingsFromJson(obj, core::WaveKey::kComponents));
+            waveKey->setStrength(float(obj["Strength"].toDouble()));
+            waveKey->setWavelength(float(obj["Wavelength"].toDouble(WaveKey::Preset::wavelength)));
+            waveKey->setAngleDeg(float(obj["Direction"].toDouble()));
+            waveKey->setPhase(float(obj["Phase"].toDouble()));
+            waveKey->setMix(float(obj["Mix"].toDouble(WaveKey::Preset::mix)));
+            waveKey->setSpeed(float(obj["Speed"].toDouble(WaveKey::Preset::speed)));
+            waveKey->setCrest(float(obj["Crest"].toDouble(WaveKey::Preset::crest)));
+            waveKey->setDualAngleDeg(float(obj["DualAngle"].toDouble(WaveKey::Preset::dualAngleDeg)));
+            waveKey->setDualScale(float(obj["DualScale"].toDouble(WaveKey::Preset::dualScale)));
+            waveKey->setDeform(
+                obj["Deform"].toString() == QLatin1String("Sway") ? WaveKey::Deform_Sway : WaveKey::Deform_Ripple
+            );
+            waveKey->setFrame(obj["Frame"].toInt());
+            return waveKey;
         }
         // If you end up here you've done goofed.
         case TimeKeyType_TERM: {

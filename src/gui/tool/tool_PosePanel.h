@@ -7,6 +7,7 @@
 #include "util/Signaler.h"
 #include "ctrl/PoseParam.h"
 #include "gui/GUIResources.h"
+#include "gui/tool/tool_BrushPanel.h"
 #include "gui/tool/tool_Items.h"
 
 namespace gui {
@@ -18,6 +19,8 @@ namespace tool {
         PosePanel(QWidget* aParent, GUIResources& aResources);
 
         int updateGeometry(const QPoint& aPos, int aWidth);
+
+        BrushPanel* brushPanel() { return mBrush.data(); }
 
         const ctrl::PoseParam& param() const { return mParam; }
 
@@ -34,8 +37,8 @@ namespace tool {
         ctrl::PoseParam mParam;
         QScopedPointer<SingleOutItem> mTypeGroup;
         QScopedPointer<SliderItem> mDIWeight;
-        QScopedPointer<SliderItem> mEIRadius;
-        QScopedPointer<SliderItem> mEIPressure;
+        // the shared influence brush for the erase mode
+        QScopedPointer<BrushPanel> mBrush;
     };
 
 } // namespace tool

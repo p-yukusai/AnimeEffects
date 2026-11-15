@@ -184,8 +184,59 @@ target_link_libraries(creation_select_keys PRIVATE
 # Proportional-key EDIT contract: a frame move, a value edit and a toggle each
 # stay one undo step and restore the selected keys AND the proportional keys
 # between their bounds. Drives the real TimeLineUtil commands; headless.
+# See mask_mapping.cpp: the ONE content<->screen inverse the brush and the rubylith
+# share. Pure matrix maths, so it needs nothing but the camera and the node transform.
+# See layer_thumbnails.cpp: the object tree's cached layer thumbnails - a cell always,
+# the art inside it, keyed on the pixels so a reimport updates.
+add_executable(layer_thumbnails layer_thumbnails.cpp
+    ../src/gui/ThumbnailCache.cpp)
+target_include_directories(layer_thumbnails PRIVATE .. ../src ../src/gui)
+target_compile_definitions(layer_thumbnails PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(layer_thumbnails PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets
+    Qt6::OpenGL Qt6::OpenGLWidgets
+    img util
+)
+
+add_executable(mask_mapping mask_mapping.cpp)
+target_include_directories(mask_mapping PRIVATE .. ../src)
+target_compile_definitions(mask_mapping PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(mask_mapping PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets
+    Qt6::OpenGL Qt6::OpenGLWidgets
+    cmnd core gl util
+)
+
 add_executable(proportional_edits proportional_edits.cpp
     ../src/gui/theme/TimeLine.cpp)
+
+# See layer_mask_commands.cpp. The four edits every mask surface calls, on the same
+# Project + node fixture proportional_edits uses.
+add_executable(layer_mask_commands layer_mask_commands.cpp
+    ../src/gui/theme/TimeLine.cpp)
+target_include_directories(layer_mask_commands PRIVATE ..)
+target_compile_definitions(layer_mask_commands PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(layer_mask_commands PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
 target_include_directories(proportional_edits PRIVATE ..)
 target_compile_definitions(proportional_edits PRIVATE
     AE_MAJOR_VERSION=1
@@ -370,6 +421,26 @@ target_link_libraries(picker_keyboard PRIVATE
 # without a window - the model directly, and the REAL NewProjectDialog.qml loaded and
 # clicked so the "Live link" checkbox is proven to write back (AeCheckBox records that
 # setting `checked` does not fire toggled(), so a click is the only honest driver).
+# The MASK CARD, headless: the real PropertiesPanel.qml with the real
+# gui::InspectorViewModel over a real Project + node. It is also the only check that
+# the whole inspector scene still loads, which is what a card's binding error breaks.
+add_executable(inspector_mask_card inspector_mask_card.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp)
+target_include_directories(inspector_mask_card PRIVATE .. ../src ../src/gui)
+target_compile_definitions(inspector_mask_card PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(inspector_mask_card PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2)
+set_target_properties(inspector_mask_card PROPERTIES AUTOMOC ON)
+
 add_executable(new_project_form new_project_form.cpp
     ../src/gui/qml/NewProjectViewModel.cpp
     ../src/gui/qml/QmlTheme.cpp
@@ -451,6 +522,9 @@ add_executable(general_setting_form general_setting_form.cpp
     # The two files are header-only in their dependencies, so the light target stays
     # light; the `util` library would drag the whole Qt/GL stack in for two symbols.
     ../src/util/Easing.cpp
+    # Easing.cpp's solver funnels go through EasingSegment (the prepared curve), so a
+    # target that compiles Easing.cpp directly needs it beside it.
+    ../src/util/EasingSegment.cpp
     ../src/util/EasingName.cpp
     ../src/gui/MouseSetting.cpp)
 target_include_directories(general_setting_form PRIVATE .. ../src ../src/gui)
@@ -560,6 +634,38 @@ target_link_libraries(tooltip_contract PRIVATE
 # the tooltip/combo popups inside the scrolling content are clipped by NOTHING
 # (E28's clamp narrows to the visible viewport). Hosts the REAL ExportDialog.qml
 # with the real view model. See form_layout.cpp.
+# A FILTER CARD'S HEADER DOES NOT MOVE WHEN THE CARD EXPANDS (notes.md, 2026-10-26).
+# The rule - "expansion may change ink, never geometry" - is a QML geometry fact that no
+# model test can see: inspector_view_model pins the STATE, and this pins the pixels it
+# must not move, through the marker each card publishes for its own disclosure.
+add_executable(filter_card_geometry
+    filter_card_geometry.cpp
+    ../src/gui/qml/QmlTheme.cpp
+    ../src/gui/theme/Icons.cpp
+    ../src/gui/qml/InspectorViewModel.cpp
+    ../src/gui/qml/InspectorViewModel.h
+    ../src/gui/qml/InspectorRowModel.cpp
+    ../src/gui/qml/InspectorRowModel.h
+    ../src/gui/qml/FilterStackModel.cpp
+    ../src/gui/qml/FilterStackModel.h
+    ../src/gui/qml/QmlFormAccessibility.cpp
+    ../src/gui/prop/prop_KeyAccessor.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
+target_include_directories(filter_card_geometry PRIVATE .. ../src ../src/gui)
+target_compile_definitions(filter_card_geometry PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_QML_DIR="${CMAKE_SOURCE_DIR}/src/gui/qml"
+    AE_ICON_SRC="${CMAKE_SOURCE_DIR}/assets/icons"
+)
+target_link_libraries(filter_card_geometry PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml media
+)
+
 add_executable(form_layout
     form_layout.cpp
     ../src/gui/qml/QmlTheme.cpp
@@ -760,9 +866,150 @@ target_link_libraries(attribute_observable PRIVATE
     cmnd core ctrl gl img thr util pugixml
 )
 
+# Model 2 at the accessor layer: static properties edit their default key, and
+# animated properties edit/create a key at the playhead. The unified Inspector
+# depends on this split; see key_accessor_model2.cpp.
+add_executable(key_accessor_model2
+    key_accessor_model2.cpp
+    ../src/gui/prop/prop_KeyAccessor.cpp)
+target_include_directories(key_accessor_model2 PRIVATE .. ../src)
+target_compile_definitions(key_accessor_model2 PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(key_accessor_model2 PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+
+# The QML inspector's document model: model-2 writes, key dots, filter stack and
+# undo. See inspector_view_model.cpp.
+add_executable(inspector_view_model
+    inspector_view_model.cpp
+    ../src/gui/qml/InspectorViewModel.cpp
+    ../src/gui/qml/InspectorRowModel.cpp
+    ../src/gui/qml/FilterStackModel.cpp
+    ../src/gui/prop/prop_KeyAccessor.cpp)
+target_include_directories(inspector_view_model PRIVATE .. ../src)
+target_compile_definitions(inspector_view_model PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(inspector_view_model PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# Filter stack command grain: add creates the entry and a key as one undo step,
+# remove drops the entry and its explicit keys together, and reorder/eye are
+# independently undoable. See filter_stack_model.cpp.
+add_executable(filter_stack_model
+    filter_stack_model.cpp
+    ../src/gui/prop/prop_KeyAccessor.cpp)
+target_include_directories(filter_stack_model PRIVATE .. ../src)
+target_compile_definitions(filter_stack_model PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(filter_stack_model PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
+# The shared brush model (ctrl/Brush.h): the falloff every painting target
+# deposits with and the stroke sampler that turns cursor samples into spaced
+# stamps. Headless. See brush_stroke.cpp.
+add_executable(brush_stroke brush_stroke.cpp
+    ../src/ctrl/Brush.cpp)
+target_include_directories(brush_stroke PRIVATE .. ../src)
+target_compile_definitions(brush_stroke PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(brush_stroke PRIVATE
+    Qt6::Core Qt6::Gui
+    util
+)
+
+# The Wave deform filter: the key's data contract and clamps, the five graph
+# channels, playback (each channel eased, the shape step-held, a default key
+# playing), the 0.18 record on disk and the pass mapping. See wave_deform.cpp.
+add_executable(wave_deform wave_deform.cpp)
+target_include_directories(wave_deform PRIVATE ..)
+target_compile_definitions(wave_deform PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(wave_deform PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
 # Animation-settings ViewModel session undo/redo: discrete edits record one
 # step, a scrub gesture coalesces into one, and reset() clears history per open.
 # See anim_settings_undo.cpp.
+# The wave deform PASS on a real GL context: identity copy, the sine field, the
+# two deform modes' axes, the content clamp and that every field reaches the
+# shader. Needs a context and its own FBO, so run_suites.sh runs it under Xvfb.
+# See wave_pass_pixels.cpp.
+# assets.qrc: the pass shaders live in :/shaders, exactly as they do in the app
+# (FilterFrame compiles the layer fragment shader for its HSV/present variants).
+add_executable(wave_pass_pixels wave_pass_pixels.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+)
+
+# See layer_mask_pixels.cpp. The LAYER MASK's contract is a pixel fact (a field
+# sampled in content space, multiplied into the present alpha), so it is measured on
+# a real context through the SHIPPED shader variant table (core::ShaderHolder).
+add_executable(layer_mask_pixels layer_mask_pixels.cpp
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+)
+target_include_directories(layer_mask_pixels PRIVATE .. ../src)
+target_compile_definitions(layer_mask_pixels PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(layer_mask_pixels PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+target_include_directories(wave_pass_pixels PRIVATE .. ../src)
+target_compile_definitions(wave_pass_pixels PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+)
+target_link_libraries(wave_pass_pixels PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
+    cmnd core ctrl gl img thr util pugixml
+)
+
 add_executable(anim_settings_undo
     anim_settings_undo.cpp
     ../src/gui/qml/AnimationSettingViewModel.cpp
@@ -947,7 +1194,13 @@ target_link_libraries(export_encoder_fallback PRIVATE
 # identity was the display name, the lazy loader captured a pointer into a
 # stack-owned PSDFormat, and JSON resolution took the LAST matching tree. Drives
 # the real reader and loader through a crafted PSD. See psd_layer_identity.cpp.
-add_executable(psd_layer_identity psd_layer_identity.cpp)
+add_executable(psd_layer_identity psd_layer_identity.cpp
+    # The importer constructs core::LayerNode, whose MeshTransformer reads
+    # :/shaders/MeshTransformVert.glsl (and whose shaders are then compiled), so
+    # the loader cases need the embedded assets exactly like `roundtrip` above.
+    # Without the resource the harness aborts on the first imported layer.
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+)
 target_include_directories(psd_layer_identity PRIVATE ..)
 target_compile_definitions(psd_layer_identity PRIVATE
     AE_MAJOR_VERSION=1
@@ -973,6 +1226,11 @@ target_link_libraries(psd_layer_identity PRIVATE
 add_executable(psd_relink_safety psd_relink_safety.cpp
     ../src/gui/ResourceTreeWidget.cpp
     ../src/gui/ProjectHook.cpp
+    # ViaPoint::pushLog / pushCommandLog dispatch to the concrete log view, so this
+    # target links the real one (its own ViaPoint subclass overrides pushLog, but
+    # ViaPoint's body - and the vtable that names it - still needs the symbol).
+    ../src/gui/CommandLogView.cpp
+    ../src/gui/CommandLogView.h
     ../src/gui/ViaPoint.cpp
     ../src/gui/EasyDialog.cpp
     # The real ResourceDialog, not a stub: the test links its moc key functions,
@@ -1345,9 +1603,13 @@ target_link_libraries(overlay_engine_primitives PRIVATE
 # runs under xvfb (cf. psd_layer_identity). See asset_remove_layers.cpp.
 add_executable(asset_remove_layers asset_remove_layers.cpp
     ../src/gui/ObjectTreeWidget.cpp
+    ../src/gui/ThumbnailCache.cpp
     ../src/gui/GUIResources.cpp
     ../src/gui/AppStyle.cpp
     ../src/gui/ProjectHook.cpp
+    # ViaPoint's log dispatch goes through the concrete view (see psd_relink_safety).
+    ../src/gui/CommandLogView.cpp
+    ../src/gui/CommandLogView.h
     ../src/gui/ViaPoint.cpp
     ../src/gui/EasyDialog.cpp
     ../src/gui/ResourceDialog.cpp
@@ -1426,3 +1688,13 @@ target_sources(graph_panel_pixels PRIVATE
     ../src/gui/InkCanvas.cpp)
 target_compile_definitions(graph_panel_pixels PRIVATE AE_CANVAS_PAINTER=1)
 target_link_libraries(graph_panel_pixels PRIVATE Qt6::CanvasPainter)
+
+# THE COMMAND LOG'S CONTRACT (src/gui/CommandLogView.{h,cpp}): badges instead of the
+# old "Undone : X" strings, and - the load-bearing half - a selection that still
+# crosses entries, so the clipboard gets the whole log as plain text. Compiles the
+# real view and the real theme tokens; headless, no GL. See command_log.cpp.
+add_executable(command_log command_log.cpp
+    ../src/gui/CommandLogView.cpp
+    ../src/gui/CommandLogView.h)
+target_include_directories(command_log PRIVATE .. ../src)
+target_link_libraries(command_log PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)

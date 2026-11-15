@@ -51,6 +51,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     NewProjectDialog.cpp NewProjectDialog.h
     AppStyle.cpp AppStyle.h
     ObjectTreeWidget.cpp ObjectTreeWidget.h
+    ThumbnailCache.cpp ThumbnailCache.h
     # The dock header's channel list: the panel's ONE control is a view action, so the
     # design hosts it in the header and the list is its own widget (not a QMenu: the
     # design's 22px rows and its swatch gaps are not reachable through AppStyle's menu
@@ -73,6 +74,11 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     FrameRuler.cpp FrameRuler.h
     ToolWidget.cpp ToolWidget.h
     ViaPoint.cpp ViaPoint.h
+    # The Properties panel's command log: one text document whose runs carry each
+    # line's kind ink (a badge, not markup), so a selection can still cross
+    # entries. LogEntry is the widget-free description ViaPoint hands it.
+    LogEntry.h
+    CommandLogView.cpp CommandLogView.h
     # The export form: a Qt Quick scene (qml/ExportDialog.qml) in a QDialog shell,
     # with everything it decides in the widget-free view model beside it.
     ExportDialog.cpp ExportDialog.h
@@ -98,19 +104,9 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     obj/obj_Notifiers.cpp obj/obj_Notifiers.h
     obj/obj_RemoveItem.cpp obj/obj_RemoveItem.h
     obj/obj_Util.cpp obj/obj_Util.h
-    prop/prop_AttrGroup.cpp prop/prop_AttrGroup.h
-    prop/prop_Backboard.cpp prop/prop_Backboard.h
-    prop/prop_ConstantPanel.cpp prop/prop_ConstantPanel.h
-    prop/prop_CurrentKeyPanel.cpp prop/prop_CurrentKeyPanel.h
-    prop/prop_DefaultKeyPanel.cpp prop/prop_DefaultKeyPanel.h
-    prop/prop_HeaderButton.cpp prop/prop_HeaderButton.h
     prop/prop_ItemBase.h
     prop/prop_Items.cpp prop/prop_Items.h
     prop/prop_KeyAccessor.cpp prop/prop_KeyAccessor.h
-    prop/prop_KeyGroup.cpp prop/prop_KeyGroup.h
-    prop/prop_KeyKnocker.cpp prop/prop_KeyKnocker.h
-    prop/prop_Panel.cpp prop/prop_Panel.h
-    prop/prop_ProjectPanel.cpp prop/prop_ProjectPanel.h
     res/res_ImageSetter.h
     res/res_Item.cpp res/res_Item.h
     res/res_Notifier.cpp res/res_Notifier.h
@@ -121,7 +117,9 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     theme/Icons.cpp theme/Icons.h
     theme/TimeLine.cpp theme/TimeLine.h
     tool/tool_BonePanel.cpp tool/tool_BonePanel.h
+    tool/tool_BrushPanel.cpp tool/tool_BrushPanel.h
     tool/tool_FFDPanel.cpp tool/tool_FFDPanel.h
+    tool/tool_MaskPanel.cpp tool/tool_MaskPanel.h
     tool/tool_FlowLayout.cpp tool/tool_FlowLayout.h
     tool/tool_ItemTable.cpp tool/tool_ItemTable.h
     tool/tool_Items.cpp tool/tool_Items.h
@@ -142,6 +140,9 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     qml/AnimationSettingViewModel.cpp qml/AnimationSettingViewModel.h
     qml/DestinationPickerModel.cpp qml/DestinationPickerModel.h
     qml/QmlFormAccessibility.cpp qml/QmlFormAccessibility.h
+    qml/InspectorViewModel.cpp qml/InspectorViewModel.h
+    qml/InspectorRowModel.cpp qml/InspectorRowModel.h
+    qml/FilterStackModel.cpp qml/FilterStackModel.h
     ${CMAKE_SOURCE_DIR}/assets/assets.qrc
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -183,6 +184,17 @@ qt_add_qml_module(${PROJECT_NAME}
         qml/AeIconButton.qml
         qml/AeTextField.qml
         qml/AeToolTip.qml
+        qml/AeScrollBar.qml
+        # The Properties dock. The scene owns layout/ink; InspectorViewModel
+        # owns every document decision.
+        qml/PropertiesPanel.qml
+        qml/InspectorRow.qml
+        qml/InspectorKeyDot.qml
+        qml/InspectorNumberField.qml
+        qml/InspectorAssetField.qml
+        qml/InspectorFilterCard.qml
+        qml/InspectorFilterStack.qml
+        qml/InspectorMaskCard.qml
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

@@ -80,6 +80,8 @@ float BlendSat(vec3 c) { return max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b)
 #variation BLEND_PREMULTIPLIED_SRC 0
 #variation IS_CLIPPEE 0
 #variation USE_HSV 0
+#variation USE_HSV_MASK 0
+#variation LAYER_MASK 0
 #variation PREMULTIPLIED_INPUT 0
 
 uniform vec4 uColor;
@@ -91,6 +93,30 @@ uniform bool setColor;
 uniform float hue;
 uniform float saturation;
 uniform float value;
+#endif
+
+// Both content-space fields (the HSV amount mask and the layer's own matte) are
+// sampled through ONE matrix: the inverse of the transforms this layer is drawn
+// with, so a field sticks to the ARTWORK while the camera zooms or the layer moves.
+#if USE_HSV_MASK || LAYER_MASK
+uniform mat3 uScreenToLayer;
+#endif
+
+#if USE_HSV_MASK
+// A painted AMOUNT mask for the HSV adjustment: the texel at this pixel decides how
+// much of the adjustment applies (0 = the untouched colour, 1 = the whole
+// adjustment).
+uniform sampler2D uHsvMask;
+uniform vec4 uHsvMaskRect; // content x, y, w, h
+#endif
+
+// THE NODE'S OWN MATTE. Its alpha field says how much of this layer is visible at
+// this pixel: 0 hidden, 1 visible. Outside the field the layer is fully visible (a
+// field RESTRICTS, it does not enable), and the multiply happens here - after every
+// filter - so a blurred layer cannot bleed past its own matte.
+#if LAYER_MASK
+uniform sampler2D uLayerMask;
+uniform vec4 uLayerMaskRect; // content x, y, w, h
 #endif
 
 #if IS_CLIPPEE
@@ -176,6 +202,7 @@ void main(void)
     vec4 destColor = texelFetch(uDestTexture, destCoord, 0);
 
 #if USE_HSV
+    vec3 hsvOriginal = color.xyz;
     vec3 hsv = RGBtoHSV(color.xyz);
     if (setColor)
     {
@@ -189,6 +216,30 @@ void main(void)
     hsv.y = min(1.0, hsv.y * saturation);
     hsv.z = min(1.0, hsv.z * value);
     color.xyz = HSVtoRGB(hsv);
+
+#if USE_HSV_MASK
+    {
+        vec2 q = (uScreenToLayer * vec3(vDestCoord, 1.0)).xy;
+        vec2 uv = (q - uHsvMaskRect.xy) / uHsvMaskRect.zw;
+        float amount = (uv.x < 0.0 || 1.0 < uv.x || uv.y < 0.0 || 1.0 < uv.y) ? 1.0 : texture(uHsvMask, uv).r;
+        // outside the field the adjustment applies in full: the field restricts, it
+        // does not enable
+        color.xyz = mix(hsvOriginal, color.xyz, amount);
+    }
+#endif
+#endif
+
+#if LAYER_MASK
+    {
+        vec2 q = (uScreenToLayer * vec3(vDestCoord, 1.0)).xy;
+        vec2 uv = (q - uLayerMaskRect.xy) / uLayerMaskRect.zw;
+        float visible = (uv.x < 0.0 || 1.0 < uv.x || uv.y < 0.0 || 1.0 < uv.y)
+            ? 1.0
+            : texture(uLayerMask, uv).r;
+        color.a *= visible;
+        if (color.a <= 0.0)
+            discard;
+    }
 #endif
 
 #if IS_CLIPPEE

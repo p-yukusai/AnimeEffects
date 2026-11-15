@@ -2,6 +2,7 @@
 #define CTRL_BONE_PAINTINFLMODE_H
 
 #include "util/Circle.h"
+#include "ctrl/Brush.h"
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/BoneKey.h"
@@ -22,7 +23,9 @@ namespace bone {
         virtual void renderQt(const core::RenderInfo& aInfo, QPainter& aPainter);
 
     private:
-        bool updatePaint();
+        // one shared-brush stamp: the falloff, hardness and amount come from
+        // ctrl/Brush.h like every other painting tool
+        bool updatePaint(const BrushStamp& aStamp);
         void assignInfluence(
             core::Bone2& aTarget, const std::array<QVector2D, 2>& aPrev, const std::array<QVector2D, 2>& aNext
         );
@@ -35,8 +38,10 @@ namespace bone {
         QMatrix4x4 mTargetInvMtx;
         FuzzyAssignInfluence* mCommandRef;
 
-        util::Circle mBrush;
-        float mBrushPressure;
+        util::Circle mBrush;      // the cursor circle (size) the renderer draws
+        BoneParam mParam;
+        BrushStroke mStroke;
+        QVector2D mCursorPos;
         bool mIsBrushDrawing;
     };
 

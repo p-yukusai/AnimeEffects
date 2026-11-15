@@ -16,10 +16,17 @@
 // dialog's "Reset to …" buttons the KEPT one (E29 + item 35), and the real
 // ExportDialog.qml is walked button by button so the set cannot silently grow.
 //
+// Since 2026-10-26 the bubble is MOUNTED IN THE WINDOW OVERLAY (notes.md: card
+// tooltips were drawn behind the cards), so this file also pins that mount: the
+// revealed tip's parent item is the overlay rather than the control, the bubble
+// out-ranks an in-window Popup's item, and a revealed tip is still not a
+// pointer target (E30's pass-through half).
+//
 // Run: QT_QPA_PLATFORM=offscreen ./build/tests/Debug/tooltip_contract
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QHoverEvent>
+#include <QMouseEvent>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -101,26 +108,40 @@ int main(int argc, char** argv) {
         check(f.open(QIODevice::WriteOnly | QIODevice::Text), "the scene file can be written");
         QByteArray q;
         q += "import QtQuick\n";
+        // Popup only for the overlay-rank assertion below (a real in-window
+        // popup item, which lives in the same overlay as the tip).
+        q += "import QtQuick.Controls\n";
         q += "import \"file:" AE_QML_DIR "\"\n";
         q += "Item {\n";
         q += "  width: 500; height: 400\n";
-        // Placement probes: explicit owner rects at the interesting edges.
-        q += "  Item { width: 40; height: 26; x: 200; y: 150\n";
-        q += "    AeToolTip { objectName: \"tipMid\"; text: \"MID\"; ownerX: 0; ownerY: 0; ownerW: 40; ownerH: 26 } }\n";
-        q += "  Item { width: 40; height: 26; x: 200; y: 360\n";
-        q += "    AeToolTip { objectName: \"tipBottom\"; text: \"BOTTOM\"; ownerX: 0; ownerY: 0; ownerW: 40; ownerH: 26 } }\n";
-        q += "  Item { width: 26; height: 26; x: 462; y: 100\n";
-        q += "    AeToolTip { objectName: \"tipRight\"; text: \"Reset to native\"; ownerX: 0; ownerY: 0; ownerW: 26; ownerH: 26 } }\n";
-        q += "  Item { width: 26; height: 26; x: 462; y: 372\n";
-        q += "    AeToolTip { objectName: \"tipCorner\"; text: \"Reset to native\"; ownerX: 0; ownerY: 0; ownerW: 26; ownerH: 26 } }\n";
-        q += "  Item { width: 40; height: 26; x: 200; y: 240\n";
-        q += "    AeToolTip { objectName: \"tipMulti\"; text: \"Label line\\nfamily line\\nid line\"; ownerX: 0; ownerY: 0; ownerW: 40; ownerH: 26 } }\n";
+        // Placement probes: explicit owner rects at the interesting edges. Each
+        // probe declares a NAMED owner and passes it as `ownerItem`; `parent`
+        // would be the overlay while revealed, so it is not the labelled item.
+        q += "  Item { id: probeMid; width: 40; height: 26; x: 200; y: 150\n";
+        q += "    AeToolTip { objectName: \"tipMid\"; text: \"MID\"; ownerItem: probeMid; ownerX: 0; ownerY: 0; ownerW: 40; ownerH: 26 } }\n";
+        q += "  Item { id: probeBottom; width: 40; height: 26; x: 200; y: 360\n";
+        q += "    AeToolTip { objectName: \"tipBottom\"; text: \"BOTTOM\"; ownerItem: probeBottom; ownerX: 0; ownerY: 0; ownerW: 40; ownerH: 26 } }\n";
+        q += "  Item { id: probeRight; width: 26; height: 26; x: 462; y: 100\n";
+        q += "    AeToolTip { objectName: \"tipRight\"; text: \"Reset to native\"; ownerItem: probeRight; ownerX: 0; ownerY: 0; ownerW: 26; ownerH: 26 } }\n";
+        q += "  Item { id: probeCorner; width: 26; height: 26; x: 462; y: 372\n";
+        q += "    AeToolTip { objectName: \"tipCorner\"; text: \"Reset to native\"; ownerItem: probeCorner; ownerX: 0; ownerY: 0; ownerW: 26; ownerH: 26 } }\n";
+        q += "  Item { id: probeMulti; width: 40; height: 26; x: 200; y: 240\n";
+        q += "    AeToolTip { objectName: \"tipMulti\"; text: \"Label line\\nfamily line\\nid line\"; ownerItem: probeMulti; ownerX: 0; ownerY: 0; ownerW: 40; ownerH: 26 } }\n";
         // The real call sites.
         q += "  AeIconButton { objectName: \"btnKeep\"; x: 30; y: 30; iconName: \"arrow-clockwise\"; label: \"Reset to auto\"; showTip: true }\n";
         q += "  AeIconButton { objectName: \"btnDrop\"; x: 30; y: 70; iconName: \"link\"; label: \"Keep aspect ratio\" }\n";
         q += "  AeTextField { objectName: \"fieldClear\"; x: 30; y: 110; width: 200; text: \"hello\"; clearButton: true; accessibleName: \"Name\" }\n";
         q += "  AeFrameRangeRow { objectName: \"rowRange\"; x: 30; y: 150; width: 320; firstFrame: 1; lastFrame: 48; firstLabel: \"First frame\"; lastLabel: \"Last frame\"; ordinal: 1 }\n";
         q += "  AeNumberField { objectName: \"numReset\"; x: 30; y: 195; width: 180; label: \"Width\"; resetLabel: \"Reset to native\"; placeholder: \"Auto\"; value: 10; from: 0; to: 4096 }\n";
+        // E30's pass-through sink, clear of every probe bubble: an ordinary
+        // control with a handler, clicked while a tooltip is revealed.
+        q += "  Rectangle { objectName: \"e30Sink\"; x: 30; y: 320; width: 120; height: 30; color: \"transparent\"\n";
+        q += "    property int clicks: 0\n";
+        q += "    MouseArea { anchors.fill: parent; onClicked: parent.clicks++ } }\n";
+        // The z probe: an in-window Popup, parented to the same overlay when
+        // opened, and opened AFTER the tips were created (the order Qt's
+        // openPopup would otherwise reward).
+        q += "  Popup { objectName: \"probePopup\"; x: 300; y: 20; width: 60; height: 40 }\n";
         q += "}\n";
         f.write(q);
     }
@@ -206,6 +227,100 @@ int main(int argc, char** argv) {
         geom("tipMulti", x, y, w, h);
         check(h > 22 && y + h <= 400.5 && y >= 240 + 26,
               QString("the bubble grows for multi-line text and still sits below (y=%1 h=%2)").arg(y).arg(h));
+    }
+
+    // ---- the overlay mount: where the bubble lives, and what that costs -----
+    //
+    // notes.md: "Tooltips in the filter cards items draw behind the cards so
+    // they're invisible." A tooltip that is a CHILD of its control can only be
+    // ordered among that control's siblings, so the card's opaque expanded body
+    // (a later sibling of the header that owns the icon) and every later card
+    // painted over it. The fix is the overlay, whose placement is above all
+    // scene content. These assertions pin its observable consequences; the
+    // E27/E28 block above still pins the geometry, unchanged.
+    {
+        QQuickItem* content = window.contentItem();
+        QQuickItem* overlay = nullptr;
+        for (QQuickItem* c : content->childItems())
+            if (QByteArray(c->metaObject()->className()).contains("QQuickOverlay"))
+                { overlay = c; break; }
+        check(overlay != nullptr,
+              "precondition: revealing a tooltip really created the window overlay");
+        check(overlay && overlay->isVisible(),
+              "precondition: the overlay is visible while the bubble is up (it keeps "
+              "itself visible while it has any child)");
+
+        auto* tipMid = qobject_cast<QQuickItem*>(root->findChild<QObject*>(QStringLiteral("tipMid")));
+        check(tipMid && tipMid->property("revealed").toBool(),
+              "precondition: tipMid is still revealed for the overlay checks");
+        if (tipMid && overlay)
+            check(tipMid->parentItem() == overlay,
+                  "the revealed bubble IS a child of the window overlay, not of the "
+                  "control it labels (so card bodies and later cards cannot cover it)");
+
+        // An in-window Popup lives in the same overlay, and this one is opened
+        // AFTER the tip was inserted - the order in which child ordering alone
+        // would put the popup on top.
+        QObject* popup = root->findChild<QObject*>(QStringLiteral("probePopup"));
+        check(popup != nullptr, "precondition: the probe popup loaded");
+        QQuickItem* popupItem = nullptr;
+        if (popup) {
+            QMetaObject::invokeMethod(popup, "open");
+            spin(120);
+            for (QQuickItem* c : popup->findChildren<QQuickItem*>())
+                if (QByteArray(c->metaObject()->className()).contains("QQuickPopupItem"))
+                    { popupItem = c; break; }
+            check(popupItem != nullptr, "precondition: the open popup has a popup item");
+        }
+        if (tipMid && popupItem)
+            check(tipMid->z() > popupItem->z(),
+                  QString("the bubble out-ranks an open Popup's item (z %1 > %2), so a "
+                          "filter card's dropdown cannot paint over its own label")
+                      .arg(tipMid->z()).arg(popupItem->z()));
+        // Close it again: the blocks below drive hover and expect no open popup.
+        if (popup) popup->setProperty("visible", false);
+        spin(60);
+
+        // E30's pass-through half. The overlay covers the whole window while the
+        // bubble is up, and it accepts every mouse button; a label that became a
+        // pointer target (or turned the overlay into a click blocker) would show
+        // up here as a control that no longer reacts.
+        QQuickItem* sink = item("e30Sink");
+        check(sink && sink->property("clicks").toInt() == 0,
+              "precondition: the click sink starts unused");
+        if (sink) {
+            const QPointF p = sink->mapToItem(content, QPointF(sink->width() / 2, sink->height() / 2));
+            QMouseEvent press(QEvent::MouseButtonPress, p, p,
+                              Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            QCoreApplication::sendEvent(&window, &press);
+            QMouseEvent release(QEvent::MouseButtonRelease, p, p,
+                                Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+            QCoreApplication::sendEvent(&window, &release);
+            spin(60);
+            check(sink->property("clicks").toInt() == 1,
+                  "E30: a click on ANOTHER control still fires it while a tooltip is "
+                  "revealed (the bubble is not a pointer target)");
+        }
+
+        // HIDDEN MEANS UNMOUNTED. A tip left attached but invisible would keep
+        // the overlay (a full-window item that accepts every mouse button)
+        // visible for the application's whole life, filtering every press; the
+        // parent binding is the mechanism, so it is asserted directly and then
+        // through the overlay it would otherwise hold open.
+        if (tipMid) {
+            tipMid->setProperty("shown", false);
+            spin(80);
+            check(!tipMid->property("revealed").toBool() && tipMid->parentItem() == nullptr,
+                  "a hidden bubble is DETACHED from the overlay");
+        }
+        for (const char* n : {"tipBottom", "tipRight", "tipCorner", "tipMulti"}) {
+            if (QObject* t = root->findChild<QObject*>(QString(n)))
+                t->setProperty("shown", false);
+        }
+        spin(80);
+        check(overlay && !overlay->isVisible(),
+              "with every bubble hidden the overlay is INVISIBLE again (no tooltip keeps "
+              "it alive)");
     }
 
     // ---- E29: the set, driven by REAL hover + a dwell -----------------------

@@ -2,20 +2,23 @@
 #define CTRL_BONEPARAM
 
 #include "ctrl/BoneEditMode.h"
+#include "ctrl/Brush.h"
 
 namespace ctrl {
 
 class BoneParam {
 public:
-    BoneParam(): mode(BoneEditMode_Create), piRadius(50.0f), piPressure(1.0f), eiRadius(50.0f), eiPressure(1.0f) {}
+    BoneParam(): mode(BoneEditMode_Create), brush() {
+        brush.radius = 50.0f;
+        brush.hardness = 0.5f;
+        brush.flow = 1.0f;
+    }
     BoneEditMode mode;
 
-    // for paint influence mode
-    float piRadius;
-    float piPressure;
-    // for erase influence mode
-    float eiRadius;
-    float eiPressure;
+    // The influence brush, SHARED with every other painting tool: paint and erase
+    // are the same brush with `erase` set, so switching between them keeps the size
+    // and the hardness (they used to be four separate sliders).
+    BrushParam brush;
 };
 
 } // namespace ctrl

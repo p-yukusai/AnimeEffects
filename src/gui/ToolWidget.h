@@ -17,6 +17,7 @@
 #include "gui/tool/tool_BonePanel.h"
 #include "gui/tool/tool_PosePanel.h"
 #include "gui/tool/tool_MeshPanel.h"
+#include "gui/tool/tool_MaskPanel.h"
 
 namespace gui {
 
@@ -32,6 +33,16 @@ public:
     );
 
     void setDriver(ctrl::Driver* aDriver);
+    // the temporary eyedropper's value, from the viewport through MainWindow
+    void setMaskValue(float aValue);
+    // one brush adjustment step (the [ ] keys and the Alt+right-drag gesture):
+    // positive steps enlarge/harden, negative shrink/soften
+    void adjustBrush(int aSizeSteps, int aHardnessSteps);
+    // A filter card asked to paint a mask: switch to the Mask tool with that lane and
+    // channel already selected, so the artist paints immediately.
+    void beginMaskPaint(core::TimeKeyType aLane, core::FilterMaskChannel aChannel);
+    // the node's own matte: same tool, same brush, a target that is not a filter lane
+    void beginLayerMaskPaint();
 
     util::Signaler<void()> onVisualUpdated;
     util::Signaler<void(ctrl::ToolType)> onToolChanged;
@@ -78,6 +89,7 @@ private:
     tool::BonePanel* mBonePanel;
     tool::PosePanel* mPosePanel;
     tool::MeshPanel* mMeshPanel;
+    tool::MaskPanel* mMaskPanel;
 };
 
 } // namespace gui

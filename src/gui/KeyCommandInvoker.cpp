@@ -11,10 +11,22 @@ namespace {
 // WHETHER THE VIEWPORT OVERLAY OWNS THE KEYBOARD RIGHT NOW.
 //
 // io.WantCaptureKeyboard, read at the last completed frame (see
-// ImGuiInputBridge::keyboardCaptured()): a Dear ImGui text field is active and the
-// keys typed into it are the field's. False whenever no ImGui field is active,
-// which is the whole time today, and false in a build without the overlay - so the
-// application's own key routing is unchanged in both.
+// ImGuiInputBridge::keyboardCaptured()). Measured against the vendored Dear ImGui
+// 1.92.7, the flag is computed once per frame in NewFrame, and it is NOT "a text
+// field is active": it is true when an ImGui item is ACTIVE (g.ActiveId != 0 - a
+// dragged control holds that too, not only a caret), when a MODAL ImGui window is
+// open, or when keyboard navigation is enabled and has taken the keyboard
+// (io.NavActive && ImGuiConfigFlags_NavEnableKeyboard && io.ConfigNavCaptureKeyboard);
+// a per-frame override can force it either way. So the question it answers is
+// "is a Dear ImGui widget consuming keys", which is the question a rebindable
+// command has to ask before acting on one.
+//
+// Today it answers false in every frame. This tree's graph panel creates an ImGui
+// context and draws through its own draw lists (GraphPanelFrame), but hosts no
+// ImGui widgets at all, so there is never an ActiveId, a modal or Nav to set the
+// flag - and a build without the overlay returns false outright. The gate is here
+// for the widget that will be hosted, not to paper over a bug: without it a
+// "Delete" typed into that widget would delete the selected key of the timeline.
 bool overlayOwnsKeyboard() {
 #ifdef AE_ENABLE_IMGUI
     return ImGuiInputBridge::keyboardCaptured();
@@ -42,7 +54,10 @@ void KeyCommandInvoker::onKeyPressed(const QKeyEvent* aEvent) {
     if (overlayOwnsKeyboard())
         return;
 
-    const ctrl::KeyBinding keyBind(aEvent->key(), aEvent->modifiers());
+    // Shift's symbol folded back onto its key (see ctrl::unshiftedKeyForShift)
+    const int eventKey = (aEvent->modifiers() & Qt::ShiftModifier) ? ctrl::unshiftedKeyForShift(aEvent->key())
+                                                                   : aEvent->key();
+    const ctrl::KeyBinding keyBind(eventKey, aEvent->modifiers());
     if (!keyBind.isValidBinding())
         return;
 

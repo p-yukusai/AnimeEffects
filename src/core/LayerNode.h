@@ -67,11 +67,23 @@ public:
     private:
     void transformShape(const RenderInfo& aInfo, const TimeCacheAccessor&);
     void renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor&, bool useHSV, QList<int> HSVData);
+    // screen pixels -> this layer's content pixels, the inverse of the transforms it
+    // is drawn with. Shared by the direct draw (a layer mask samples in content
+    // space) and the composite path's filter fields.
+    QMatrix4x4 contentMappingFor(
+        const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor, const QSize& aTargetSize
+    ) const;
     void renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor&);
     void renderClippees(const RenderInfo& aInfo, const TimeCacheAccessor&);
     bool isClipper() const;
-    bool hasActiveBlurKey(const TimeInfo& aTime) const;
-    bool isCompositeLayer(const TimeInfo& aTime, const TimeCacheAccessor& aAccessor) const;
+    // an HSV adjustment with a painted amount mask, while its BLENDED value is live
+    // (it becomes a stack pass, which is what isolates the layer)
+    bool hasActiveHsvMask(const TimeCacheAccessor& aAccessor) const;
+    // "an enabled filter whose BLENDED value is above its epsilon" - see
+    // core/FilterActivity.h for why the blended value, not the key map, decides
+    bool isCompositeLayer(const TimeCacheAccessor& aAccessor) const;
+    // this node is the Mask tool's target: it isolates and draws the field preview
+    bool isPreviewTarget(const RenderInfo& aInfo) const;
     
     QString mName;
     bool mIsVisible;

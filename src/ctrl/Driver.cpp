@@ -1,5 +1,6 @@
 #include "util/CollDetect.h"
 #include "ctrl/Driver.h"
+#include "ctrl/MaskEditor.h"
 
 namespace {
 
@@ -22,6 +23,7 @@ Driver::Driver(core::Project& aProject, DriverResources& aResources, GraphicStyl
     mBlender(aProject.objectTree()),
     mEditor(),
     mGraphEditor(new GraphEditor(aProject, aUILogger)),
+    mMaskEditor(nullptr),
     mCurrentNode(),
     mOnUpdating(0),
     mRejectedTarget() {
@@ -55,6 +57,14 @@ void Driver::setTool(ToolType aType) {
         mEditor.reset(new MeshEditor(mProject, mUILogger));
     } else if (mToolType == ToolType_FFD) {
         mEditor.reset(new FFDEditor(mProject, mResources, mUILogger));
+    } else if (mToolType == ToolType_Mask) {
+        // the raster paint tool; it keeps a raw pointer for the panel's Clear, so it
+        // is cleared with the editor's lifetime
+        mMaskEditor = new MaskEditor(mProject);
+        mEditor.reset(mMaskEditor);
+    }
+    if (mToolType != ToolType_Mask) {
+        mMaskEditor = nullptr;
     }
 
     setTarget(mCurrentNode);
@@ -304,6 +314,19 @@ void Driver::updateParam(const MeshParam& aParam) {
     XC_ASSERT(mToolType == ToolType_Mesh);
 
     ((MeshEditor*)mEditor.data())->updateParam(aParam);
+}
+
+void Driver::updateParam(const MaskParam& aParam) {
+    XC_ASSERT(mToolType == ToolType_Mask);
+    if (!mMaskEditor)
+        return;
+
+    mMaskEditor->setParam(aParam);
+}
+
+void Driver::clearMask() {
+    if (mMaskEditor)
+        mMaskEditor->clearMask();
 }
 
 } // namespace ctrl

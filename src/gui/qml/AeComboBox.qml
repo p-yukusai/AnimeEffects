@@ -60,6 +60,8 @@ ComboBox {
     // needs it — Qt's positioner places the list (below / flipped above /
     // clamped inside the window, measured).
     property Item overlay: null
+    // Dialog controls keep 12px; the inspector passes the app font.
+    property font textFont: Qt.font({ pixelSize: 12 })
 
     readonly property string value: (index >= 0 && index < options.length)
                                     ? String(options[index].value) : ""
@@ -158,8 +160,8 @@ ComboBox {
             anchors.verticalCenter: parent.verticalCenter
             text: root.text
             color: root.enabled ? theme.text : theme.textDisabled
-            font.pixelSize: 12
-            elide: Text.ElideRight
+            font: root.textFont
+                elide: Text.ElideRight
         }
         Image {
             id: caret
@@ -250,72 +252,164 @@ ComboBox {
         // ComboBox scrolls its popup ListView to the current row on open
         // (measured: contentY=48 with currentIndex=0 — row 2 pulled to the top)
         // while the old list never moved from contentY=0. No contract line asks
-        // for the scroll, so the reference decides.
+        // for the scroll, so the reference decides. The currentIndex binding below
+        // scrolls the same way as that stock behaviour, and this handler runs on
+        // `opened` — after it — so the top still wins.
         onOpened: {
             list.contentY = 0;
             root._keyNav = false;
         }
         onClosed: root._keyNav = false
-        contentItem: ListView {
-            id: list
-            model: root.options
-            boundsBehavior: Flickable.StopAtBounds
-            clip: true
-            delegate: Rectangle {
-                required property int index
-                required property var modelData
-                width: list.width
-                height: 24
-                radius: 3
-                // Each option is its own addressable node, AND it needs a press
-                // action: Qt exposes one for Button/CheckBox/RadioButton/Switch
-                // roles, not for a list item, so "open the list and pick an item"
-                // was impossible for a screen reader - and for a probe - without
-                // the C++ interface gui/qml/QmlFormAccessibility attaches to this
-                // marker. Its rect() is screen-correct too, so a click lands on it.
-                objectName: "aeAccessibleOption"
-                property string accessibleName: modelData.label
-                property string accessibleValue: modelData.label
-                function accessibleChoose() {
-                    root.popup.close();
-                    root.activated(index);
+        // The list and its bar share a wrapper so the bar can sit OUTSIDE the
+        // ListView's clip. `id: list` and its contentHeight stay where the
+        // popup's own height binding expects them (Math.min(220, contentHeight +
+        // 8) above), and the 12px lane is carved off the list's width instead of
+        // being drawn over its rows.
+        contentItem: Item {
+            id: popupContent
+
+            ListView {
+                id: list
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                // The lane below is reserved the way DestinationPicker reserves
+                // its own (`width: parent.width - 12`): a row's hover/highlight
+                // stops short of the pill instead of running under it.
+                width: parent.width - 12
+                model: root.options
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+                // Down/Up with the list open move `root.highlightedIndex` (stock's
+                // Keys handling mirrors them into `activated`; see the field's
+                // _keyNav note) and the list has to follow, or the keyboard
+                // selection walks off the bottom of a 220px-capped popup. Binding
+                // currentIndex is exactly what the stock ComboBox popup does
+                // (`currentIndex: control.highlightedIndex`); the explicit
+                // positionViewAtIndex states the guarantee instead of inheriting
+                // it, and Contain is the smallest move that brings the row into
+                // view. popupOpen guards the closed-field case, where the
+                // highlight also moves but there is nothing to show.
+                currentIndex: root.highlightedIndex
+                onCurrentIndexChanged: {
+                    if (root.popupOpen && currentIndex >= 0)
+                        positionViewAtIndex(currentIndex, ListView.Contain);
                 }
-                Accessible.role: Accessible.ListItem
-                Accessible.name: modelData.label
-                color: rowMouse.containsMouse ? theme.raisedHover
-                     : (index === root.index ? theme.active : "transparent")
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 8
-                    anchors.right: tick.left
-                    anchors.rightMargin: 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: modelData.label
-                    color: theme.text
-                    font.pixelSize: 12
-                    elide: Text.ElideRight
-                }
-                Image {
-                    id: tick
+
+                // The APPLICATION's scroll bar, not a design of its own: the ink
+                // is the pill AppStyle::drawComplexControl(CC_ScrollBar) has
+                // always painted (4px, radius 2, outline, hover while the slider
+                // is hot, invisible trough), so this is PropertiesPanel.qml's QML
+                // copy of it, verbatim. The lane is 12px because that is what the
+                // style reports for PM_ScrollBarExtent
+                // (ctrl::graph::scrollBar::kLaneThickness) - the pill sits in the
+                // same strip a widget scroll bar would.
+                //
+                // Parented to the wrapper, not to the list: an attached bar
+                // re-parents itself to the ListView and is then cut by the list's
+                // clip, which is the same reason DestinationPicker parents its
+                // bar to the list area.
+                ScrollBar.vertical: AeScrollBar {
+                    id: vbar
+                    parent: popupContent
                     anchors.right: parent.right
-                    anchors.rightMargin: 6
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    orientation: Qt.Vertical
                     width: 12
-                    height: 12
-                    visible: index === root.index
-                    source: theme.iconUrl("check-bold")
-                    sourceSize.width: 64
-                    sourceSize.height: 64
-                    fillMode: Image.PreserveAspectFit
                 }
-                MouseArea {
-                    id: rowMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.popup.close();
-                        root.activated(index);
+
+                delegate: Item {
+                    id: rowItem
+                    required property int index
+                    required property var modelData
+                    width: list.width
+                    // The 24px row plus, at a group boundary, the style's
+                    // separator band: AppStyle::sizeFromContents gives a
+                    // QComboBox separator item exactly 9px (4px of breathing
+                    // room above and below the centred rule), so the popup keeps
+                    // the geometry the widget control had. The band is part of
+                    // the delegate, never an extra model row.
+                    height: 24 + (modelData.separatorAfter === true ? 9 : 0)
+
+                    Rectangle {
+                        id: row
+                        width: parent.width
+                        height: 24
+                        radius: 3
+                        // Each option is its own addressable node, AND it needs a press
+                        // action: Qt exposes one for Button/CheckBox/RadioButton/Switch
+                        // roles, not for a list item, so "open the list and pick an item"
+                        // was impossible for a screen reader - and for a probe - without
+                        // the C++ interface gui/qml/QmlFormAccessibility attaches to this
+                        // marker. Its rect() is screen-correct too, so a click lands on it.
+                        objectName: "aeAccessibleOption"
+                        property string accessibleName: rowItem.modelData.label
+                        property string accessibleValue: rowItem.modelData.label
+                        function accessibleChoose() {
+                            root.popup.close();
+                            root.activated(rowItem.index);
+                        }
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: rowItem.modelData.label
+                        color: rowMouse.containsMouse ? theme.raisedHover
+                             : (rowItem.index === root.index ? theme.active : "transparent")
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 8
+                            anchors.right: tick.left
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: rowItem.modelData.label
+                            color: theme.text
+                            font: root.textFont
+                                        elide: Text.ElideRight
+                        }
+                        Image {
+                            id: tick
+                            anchors.right: parent.right
+                            anchors.rightMargin: 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 12
+                            height: 12
+                            visible: rowItem.index === root.index
+                            source: theme.iconUrl("check-bold")
+                            sourceSize.width: 64
+                            sourceSize.height: 64
+                            fillMode: Image.PreserveAspectFit
+                        }
+                        MouseArea {
+                            id: rowMouse
+                            // The row only: the separator band under it is not a
+                            // click target, exactly as it was not one in the widget
+                            // popup.
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.popup.close();
+                                root.activated(rowItem.index);
+                            }
+                        }
+                    }
+
+                    // The group rule, in the band the row above leaves for it: a
+                    // 1px line 8px in from each edge, like the style's own
+                    // separator (opt->rect inset by 8), at the band's centre (a
+                    // 9px band starting at y=24 centres on y=28). floaterEdge, not
+                    // hairline: the line sits ON the floater surface, and hairline
+                    // is the same palette cell as floaterBody in dark - invisible.
+                    Rectangle {
+                        visible: rowItem.modelData.separatorAfter === true
+                        x: 8
+                        y: 24 + 4
+                        width: parent.width - 16
+                        height: 1
+                        color: theme.floaterEdge
+                        // Decoration: no accessibility node, so ae_ui.py's
+                        // row-by-name matching (and a screen reader) never sees a
+                        // 29th row.
+                        Accessible.ignored: true
                     }
                 }
             }

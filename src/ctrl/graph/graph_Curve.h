@@ -7,6 +7,8 @@
 #include "core/TimeLine.h"
 #include "util/Range.h"
 #include "util/Easing.h"
+#include "util/EasingSegment.h"
+#include "util/FergusonCoonsSpline.h"
 #include "ctrl/graph/graph_Channel.h"
 
 namespace ctrl {
@@ -161,6 +163,54 @@ private:
     // belongs to aFrom, and aD is the pair's effective length - the frames' own difference, or the
     // loop span for a wrapped pair.
     float sampleOver(const core::TimeKey& aFrom, const core::TimeKey& aTo, float aAt, float aD) const;
+
+    // EVERYTHING A SEGMENT'S EVALUATION NEEDS THAT DOES NOT DEPEND ON THE SAMPLE.
+    //
+    // `sampleOver` used to rebuild all of this per point: the channel values, the easing
+    // params, the neighbour walk, the AutoContext and two derived control points. A drawn
+    // curve samples one segment `aSamplesPerSegment` times per repaint, so the preparation
+    // was paid ~600 times for a segment that is the same every time. Measured (Release):
+    // one-shot derived evaluation 78.9 ns, prepared 5.7 ns, and the panel's 8 curves x 600
+    // samples 379 us -> 27 us.
+    //
+    // IT IS NOT CACHED ACROSS CALLS, and that is a correctness decision, not an unfinished
+    // optimisation: a memo keyed by the two keys (and their span) cannot see an EDIT that
+    // leaves the keys where they are - changing a key's spline type, its handle modes or its
+    // easing rewrites the document without moving a pointer, and the memo would serve the
+    // curve from before the edit. tests/graph_curve caught exactly that (a Move channel
+    // switched to Linear kept drawing its Catmull-Rom bow). So the preparation is a VALUE
+    // the caller holds for as long as its document state is the same - `buildPolyline` owns
+    // one per segment for the length of its loop, which is where the win lives.
+    struct Prepared {
+        const core::TimeKey* from = nullptr;
+        const core::TimeKey* to = nullptr;
+        // The segment's effective length: the frames' own difference, or the loop span for
+        // a wrapped pair. Part of the key, because the same two keys can be evaluated over
+        // two different lengths.
+        float d = 0.0f;
+        bool usable = false;      // a Custom easing with an evaluable pair
+        bool interpolated = true; // false = the step-held shape
+        float v0 = 0.0f;
+        float v1 = 0.0f;
+        // Move's Catmull-Rom knots and HSV's truncation need the neighbours too, so they
+        // are prepared with the rest.
+        const core::TimeKey* prev = nullptr;
+        const core::TimeKey* next = nullptr;
+        // The FROM key's easing param - the one playback evaluates. A non-Custom type is
+        // evaluated from this per sample (the closed-form table is a handful of flops), and
+        // a Custom one uses the prepared segment below, which is where the cost was.
+        const util::Easing::Param* param = nullptr;
+        std::optional<util::EasingSegment> easing;
+        // Move's arc-length spline, prepared for the same reason: its knots and its
+        // 8-segment linearization table depend only on the two keys and their neighbours.
+        // Measured (Release): vels+set+getByLinear 226 ns per point, getByLinear alone
+        // 25.9 ns - i.e. 200 ns of the 270 ns a Move polyline point used to cost was
+        // rebuilding a spline it already had.
+        std::optional<util::FergusonCoonsSpline<QVector3D>> spline;
+    };
+    Prepared prepareOver(const core::TimeKey& aFrom, const core::TimeKey& aTo, float aD) const;
+    // The value of a prepared segment at a frame (a float, inside the segment).
+    float evaluateOver(const Prepared& aPrep, float aAt) const;
 
     const core::TimeLine* mTimeLine;
     Channel mChannel;

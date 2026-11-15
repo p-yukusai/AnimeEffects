@@ -310,28 +310,15 @@ Item {
             // parented OUTSIDE the clip (the shell) so the clip cannot cut it, the
             // style's transient contentItem replaced outright (the design has no
             // fade), and shown only when the content overflows.
-            ScrollBar.vertical: ScrollBar {
+            ScrollBar.vertical: AeScrollBar {
                 id: vbar
                 objectName: "formVBar"
                 parent: shell
                 anchors.right: scroller.right
                 anchors.top: scroller.top
                 anchors.bottom: scroller.bottom
-                width: 8
                 orientation: Qt.Vertical
-                policy: ScrollBar.AsNeeded
-                visible: size < 1.0
-                hoverEnabled: true
-                // The design's minimum thumb length (28px) in minimumSize units.
-                minimumSize: height > 0 ? 28 / height : 0
-                background: Rectangle { color: "transparent" }
-                contentItem: Rectangle {
-                    implicitWidth: 6
-                    radius: 3
-                    color: vbar.pressed ? theme.textMuted
-                         : vbar.hovered ? theme.textMuted
-                         : theme.raisedHover
-                }
+                width: 12
             }
         }
 

@@ -18,36 +18,50 @@ namespace bone {
         mTargetInvMtx(aTarget.invMtx),
         mCommandRef(),
         mBrush(),
-        mBrushPressure(),
+        mParam(),
+        mStroke(),
+        mCursorPos(),
         mIsBrushDrawing() {
         XC_PTR_ASSERT(mKeyOwner.key);
     }
 
     void EraseInflMode::updateParam(const BoneParam& aParam) {
-        mBrush.setRadius(aParam.eiRadius);
-        mBrushPressure = aParam.eiPressure;
+        // one brush for both influence modes: erase is the same stamp deposited
+        // the other way, so the size and hardness follow the tool mode switch
+        mParam = aParam;
+        mParam.brush.erase = true;
+        mBrush.setRadius(aParam.brush.radius);
     }
 
     bool EraseInflMode::updateCursor(const CameraInfo&, const AbstractCursor& aCursor) {
-        mBrush.setCenter(aCursor.worldPos());
+        mCursorPos = aCursor.worldPos();
+        mBrush.setCenter(mCursorPos);
+        mBrush.setRadius(mParam.brush.radius);
 
         if (aCursor.emitsLeftPressedEvent()) {
             mIsBrushDrawing = true;
             mCommandRef = nullptr;
-            updatePaint();
+            mStroke.begin(mParam.brush, mCursorPos, aCursor.pressure(), [this](const BrushStamp& aStamp) {
+                updatePaint(aStamp);
+            });
         } else if (aCursor.emitsLeftDraggedEvent()) {
-            updatePaint();
+            mStroke.move(mCursorPos, aCursor.pressure());
         } else if (aCursor.emitsLeftReleasedEvent()) {
+            mStroke.end();
             mIsBrushDrawing = false;
             mCommandRef = nullptr;
-            updatePaint();
         }
 
         return true;
     }
 
-    bool EraseInflMode::updatePaint() {
+    bool EraseInflMode::updatePaint(const BrushStamp& aStamp) {
         bool modified = false;
+
+        // getSink() reads the circle: keep it at the stamp so the geometry and the
+        // falloff describe the same brush
+        mBrush.setCenter(aStamp.center);
+        mBrush.setRadius(aStamp.radius);
 
         auto& topBones = mKeyOwner.key->data().topBones();
         for (auto topBone : topBones) {
@@ -65,7 +79,10 @@ namespace bone {
                 std::array<QVector2D, 2> prevRange = {bone->range(0), bone->range(1)};
                 std::array<QVector2D, 2> nextRange = prevRange;
                 for (int i = 0; i < 2; ++i) {
-                    auto sub = mBrushPressure * sink * (i == 0 ? (1.0f - ratio) : ratio);
+                    // the shared falloff: sink is how far the brush reaches past the
+                    // bone's own range, the falloff says how much of that it deposits
+                    const float weight = aStamp.amount * brushFalloff(sink, aStamp.radius, aStamp.hardness);
+                    auto sub = weight * sink * (i == 0 ? (1.0f - ratio) : ratio);
                     nextRange[i].setX(std::max(nextRange[i].x() - sub, 0.0f));
                     if (nextRange[i].y() > nextRange[i].x()) {
                         nextRange[i].setY(nextRange[i].x());
@@ -97,7 +114,7 @@ namespace bone {
             renderer.renderBones(bone);
         }
 
-        renderer.renderBrush(mBrush, mIsBrushDrawing);
+        renderer.renderBrush(mBrush, mIsBrushDrawing, mParam.brush.hardness);
     }
 
     std::pair<float, float> EraseInflMode::getSink(const core::Bone2& aBone, const util::Circle& aBrush) const {

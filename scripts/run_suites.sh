@@ -78,7 +78,9 @@ for n in $targets; do
   # builds core::LayerNode default ImageKeys the same way.
   # overlay_engine_primitives draws through the viewport's own paint engine
   # (ctrl::PainterHandle) and reads an offscreen FBO back: the GL context IS the
-  # subject under test. graph_image_step needs the context only to construct
+  # subject under test. filter_card_geometry builds a core::LayerNode for the inspector,
+  # and a layer's mesh holder binds GL in its constructor, so it needs a context too -
+  # offscreen it aborts before its first check. graph_image_step needs the context only to construct
   # core::ImageKey - the one channel whose step-hold is unobservable without one,
   # which is why graph_curve (headless, offscreen) reports it as a skip. Both
   # ignore the project argument they are handed. The two Canvas gates are here for the
@@ -88,7 +90,9 @@ for n in $targets; do
      [ "$n" = psd_layer_identity ] || [ "$n" = asset_remove_layers ] ||
      [ "$n" = overlay_engine_primitives ] || [ "$n" = graph_image_step ] ||
      [ "$n" = graph_panel_pixels ] || [ "$n" = frame_ruler_canvas ] ||
-     [ "$n" = time_body_canvas ]; then
+     [ "$n" = time_body_canvas ] || [ "$n" = wave_pass_pixels ] ||
+     [ "$n" = layer_mask_pixels ] ||
+     [ "$n" = filter_card_geometry ]; then
     # The end-to-end export harness needs a real GL context and a loaded project, so it
     # runs under Xvfb against the COMMITTED fixture (tests/fixtures/e2e_stage.png) rather
     # than being skipped for want of artwork on the machine. It used to be in the SKIP

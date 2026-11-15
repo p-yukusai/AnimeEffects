@@ -61,6 +61,13 @@ inline AccentColor accentFromName(const QString& aName) {
 // rose, slate, gray, zinc, neutral, stone, mauve, olive, mist, taupe.
 inline constexpr int kTailwindNeutralRow = 20; // the achromatic neutral row
 
+// Semantic rows. Warnings and errors must read as themselves whatever the
+// accent is (the user can pick green, and a warning in green is not a warning),
+// so they are the two hue rows the semantic roles read instead of the neutral or
+// accent row: Tailwind red for danger, amber for warning.
+inline constexpr int kDangerRow = 0;  // red
+inline constexpr int kWarningRow = 2; // amber
+
 // Token roles; the column maps are indexed by these.
 enum TokenRole {
     kBase, kRecessed, kRaised, kRaisedHover, kActive, kActiveHover,
@@ -83,6 +90,12 @@ enum TokenRole {
     kWindowText, // window label pill text
     kAccentBrightText, // text on accentBright fills (the playhead pill):
                        // max-contrast against the saturated accentBright
+    kDanger,  // semantic error ink. red-600 on the pale theme, red-400 on the
+              // deep one - both clear their background, and neither follows the
+              // accent (an error must read as one whatever hue the user picked)
+    kWarning, // semantic warning ink, same rule with amber: amber-700 on the
+              // pale theme (amber-600 is too pale for text on white) and
+              // amber-400 on the deep one
     kTokenCount
 };
 
@@ -136,22 +149,35 @@ static constexpr int kTailwindLight[] = {
     /* kWindowText        */ 0, // neutral-50
     /* kAccentBrightText  */ 0, // neutral-50: lightest text on the saturated
                                  // accentBright
+    /* kDanger            */ 6, // red-600 (#dc2626). These two index the
+                                 // red/amber rows (kDangerRow/kWarningRow), not
+                                 // the neutral row the surface tokens read
+    /* kWarning           */ 7, // amber-700 (#b45309), the step the QML facts
+                                 // rows already used: amber-600 is too pale for
+                                 // text on white
 };
 static_assert(sizeof(kTailwindLight) / sizeof(kTailwindLight[0]) == kTokenCount,
               "kTailwindLight must have one column per TokenRole");
 static constexpr int kTailwindDark[] = {
-    /* kBase              */ 8,
-    /* kRecessed          */ 9,
-    /* kRaised            */ 7,
-    /* kRaisedHover       */ 6,
-    /* kActive            */ 6,
+    // The dark elevation model was one step too bright: base read as the same
+    // neutral-800 card surface the mockup used for RAISED controls. Shift the
+    // surfaces down one column so base/recessed are the floor, `raised` is the
+    // old base, and content keeps its existing contrast. Light is unchanged.
+    /* kBase              */ 9,
+    /* kRecessed          */ 10,
+    /* kRaised            */ 8,
+    /* kRaisedHover       */ 7,
+    /* kActive            */ 7, // one step above `raised`; not the same fill
     /* kActiveHover       */ 6,
-    /* kHairline          */ 7,
-    /* kHairlineHover     */ 6,
-    /* kOutline           */ 6,
-    /* kHandleBorder      */ 5,
+    // Borders follow the surfaces down too. Keeping the old absolutes would
+    // turn every separator into a 2-step jump against the darker base; these
+    // stay one step above the surface they sit on.
+    /* kHairline          */ 8, // one step above base (neutral-800)
+    /* kHairlineHover     */ 7, // one step above hairline
+    /* kOutline           */ 7, // one step above raised
+    /* kHandleBorder      */ 6,
     /* kFocus             */ 4,
-    /* kHover             */ 5,
+    /* kHover             */ 6, // one step above outline, not text strength
     /* kText              */ 1,
     /* kTextMuted         */ 4,
     /* kTextMutedDim      */ 5, // neutral-500 (#737373): a step dimmer than
@@ -168,12 +194,12 @@ static constexpr int kTailwindDark[] = {
     /* kAccentBright      */ 4,
     /* kAccentHover       */ 6,
     /* kAccentText        */ 1,
-    /* kFloaterBody       */ 9,
-    /* kFloaterEdge       */ 8, // normal edge; the body is the sunken surface
-    /* kRecessedGuideLine */ 7, // 2 steps from the recessed column (dark
-                                 // col 9) — same distance as light
-    /* kRecessedHairline  */ 8, // 1 step from the recessed column (dark
-                                 // col 9)
+    /* kFloaterBody       */ 8,
+    /* kFloaterEdge       */ 7, // normal edge; the body is one step above base
+    /* kRecessedGuideLine */ 8, // 2 steps from the recessed column (dark
+                                 // col 10) — same distance as light
+    /* kRecessedHairline  */ 9, // 1 step from the recessed column (dark
+                                 // col 10)
     /* kWindowBand        */ 5, // neutral-500: mid gray, visible on the dark
                                  // ruler at its fixed alpha
     /* kWindowEdge        */ 4, // neutral-400 (same step as textMuted: a
@@ -181,6 +207,8 @@ static constexpr int kTailwindDark[] = {
     /* kWindowText        */ 9, // neutral-900
     /* kAccentBrightText  */ 9, // neutral-900: darkest text on the pale
                                  // accentBright
+    /* kDanger            */ 4, // red-400 (#f87171) on the deep theme
+    /* kWarning           */ 4, // amber-400 (#fbbf24) on the deep theme
 };
 static_assert(sizeof(kTailwindDark) / sizeof(kTailwindDark[0]) == kTokenCount,
               "kTailwindDark must have one column per TokenRole");
@@ -201,7 +229,7 @@ inline QColor paletteColor(const char* aHex, double aAlpha = 1.0) {
 // ---------------------------------------------------------------------------
 enum KeyColorToken { kKeyBase, kKeyMove, kKeyRotate, kKeyScale, kKeyDepth,
                      kKeyOpa, kKeyBone, kKeyPose, kKeyMesh, kKeyFFD,
-                     kKeyImage, kKeyHSV, kKeyBlur, kKeyCount };
+                     kKeyImage, kKeyHSV, kKeyBlur, kKeyWave, kKeyMask, kKeyCount };
 static constexpr int kKeyColorRow[] = {
     kTailwindNeutralRow, // baseKey  (neutral)
     11,                  // moveKey  (indigo)
@@ -216,6 +244,8 @@ static constexpr int kKeyColorRow[] = {
     9,                   // imageKey (sky)
     11,                  // HSVKey   (indigo)
     14,                  // blurKey  (fuchsia)
+    7,                   // waveKey  (teal)
+    12,                  // maskKey  (violet)
 };
 static_assert(sizeof(kKeyColorRow) / sizeof(kKeyColorRow[0]) == kKeyCount,
               "kKeyColorRow must have one row per KeyColorToken");
@@ -365,12 +395,34 @@ struct Colors {
     QColor imageKey;
     QColor HSVKey;
     QColor blurKey;
+    QColor waveKey;
+    // The MATTE's own hue. A mask is no longer the neutral fallback: an uncoloured key
+    // dot reads as "no state" beside every other channel's hue, which is what a mask
+    // looked like in the card before this token existed.
+    QColor maskKey;
     // The channel hue table's axis cells (see THE CHANNEL HUE TABLE): X red,
     // Y green, Z blue. Both views read these through channelColor() below;
     // no widget derives an axis hue of its own.
     QColor axisX;
     QColor axisY;
     QColor axisZ;
+
+    // Semantic inks, the two roles the token table has no cell for: an error and
+    // a warning have to read as such whatever the accent is, so they are the red
+    // and amber rows at their own theme column instead of a cell of the neutral
+    // (achromatic) or accent row. They live here rather than as literals in the
+    // QML bridge because the command log's warning badge and the QML facts rows
+    // must be the same ink, and a literal in a second file is how the two drift.
+    QColor danger;  // red-600 / red-400
+    QColor warning; // amber-700 / amber-400
+
+    // THE ALPHA CHECKER behind a layer thumbnail (and anything else that shows a matte).
+    // These are the values the ORIGINAL translucent pair composited to over the tree's #262626
+    // row (#363636 on #202020), written out as exact channels instead of reached through
+    // alpha: a translucent pair landed one level off on screen (measured 31 for the dark tile
+    // where the specification says 32), and an opaque pair cannot drift.
+    QColor checkerLight;
+    QColor checkerDark;
 
     bool isDark; // which elevation model the tokens were computed with
 
@@ -430,12 +482,21 @@ struct Colors {
             paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnLight]), // imageKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnLight]), // HSVKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnLight]), // blurKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyWave]][kKeyColorColumnLight]), // waveKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMask]][kKeyColorColumnLight]), // maskKey
             // The channel hue table's axis cells, at the same key column as
             // the type hues so an axis channel and a no-axis channel read at
             // one brightness (THE CHANNEL HUE TABLE).
             paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisX]][kKeyColorColumnLight]), // axisX
             paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisY]][kKeyColorColumnLight]), // axisY
             paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisZ]][kKeyColorColumnLight]), // axisZ
+            // The semantic roles read their own hue rows (never the neutral or
+            // accent row): red and amber at the pale-theme columns above.
+            paletteColor(kTailwindRows[kDangerRow][kTailwindLight[kDanger]]),   // danger
+            paletteColor(kTailwindRows[kWarningRow][kTailwindLight[kWarning]]), // warning
+            // the SAME two steps round a pale row (`base` = #ffffff in the light theme)
+            QColor(0xf4, 0xf4, 0xf4), // checkerLight  (#f4f4f4)
+            QColor(0xdc, 0xdc, 0xdc), // checkerDark   (#dcdcdc)
             false, // isDark
         };
         return c;
@@ -493,12 +554,23 @@ struct Colors {
             paletteColor(kTailwindRows[kKeyColorRow[kKeyImage]][kKeyColorColumnDark]), // imageKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyHSV]][kKeyColorColumnDark]), // HSVKey
             paletteColor(kTailwindRows[kKeyColorRow[kKeyBlur]][kKeyColorColumnDark]), // blurKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyWave]][kKeyColorColumnDark]), // waveKey
+            paletteColor(kTailwindRows[kKeyColorRow[kKeyMask]][kKeyColorColumnDark]), // maskKey
             // The channel hue table's axis cells (THE CHANNEL HUE TABLE): rose,
             // green and sky at the dark key column = #fb7185, #4ade80, #38bdf8,
             // the three cells design section 7 names.
             paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisX]][kKeyColorColumnDark]), // axisX
             paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisY]][kKeyColorColumnDark]), // axisY
             paletteColor(kTailwindRows[kChannelAxisRow[kChannelAxisZ]][kKeyColorColumnDark]), // axisZ
+            // red-400 / amber-400: the deep theme's semantic steps (see
+            // kDangerRow/kWarningRow for why they do not follow the accent).
+            paletteColor(kTailwindRows[kDangerRow][kTailwindDark[kDanger]]),   // danger
+            paletteColor(kTailwindRows[kWarningRow][kTailwindDark[kWarning]]), // warning
+            // the checker's ON-SCREEN values, measured off the original's own screenshot
+            // (c0b1eea4): #242424 on #141414. The tree's row is `base` #171717 - not `raised`
+            // #262626, which is what I had been calibrating against, one surface too high.
+            QColor(0x24, 0x24, 0x24), // checkerLight  (#242424 = 36)
+            QColor(0x14, 0x14, 0x14), // checkerDark   (#141414 = 20)
             true, // isDark
         };
         return c;
@@ -579,6 +651,8 @@ inline QColor keyTypeColor(const Colors& aColors, core::TimeKeyType aType) {
     case core::TimeKeyType_Image: return aColors.imageKey;
     case core::TimeKeyType_HSV: return aColors.HSVKey;
     case core::TimeKeyType_Blur: return aColors.blurKey;
+    case core::TimeKeyType_Wave: return aColors.waveKey;
+    case core::TimeKeyType_Mask: return aColors.maskKey;
     case core::TimeKeyType_TERM: break;
     }
     return aColors.baseKey; // the neutral key

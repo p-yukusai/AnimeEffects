@@ -444,6 +444,13 @@ int main(int argc, char** argv) {
         // the Flickable's clip and only a clip-aware clamp survives (the
         // measured defect class). It also sits at its row's right end, so the
         // horizontal clamp is exercised in the same case.
+        //
+        // Since 2026-10-26 the bubble is mounted in the window OVERLAY
+        // (AeToolTip), which removed the ListView/dialog clip from its path but
+        // NOT this clamp: clampRect() walks the OWNER's clipping ancestors and
+        // converts each viewport into overlay coordinates. The 'fits the VISIBLE
+        // viewport' assertion below is what catches a clamp that widened back to
+        // the window when the frame changed.
         QQuickItem* tipOwner = nullptr;
         qreal best = -1;
         for (QQuickItem* c : f.root->findChildren<QQuickItem*>()) {

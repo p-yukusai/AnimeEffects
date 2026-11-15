@@ -600,9 +600,16 @@ TimeLineHeader::TimeLineHeader(GUIResources& aResources, PlayBackWidget* aTransp
 
 TimeLineHeader::~TimeLineHeader() {
     // The surface holds the control's callbacks (they capture this widget), so it
-    // must forget the control before either goes away. This widget is destroyed
-    // before the timeline in every construction order the dock uses, and the
-    // clearance makes it independent of that order.
+    // must forget the control before either goes away.
+    //
+    // The surface is NOT guaranteed to outlive this bar: it is a grandchild of the
+    // dock, and the dock creates the timeline long before the bar, so QObject's
+    // child sweep (creation order) frees it first unless the dock deletes this bar
+    // from its own destructor body - which gui::TargetWidget now does. The earlier
+    // comment here claimed the construction order guaranteed it; it did not, and the
+    // disconnect below then walked a freed signaller (exit 139, every quit).
+    // mInner is a QPointer precisely so the order is not load-bearing: once the
+    // surface is gone the handle is null and there is nothing to clear.
     if (mInner) {
         mInner->setEasingItemHost(nullptr);
         if (mInner->editor() && mSelectionSlot.isValid())

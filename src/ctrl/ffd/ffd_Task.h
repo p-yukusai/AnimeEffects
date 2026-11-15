@@ -12,6 +12,7 @@
 #include "core/TimeKeyExpans.h"
 #include "core/MeshTransformer.h"
 #include "core/LayerMesh.h"
+#include "ctrl/Brush.h"
 #include "ctrl/FFDParam.h"
 #include "ctrl/ffd/ffd_TaskResource.h"
 
@@ -36,6 +37,13 @@ namespace ffd {
             const FFDParam& aBrushParam
         );
 
+        // One STAMP from the shared stroke (ctrl/Brush.h): the centre and radius in
+        // world px, the shared hardness, the amount that stamp deposits, and the
+        // travel since the previous stamp (which is the velocity a deformer moves a
+        // vertex by, so a spaced stroke conserves its displacement).
+        void setBrush(const BrushStamp& aStamp);
+        // The focuser and the single-vertex dragger are not painting: they place
+        // their brush by hand and move one point.
         void setBrush(const QVector2D& aBrushCenter, const QVector2D& aBrushVel);
 
         gl::Vector3* dstMesh() const { return mDstMesh.data(); }
@@ -73,7 +81,8 @@ namespace ffd {
         int mDstBufferCount;
 
         FFDParam mParam;
-        QVector2D mBrushCenter;
+        BrushStamp mStamp;      // the painting path
+        QVector2D mBrushCenter; // the focuser / dragger path
         QVector2D mBrushVel;
         bool mUseBlur;
 

@@ -11,6 +11,7 @@
 #include "core/PoseKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
+#include "core/WaveKey.h"
 #include "util/Easing.h"
 
 namespace core {
@@ -45,6 +46,8 @@ inline util::Easing::Param* keyEasingOf(TimeKey& aKey, const TimeKeyType aType, 
         return &static_cast<BlurKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_HSV:
         return &static_cast<HSVKey&>(aKey).data().easing(aComponent);
+    case TimeKeyType_Wave:
+        return &static_cast<WaveKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_Image:
         return &static_cast<ImageKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_Pose:
@@ -73,6 +76,8 @@ inline const util::Easing::Param* keyEasingOf(
         return &static_cast<const BlurKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_HSV:
         return &static_cast<const HSVKey&>(aKey).data().easing(aComponent);
+    case TimeKeyType_Wave:
+        return &static_cast<const WaveKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_Image:
         return &static_cast<const ImageKey&>(aKey).data().easing(aComponent);
     case TimeKeyType_Pose:

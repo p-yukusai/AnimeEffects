@@ -18,42 +18,49 @@ namespace bone {
         mTargetInvMtx(aTarget.invMtx),
         mCommandRef(),
         mBrush(),
-        mBrushPressure(),
+        mParam(),
+        mStroke(),
+        mCursorPos(),
         mIsBrushDrawing() {
         XC_PTR_ASSERT(mKeyOwner.key);
     }
 
     void PaintInflMode::updateParam(const BoneParam& aParam) {
-        mBrush.setRadius(aParam.piRadius);
-        mBrushPressure = aParam.piPressure;
+        mParam = aParam;
+        mBrush.setRadius(aParam.brush.radius);
     }
 
     bool PaintInflMode::updateCursor(const CameraInfo&, const AbstractCursor& aCursor) {
-        mBrush.setCenter(aCursor.worldPos());
+        mCursorPos = aCursor.worldPos();
+        mBrush.setCenter(mCursorPos);
+        mBrush.setRadius(mParam.brush.radius);
 
         if (aCursor.emitsLeftPressedEvent()) {
             mIsBrushDrawing = true;
             mCommandRef = nullptr;
-            updatePaint();
+            mStroke.begin(mParam.brush, mCursorPos, aCursor.pressure(), [this](const BrushStamp& aStamp) {
+                updatePaint(aStamp);
+            });
         } else if (aCursor.emitsLeftDraggedEvent()) {
-            updatePaint();
+            mStroke.move(mCursorPos, aCursor.pressure());
         } else if (aCursor.emitsLeftReleasedEvent()) {
+            mStroke.end();
             mIsBrushDrawing = false;
             mCommandRef = nullptr;
-            updatePaint();
         }
 
         return true;
     }
 
-    bool PaintInflMode::updatePaint() {
+    bool PaintInflMode::updatePaint(const BrushStamp& aStamp) {
         bool modified = false;
-        const QVector2D brushPos = (mTargetInvMtx.map(QVector3D(mBrush.center()))).toVector2D();
+        const QVector2D brushPos = (mTargetInvMtx.map(QVector3D(aStamp.center))).toVector2D();
 
-        const float brushRange = (mTargetInvMtx.map(QVector3D(mBrush.radius(), 0.0f, 0.0f)) - mTargetInvMtx.map(QVector3D()))
+        const float brushRange = (mTargetInvMtx.map(QVector3D(aStamp.radius, 0.0f, 0.0f)) - mTargetInvMtx.map(QVector3D()))
                                      .toVector2D()
                                      .length();
-        const float brushCoreRange = 0.3f * brushRange;
+        // the hard core is the shared brush hardness (was a hard-wired 0.3)
+        const float brushCoreRange = aStamp.hardness * brushRange;
 
         auto& topBones = mKeyOwner.key->data().topBones();
         for (auto topBone : topBones) {
@@ -85,10 +92,13 @@ namespace bone {
                 if (vlen - brushRange > std::max(linearRange.x(), brushCoreRange))
                     continue;
 
+                // the shared falloff over the distance from the bone to the stamp
+                const float weight = aStamp.amount * brushFalloff(vlen, brushRange, aStamp.hardness);
+
                 std::array<QVector2D, 2> prevRange = {bone->range(0), bone->range(1)};
                 std::array<QVector2D, 2> nextRange = prevRange;
                 for (int i = 0; i < 2; ++i) {
-                    const float rangeAdd = mBrushPressure * append * (i == 0 ? (1.0f - ratio) : ratio);
+                    const float rangeAdd = weight * append * (i == 0 ? (1.0f - ratio) : ratio);
                     nextRange[i].setX(std::min(nextRange[i].x() + rangeAdd, brushRange));
                     nextRange[i].setY(std::min(nextRange[i].y() + rangeAdd, brushRange));
                 }
@@ -118,7 +128,7 @@ namespace bone {
             renderer.renderBones(bone);
         }
 
-        renderer.renderBrush(mBrush, mIsBrushDrawing);
+        renderer.renderBrush(mBrush, mIsBrushDrawing, mParam.brush.hardness);
     }
 
     void PaintInflMode::assignInfluence(

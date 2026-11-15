@@ -12,6 +12,7 @@
 #include "core/BlurKey.h"
 #include "core/HsvKey.h"
 #include "core/ImageKey.h"
+#include "core/WaveKey.h"
 
 namespace ctrl {
 namespace graph {
@@ -98,6 +99,16 @@ float Channel::value(const core::TimeKey& aKey) const {
         const core::HSVKey& key = static_cast<const core::HSVKey&>(aKey);
         return static_cast<float>(key.data().hsv().at(mComponent));
     }
+    case core::TimeKeyType_Wave: {
+        const core::WaveKey& key = static_cast<const core::WaveKey&>(aKey);
+        switch (mComponent) {
+        case 0: return key.data().strength();
+        case 1: return key.data().wavelength();
+        case 2: return key.data().angleDeg();
+        case 3: return key.data().phase();
+        default: return key.data().mix();
+        }
+    }
     case core::TimeKeyType_Image: {
         const core::ImageKey& key = static_cast<const core::ImageKey&>(aKey);
         return (mComponent == 0) ? key.data().imageOffset().x() : key.data().imageOffset().y();
@@ -175,6 +186,16 @@ bool Channel::writeValue(core::TimeKey& aKey, float aValue) const {
         default: data.setValue(value); return true;
         }
     }
+    case core::TimeKeyType_Wave: {
+        core::WaveKey::Data& data = static_cast<core::WaveKey&>(aKey).data();
+        switch (mComponent) {
+        case 0: data.setStrength(aValue); return true;
+        case 1: data.setWavelength(aValue); return true;
+        case 2: data.setAngleDeg(aValue); return true;
+        case 3: data.setPhase(aValue); return true;
+        default: data.setMix(aValue); return true;
+        }
+    }
     case core::TimeKeyType_Image: {
         core::ImageKey& key = static_cast<core::ImageKey&>(aKey);
         QVector2D offset = key.data().imageOffset();
@@ -222,6 +243,14 @@ QString Channel::componentName() const {
         case 1: return QObject::tr("Saturation");
         case 2: return QObject::tr("Value");
         default: return QObject::tr("Hue");
+        }
+    case core::TimeKeyType_Wave:
+        switch (mComponent) {
+        case 1: return QObject::tr("Wavelength");
+        case 2: return QObject::tr("Direction");
+        case 3: return QObject::tr("Phase");
+        case 4: return QObject::tr("Mix");
+        default: return QObject::tr("Strength");
         }
     default:
         // Not a graphable type: only reachable through a hand-made Channel, and

@@ -14,6 +14,7 @@
 #include "core/ObjectTree.h"
 #include "core/ObjectTreeNotifier.h"
 #include "gui/GUIResources.h"
+#include "gui/ThumbnailCache.h"
 #include "gui/ViaPoint.h"
 #include "gui/obj/obj_Item.h"
 
@@ -128,6 +129,8 @@ private:
 
     ViaPoint& mViaPoint;
     GUIResources& mGUIResources;
+    // layer thumbnails, cached per source buffer (see gui/ThumbnailCache.h)
+    ThumbnailCache mThumbnails;
     util::LinkPointer<core::Project> mProject;
     util::SlotId mTimeLineSlot;
 

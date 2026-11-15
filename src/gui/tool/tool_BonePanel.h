@@ -7,6 +7,7 @@
 #include "util/Signaler.h"
 #include "ctrl/BoneParam.h"
 #include "gui/GUIResources.h"
+#include "gui/tool/tool_BrushPanel.h"
 #include "gui/tool/tool_Items.h"
 
 namespace gui {
@@ -18,6 +19,8 @@ namespace tool {
         BonePanel(QWidget* aParent, GUIResources& aResources);
 
         int updateGeometry(const QPoint& aPos, int aWidth);
+
+        BrushPanel* brushPanel() { return mBrush.data(); }
 
         const ctrl::BoneParam& param() const { return mParam; }
 
@@ -33,10 +36,9 @@ namespace tool {
         GUIResources& mResources;
         ctrl::BoneParam mParam;
         QScopedPointer<SingleOutItem> mTypeGroup;
-        QScopedPointer<SliderItem> mPIRadius;
-        QScopedPointer<SliderItem> mPIPressure;
-        QScopedPointer<SliderItem> mEIRadius;
-        QScopedPointer<SliderItem> mEIPressure;
+        // ONE influence brush for both paint and erase (the shared rows), instead
+        // of a separate radius+pressure pair per mode
+        QScopedPointer<BrushPanel> mBrush;
     };
 
 } // namespace tool

@@ -45,6 +45,12 @@ const QHash<QString, IconRole>& roleTable() {
         {QStringLiteral("dialog_open"), IconRole::Text},
         {QStringLiteral("dialog_reset"), IconRole::Text},
         {QStringLiteral("dialog_save"), IconRole::Text},
+        {QStringLiteral("arrows-horizontal"), IconRole::MutedDim},
+        {QStringLiteral("arrows-vertical"), IconRole::MutedDim},
+        {QStringLiteral("stack"), IconRole::MutedDim},
+        {QStringLiteral("circle-half"), IconRole::MutedDim},
+        {QStringLiteral("grid-four"), IconRole::MutedDim},
+        {QStringLiteral("angle"), IconRole::MutedDim},
         {QStringLiteral("arrows-out-line-horizontal"), IconRole::Text},
         {QStringLiteral("down_arrow"), IconRole::Muted},
         {QStringLiteral("down_arrow_disabled"), IconRole::Disabled},
@@ -114,6 +120,7 @@ QColor roleColor(IconRole aRole, const Colors& aColors) {
     switch (aRole) {
     case IconRole::Text: return aColors.icon;
     case IconRole::Muted: return aColors.textMuted;
+    case IconRole::MutedDim: return aColors.textMutedDim;
     case IconRole::Hairline: return aColors.hairline;
     case IconRole::Accent: return aColors.focus;
     case IconRole::Outline: return aColors.outline;

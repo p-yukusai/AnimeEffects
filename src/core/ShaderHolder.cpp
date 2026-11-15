@@ -5,7 +5,7 @@
 namespace core {
 
 ShaderHolder::ShaderHolder(): mShaders(), mGridShaders(), mClipperShaders() {
-    mShaders.resize(img::BlendMode_TERM * 2 * 2);
+    mShaders.resize(img::BlendMode_TERM * 2 * 2 * 2);
     mGridShaders.resize(1);
     mClipperShaders.resize(2);
 }
@@ -25,8 +25,11 @@ ShaderHolder::~ShaderHolder() {
     }
 }
 
-gl::EasyShaderProgram& ShaderHolder::reserveShader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV) {
-    const int index = aBlendMode + img::BlendMode_TERM * (int)aIsClippee + img::BlendMode_TERM * 2 * (int)aUseHSV;
+gl::EasyShaderProgram& ShaderHolder::reserveShader(
+    img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV, bool aUseLayerMask
+) {
+    const int index = aBlendMode + img::BlendMode_TERM * (int)aIsClippee + img::BlendMode_TERM * 2 * (int)aUseHSV
+        + img::BlendMode_TERM * 4 * (int)aUseLayerMask;
     if (!mShaders[index]) {
         mShaders[index] = new gl::EasyShaderProgram();
         auto shader = mShaders[index];
@@ -51,6 +54,7 @@ gl::EasyShaderProgram& ShaderHolder::reserveShader(img::BlendMode aBlendMode, bo
         source.setVariationValue("IS_CLIPPEE", aIsClippee ? "1" : "0");
 
         source.setVariationValue("USE_HSV", aUseHSV ? "1" : "0");
+        source.setVariationValue("LAYER_MASK", aUseLayerMask ? "1" : "0");
 
         if (!source.resolveVariation()) {
             XC_FATAL_ERROR("OpenGL Error", "Failed to resolve shader variation.\n", source.log());
@@ -68,20 +72,28 @@ gl::EasyShaderProgram& ShaderHolder::reserveShader(img::BlendMode aBlendMode, bo
 }
 
 void ShaderHolder::reserveShaders(img::BlendMode aBlendMode) {
-    reserveShader(aBlendMode, true, true);
-    reserveShader(aBlendMode, true, false);
-    reserveShader(aBlendMode, false, true);
-    reserveShader(aBlendMode, false, false);
+    for (int mask = 0; mask < 2; ++mask) {
+        reserveShader(aBlendMode, true, true, mask != 0);
+        reserveShader(aBlendMode, true, false, mask != 0);
+        reserveShader(aBlendMode, false, true, mask != 0);
+        reserveShader(aBlendMode, false, false, mask != 0);
+    }
 }
 
-gl::EasyShaderProgram& ShaderHolder::shader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV) {
-    const int index = aBlendMode + img::BlendMode_TERM * (int)aIsClippee + img::BlendMode_TERM * 2 * (int)aUseHSV;
+gl::EasyShaderProgram& ShaderHolder::shader(
+    img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV, bool aUseLayerMask
+) {
+    const int index = aBlendMode + img::BlendMode_TERM * (int)aIsClippee + img::BlendMode_TERM * 2 * (int)aUseHSV
+        + img::BlendMode_TERM * 4 * (int)aUseLayerMask;
     XC_PTR_ASSERT(mShaders.at(index));
     return *(mShaders.at(index));
 }
 
-const gl::EasyShaderProgram& ShaderHolder::shader(img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV) const {
-    const int index = aBlendMode + img::BlendMode_TERM * (int)aIsClippee + img::BlendMode_TERM * 2 * (int)aUseHSV;
+const gl::EasyShaderProgram& ShaderHolder::shader(
+    img::BlendMode aBlendMode, bool aIsClippee, bool aUseHSV, bool aUseLayerMask
+) const {
+    const int index = aBlendMode + img::BlendMode_TERM * (int)aIsClippee + img::BlendMode_TERM * 2 * (int)aUseHSV
+        + img::BlendMode_TERM * 4 * (int)aUseLayerMask;
     XC_PTR_ASSERT(mShaders.at(index));
     return *(mShaders.at(index));
 }
