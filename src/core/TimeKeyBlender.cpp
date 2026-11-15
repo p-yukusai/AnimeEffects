@@ -8,6 +8,7 @@
 #include "core/ObjectNodeUtil.h"
 #include "core/DepthKey.h"
 #include "core/BlurKey.h"
+#include "gl/PagePool.h"
 
 namespace core {
 
@@ -984,13 +985,17 @@ void TimeKeyBlender::blendMaskKey(PositionType aPos, const TimeInfo& aTime) {
 
     expans.setKeyCache(TimeKeyType_Mask, aTime.frame);
 
+    // NOT CLEARED UP FRONT: a blended matte owns a VIEW whose pool resource must survive the
+    // frame (see setBlend), and every branch below either assigns a key (which takes that key's
+    // holder), clears, or materializes a new field (alloc, which drops the holder). Clearing here
+    // would destroy the view - and its pages - on every frame.
     MaskKey::Data& out = expans.mask();
-    out.clear();
 
     TimeKeyGatherer blend(node.timeLine()->map(TimeKeyType_Mask), aTime);
 
     if (blend.isEmpty()) {
         // no key at all: the default key's field, or no mask
+        out.clear();
         auto defaultKey = (const MaskKey*)node.timeLine()->defaultKey(TimeKeyType_Mask);
         if (defaultKey && defaultKey->data().isValid())
             out.assign(defaultKey->data());
@@ -1036,12 +1041,45 @@ void TimeKeyBlender::blendMaskKey(PositionType aPos, const TimeInfo& aTime) {
         return;
     }
 
+    const int fixedTime = int(time * 256.0f + 0.5f);   // one rounding, integer lerp
+    const bool forceFull = d0.forceFullTexture() || d1.forceFullTexture();
+
+    // TWO NEUTRAL FIELDS HIDE NOTHING, whatever the weight: the neutral rule must hold for an
+    // animation too, so this frame has no matte at all (and no resource to keep).
+    if (!d0.isPainted() && !d1.isPainted()) {
+        out.clear();
+        return;
+    }
+
+    // THE VIEW: WITH THE POOL ON, THE BLENDED FIELD IS NEVER MATERIALIZED. Every level is a
+    // linear filter of the field, so the blended matte is the lerp of the two keys' OWN pyramids
+    // at this weight (MaskPyramid::setBlend), and its pool resource keeps its pages across
+    // frames: the per-frame work is the always-resident coarse chain plus the pages the view
+    // samples, not a fresh field, a fresh chain, a readback and a fresh pool registration. The
+    // keys' pyramids are built once each, exactly as a static matte's is.
+    if (!forceFull && gl::PagePool::enabled() && out.setBlend(d0, d1, fixedTime)) {
+        out.easing(0) = d0.easing(0);
+        return;
+    }
+
+    // THE MATERIALIZING FORM: the full-resolution control (AE_VIRTUAL_TEXTURE=0 or
+    // setForceFullTexture), and the fallback for a pair the view cannot take (two grids, a field
+    // that cannot be captured). This is the pre-paging blend, kept exact.
     out.alloc(d0.texelSize(), d0.contentRect(), MaskKey::kNeutral);
     out.easing(0) = d0.easing(0);
+    // THE A/B CONTROL RIDES THE VALUE THROUGH A BLEND TOO: `Data::setForceFullTexture` is the
+    // mask twin of ImageKey's control and the renderer reads the EXPANSION's copy, so without
+    // this an animated matte could not be asked for the full chain at all. Either side forcing
+    // is enough - the control only ever costs the full chain.
+    out.setForceFullTexture(forceFull);
+    // AND SO DOES "THE MATTE HIDES SOMETHING". In the open interval between the keys a texel either
+    // key hides is a lerp of 255 and a value below it, i.e. still below 255, so the source flags
+    // answer exactly - and this flag is what makes the draw and the demand pass treat a blended
+    // matte as a matte at all (a neutral one must stay free, so it cannot simply be assumed).
+    out.setPainted(d0.isPainted() || d1.isPainted());
 
     const int w = d0.texelSize().width();
     const int h = d0.texelSize().height();
-    const int fixedTime = int(time * 256.0f + 0.5f);   // one rounding, integer lerp
     for (int y = 0; y < h; ++y) {
         const uchar* s0 = d0.field().constScanLine(y);
         const uchar* s1 = d1.field().constScanLine(y);

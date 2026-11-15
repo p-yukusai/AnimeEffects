@@ -4,6 +4,7 @@
 #include "util/SelectArgs.h"
 #include "gl/Global.h"
 #include "gl/Util.h"
+#include "core/VirtualTexture.h"
 #include "ctrl/Exporter.h"
 
 #include <QCoreApplication>
@@ -553,7 +554,25 @@ bool Exporter::update() {
 
     XC_ASSERT(renderInfo.framebuffer != 0);
     XC_ASSERT(renderInfo.dest != 0);
+
+    // THE EXPORT POLICY (see docs/design/renderer/texture-residency.md): the viewport can wait
+    // two frames for a demand readback because the coarse chain covers the wait; an export
+    // cannot, because each frame is written once. So the same renderer runs a DEMAND-ONLY pass
+    // for this frame's exact camera, the paged textures are synchronised, and the real pass then
+    // samples pages that are already resident - the exported first frame is as sharp as the
+    // last.
+    if (gl::PagePool::enabled()) {
+        core::RenderInfo demandInfo = renderInfo;
+        demandInfo.demandOnly = true;
+        core::VirtualTexture::beginFrame();
+        mProject.objectTree().render(demandInfo, true);
+        core::VirtualTexture::endFrame();
+        core::VirtualTexture::synchronize();
+        core::VirtualTexture::beginFrame();
+    }
     mProject.objectTree().render(renderInfo, true);
+    if (gl::PagePool::enabled())
+        core::VirtualTexture::endFrame();
 
     // unbind framebuffer
     if (!mFramebuffers.front()->release()) {

@@ -14,6 +14,7 @@
 #include "core/ResourceUpdatingWorkspace.h"
 #include "core/FFDKeyUpdater.h"
 #include "core/ImageKeyUpdater.h"
+#include "core/VirtualTexture.h"
 #include "core/ClippingFrame.h"
 #include "core/WorldBlurMath.h"
 #include "core/DestinationTexturizer.h"
@@ -33,6 +34,7 @@ LayerNode::LayerNode(const QString& aName, ShaderHolder& aShaderHolder):
     mIsClipped(),
     mMeshTransformer(aShaderHolder.meshTransformerResource()),
     mCurrentMesh(),
+    mMeshRevision(0),
     mTransformKey(),
     mTransformKeyValid(),
     mClippees() {}
@@ -54,7 +56,11 @@ void LayerNode::setDefaultImage(const img::ResourceHandle& aHandle, img::BlendMo
     key->resetGridMesh();
     key->setImageOffsetByCenter();
 
-    mShaderHolder.reserveShaders(aBlendMode);
+    // the VT variation costs one more program per (clippee, hsv, mask) combination, so it is
+    // reserved only for a resource that can actually be paged
+    const bool pageable =
+        aHandle->hasImage() && VirtualTexture::pageable(aHandle->image().pixelSize());
+    mShaderHolder.reserveShaders(aBlendMode, pageable);
     mShaderHolder.reserveGridShader();
     mShaderHolder.reserveClipperShaders();
 }
@@ -91,7 +97,9 @@ void LayerNode::setBlendMode(img::BlendMode aMode) {
     auto key = (ImageKey*)mTimeLine.defaultKey(TimeKeyType_Image);
     if (key) {
         key->data().setBlendMode(aMode);
-        mShaderHolder.reserveShaders(aMode);
+        const bool pageable = key->data().resource() && key->data().resource()->hasImage()
+            && VirtualTexture::pageable(key->data().resource()->image().pixelSize());
+        mShaderHolder.reserveShaders(aMode, pageable);
     }
 }
 
@@ -197,6 +205,7 @@ double screenAreaPx(const RenderInfo& aInfo, const TimeKeyExpans& aExpans, const
     quad = clipToHalfPlane(quad, 1, maxY, false);
     return polygonAreaPx(quad);
 }
+
 } // namespace
 
 void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor) {
@@ -256,17 +265,163 @@ void LayerNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccess
         if (!frameStatsOn || aInfo.isGrid || !mCurrentMesh)
             return;
         const TimeKeyExpans& expans = aAccessor.get(mTimeLine);
-        const gl::Texture* texture = expans.areaTexture();
-        if (!texture)
+        const QSize contentSize = expans.areaTextureSize();
+        if (contentSize.isEmpty())
             return;
-        frameStats.layerDrawn(screenAreaPx(aInfo, expans, texture->size()));
+        frameStats.layerDrawn(screenAreaPx(aInfo, expans, contentSize));
     };
+
+    // The paged path's demand for THIS frame: the pages this layer's own triangles sample,
+    // marked from the same skinned positions the draw will read. A layer with no paged texture
+    // (or a grid pass, which does not sample the image) costs one null check.
+    const auto markPagedDemand = [&]() {
+        if (aInfo.isGrid || !mCurrentMesh)
+            return;
+        const TimeKeyExpans& expans = aAccessor.get(mTimeLine);
+        // THE DEMAND'S INPUTS, so a repaint of the same frame can replay its pages instead of
+        // walking every triangle again (VirtualTexture::markDemand). `mMeshRevision` is the
+        // skinning pass's own stamp: the buffer it writes into is stable while the values behind
+        // it change, so the revision - not the buffer's identity - is what says "same vertices".
+        // A camera-only pan keeps the revision and changes the view matrix, which re-marks.
+        if (VirtualTexture* virtualTexture = expans.areaVirtualTexture()) {
+            // THE AFFINE FAST PATH. A layer with no deformation has one Jacobian over its whole
+            // surface, so the LAYER SHADER's uv is a single affine function of the screen
+            // position and the pages its fragments can reach are the quad's page extent - the
+            // same union the mesh walk computes (every triangle of a grid shares that Jacobian),
+            // at four vertices instead of the grid's triangles. Measured on nene at frame 6: ALL
+            // 107 paged layers qualify and they own ALL 1,746,491 triangles the pass walks
+            // (`AE_VT_DEMAND_SPLIT=1` prints the split); `AE_VT_AFFINE_DEMAND=0` walks the mesh
+            // anyway, which is the control.
+            //
+            // The predicate is deliberately conservative - a mesh key, an FFD KEY (not the
+            // position storage: `ffd()` is what the blender always fills, grid positions
+            // included), a bone binding or a non-identity wave each count as deformation - and a
+            // degenerate screen->content mapping falls back to the walk rather than trusting it.
+            //
+            // THE FFD TEST IS THE KEY'S PRESENCE, not the type of the key it deforms:
+            // `ffdMeshParent()` names the ImageKey (or MeshKey) whose grid mesh the FFD keys
+            // displace - a key can never BE an FFD key, so a `type() == TimeKeyType_FFD` test
+            // there is false by construction and every FFD-warped layer took the quad. A quad
+            // cannot see a warp: a fragment's uv is the WARPED mesh's, while `screenToContent` is
+            // the node's SRT, which maps the REST grid - so the pages a warp pulls in are not the
+            // quad's pages, and a miss is a coarse fallback wherever the warp exceeds a page.
+            // (An FFD key whose value happens to be the rest grid costs the walk and nothing
+            // else; the alternative - comparing `ffd()` against the area mesh every frame - is a
+            // per-vertex CPU pass to save a geometry pass.)
+            const bool ffdWarp = !mTimeLine.map(TimeKeyType_FFD).isEmpty();
+            // THE TWO BONE POPULATIONS, which `isAffectedByBinding()` alone conflates. A layer
+            // RIGIDLY BOUND to a bone is drawn with one matrix (`MeshTransformer::callGL` takes the
+            // outer matrix, inner identity) and `contentMappingFor` reads the same matrix, so its
+            // quad is exact - it is still excluded, conservatively. A layer under an active
+            // BoneKey is an INFLUENCE TARGET: the blender gives every such descendant a cache, so
+            // `bone().targetMesh()` is its own mesh, and `callGL` takes the `useInfluence` branch
+            // and skins it per vertex with the pose palette. That is a genuine deformation the
+            // transform cannot see, so it must walk. `AE_VT_DEMAND_SPLIT`'s `infl=` prints the
+            // population - dinner lab frame 0 has nine such layers, seven of them on the quad
+            // before this test.
+            const bool skinned = expans.bone().targetMesh() != nullptr;
+            const bool undeformed = expans.areaMeshKey() == nullptr && !ffdWarp && !skinned
+                && !expans.bone().isAffectedByBinding() && expans.wave().isIdentity();
+            const QSize contentSize = expans.areaTextureSize();
+            QMatrix4x4 screenToContent;
+            bool affine = undeformed && contentSize.width() > 0 && contentSize.height() > 0
+                && qgetenv("AE_VT_AFFINE_DEMAND") != "0";
+            if (affine) {
+                screenToContent =
+                    contentMappingFor(aInfo, aAccessor, aInfo.camera.deviceScreenSize());
+                // a collapsed mapping would mark nothing (or everything): the mesh walk is the
+                // safe answer, and it is what the draw uses anyway
+                const QVector3D o = screenToContent.map(QVector3D(0.0f, 0.0f, 0.0f));
+                const QVector3D u = screenToContent.map(QVector3D(1.0f, 0.0f, 0.0f)) - o;
+                const QVector3D v = screenToContent.map(QVector3D(0.0f, 1.0f, 0.0f)) - o;
+                affine = QVector3D::crossProduct(u, v).length() > 1e-6f;
+            }
+            if (qEnvironmentVariableIsSet("AE_VT_DEMAND_SPLIT")) {
+                // `infl=` is the bone INFLUENCE target (every descendant of an active BoneKey),
+                // which `MeshTransformer::callGL` skins per vertex - the second population the
+                // predicate excludes (see the class comment above). Before that test, a layer
+                // reporting infl=1 affine=1 was on the quad although its draw was deformed.
+                qWarning(
+                    "VTDSPLIT layer=%s tris=%d affine=%d fast=%d infl=%d", qPrintable(name()),
+                    mCurrentMesh->indexCount() / 3, undeformed ? 1 : 0, affine ? 1 : 0,
+                    expans.bone().targetMesh() ? 1 : 0
+                );
+            }
+            if (affine) {
+                VirtualTexture::DemandSignature signature;
+                signature.targetSize = aInfo.camera.deviceScreenSize();
+                signature.viewMatrix = aInfo.camera.viewMatrix();
+                signature.screenToContent = screenToContent;
+                // the DRAW's texel offset, so the quad names the same texels the mesh walk would
+                signature.texCoordOffset = mCurrentMesh->originOffset() - expans.imageOffset();
+                signature.maskRect = QVector4D(
+                    0.0f, 0.0f, (float)contentSize.width(), (float)contentSize.height()
+                );
+                virtualTexture->markScreenDemand(signature);
+            } else {
+                VirtualTexture::DemandSignature signature;
+                signature.positions = mMeshRevision;
+                signature.targetSize = aInfo.camera.deviceScreenSize();
+                signature.viewMatrix = aInfo.camera.viewMatrix();
+                signature.texCoordOffset = mCurrentMesh->originOffset() - expans.imageOffset();
+                virtualTexture->markDemand(
+                    signature, mMeshTransformer.positions(), mCurrentMesh->texCoords(),
+                    mCurrentMesh->vertexCount(), mCurrentMesh->getIndexBuffer(),
+                    mCurrentMesh->indexCount()
+                );
+            }
+        }
+        // THE MATTE'S OWN PAGES. The mask is paged by its own stack (its grid is the field's,
+        // not the image's: replacing an image leaves an authored mask at its old resolution), and
+        // it is sampled through the node's screen-content mapping rather than the mesh's uv, so
+        // its demand pass gets that mapping and the same skinned triangles. It is marked even
+        // while the mask is previewed: the rubylith samples the SAME paged mask.
+        const MaskKey::Data& mask = expans.mask();
+        // The MATTE follows the layer's paging policy: a pageable mask on an unpaged image stays
+        // a full chain, so the two textures of one draw are always paged together (and the A/B
+        // control, which forces the image full, is a control for the mask too).
+        if (expans.areaVirtualTexture() && mask.isValid() && mask.isPainted()) {
+            if (VirtualTexture* pagedMask = mask.virtualTexture()) {
+                // THE MATTE'S UV IS ONE AFFINE OVER THE WHOLE SCREEN, so its demand is a QUAD, not
+                // a walk of the layer's triangles. The fragment shader reads
+                // `(uScreenToLayer * vDestCoord - rect.xy) / rect.zw` (LayerDrawingFrag.glsl) - the
+                // node's SRT, not the mesh's texcoords and not the deformation - so every fragment
+                // has the SAME Jacobian and the same level, and the pages a fragment can sample
+                // are the affine image of the target rect. That image contains every fragment the
+                // layer can draw wherever the deformation puts it, which is why the signature
+                // carries no mesh revision: a moving FFD or pose cannot change the matte's pages,
+                // only which of them are sampled, and the quad's set is a superset. This is the
+                // same entry point a folder's matte uses (markScreenMaskDemand) - one demand
+                // implementation for both mattes, and no triangle walk anywhere for a mask.
+                VirtualTexture::DemandSignature signature;
+                signature.targetSize = aInfo.camera.deviceScreenSize();
+                signature.viewMatrix = aInfo.camera.viewMatrix();
+                signature.screenToContent =
+                    contentMappingFor(aInfo, aAccessor, aInfo.camera.deviceScreenSize());
+                const QRectF rect = mask.contentRect();
+                signature.maskRect = QVector4D(
+                    float(rect.x()), float(rect.y()), float(rect.width()), float(rect.height())
+                );
+                pagedMask->markScreenMaskDemand(signature);
+            }
+        }
+    };
+
+    // THE EXPORT'S DEMAND-ONLY PASS: mark this layer's pages, walk the clippees too (they are
+    // paged layers of their own), draw nothing.
+    if (aInfo.demandOnly) {
+        markPagedDemand();
+        renderClippees(aInfo, aAccessor);
+        return;
+    }
 
     if (!aInfo.isGrid && (isCompositeLayer(aAccessor) || isPreviewTarget(aInfo))) {
         countDrawnLayer();
+        markPagedDemand();
         renderComposite(aInfo, aAccessor);
     } else {
         countDrawnLayer();
+        markPagedDemand();
         renderLayer(aInfo, aAccessor, useHSV, hsvData);
     }
 
@@ -325,7 +480,7 @@ void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor
         return;
 
     auto& expans = aAccessor.get(mTimeLine);
-    if (!expans.areaImageKey() || !expans.areaTexture())
+    if (!expans.areaImageKey() || (!expans.areaTexture() && !expans.areaVirtualTexture()))
         return;
 
     const float worldOpacity = expans.worldOpacity();
@@ -376,7 +531,7 @@ void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor
         QMatrix4x4 world = expans.srt().worldCSRTMatrix();
         if (!aInfo.nonPosed && expans.bone().isAffectedByBinding())
             world = expans.bone().outerMatrix();
-        const QSize textureSize = expans.areaTexture()->size();
+        const QSize textureSize = expans.areaTextureSize();
         // The clamp is the image's texel-centre range: one half texel inside its
         // outline, so a saturated sample lands on the edge texel instead of on the
         // boundary between it and the transparent composite around it.
@@ -536,10 +691,21 @@ void LayerNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccessor
     if (isPreviewTarget(aInfo)) {
         auto slot = std::make_unique<FilterFrame::ScopedSlot>(frame);
         if (aInfo.maskPreviewKey) {
-            if (const gl::Texture* keyTexture = aInfo.maskPreviewKey->data().textureId()) {
+            // THE RUBYLITH PAGES WITH THE MATTE. A pageable field has no full chain at all
+            // (MaskKey::Data::virtualTexture), and the overlay is drawn over the very content
+            // whose pages the demand pass marks, so the tool paints a paged matte end to end.
+            const MaskKey::Data& previewData = aInfo.maskPreviewKey->data();
+            MaskInput preview;
+            preview.rect = previewData.contentRect();
+            if (VirtualTexture* paged = expans.areaVirtualTexture() ? previewData.virtualTexture()
+                                                                  : nullptr) {
+                preview.paged = paged;
+            } else if (const gl::Texture* keyTexture = previewData.textureId()) {
+                preview.texture = keyTexture->id();
+            }
+            if (preview.isValid()) {
                 srcTexture = frame.maskOverlayTexture(
-                    slot->slot(), srcTexture, keyTexture->id(), aInfo.maskPreviewKey->data().contentRect(),
-                    contentMapping(), aInfo.maskPreviewColor
+                    slot->slot(), srcTexture, preview, contentMapping(), aInfo.maskPreviewColor
                 );
                 srcSlot = slot->slot();
                 scratchSlots.push_back(std::move(slot));
@@ -580,19 +746,25 @@ void LayerNode::renderClippees(const RenderInfo& i, const TimeCacheAccessor& a)
 }
 
 void LayerNode::renderClipper(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor, uint8 aClipperId) {
+    // the demand-only pass marks the clipper's pages in its own render(): the mask samples the
+    // same mesh, so the same pages are the ones wanted
+    if (aInfo.demandOnly)
+        return;
     if (!mIsVisible || !aInfo.clippingFrame)
         return;
     if (!mCurrentMesh)
         return;
 
     gl::Global::Functions& ggl = gl::Global::functions();
-    auto& shader = mShaderHolder.clipperShader(aInfo.clippingId != 0);
     auto& expans = aAccessor.get(mTimeLine);
-
-    if (!expans.areaTexture())
+    const VirtualTexture* virtualTexture = expans.areaVirtualTexture();
+    if (!expans.areaImageKey() || (!expans.areaTexture() && !virtualTexture))
         return;
-    auto textureId = expans.areaTexture()->id();
-    auto textureSize = expans.areaTexture()->size();
+    auto& shader = mShaderHolder.clipperShader(aInfo.clippingId != 0, virtualTexture != nullptr);
+    // the paged path has no full texture: unit 0 is the coarse chain, which keeps the sampler
+    // complete and is what a missed page reads anyway
+    auto textureId = virtualTexture ? virtualTexture->coarseTexture().id() : expans.areaTexture()->id();
+    auto textureSize = expans.areaTextureSize();
     auto texCoordOffset = mCurrentMesh->originOffset() - expans.imageOffset();
 
     core::ClippingFrame& frame = *aInfo.clippingFrame;
@@ -627,6 +799,15 @@ void LayerNode::renderClipper(const RenderInfo& aInfo, const TimeCacheAccessor& 
         shader.setUniformValue("uClipperId", (int)aClipperId);
         shader.setUniformValue("uTexture", 0);
         shader.setUniformValue("uDestTexture", 1);
+        // the shared sampler's level controls, exactly as renderLayer sets them for the same
+        // texture: without these the program's defaults would clamp every read to level 0
+        shader.setUniformValue("uLayerLodBias", ImageKey::layerLodBias());
+        shader.setUniformValue(
+            "uLayerMaxLod", float(virtualTexture ? virtualTexture->maxLevel()
+                                                 : std::max(0, expans.areaTexture()->mipmapLevels() - 1))
+        );
+        if (virtualTexture)
+            virtualTexture->bind(shader);
 
         if (aInfo.clippingId != 0) {
             shader.setUniformValue("uClippingId", (int)aInfo.clippingId);
@@ -709,6 +890,7 @@ void LayerNode::transformShape(const RenderInfo& aInfo, const TimeCacheAccessor&
     mMeshTransformer.callGL(
         expans, mesh->getMeshBuffer(), mesh->originOffset(), positions, aInfo.nonPosed, useInfluence
     );
+    ++mMeshRevision;
 
     mCurrentMesh = mesh;
     mTransformKey = key;
@@ -740,11 +922,15 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
     const bool isClippee = (aInfo.clippingFrame && aInfo.clippingId != 0);
 
     auto& expans = aAccessor.get(mTimeLine);
-    if (!expans.areaImageKey() || !expans.areaTexture())
+    const VirtualTexture* virtualTexture = expans.areaVirtualTexture();
+    if (!expans.areaImageKey() || (!expans.areaTexture() && !virtualTexture))
         return;
 
-    auto textureId = expans.areaTexture()->id();
-    auto textureSize = expans.areaTexture()->size();
+    // the paged path has no full texture; unit 0 is bound to the coarse chain so the sampler
+    // is never an incomplete texture (the variation does not read it, but GL still requires a
+    // complete texture for any sampler the program can reach)
+    auto textureId = virtualTexture ? virtualTexture->coarseTexture().id() : expans.areaTexture()->id();
+    auto textureSize = expans.areaTextureSize();
     auto texCoordOffset = mCurrentMesh->originOffset() - expans.imageOffset();
     auto blendMode = expans.blendMode();
     const QMatrix4x4 viewMatrix = aInfo.camera.viewMatrix();
@@ -759,15 +945,38 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
         && (aInfo.maskPreview != nullptr || aInfo.maskPreviewKey != nullptr);
     const bool useLayerMask =
         !aInfo.isGrid && !previewingMask && maskData.isValid() && maskData.isPainted();
-    auto& shader = aInfo.isGrid ? mShaderHolder.gridShader()
-                                : mShaderHolder.shader(blendMode, isClippee, useHSV, useLayerMask);
+    // A PAGED MATTE has its own chain: the layer's VIRTUAL_TEXTURE bit says the image is paged,
+    // the mask's says the field is (same field, its own page grid). The mask accessor builds it
+    // on first use; the demand pass has already asked for it this frame in the normal case.
+    VirtualTexture* maskVirtualTexture =
+        (virtualTexture && useLayerMask) ? maskData.virtualTexture() : nullptr;
+    // THE LAYER SAMPLE's footprint is the draw's own derivatives, unconditionally (see
+    // LayerDrawingFrag.glsl's sampleLayer): a mesh/FFD/bone deformation moves the pixels without
+    // moving the SRT, so there is no second, transform-fed variant left to choose between.
+    auto& shader = aInfo.isGrid
+        ? mShaderHolder.gridShader()
+        : mShaderHolder.shader(
+            blendMode, isClippee, useHSV, useLayerMask, virtualTexture != nullptr,
+            maskVirtualTexture != nullptr
+        );
 
     // update destination color
     XC_PTR_ASSERT(aInfo.destTexturizer);
     auto destTextureId = aInfo.destTexturizer->texture().id();
-    if (!aInfo.isGrid && blendMode != img::BlendMode_Normal) {
+    const bool refreshDestination = !aInfo.isGrid && blendMode != img::BlendMode_Normal;
+    if (refreshDestination) {
         aInfo.destTexturizer->update(
             aInfo.framebuffer, aInfo.dest, viewMatrix, *mCurrentMesh, mMeshTransformer.positions()
+        );
+    }
+    // AE_TRACE_DEST: which draws read the destination texture and which of them refreshed it.
+    // The fragment shader's output goes through blendColor(color, destColor) for EVERY layer, so
+    // a draw with refreshed=0 is blending against whatever the texturizer last held.
+    if (qEnvironmentVariableIsSet("AE_TRACE_DEST") && !aInfo.isGrid) {
+        qWarning(
+            "VTDEST layer=%s blend=%d clippee=%d refreshed=%d mask=%d maskPaged=%d", qPrintable(name()),
+            (int)blendMode, isClippee ? 1 : 0, refreshDestination ? 1 : 0, useLayerMask ? 1 : 0,
+            maskVirtualTexture ? 1 : 0
         );
     }
 
@@ -799,6 +1008,38 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
         shader.setAttributeBuffer("inPosition", mMeshTransformer.positions(), GL_FLOAT, 3);
         shader.setAttributeArray("inTexCoord", mCurrentMesh->texCoords(), mCurrentMesh->vertexCount());
 
+        // AE_TRACE_GEO: the DRAW'S GEOMETRY, hashed. Everything else about the paged read has been
+        // proven equal to the control path (see the design doc): the uv, the level and the texels.
+        // The positions come from the skinning pass and decide which fragments exist at all, so a
+        // sub-pixel difference there is exactly an edge-only difference on a thin stroke. Two runs
+        // of one command either print the same hashes or they do not.
+        if (qEnvironmentVariableIsSet("AE_TRACE_GEO")) {
+            const int count = mCurrentMesh->vertexCount();
+            std::vector<float> positions((size_t)count * 3, 0.0f);
+            ggl.glBindBuffer(GL_ARRAY_BUFFER, mMeshTransformer.positions().id());
+            ggl.glGetBufferSubData(
+                GL_ARRAY_BUFFER, 0, (GLsizeiptr)(positions.size() * sizeof(float)), positions.data()
+            );
+            ggl.glBindBuffer(GL_ARRAY_BUFFER, 0);
+            const auto hashBytes = [](const void* aData, size_t aCount) {
+                const uint8* bytes = (const uint8*)aData;
+                quint64 h = 1469598103934665603ull;
+                for (size_t i = 0; i < aCount; ++i) {
+                    h ^= bytes[i];
+                    h *= 1099511628211ull;
+                }
+                return h;
+            };
+            const quint64 posHash = hashBytes(positions.data(), positions.size() * sizeof(float));
+            const quint64 uvHash = hashBytes(
+                mCurrentMesh->texCoords(), (size_t)count * sizeof(gl::Vector2)
+            );
+            qWarning(
+                "VTGEO layer=%s verts=%d pos=%016llx uv=%016llx", qPrintable(name()), count,
+                (unsigned long long)posHash, (unsigned long long)uvHash
+            );
+        }
+
         shader.setUniformValue("uViewMatrix", viewMatrix);
         shader.setUniformValue("uScreenSize", QSizeF(aInfo.camera.deviceScreenSize()));
         shader.setUniformValue("uImageSize", QSizeF(textureSize));
@@ -807,22 +1048,44 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
         shader.setUniformValue("uTexture", 0);
         shader.setUniformValue("uDestTexture", 1);
 
-        // THE LAYER SAMPLE's footprint and level, for LayerDrawingFrag.glsl's reconstructing read.
-        // From the TRANSFORM, not from derivatives: a derivative is per 2x2 quad and shifts with the
-        // sub-pixel phase, which would modulate the sharpness the reconstruction exists to keep
-        // constant. The bias is applied HERE, so the texture's own GL_TEXTURE_LOD_BIAS must stay 0
-        // (ImageKey sets it to 0 for this reason).
-        {
-            const QVector2D meshScale = expans.srt().scale();
-            const float screenScale = aInfo.camera.scale()
-                * std::max(std::fabs(meshScale.x()), std::fabs(meshScale.y()));
-            const float footprint = 1.0f / std::max(screenScale, 1e-4f);
-            shader.setUniformValue("uLayerFootprint", QVector2D(footprint, footprint));
-            shader.setUniformValue("uLayerLodBias", ImageKey::layerLodBias());
+
+        // THE LAYER SAMPLE's level controls, for LayerDrawingFrag.glsl's two-tap read. The footprint
+        // itself comes from the shader's own derivatives, so nothing about the draw's geometry is
+        // passed here. The bias is applied in the shader, so the texture's own GL_TEXTURE_LOD_BIAS
+        // must stay 0 (ImageKey sets it to 0 for this reason).
+        shader.setUniformValue("uLayerLodBias", ImageKey::layerLodBias());
+        shader.setUniformValue(
+            "uLayerMaxLod", float(virtualTexture ? virtualTexture->maxLevel()
+                                                 : std::max(0, expans.areaTexture()->mipmapLevels() - 1))
+        );
+        // AE_VT_DEBUG_LEVEL: the level this fragment chose, as colour, on BOTH paths (see
+        // LayerSampling.glsl). Two runs - control and paged - then differ only in this value, so
+        // the level fields can be compared pixel for pixel. AE_VT_TAG_LAYER makes each draw output
+        // its own opaque tag instead, which names the layer on top at a pixel; the tag is printed
+        // once per frame so the colour in the frame can be looked up.
+        const bool tagLayer = qEnvironmentVariableIsSet("AE_VT_TAG_LAYER");
+        shader.setUniformValue(
+            "uVtDebugLevel",
+            tagLayer ? 2
+                      : (qEnvironmentVariableIsSet("AE_VT_DEBUG_UV")
+                             ? 3
+                             : (qEnvironmentVariableIsSet("AE_VT_DEBUG_LEVEL") ? 1 : 0))
+        );
+        if (tagLayer) {
+            const quint32 tag = qHash(name());
+            const int tr = (int)((tag >> 16) & 255u);
+            const int tg = (int)((tag >> 8) & 255u);
+            const int tb = (int)(tag & 255u);
             shader.setUniformValue(
-                "uLayerMaxLod", float(std::max(0, expans.areaTexture()->mipmapLevels() - 1))
+                "uVtTag", QVector3D(float(tr) / 255.0f, float(tg) / 255.0f, float(tb) / 255.0f)
             );
+            qWarning("VTTAG layer=%s tag=%d,%d,%d", qPrintable(name()), tr, tg, tb);
         }
+        // THE PAGED READ's own state: the coarse chain, the page table, the atlases and the
+        // per-resource grid. It also re-sets uLayerMaxLod (the chain's last level), so the two
+        // values cannot disagree.
+        if (virtualTexture)
+            virtualTexture->bind(shader);
 
         if (isClippee) {
             shader.setUniformValue("uClippingId", (int)aInfo.clippingId);
@@ -830,23 +1093,29 @@ void LayerNode::renderLayer(const RenderInfo& aInfo, const TimeCacheAccessor& aA
         }
 
         if (useLayerMask) {
-            if (const gl::Texture* maskTexture = maskData.textureId()) {
-                // unit 3: 0 is the layer, 1 the destination, 2 the clipping frame
-                ggl.glActiveTexture(GL_TEXTURE3);
-                ggl.glBindTexture(GL_TEXTURE_2D, maskTexture->id());
-                ggl.glActiveTexture(GL_TEXTURE0);
-                shader.setUniformValue("uLayerMask", 3);
-                const QRectF rect = maskData.contentRect();
-                shader.setUniformValue(
-                    "uLayerMaskRect",
-                    QVector4D(
-                        float(rect.x()), float(rect.y()), float(rect.width()), float(rect.height())
-                    )
-                );
-                shader.setUniformValue(
-                    "uScreenToLayer", waveAffine3(contentMappingFor(aInfo, aAccessor, aInfo.camera.deviceScreenSize()))
-                );
+            // unit 3: 0 is the layer, 1 the destination, 2 the clipping frame. A PAGED mask
+            // binds its coarse chain there - the variation never samples unit 3, but GL wants
+            // every sampler it can reach complete, and the coarse chain is what a miss reads.
+            const gl::Texture* fullMask = nullptr;
+            ggl.glActiveTexture(GL_TEXTURE3);
+            if (maskVirtualTexture) {
+                ggl.glBindTexture(GL_TEXTURE_2D, maskVirtualTexture->coarseTexture().id());
+                maskVirtualTexture->bindMask(shader);
+            } else if ((fullMask = maskData.textureId()) != nullptr) {
+                ggl.glBindTexture(GL_TEXTURE_2D, fullMask->id());
             }
+            ggl.glActiveTexture(GL_TEXTURE0);
+            shader.setUniformValue("uLayerMask", 3);
+            const QRectF rect = maskData.contentRect();
+            shader.setUniformValue(
+                "uLayerMaskRect",
+                QVector4D(
+                    float(rect.x()), float(rect.y()), float(rect.width()), float(rect.height())
+                )
+            );
+            shader.setUniformValue(
+                "uScreenToLayer", waveAffine3(contentMappingFor(aInfo, aAccessor, aInfo.camera.deviceScreenSize()))
+            );
         }
 
         if (useHSV && !HSVData.isEmpty()) {
@@ -907,7 +1176,9 @@ void LayerNode::reserveShadersFromTimeline() {
     mShaderHolder.reserveClipperShaders();
 
     auto reserveOne = [this](ImageKey* k) {
-        mShaderHolder.reserveShaders(k->data().blendMode());
+        const bool pageable = k->data().resource() && k->data().resource()->hasImage()
+            && VirtualTexture::pageable(k->data().resource()->image().pixelSize());
+        mShaderHolder.reserveShaders(k->data().blendMode(), pageable);
     };
 
     if (auto def = static_cast<ImageKey*>(mTimeLine.defaultKey(TimeKeyType_Image)))

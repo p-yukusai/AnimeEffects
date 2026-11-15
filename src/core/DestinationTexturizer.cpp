@@ -63,6 +63,19 @@ void DestinationTexturizer::updateAll(GLuint aFramebuffer, GLuint aFrameTexture)
 
     auto& ggl = gl::Global::functions();
 
+    // A COPY, NOT A BLEND. These draws replace the texturizer's texels with the framebuffer's;
+    // they inherit whatever draw state the caller's last layer left, and a layer draw leaves
+    // GL_BLEND enabled with (SRC_ALPHA, ONE_MINUS_SRC_ALPHA). The copy shader writes the scene
+    // premultiplied with its alpha unchanged, so blending makes it `scene over <the texturizer's
+    // previous content>` in every semi-transparent pixel - and every folder runs this pass, so
+    // the residue compounds through the tree. A leftover scissor would clip the copy to the last
+    // draw's band for the same reason. Measured: with this fixed the panned-camera defect in
+    // docs/design/renderer/texture-residency.md disappears (see the doc's Measured section).
+    const GLboolean prevBlend = ggl.glIsEnabled(GL_BLEND);
+    const GLboolean prevScissor = ggl.glIsEnabled(GL_SCISSOR_TEST);
+    ggl.glDisable(GL_BLEND);
+    ggl.glDisable(GL_SCISSOR_TEST);
+
     // bind framebuffer
     mFramebuffer->bind();
 
@@ -99,6 +112,11 @@ void DestinationTexturizer::updateAll(GLuint aFramebuffer, GLuint aFrameTexture)
     // unbind texture
     ggl.glBindTexture(GL_TEXTURE_2D, 0);
 
+    if (prevBlend)
+        ggl.glEnable(GL_BLEND);
+    if (prevScissor)
+        ggl.glEnable(GL_SCISSOR_TEST);
+
     // release framebuffer
     mFramebuffer->release();
 
@@ -118,6 +136,19 @@ void DestinationTexturizer::update(
     XC_ASSERT(mTexture->size().isValid());
 
     auto& ggl = gl::Global::functions();
+
+    // A COPY, NOT A BLEND. These draws replace the texturizer's texels with the framebuffer's;
+    // they inherit whatever draw state the caller's last layer left, and a layer draw leaves
+    // GL_BLEND enabled with (SRC_ALPHA, ONE_MINUS_SRC_ALPHA). The copy shader writes the scene
+    // premultiplied with its alpha unchanged, so blending makes it `scene over <the texturizer's
+    // previous content>` in every semi-transparent pixel - and every folder runs this pass, so
+    // the residue compounds through the tree. A leftover scissor would clip the copy to the last
+    // draw's band for the same reason. Measured: with this fixed the panned-camera defect in
+    // docs/design/renderer/texture-residency.md disappears (see the doc's Measured section).
+    const GLboolean prevBlend = ggl.glIsEnabled(GL_BLEND);
+    const GLboolean prevScissor = ggl.glIsEnabled(GL_SCISSOR_TEST);
+    ggl.glDisable(GL_BLEND);
+    ggl.glDisable(GL_SCISSOR_TEST);
 
     // bind framebuffer
     mFramebuffer->bind();
@@ -145,6 +176,11 @@ void DestinationTexturizer::update(
     }
     // unbind texture
     ggl.glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (prevBlend)
+        ggl.glEnable(GL_BLEND);
+    if (prevScissor)
+        ggl.glEnable(GL_SCISSOR_TEST);
 
     // release framebuffer
     mFramebuffer->release();

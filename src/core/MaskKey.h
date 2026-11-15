@@ -15,6 +15,9 @@
 
 namespace core {
 
+class MaskPyramid;
+class VirtualTexture;
+
 // A MASK is an alpha field in the node's CONTENT space: the matte that says how
 // much of the node is visible. 0 is fully hidden, 255 fully visible, and the
 // renderer multiplies it into the node's present alpha AFTER its filters, so a
@@ -73,11 +76,40 @@ public:
         // pre-paint pixels, so markDirty moves the key forward with the patch: a copy taken
         // before the stamp (the undo state) then fails its own key check and rebuilds, which is
         // exactly what restoring a whole field must do.
+        //
+        // THE PAGED FORM lives in the same holder, because it describes the same two things the
+        // full chain does - the field and its levels. `pyramid` is the CPU authority a stroke
+        // patches; `paged` is the R8 pool resource built from it. A holder is in ONE of
+        // the modes at a time while it is used: textureId() builds the full chain and leaves a
+        // paged holder alone (both can be current, and markDirty then patches both); the paged
+        // accessor captures the chain's levels once and drops it. Nothing may assume the full
+        // texture exists: `built()` is the test, and it covers both.
+        //
+        // THE THIRD MODE: `pyramid` may be a BLEND VIEW (MaskPyramid::isBlend) over two keys'
+        // pyramids. That is the frame expansion of an ANIMATED matte - no field of its own, one
+        // pool resource kept across frames, and its levels read through the two keys. A view
+        // holder is never shared with a key (assign's builtForField excludes it) and reports
+        // itself valid without an image.
         struct TextureHolder {
             gl::Texture texture;
             MaskMipChain mip;
+            std::unique_ptr<MaskPyramid> pyramid;
+            std::unique_ptr<VirtualTexture> paged;
             quint64 key = 0;
             bool uploaded = false;
+            // A VIEW'S OWN PENDING WORK: the coarse chain and resident pages must be brought to
+            // the weight before the next draw, and they are only stale when an INPUT changed
+            // (weight, either field's stamp, or the pair). A repaint of a frame the blender
+            // cache already holds - a paused matte between its keys - changes nothing and
+            // refreshes nothing.
+            quint64 blendStampA = 0;
+            quint64 blendStampB = 0;
+            bool viewDirty = false;
+            // a paged holder's damage awaiting the next GL-safe call (see markDirty)
+            QRect dirtyBox;
+            bool dirtyBoxValid = false;
+            ~TextureHolder();
+            bool built() const { return uploaded || paged != nullptr; }
         };
         mutable std::shared_ptr<TextureHolder> mTexture;
 
@@ -85,6 +117,8 @@ public:
         QImage mField;
         QRectF mContentRect;
         bool mPainted = false;
+        // see setForceFullTexture: an A/B control, not a user-facing fallback
+        bool mForceFullTexture = false;
 
     public:
         Data();
@@ -102,11 +136,40 @@ public:
         void swap(Data& aRhs);
         void clear();
 
-        bool isValid() const { return !mField.isNull(); }
+        // true when this Data has a field, OR is a blend view of two keys' fields (see setBlend)
+        bool isValid() const;
 
-        // The field as a GL texture (uploaded lazily, re-uploaded only when the
-        // image behind it changes). Null when there is no field.
+        // THE ANIMATED FORM. Two keys' fields at a weight, as a paged view instead of a
+        // materialized field: every level is a linear filter, so the blended pyramid is the lerp
+        // of the two keys' pyramids at the same weight, and the per-frame work is the coarse
+        // chain plus the pages the view actually samples - not the whole field, its chain, and a
+        // readback. The two keys must be one grid (checked by the caller too). Returns false when
+        // the keys cannot be sources (a null field, different grids, a non-pageable size) or the
+        // pool declines, and the caller then falls back to the materializing blend.
+        bool setBlend(const Data& aA, const Data& aB, int aWeight);
+
+        // The key's own levels, built once (the GPU chain + capture) and kept in the holder.
+        // Null when the field is absent or this Data is a view. The blend's sources come from
+        // here; virtualTexture() uses it too.
+        const MaskPyramid* ensurePyramid() const;
+
+        // The field as a FULL GL texture (uploaded lazily, re-uploaded only when the
+        // image behind it changes). Null when there is no field. The matte and its rubylith
+        // ask virtualTexture() first: a pageable field is drawn from the page pool.
         const gl::Texture* textureId() const;
+
+        // THE PAGED FORM. Builds (once per field) the CPU pyramid from the field's own chain
+        // and the R8 pool resource from it, then drops the chain. Null when the field is not
+        // pageable, is not painted, or the pool is disabled - the caller then uses textureId().
+        VirtualTexture* virtualTexture() const;
+
+        // FORCES THE FULL-RESOLUTION CHAIN, the A/B control for the page gates (the mask twin of
+        // ImageKey::setForceFullTexture). virtualTexture() declines while it is set, so a pageable
+        // field is built as a full chain instead - including one already built as a page stack,
+        // which then stays alive beside it exactly as ImageKey's control keeps both. It rides the
+        // VALUE (assign copies it): the renderer reads an expansion's copy, not the key.
+        void setForceFullTexture(bool aForce) { mForceFullTexture = aForce; }
+        bool forceFullTexture() const { return mForceFullTexture; }
 
         // HAS ANYTHING BEEN HIDDEN? A matte at its neutral is a no-op, and it must cost
         // nothing and change nothing: measured, a freshly added folder mask put the
@@ -115,14 +178,30 @@ public:
         // FilterActivity's "is the blended value above its epsilon".
         bool isPainted() const { return mPainted; }
 
+        // THE FLAG FOR A SYNTHESIZED FIELD. alloc/write/markDirty compute it from an image the
+        // caller edited; a per-texel BLEND has no image behind it to scan and its producer knows
+        // the value the scan would find (see TimeKeyBlender::blendMaskKey). Kept separate from
+        // markDirty because that one also patches a built chain, which a fresh blend has not.
+        void setPainted(bool aPainted) { mPainted = aPainted; }
+
         // A PAINTED write goes straight into the image's pixels, which QImage's
         // cacheKey does not see - so the brush says where it wrote and the chain is
         // patched there, level by level, instead of being rebuilt.
         void markDirty(const QRect& aTexels);
         const QImage& field() const { return mField; }
         QImage& field() { return mField; }
+        // THE FIELD FOR A READER OUTSIDE THE PAGER (a thumbnail): the field itself, or - for a
+        // blend view, which stores none - its level-0 lerp materialized at the current weight.
+        // Never cheap on a view; the callers cache the result.
+        QImage fieldForDisplay() const;
         QSize texelSize() const { return mField.size(); }
         QRectF contentRect() const { return mContentRect; }
+
+        // THE RAM THIS FIELD HOLDS: its level-0 image (one byte per texel) plus the CPU pyramid a
+        // paged form keeps for its levels. It never BUILDS anything - a matte that has not been
+        // drawn yet reports its field only - and it holds no GPU bytes: those are the texture
+        // accounting (gl::FrameStats::textureCreated) and the pool's own line.
+        qint64 ramBytes() const;
 
         util::Easing::Param& easing(int aComponent) {
             XC_ASSERT(aComponent == 0);

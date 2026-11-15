@@ -1,5 +1,6 @@
 #include "util/CollDetect.h"
 #include "ctrl/Driver.h"
+#include "core/VirtualTexture.h"
 #include "ctrl/MaskEditor.h"
 
 namespace {
@@ -201,6 +202,12 @@ void Driver::updateProjectAttribute() {
 }
 
 void Driver::renderGL(const core::RenderInfo& aRenderInfo, core::ObjectNode* aGridTarget) const {
+    // THE PAGED TEXTURES' FRAME: map last frame's demand, upload what this frame will sample,
+    // then draw; afterwards issue this frame's demand readbacks. Both are no-ops with the
+    // switch off, and both are inside this one call so the viewport, the exporter and the
+    // headless render tool share one frame boundary.
+    core::VirtualTexture::beginFrame();
+
     auto& tree = mProject.objectTree();
     auto info = aRenderInfo;
     if (mToolType == ToolType_Bone) {
@@ -216,6 +223,8 @@ void Driver::renderGL(const core::RenderInfo& aRenderInfo, core::ObjectNode* aGr
         core::TimeCacheAccessor accessor(*aGridTarget, tree.timeCacheLock(), info.time, false);
         aGridTarget->renderer()->render(info, accessor);
     }
+
+    core::VirtualTexture::endFrame();
 }
 
 void Driver::renderQt(const core::RenderInfo& aRenderInfo, QPainter& aPainter) const {

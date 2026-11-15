@@ -15,6 +15,8 @@
 #include "core/TimeCacheAccessor.h"
 #include "core/BoneKeyUpdater.h"
 #include "core/ImageKeyUpdater.h"
+#include "core/FilterMask.h"
+#include "core/TimeLine.h"
 #include "gl/Global.h"
 
 namespace core {
@@ -70,6 +72,28 @@ void ObjectTree::render(const RenderInfo& aInfo, bool aUseWorkingCache) {
         TimeCacheAccessor accessor(*mTopNode.data(), mTimeCacheLock, aInfo.time, aUseWorkingCache);
         mCaller->invoke(mTopNode.data(), aInfo, accessor);
     }
+}
+
+qint64 ObjectTree::maskRamBytes() const {
+    qint64 total = 0;
+    if (!mTopNode.data())
+        return total;
+    std::function<void(ObjectNode&)> walk = [&](ObjectNode& aNode) {
+        // the CURRENT expansion is what this frame samples: its matte is the blended field (which
+        // shares the paged pyramid's holder, so the pyramid is counted once per node)
+        if (const TimeLine* line = aNode.timeLine()) {
+            total += line->current().mask().ramBytes();
+            for (int type = 0; type < TimeKeyType_TERM; ++type)
+                for (int channel = 0; channel < FilterMaskChannel_TERM; ++channel)
+                    if (const FilterMask* mask =
+                            line->filterMask((TimeKeyType)type, (FilterMaskChannel)channel))
+                        total += mask->ramBytes();
+        }
+        for (auto child : aNode.children())
+            walk(*child);
+    };
+    walk(*mTopNode.data());
+    return total;
 }
 
 cmnd::Vector ObjectTree::createNodeDeleter(ObjectNode& aNode) {

@@ -43,6 +43,14 @@ public:
 
     void render(const RenderInfo& aRenderInfo, bool aUseWorkingCache);
 
+    /// THE RAM EVERY MATTE IN THE DOCUMENT HOLDS, for AE_FRAME_STATS's mask_bytes line: each
+    /// node's blended MaskKey field plus the CPU pyramid a paged matte keeps, and every filter
+    /// lane's painted field. It BUILDS nothing (a matte that has never been drawn reports its
+    /// field only) and counts no GPU bytes - a texture upload is FrameStats's texture accounting,
+    /// and the pool reports itself. The walk is why the frame line calls it only when the counter
+    /// is on.
+    qint64 maskRamBytes() const;
+
     cmnd::Vector createNodeDeleter(ObjectNode& aNode);
     // cmnd::Vector createNodeMover(const util::TreePos& aFrom, const util::TreePos& aTo);
     cmnd::Vector createNodesMover(const QVector<util::TreePos>& aRemoved, const QVector<util::TreePos>& aInserted);

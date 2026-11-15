@@ -783,6 +783,11 @@ void MainDisplayWidget::paintGL() {
         GL_CHECK_ERROR();
     }
 
+    // the mattes' CPU footprint for the frame line: the fields this frame blended plus the
+    // pyramids their page fills read (the walk is guarded by the counter, see maskRamBytes)
+    if (mProject && frameStats.enabled())
+        frameStats.maskFieldBytes(mProject->objectTree().maskRamBytes());
+
     // AE_FRAMEBUFFER_DUMP=<prefix>: the SCENE surface, read while it is bound and just rendered. A
     // timer callback cannot do this (no current context -> black) and grabFramebuffer() comes back
     // sheared on a fractional DPR, so this is the only reliable point.

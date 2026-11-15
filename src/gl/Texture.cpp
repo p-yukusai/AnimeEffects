@@ -4,6 +4,9 @@
 #include "gl/DeviceInfo.h"
 #include "gl/EasyShaderProgram.h"
 #include "gl/FrameStats.h"
+#include <QOpenGLVersionFunctionsFactory>
+#include <QOpenGLFunctions_4_5_Core>
+
 #include "gl/Global.h"
 #include "gl/Texture.h"
 #include "gl/VertexArrayObject.h"
@@ -155,9 +158,53 @@ void buildMipTailOnGpu(GLuint aTextureId, const QSize& aSize, int aExactLevels, 
     const GLboolean prevDither = ggl.glIsEnabled(GL_DITHER);
     const GLboolean prevStencil = ggl.glIsEnabled(GL_STENCIL_TEST);
 
+    // A SCRATCH DESTINATION, one level's worth: the largest level this pass builds. The pass must
+    // NOT render into a level of the texture it fetches from - the spec's feedback rule is per
+    // image, but this driver resolves a whole-texture write-while-sample by renaming, and the
+    // result then depends on what else is in the stream. Measured: with the levels rendered
+    // directly (and with `glTextureBarrier` and with a `glFinish`, both tried) every level of one
+    // chain (384x1715) differs across two runs with virtual texturing while two full-resolution
+    // runs are identical, and skipping the tail entirely (`AE_NO_MIP_TAIL`) makes the same two
+    // runs bit-identical. So each level is built into this scratch and then BLITTED into the
+    // chain: the pass samples the chain and writes the scratch, the blit reads the scratch and
+    // writes the chain, and the next pass reads the level the blit just wrote - no read of a
+    // texture the same command writes. The scratch is 1/4 of the base at most (the first tail
+    // level, halved on both axes), and it is released here.
     GLuint fbo = 0;
     ggl.glGenFramebuffers(1, &fbo);
     ggl.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    // AE_MIP_TAIL_OLD_PATH: the MUTATION CONTROL for the fix above - it renders each level straight
+    // into the chain, the read-while-write this driver does not resolve consistently. Two runs of
+    // one command then differ (measured on nene: the chain's hashes differ at every level and the
+    // paged frame's strip comes back), which is what gives the fix's two-run comparison its power.
+    const bool oldPath = qEnvironmentVariableIsSet("AE_MIP_TAIL_OLD_PATH");
+
+    GLuint scratch = 0;
+    GLuint scratchFbo = 0;
+    if (!oldPath) {
+        const int firstLevel = aExactLevels + 1;
+        const QSize firstDst(
+            std::max(1, aSize.width() >> firstLevel), std::max(1, aSize.height() >> firstLevel)
+        );
+        ggl.glGenTextures(1, &scratch);
+        ggl.glBindTexture(GL_TEXTURE_2D, scratch);
+        ggl.glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_RGBA8, firstDst.width(), firstDst.height(), 0, GL_RGBA,
+            GL_UNSIGNED_BYTE, nullptr
+        );
+        ggl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        ggl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        ggl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        ggl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        ggl.glGenFramebuffers(1, &scratchFbo);
+        ggl.glBindFramebuffer(GL_FRAMEBUFFER, scratchFbo);
+        ggl.glFramebufferTexture2D(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, scratch, 0
+        );
+        XC_ASSERT(ggl.glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+        ggl.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    }
 
     gl::VertexArrayObject vao;
     gl::EasyShaderProgram& program = mipTailProgram();
@@ -195,8 +242,16 @@ void buildMipTailOnGpu(GLuint aTextureId, const QSize& aSize, int aExactLevels, 
         const int tapsX = (srcW + dstW - 1) / dstW;
         const int tapsY = (srcH + dstH - 1) / dstH;
 
-        ggl.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, aTextureId, l);
-        XC_ASSERT(ggl.glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+        // render into the scratch, or - for the mutation control - into the chain level itself
+        if (oldPath) {
+            ggl.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            ggl.glFramebufferTexture2D(
+                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, aTextureId, l
+            );
+            XC_ASSERT(ggl.glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+        } else {
+            ggl.glBindFramebuffer(GL_FRAMEBUFFER, scratchFbo);
+        }
         ggl.glViewport(0, 0, dstW, dstH);
         program.setUniformValue("uSrcLevel", srcLevel);
         program.setUniformValue("uSrcSize", QVector2D((float)srcW, (float)srcH));
@@ -209,6 +264,22 @@ void buildMipTailOnGpu(GLuint aTextureId, const QSize& aSize, int aExactLevels, 
         // low-pass a CHAINED step applies to an already-averaged source, which begins at level 2.
         program.setUniformValue("uShrink", l == 1 ? 1.0f : Texture::kMipStepShrink);
         ggl.glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        if (oldPath)
+            continue;
+        // ... and move it into the chain level, source and destination being different textures
+        ggl.glBindFramebuffer(GL_READ_FRAMEBUFFER, scratchFbo);
+        ggl.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+        ggl.glFramebufferTexture2D(
+            GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, aTextureId, l
+        );
+        XC_ASSERT(
+            ggl.glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE
+        );
+        ggl.glBlitFramebuffer(
+            0, 0, dstW, dstH, 0, 0, dstW, dstH, GL_COLOR_BUFFER_BIT, GL_NEAREST
+        );
+        ggl.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     }
 
     program.release();
@@ -238,6 +309,10 @@ void buildMipTailOnGpu(GLuint aTextureId, const QSize& aSize, int aExactLevels, 
     restore(GL_STENCIL_TEST, prevStencil);
 
     ggl.glDeleteFramebuffers(1, &fbo);
+    if (scratchFbo != 0)
+        ggl.glDeleteFramebuffers(1, &scratchFbo);
+    if (scratch != 0)
+        ggl.glDeleteTextures(1, &scratch);
 }
 
 } // namespace
@@ -313,7 +388,14 @@ void Texture::create(
         // for a 15001^2 image, and again for each level of a 1023^2 one).
         const int exactLevels =
             std::min(trailingZeroBits(mSize.width()), trailingZeroBits(mSize.height()));
-        if (exactLevels + 1 < mMipmapLevels) {
+        // AE_NO_MIP_TAIL: a DIAGNOSTIC that skips the area-weighted tail and keeps whatever
+        // glGenerateMipmap produced. The tail renders a level of a texture while fetching another
+        // level of the SAME texture - defined per IMAGE by the spec, but this driver resolves it
+        // differently depending on what else is in the command stream, which is why the paged
+        // path's readback exposes it (design doc: the chain's hashes differ across two paged runs
+        // and are identical across two full-resolution ones). The switch exists to confirm that
+        // the tail is the source before the fix replaces its feedback loop.
+        if (exactLevels + 1 < mMipmapLevels && !qEnvironmentVariableIsSet("AE_NO_MIP_TAIL")) {
             XC_ASSERT(aFormat == GL_RGBA && aChannelType == GL_UNSIGNED_BYTE);
             buildMipTailOnGpu(mId, mSize, exactLevels, mMipmapLevels);
         }
@@ -348,6 +430,9 @@ void Texture::create(
 
         switch (aFormat) {
         case GL_RED: bytesPerPixel = 1; break;
+        // R16UI, the page table's format. The external format is what this switch sees, so an
+        // integer RED texture is two bytes per texel and must not read as the RGBA default.
+        case GL_RED_INTEGER: bytesPerPixel = 2; break;
         case GL_RG: bytesPerPixel = 2; break;
         case GL_RGB: bytesPerPixel = 3; break;
         case GL_RGBA: bytesPerPixel = 4; break;

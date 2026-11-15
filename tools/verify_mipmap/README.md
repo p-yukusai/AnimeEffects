@@ -1,7 +1,10 @@
-# verify_mipmap — mipmap verification probe
+# verify_mipmap — texture verification probe
 
-Verifies that layer artwork textures are mipmapped **correctly**, against the two things a mip chain
-can get wrong:
+Verifies the two halves of the layer texture path: that the artwork's mip chain is built **correctly**,
+and that the paged (`AE_VIRTUAL_TEXTURE`) sampler draws the same pixels as the full-resolution chain it
+replaces.
+
+The chain half is verified against the two things a mip chain can get wrong:
 
 1. **the data** — it must be alpha-premultiplied, or every minified level drags the RGB stored under
    `alpha = 0` into the silhouette (the classic mipmap dark halo, and its mirror, the light halo);
@@ -16,7 +19,7 @@ Registered as a CMake target in `tests/CMakeLists.txt`, so it is part of the sta
 
 ```sh
 ./scripts/run_suites.sh Debug                                  # includes verify_mipmap
-QT_QPA_PLATFORM=offscreen ./build/tests/Debug/verify_mipmap    # on its own
+xvfb-run -a ./build/tests/Debug/verify_mipmap                   # on its own (needs a display for the GL widget)
 ```
 
 Built by CMake rather than hand-rolled in `tools/` on purpose: `tools/verify_blur` rotted into not
@@ -75,6 +78,18 @@ black backdrop a correct chain shows `source * coverage`, and a chain that keeps
   texel unchanged only when the sample sits on its centre — so a padded texture, an import ring or a
   `uImageSize` that disagrees with the texture shows up here as a collapse of contrast.
 
+- **V1 — the paged path against the full-resolution control.** A 900x700 image (coarse chain starts at
+  level 1, so level 0 is paged) rendered at scales 0.25, 0.5 and 1.0. The paged and control frames are
+  compared pixel for pixel; after eight frames the demanded pages must all be resident, the paged
+  levels must actually have been demanded, and the pool must not have quietly served the frame from
+  the coarse chain. A final case purges the pool, forbids a new atlas, and asserts the coarse chain
+  still covers the layer - a page miss is blur, never a hole. Set `AE_VIRTUAL_TEXTURE=0` and V1/P1/P2
+  report SKIP: the control path is the A/B, not a second gate.
+- **P1/P2 — the page pool itself.** Slot geometry (slot 0 at the gutter origin, slot 1 one pitch over,
+  slot 15 the first of the second row, a slot's texels read back exactly), the per-frame upload cap,
+  eviction order and the owner callback, cancel returning a slot and refunding its bytes, and purge
+  changing the generation and releasing every atlas.
+
 Not ported from the reference branch: its M4–M17, M19, M20, M21, the corpus evaluation and the figure
 scripts (blend-mode sweep, feature paths, level sweep, LOD uniformity, export-like configuration, the
 exporter, the texel phase sweep, the 2x mechanism, the filter-shape impulse, the margin parity/depth
@@ -114,6 +129,17 @@ average of rows [128, 256), the middle third, for a worst deviation of **-83.7 o
 level of a 1920-texel side weights rows [896, 1024), 7% of the side, for **-117.5**; and the first
 level past a power of two on 1920 is +16.9 off. Those are the numbers the assertions above fail on if
 the builder ever goes back to leaving those levels to `glGenerateMipmap`.
+
+## What the paged gates cannot see
+
+- **The magnified boundary.** V1's scale-1.0 case is a uniform magnification, where a single bilinear
+  read is exact; the full-resolution control may take the hardware's anisotropic samples at a
+  *non-uniform* magnification, and the page path takes one tap there. The real-project comparison
+  shows the difference as a one-pixel band at a layer's edge (mean 0.036 of 255 over the frame). That
+  band is the open measurement in the design doc, not a page hole: the wanted-page count equals the
+  resident count in the same frames.
+- **Eviction under pressure from the pool's own uploads** (`P2` covers the callbacks, not a full
+  zoom-out with a real project). The counter is the instrument: `vt_evict`.
 
 ## What this gate cannot see
 

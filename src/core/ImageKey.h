@@ -2,6 +2,7 @@
 #define CORE_IMAGEKEY_H
 
 #include <array>
+#include <memory>
 #include "XC.h"
 #include "util/Easing.h"
 #include "core/KeyEasing.h"
@@ -15,6 +16,7 @@
 namespace core {
 
 class Project;
+class VirtualTexture;
 
 class ImageKey: public TimeKey {
 public:
@@ -52,13 +54,35 @@ public:
         const GridMesh& gridMesh() const { return mGridMesh; }
     };
 
+    /// THE LAYER'S TEXTURE. Two shapes, one accessor:
+    ///   - a plain mipmapped texture, level 0 to 1x1 (the full-resolution path, and every
+    ///     resource small enough that paging would only add machinery); or
+    ///   - a PAGED resource (core::VirtualTexture): the sharp levels live in the pool and the
+    ///     always-resident coarse chain is the fallback, so `texture()` has no id at all. Code
+    ///     that only needs the CONTENT SIZE must ask sourceSize(), not texture().size().
     class Cache {
         gl::Texture mTexture;
+        std::unique_ptr<VirtualTexture> mVirtualTexture;
+        QSize mSourceSize;
 
     public:
         Cache();
+        ~Cache();
         gl::Texture& texture() { return mTexture; }
         const gl::Texture& texture() const { return mTexture; }
+
+        bool isPaged() const { return mVirtualTexture != nullptr; }
+        VirtualTexture* virtualTexture() { return mVirtualTexture.get(); }
+        const VirtualTexture* virtualTexture() const { return mVirtualTexture.get(); }
+
+        /// The content's pixel size, whichever shape this cache has.
+        QSize sourceSize() const { return mSourceSize; }
+
+        /// Paged-or-not is a function of the image and the switch; the texture must already
+        /// have been created with the production chain (VirtualTexture captures its levels).
+        bool buildVirtualTexture(const img::ResourceHandle& aResource, const QSize& aSize);
+        void resetVirtualTexture();
+        void setSourceSize(const QSize& aSize) { mSourceSize = aSize; }
     };
 
     enum { kDefaultMeshCellSize = 16 };
@@ -73,6 +97,12 @@ public:
 
     void setImage(const img::ResourceHandle& aResource, img::BlendMode aMode);
     void setImage(const img::ResourceHandle& aResource);
+
+    /// Forces this key onto the plain full-resolution texture. It is the A/B control the page
+    /// gates compare against (and the escape hatch for a resource the paged path cannot serve);
+    /// a caller can hold it for the duration of a test.
+    void setForceFullTexture(bool aForce);
+    bool forceFullTexture() const { return mForceFullTexture; }
     void setImageOffset(const QVector2D& aOffset);
     void setImageOffsetByCenter();
     bool hasImage() const { return mData.resource() && mData.resource()->hasImage(); }
@@ -89,14 +119,18 @@ public:
     virtual void awake();
 
     /// The LOD bias the LAYER SHADER applies, in levels (see LayerDrawingFrag.glsl's sampleLayer and
-    /// LayerNode's uniform block). -0.85 = -0.5 for the bilinear read's second moment (derivation on
-    /// gl::Texture::setLodBias) plus -0.35 measured on the reconstructing read: at the fit zoom the
-    /// extra 0.35 takes the rendered sharpness from 19.53 to 20.23 against a 4x supersampled
-    /// reference's 20.13, and IMPROVES the error against it from 1.10 to 0.88 with the error's
-    /// frame-to-frame variation falling 1.53 to 1.31 - so it does not reintroduce shimmer.
+    /// LayerNode's uniform block). -1.35 = -0.5 for the bilinear read's second moment (derivation on
+    /// gl::Texture::setLodBias) plus -0.85 measured on the reconstructing read: at the fit zoom that
+    /// gives rendered sharpness 20.145 against a 4x supersampled reference's 20.132, error 0.84 and
+    /// the error's frame-to-frame variation 1.27.
+    ///
+    /// It is the SUM because Mesa's textureLod INHERITS GL_TEXTURE_LOD_BIAS: the candidate numbers
+    /// (-0.85 in the shader with the texture's bias still -0.5) reproduced exactly when the texture's
+    /// bias was put back, and the committed build without it was 7 % softer. The texture's own bias is
+    /// therefore 0 and this value lives here alone, where no driver can apply it twice.
     ///
     /// The texture's own GL_TEXTURE_LOD_BIAS is therefore 0: the shader computes the level itself.
-    static float layerLodBias() { return -0.85f; }
+    static float layerLodBias() { return -1.35f; }
 
     /// The anisotropy every layer texture asks the sampler for, clamped to what the device reports
     /// (gl::Texture::setMaxAnisotropy, which is also a no-op where the extension is absent).
@@ -128,6 +162,7 @@ private:
     Data mData;
     Cache mCache;
     int mSleepCount;
+    bool mForceFullTexture;
 };
 
 } // namespace core

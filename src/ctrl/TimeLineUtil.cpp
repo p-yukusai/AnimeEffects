@@ -972,9 +972,9 @@ namespace TimeLineUtil {
         // of its own).
         QRectF maskContentRect(Project& aProject, ObjectNode& aTarget) {
             if (aTarget.type() == ObjectType_Layer) {
-                const gl::Texture* texture = aTarget.timeLine()->current().areaTexture();
-                if (texture && !texture->size().isEmpty())
-                    return QRectF(QPointF(0.0, 0.0), QSizeF(texture->size()));
+                const QSize contentSize = aTarget.timeLine()->current().areaTextureSize();
+                if (!contentSize.isEmpty())
+                    return QRectF(QPointF(0.0, 0.0), QSizeF(contentSize));
             }
             const QSize canvas = aProject.attribute().imageSize();
             if (canvas.isEmpty())

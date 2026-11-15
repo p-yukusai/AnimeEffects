@@ -7,6 +7,8 @@
 #include "img/Util.h"
 #include "core/ImageKey.h"
 #include "core/Constant.h"
+#include "core/VirtualTexture.h"
+#include "gl/Global.h"
 #include "qjsonobject.h"
 #include "util/LinkPointer.h"
 
@@ -40,10 +42,26 @@ void ImageKey::Data::setImageOffset(const QVector2D& aOffset) {
 }
 
 //-------------------------------------------------------------------------------------------------
-ImageKey::Cache::Cache(): mTexture() {}
+ImageKey::Cache::Cache(): mTexture(), mVirtualTexture(), mSourceSize() {}
+ImageKey::Cache::~Cache() = default;
+
+bool ImageKey::Cache::buildVirtualTexture(const img::ResourceHandle& aResource, const QSize& aSize) {
+    resetVirtualTexture();
+    auto texture = std::make_unique<VirtualTexture>();
+    if (!texture->build(aResource, aSize, mTexture))
+        return false;
+    mVirtualTexture = std::move(texture);
+    mSourceSize = aSize;
+    return true;
+}
+
+void ImageKey::Cache::resetVirtualTexture() { mVirtualTexture.reset(); }
 
 //-------------------------------------------------------------------------------------------------
-ImageKey::ImageKey(): mData(), mCache(), mSleepCount(0) { mData.resource().setOriginKeeping(true); }
+ImageKey::ImageKey():
+    mData(), mCache(), mSleepCount(0), mForceFullTexture(false) {
+    mData.resource().setOriginKeeping(true);
+}
 
 TimeKey* ImageKey::createClone() {
     auto newKey = new ImageKey();
@@ -59,6 +77,13 @@ void ImageKey::setImage(const img::ResourceHandle& aResource, img::BlendMode aMo
 
 void ImageKey::setImage(const img::ResourceHandle& aResource) {
     mData.resource() = aResource;
+    resetTextureCache();
+}
+
+void ImageKey::setForceFullTexture(bool aForce) {
+    if (mForceFullTexture == aForce)
+        return;
+    mForceFullTexture = aForce;
     resetTextureCache();
 }
 
@@ -87,6 +112,8 @@ void ImageKey::resetGridMesh(int aCellSize) {
 }
 
 void ImageKey::resetTextureCache() {
+    mCache.resetVirtualTexture();
+    mCache.setSourceSize(QSize());
     if (mData.resource()->hasImage()) {
         const img::Buffer& image = mData.resource()->image();
         const uint8* imageData = image.data();
@@ -114,21 +141,94 @@ void ImageKey::resetTextureCache() {
         // mip level.
         const std::vector<uint8> upload = img::Util::makeTextureUpload(imageData, pixelSize);
 
-        // make a gl texture
-        mCache.texture().create(
+        // The production chain always gets built first: it is the full-resolution path, AND
+        // the paged path's source - VirtualTexture captures its levels rather than rebuilding
+        // them, which is what makes a page and the control path the same texels.
+        gl::Texture& texture = mCache.texture();
+        texture.create(
             pixelSize, upload.data(), GL_RGBA, GL_RGBA8, GL_UNSIGNED_BYTE, gl::Texture::GenerateMipmap
         );
+
+        bool paged = false;
+        if (!mForceFullTexture && VirtualTexture::pageable(pixelSize))
+            paged = mCache.buildVirtualTexture(mData.resource(), pixelSize);
+        if (qEnvironmentVariableIsSet("AE_VT_HASH")) {
+            // "AE_VT_HASH=all" prints every level, so a chain level can be compared with the coarse
+            // chain's copy of it level by level (see VirtualTexture's AE_VT_HASH_COARSE).
+            const QByteArray hashSpec = qgetenv("AE_VT_HASH");
+            const int only = hashSpec == "all" ? -1 : qEnvironmentVariableIntValue("AE_VT_HASH");
+            for (int level = only < 0 ? 0 : only;
+                 level <= (only < 0 ? texture.mipmapLevels() - 1 : only); ++level) {
+                const QSize levelSize(
+                    std::max(1, pixelSize.width() >> level), std::max(1, pixelSize.height() >> level)
+                );
+                std::vector<uint8> data((size_t)levelSize.width() * levelSize.height() * 4, 0);
+                gl::Global::functions().glBindTexture(GL_TEXTURE_2D, texture.id());
+                gl::Global::functions().glGetTexImage(
+                    GL_TEXTURE_2D, level, GL_RGBA, GL_UNSIGNED_BYTE, data.data()
+                );
+                gl::Global::functions().glBindTexture(GL_TEXTURE_2D, 0);
+                quint64 hash = 1469598103934665603ull;
+                for (uint8 byte : data) {
+                    hash ^= byte;
+                    hash *= 1099511628211ull;
+                }
+                qWarning(
+                    "VTHASH %dx%d level=%d chain=%016llx", pixelSize.width(), pixelSize.height(),
+                    level, (unsigned long long)hash
+                );
+            }
+        }
+        if (qEnvironmentVariableIsSet("AE_VT_DUMP_CHAIN")) {
+            // AE_VT_DUMP_CHAIN=<W>x<H>: write the level the hash reported to
+            // <AE_VT_DUMP_CHAIN_DIR or /tmp>/chain-<W>x<H>-l<level>.png, so two runs can be diffed
+            // TEXEL BY TEXEL: the hash says a level differs between runs, this shows HOW.
+            const QByteArray dumpSpec = qgetenv("AE_VT_DUMP_CHAIN");
+            if (dumpSpec == QStringLiteral("%1x%2").arg(pixelSize.width()).arg(pixelSize.height()).toLatin1()) {
+                const int level = qEnvironmentVariableIntValue("AE_VT_HASH");
+                const QSize levelSize(
+                    std::max(1, pixelSize.width() >> level), std::max(1, pixelSize.height() >> level)
+                );
+                std::vector<uint8> data((size_t)levelSize.width() * levelSize.height() * 4, 0);
+                gl::Global::functions().glBindTexture(GL_TEXTURE_2D, texture.id());
+                gl::Global::functions().glGetTexImage(
+                    GL_TEXTURE_2D, level, GL_RGBA, GL_UNSIGNED_BYTE, data.data()
+                );
+                gl::Global::functions().glBindTexture(GL_TEXTURE_2D, 0);
+                const QByteArray dir = qgetenv("AE_VT_DUMP_CHAIN_DIR");
+                const QString path = QString::fromLocal8Bit(dir.isEmpty() ? "/tmp" : dir.constData())
+                    + QStringLiteral("/chain-%1x%2-l%3.png")
+                          .arg(pixelSize.width())
+                          .arg(pixelSize.height())
+                          .arg(level);
+                const QImage image(
+                    data.data(), levelSize.width(), levelSize.height(), QImage::Format_RGBA8888
+                );
+                qWarning(
+                    "VTCHAIND The dump of %s: %s", qPrintable(path),
+                    image.save(path, "PNG") ? "written" : "FAILED"
+                );
+            }
+        }
+        if (paged) {
+            // the chain was only the source: every sharp level is now in RAM and the pool,
+            // and the always-resident coarse tail is its own texture
+            texture.destroy();
+            return;
+        }
+        mCache.setSourceSize(pixelSize);
+
         // trilinear minification; magnification must stay non-mipmap (see gl::Texture)
-        mCache.texture().setFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
+        texture.setFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
         // ZERO: the layer shader computes the level itself (LayerDrawingFrag.glsl's sampleLayer and
         // LayerNode's uniform block), and applies ImageKey::layerLodBias() to its own LOD. A GL bias
         // here would ALSO shift the one path that still uses texture() - magnification - and double
         // the setting if a driver ever applied it to textureLod.
-        mCache.texture().setLodBias(0.0f);
+        texture.setLodBias(0.0f);
         // ...and enough samples along an elongated footprint that its SHORT axis is not filtered at
         // the level its long axis asked for. See ImageKey::layerMaxAnisotropy.
-        mCache.texture().setMaxAnisotropy(layerMaxAnisotropy());
-        mCache.texture().setWrap(GL_CLAMP_TO_BORDER, QColor(0, 0, 0, 0));
+        texture.setMaxAnisotropy(layerMaxAnisotropy());
+        texture.setWrap(GL_CLAMP_TO_BORDER, QColor(0, 0, 0, 0));
     }
 }
 

@@ -22,8 +22,11 @@ namespace gl {
 //     GL 3.3 core, where per-draw sample queries are not available portably.
 //   * tex_live_bytes / tex_peak_bytes - the bytes of every gl::Texture ever created minus the ones
 //     destroyed: the texture residency the process is holding right now.
-//   * mask_bytes - the RAM of the painted fields (core::MaskKey / core::FilterMask), which is not
-//     a texture until it is uploaded.
+//   * mask_bytes - the RAM of the document's MATTES: every node's blended MaskKey field (one
+//     byte per content texel) plus the CPU pyramid a paged matte keeps for its levels, and every
+//     filter lane's painted field. RAM, not VRAM - a chain's GPU bytes belong to tex_live. Fed
+//     once per frame from ObjectTree::maskRamBytes, and only while the counter is on (the tree
+//     walk is the cost).
 //   * dens / dens_max - the DISTRIBUTION of the texel density the deformation produced, not just
 //     its worst case. A triangle's density is its deformed content-space area divided by its uv
 //     area in content pixels: 1.0 for a layer that is merely scaled uniformly, above 1 where the
@@ -55,6 +58,16 @@ namespace gl {
 //     All three histograms share the triangle set and the sliver rule: a triangle whose uv area
 //     is under kMinUvArea contributes to none of them. A singular Jacobian (degenerate triangle)
 //     is clamped before log2 and before the ratio, so the line never carries a NaN or an inf.
+//
+//   * vt_pages / vt_bytes - the PAGED TEXTURE POOL (gl::PagePool): sharp pages resident at the
+//     end of the frame, and the bytes those pages hold. `vt_up` is the bytes uploaded into the
+//     pool this frame and `vt_evict` the pages evicted to make room. Zero when virtual texturing
+//     is off (AE_VIRTUAL_TEXTURE=0), which is the A/B control.
+//   * vt_frame_ms - the time VirtualTexture::beginFrame spent this frame: the previous frame's
+//     demand copy is parsed, every missing wanted page is filled from the pyramid and uploaded,
+//     and the tables are published. This is the LANDING cost of the paged machinery, and `ms`
+//     includes it; it is the number the landing-rate question has to divide (vt_up bytes per
+//     frame against this) before any upload strategy can be judged.
 //
 // Output: one line per frame appended to the path in AE_FRAME_STATS, plus a final summary line.
 class FrameStats {
@@ -103,6 +116,24 @@ public:
     void textureDestroyed(qint64 aBytes);
     void maskFieldBytes(qint64 aBytes) { if (mEnabled) mMaskBytes = aBytes; }
 
+    /// The paged texture pool's frame (see gl::PagePool): pages resident at the end of the
+    /// frame, their bytes, the bytes uploaded this frame, and the pages evicted.
+    void virtualTexture(int aPages, qint64 aBytes, qint64 aUploadBytes, int aEvictions) {
+        if (!mEnabled)
+            return;
+        mVtPages = aPages;
+        mVtBytes = aBytes;
+        mVtUploadBytes = aUploadBytes;
+        mVtEvictions = aEvictions;
+    }
+
+    /// The time the paged textures' frame boundary took this frame (see the header comment).
+    void virtualTextureFrameTime(double aMs) {
+        if (!mEnabled)
+            return;
+        mVtFrameMs = aMs;
+    }
+
     // One frame's measured distribution, replacing whatever the previous readback left.
     // `aBins` holds kDensityBins uv-area sums in bin order (bin b covers
     // [kDensityBinBase + b * kDensityBinStep, kDensityBinBase + (b + 1) * kDensityBinStep)
@@ -148,6 +179,13 @@ private:
     double mAnisoMax = 0.0;
     // the largest density any frame of this run produced
     double mSessionDensityMax = 0.0;
+    // the paged texture pool at the end of the frame (see virtualTexture)
+    int mVtPages = 0;
+    qint64 mVtBytes = 0;
+    qint64 mVtUploadBytes = 0;
+    int mVtEvictions = 0;
+    // the landing cost of this frame's VirtualTexture::beginFrame, in ms (see the header comment)
+    double mVtFrameMs = 0.0;
 };
 
 } // namespace gl

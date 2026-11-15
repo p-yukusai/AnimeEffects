@@ -1,6 +1,11 @@
 #version 330
 
+// 1: the clipper layer's texels are paged (core::VirtualTexture). The sampler is the LAYER's
+// own (LayerSampling.glsl), so the mask and the layer it clips are filtered by the same code.
+#variation VIRTUAL_TEXTURE 0
 #variation IS_CLIPPEE 0
+
+#include ":/shaders/LayerSampling.glsl"
 
 uniform vec4 uColor;
 uniform int uClipperId;
@@ -18,7 +23,7 @@ out uvec2 oClip;
 
 void main(void)
 {
-    vec4 color = uColor * texture(uTexture, vTexCoord);
+    vec4 color = uColor * sampleLayer(uTexture, vTexCoord);
     ivec2 destCoord = ivec2(vDestCoord);
     uvec2 destData = texelFetch(uDestTexture, destCoord, 0).xy;
 

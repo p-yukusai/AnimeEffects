@@ -49,10 +49,10 @@ QRectF MaskEditor::contentRect() const {
     if (mTarget->type() == core::ObjectType_Layer) {
         // a layer's mask covers its IMAGE pixels - the space the filter pass maps
         // with, so the field sticks to the artwork
-        const gl::Texture* texture = mTarget->timeLine()->current().areaTexture();
-        if (!texture || texture->size().isEmpty())
+        const QSize contentSize = mTarget->timeLine()->current().areaTextureSize();
+        if (contentSize.isEmpty())
             return QRectF();
-        return QRectF(QPointF(0.0, 0.0), QSizeF(texture->size()));
+        return QRectF(QPointF(0.0, 0.0), QSizeF(contentSize));
     }
 
     // A folder has no image: its content space IS the canvas (a folder's local

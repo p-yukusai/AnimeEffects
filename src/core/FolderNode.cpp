@@ -12,8 +12,55 @@
 #include "core/WavePass.h"
 #include "core/WorldBlurMath.h"
 #include "core/DestinationTexturizer.h"
+#include "core/VirtualTexture.h"
 
 namespace core {
+
+namespace {
+
+// THE FOLDER MATTE'S DEMAND. A folder applies its matte as one fullscreen multiply over its
+// isolated composite (FilterFrame::maskTexture), so there is no mesh to walk: every page the
+// screen->content affine reaches across the target is wanted. Marked through the demand pass's
+// own fullscreen quad, so the level is the same Jacobian computation a layer's demand uses.
+//
+// Both the drawing path and the exporter's demand-only pass call this: the demand-only pass
+// returns before renderComposite, and a folder matte left unmarked there would export its first
+// frame from the coarse chain (the exporter is synchronous, so nothing later would fix it).
+void markFolderMaskDemand(
+    const RenderInfo& aInfo, const TimeKeyExpans& aExpans, const MaskKey::Data& aMaskData,
+    const QSize& aTargetSize
+) {
+    if (aTargetSize.isEmpty())
+        return;
+    if (!aMaskData.isValid() || !aMaskData.isPainted())
+        return;
+    VirtualTexture* paged = aMaskData.virtualTexture();
+    if (!paged)
+        return;
+
+    // the mapping is the one renderComposite's contentMapping() builds: a folder's content space
+    // is its canvas box, so the image offset is not applied (maskContentImageOffset)
+    const QMatrix4x4 toScreen = waveContentToScreen(
+        aInfo.camera, QSizeF(aTargetSize), aExpans.srt().worldCSRTMatrix(),
+        maskContentImageOffset(ObjectType_Folder, aExpans.imageOffset())
+    );
+    bool invertible = false;
+    const QMatrix4x4 screenToLayer = toScreen.inverted(&invertible);
+    if (!invertible)
+        return;
+    // The signature is the whole input: a fullscreen pass has no vertex data, so the mapping and
+    // the target size decide its pages. A repaint of the same frame replays them (the exporter's
+    // demand-only pass and its real pass are exactly such a repeat).
+    VirtualTexture::DemandSignature signature;
+    signature.targetSize = aTargetSize;
+    signature.screenToContent = screenToLayer;
+    const QRectF rect = aMaskData.contentRect();
+    signature.maskRect =
+        QVector4D(float(rect.x()), float(rect.y()), float(rect.width()), float(rect.height()));
+    paged->markScreenMaskDemand(signature);
+}
+
+} // namespace
 
 FolderNode::FolderNode(const QString& aName):
     mName(aName),
@@ -81,6 +128,29 @@ void FolderNode::prerender(const RenderInfo&, const TimeCacheAccessor&) {}
 
 void FolderNode::render(const RenderInfo& aInfo, const TimeCacheAccessor& aAccessor) {
     if (!mIsVisible || aAccessor.get(mTimeLine).opa().isZero() || aInfo.isGrid) return;
+
+    // the export's demand-only pass: the sorted top-level list holds a COMPOSITE folder as one
+    // unit, so its children are not visited by the caller - walk them here, mark, draw nothing
+    if (aInfo.demandOnly) {
+        // THE FOLDER'S OWN MATTE, before the children: renderComposite is where it is sampled,
+        // and this branch returns before reaching it.
+        if (aInfo.filterFrame) {
+            const TimeKeyExpans& expans = aAccessor.get(mTimeLine);
+            markFolderMaskDemand(aInfo, expans, expans.mask(), aInfo.filterFrame->size());
+        }
+        std::vector<Renderer::SortUnit> units;
+        for (auto child : children()) {
+            ObjectNodeUtil::collectRenderUnits(*child, true, units, aAccessor, aInfo.time);
+        }
+        std::stable_sort(
+            units.begin(), units.end(), [](const Renderer::SortUnit& a, const Renderer::SortUnit& b) {
+                return a.depth < b.depth;
+            }
+        );
+        for (auto& unit : units)
+            unit.renderer->render(aInfo, aAccessor);
+        return;
+    }
 
     // render clippees
     renderClippees(aInfo, aAccessor);
@@ -185,6 +255,19 @@ void FolderNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccesso
         return screenToLayer;
     };
 
+    // THE MATTE'S DEMAND, marked before the pass that samples it. A painted matte is applied
+    // over the composite below; while the Mask tool paints this folder the matte is suspended
+    // and the rubylith samples the PREVIEW key's field instead, so that is the one to demand.
+    // (A filter input - a.FilterMask - is never paged: it has no field key of its own.)
+    const bool previewingMask = aInfo.maskPreviewTarget == this
+        && (aInfo.maskPreview != nullptr || aInfo.maskPreviewKey != nullptr);
+    if (previewingMask) {
+        if (aInfo.maskPreviewKey)
+            markFolderMaskDemand(aInfo, expans, aInfo.maskPreviewKey->data(), frame.size());
+    } else {
+        markFolderMaskDemand(aInfo, expans, expans.mask(), frame.size());
+    }
+
     // One predicate pair for both decisions - isCompositeFolder above and the
     // passes here: the type's stack entry is enabled AND its BLENDED value is
     // above the type's epsilon. Sharing it is what keeps an HSV-isolated folder
@@ -284,15 +367,21 @@ void FolderNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccesso
     // folder cannot bleed past its own matte either.
     // a PAINTING PREVIEW suspends the matte (see LayerNode): the rubylith says where
     // something is hidden, and composing it under the matte made it invisible
-    const bool previewingMask = aInfo.maskPreviewTarget == this
-        && (aInfo.maskPreview != nullptr || aInfo.maskPreviewKey != nullptr);
     if (const MaskKey::Data& maskData = aAccessor.get(mTimeLine).mask();
         !previewingMask && maskData.isValid() && maskData.isPainted()) {
-        if (const gl::Texture* maskTexture = maskData.textureId()) {
+        MaskInput matte;
+        matte.rect = maskData.contentRect();
+        matte.neutral = float(core::MaskKey::kNeutral) / 255.0f;
+        // A PAGEABLE MATTE HAS NO FULL CHAIN (MaskKey::Data::virtualTexture): the pass reads
+        // its page stack, and markFolderMaskDemand above demanded the pages this frame needs.
+        if (VirtualTexture* paged = maskData.virtualTexture()) {
+            matte.paged = paged;
+        } else if (const gl::Texture* maskTexture = maskData.textureId()) {
+            matte.texture = maskTexture->id();
+        }
+        if (matte.isValid()) {
             auto slot = std::make_unique<FilterFrame::ScopedSlot>(frame);
-            srcTexture = frame.maskTexture(
-                slot->slot(), srcTexture, maskTexture->id(), maskData.contentRect(), contentMapping()
-            );
+            srcTexture = frame.maskTexture(slot->slot(), srcTexture, matte, contentMapping());
             srcSlot = slot->slot();
             scratchSlots.push_back(std::move(slot));
         }
@@ -300,17 +389,23 @@ void FolderNode::renderComposite(const RenderInfo& aInfo, const TimeCacheAccesso
 
     // THE MASK PREVIEW (see LayerNode): a folder can be the Mask tool's target too.
     // ...and a LAYER MASK being painted previews the same way: its field is the key's
-    // own, its neutral is reveal-all, so the tint lands exactly on what is hidden.
+    // own, its neutral is reveal-all, so the rubylith lands exactly on what is hidden.
     if (!aInfo.maskPreview && aInfo.maskPreviewKey && aInfo.maskPreviewTarget == this) {
+        const MaskKey::Data& previewData = aInfo.maskPreviewKey->data();
         MaskInput preview;
-        if (const gl::Texture* keyTexture = aInfo.maskPreviewKey->data().textureId()) {
+        preview.rect = previewData.contentRect();
+        preview.neutral = float(core::MaskKey::kNeutral) / 255.0f;
+        // THE RUBYLITH PAGES WITH THE MATTE: a pageable field has no full chain, and the
+        // overlay is drawn over the same composite whose pages markFolderMaskDemand marks.
+        if (VirtualTexture* paged = previewData.virtualTexture()) {
+            preview.paged = paged;
+        } else if (const gl::Texture* keyTexture = previewData.textureId()) {
             preview.texture = keyTexture->id();
-            preview.rect = aInfo.maskPreviewKey->data().contentRect();
-            preview.neutral = float(core::MaskKey::kNeutral) / 255.0f;
+        }
+        if (preview.isValid()) {
             auto slot = std::make_unique<FilterFrame::ScopedSlot>(frame);
             srcTexture = frame.maskOverlayTexture(
-                slot->slot(), srcTexture, preview.texture, preview.rect, contentMapping(),
-                aInfo.maskPreviewColor
+                slot->slot(), srcTexture, preview, contentMapping(), aInfo.maskPreviewColor
             );
             srcSlot = slot->slot();
             scratchSlots.push_back(std::move(slot));

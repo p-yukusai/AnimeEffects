@@ -17,6 +17,7 @@ add_library(${PROJECT_NAME}
     PSDUtil.cpp PSDUtil.h
     PSDWriter.cpp PSDWriter.h
     PixelPos.h
+    Premultiply.h
     Quad.h
     ResourceData.cpp ResourceData.h
     ResourceHandle.cpp ResourceHandle.h

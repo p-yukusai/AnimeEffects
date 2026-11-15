@@ -16,6 +16,7 @@ add_library(${PROJECT_NAME}
     FrameStats.cpp FrameStats.h
     Framebuffer.cpp Framebuffer.h
     Global.cpp Global.h
+    PagePool.cpp PagePool.h
     PrimitiveDrawer.cpp PrimitiveDrawer.h
     Root.cpp Root.h
     Task.cpp Task.h

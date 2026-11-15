@@ -35,6 +35,8 @@ add_library(${PROJECT_NAME}
     HeightMap.cpp HeightMap.h
     HsvKey.h
     ImageKey.cpp ImageKey.h
+    ImagePyramid.cpp ImagePyramid.h
+    MaskPyramid.cpp MaskPyramid.h
     ImageKeyUpdater.cpp ImageKeyUpdater.h
     LayerMesh.cpp LayerMesh.h
     LayerNode.cpp LayerNode.h
@@ -71,6 +73,7 @@ add_library(${PROJECT_NAME}
     TimeKey.cpp TimeKey.h
     TimeKeyBlender.cpp TimeKeyBlender.h
     TimeKeyExpans.cpp TimeKeyExpans.h
+    VirtualTexture.cpp VirtualTexture.h
     TimeKeyGatherer.cpp TimeKeyGatherer.h
     TimeKeyPos.h
     TimeKeyType.h

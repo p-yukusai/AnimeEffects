@@ -26,6 +26,11 @@ public:
     const QString& log() const { return mLog; }
 
 private:
+    /// Splices `#include "path"` lines before variation resolution, recursively. The included
+    /// files are the bundled shader fragments (`:/shaders/...`), so the layer draw and the
+    /// clipper's singulation pass share ONE sampler instead of a copy that can drift.
+    bool expandIncludes(QString& aCode, int aDepth);
+
     struct VariationUnit {
         QString name;
         QString value;

@@ -1575,16 +1575,20 @@ QImage ObjectTreeModel::matteImage(int aRow) {
     // AN UNPAINTED MATTE IS A PICTURE TOO: its neutral field is fully visible, which is exactly
     // what the chip should show for a mask that has not been touched yet.
     const core::MaskKey::Data* foundMask = maskDataOf(*row->geometry.node);
-    if (!foundMask || foundMask->field().isNull())
+    if (!foundMask)
         return QImage();
-    const core::MaskKey::Data& mask = *foundMask;
+    // A BLEND VIEW STORES NO FIELD: its level-0 lerp is materialized here, once per chip
+    // (mMatteCache holds it), so an animated matte shows this frame's shape like any other.
+    const QImage maskField = foundMask->fieldForDisplay();
+    if (maskField.isNull())
+        return QImage();
     // THE MATTE ITSELF, in grayscale: white = visible, black = hidden, the reading an alpha
     // channel has everywhere (the inspector's card shows the same picture larger)
     // KEEP THE MATTE'S OWN SHAPE: the chip is a 14px CELL, not a 14x14 picture, so a 2:1 field
     // must letterbox inside it rather than be squashed (reported: "the mask thumbnail doesn't use
     // the correct aspect ratio"). The QML Image preserves the aspect too, so the two agree.
     const QImage preview =
-        mask.field().scaled(kMatteChip, kMatteChip, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        maskField.scaled(kMatteChip, kMatteChip, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     mMatteCache.insert(row->geometry.node, preview);
     return preview;
 }

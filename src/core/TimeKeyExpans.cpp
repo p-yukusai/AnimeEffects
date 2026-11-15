@@ -64,7 +64,19 @@ void TimeKeyExpans::clearCaches() {
 
 //-------------------------------------------------------------------------------------------------
 const gl::Texture* TimeKeyExpans::areaTexture() const {
-    return mAreaImageKey ? &(mAreaImageKey->cache().texture()) : nullptr;
+    if (!mAreaImageKey || mAreaImageKey->cache().isPaged())
+        return nullptr;
+    return &(mAreaImageKey->cache().texture());
+}
+
+VirtualTexture* TimeKeyExpans::areaVirtualTexture() const {
+    return mAreaImageKey ? mAreaImageKey->cache().virtualTexture() : nullptr;
+}
+
+QSize TimeKeyExpans::areaTextureSize() const {
+    if (!mAreaImageKey)
+        return QSize();
+    return mAreaImageKey->cache().sourceSize();
 }
 
 img::BlendMode TimeKeyExpans::blendMode() const {

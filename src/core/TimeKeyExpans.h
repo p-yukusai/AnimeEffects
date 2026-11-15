@@ -22,6 +22,8 @@
 
 namespace core {
 
+class VirtualTexture;
+
 class TimeKeyExpans {
 public:
     TimeKeyExpans();
@@ -102,11 +104,20 @@ public:
     LayerMesh* ffdMesh() { return mFFDMesh; }
     void setFFDMeshParent(TimeKey* aKey) { mFFDMeshParent = aKey; }
     TimeKey* ffdMeshParent() { return mFFDMeshParent; }
+    const TimeKey* ffdMeshParent() const { return mFFDMeshParent; }
 
     void setAreaImageKey(ImageKey* aKey) { mAreaImageKey = aKey; }
     ImageKey* areaImageKey() { return mAreaImageKey; }
     const ImageKey* areaImageKey() const { return mAreaImageKey; }
+    /// The full-resolution texture, or nullptr when the key is paged (its sharp levels live
+    /// in the pool and there is no single texture to name). Consumers that need the CONTENT
+    /// SIZE, rather than a sampler, must use areaTextureSize().
     const gl::Texture* areaTexture() const;
+    /// The paged resource for this key, or nullptr when it uses a plain texture.
+    VirtualTexture* areaVirtualTexture() const;
+    /// The content's pixel size, whichever sampling shape the key has. Empty when there is no
+    /// image key or no image.
+    QSize areaTextureSize() const;
     img::BlendMode blendMode() const;
     void setImageOffset(const QVector2D& aOffset) { mImageOffset = aOffset; }
     QVector2D imageOffset() const { return mImageOffset; }

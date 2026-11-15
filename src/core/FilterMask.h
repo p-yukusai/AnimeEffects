@@ -215,6 +215,11 @@ public:
     // bumps the revision without touching the pixels (a whole-field replacement)
     void markDirtyAll();
 
+    // the field's CPU bytes, for the frame line (a filter mask is never paged, so this is its
+    // whole footprint: its GPU chain is a texture and is counted by gl::FrameStats's texture
+    // accounting instead)
+    qint64 ramBytes() const { return mImage.isNull() ? 0 : (qint64)mImage.sizeInBytes(); }
+
     quint64 revision() const { return mRevision; }
     // the value "the filter is unaffected" at (see filterMaskNeutral)
     int neutral() const { return mNeutral; }

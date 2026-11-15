@@ -7,6 +7,7 @@
 #include "img/ColorRGBA.h"
 #include "img/PSDUtil.h"
 #include "img/BlendMode.h"
+#include "img/Premultiply.h"
 #include "img/Util.h"
 
 #include "oraParser.h"
@@ -230,7 +231,6 @@ std::vector<uint8> Util::makeTextureUpload(const uint8* aData, const QSize& aSiz
     // memory and buy nothing, because gl::Texture::create rebuilds every level that does not halve
     // exactly (see the header)
     std::vector<uint8> upload((size_t)aSize.width() * aSize.height() * 4);
-    std::memcpy(upload.data(), aData, upload.size());
 
     // glGenerateMipmap box-filters every channel independently, so averaging STRAIGHT color mixes
     // the RGB of transparent texels into the edge texels of each level: artwork routinely carries
@@ -239,16 +239,10 @@ std::vector<uint8> Util::makeTextureUpload(const uint8* aData, const QSize& aSiz
     // coverage average together; the layer shader divides the coverage back out (PREMULTIPLIED_INPUT
     // in LayerDrawingFrag), so the blend math still sees straight color. Alpha is left untouched, so
     // consumers that use only alpha - the clipper writing pass (ClipperWritingFrag) - are unaffected.
-    for (size_t i = 0; i < upload.size(); i += 4) {
-        uint8* p = upload.data() + i;
-        const uint32 a = p[3];
-        if (a == 255)
-            continue;
-        // round-to-nearest, so an opaque-adjacent texel does not drift darker
-        p[0] = (uint8)((p[0] * a + 127) / 255);
-        p[1] = (uint8)((p[1] * a + 127) / 255);
-        p[2] = (uint8)((p[2] * a + 127) / 255);
-    }
+    //
+    // Straight from the source into the upload buffer (one pass, not a copy and then a pass), and
+    // the same img::premultiply a paged image's level-0 fill uses: a page has to be these bytes.
+    img::premultiply(aData, upload.data(), aSize.width() * aSize.height());
     return upload;
 }
 

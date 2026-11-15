@@ -127,6 +127,10 @@ public:
 
     MeshTransformer mMeshTransformer;
     LayerMesh* mCurrentMesh;
+    // THE SKINNING PASS'S STAMP: bumped every time callGL writes new positions. Derived state
+    // (the demand's page set) uses it to tell a rewritten buffer from a different one - the
+    // buffer's id is stable across frames while the values behind it change. See DemandSignature.
+    quint64 mMeshRevision;
     // inputs of the last successful transformShape pass; see TransformKey above.
     // mTransformKeyValid is false whenever mCurrentMesh had to be dropped, so a
     // later pass can never be skipped on the strength of an old key.

@@ -37,6 +37,7 @@ public:
         clippingFrame(),
         destTexturizer(),
         filterFrame(),
+        demandOnly(false),
         opacityScale(1.0f),
         maskPreview(nullptr),
         maskPreviewKey(nullptr),
@@ -54,6 +55,11 @@ public:
     ClippingFrame* clippingFrame;
     DestinationTexturizer* destTexturizer;
     FilterFrame* filterFrame;
+    // THE EXPORT'S PRE-PASS: walk the tree and mark the paged textures' demand, draw nothing.
+    // An export renders one frame at a time and cannot wait two frames for a readback, so it
+    // asks for the same frame's demand, synchronises the pool, then draws (see Exporter::update
+    // and VirtualTexture::synchronize). The viewport never sets this.
+    bool demandOnly;
     float opacityScale; // 1/ (product of ancestor composite folder opacities)
 
     // THE MASK PREVIEW while the Mask tool paints: the field being painted, the node

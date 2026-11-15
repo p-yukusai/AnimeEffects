@@ -171,8 +171,8 @@ public:
         core::ShaderHolder holder;
         // the renderer reserves the variant before it draws (LayerNode::reserveShaders);
         // shader() is an accessor and asserts on an uncompiled slot
-        holder.reserveShader(img::BlendMode_Normal, false, false, aUseMask);
-        auto& shader = holder.shader(img::BlendMode_Normal, false, false, aUseMask);
+        holder.reserveShader(img::BlendMode_Normal, false, false, aUseMask, false);
+        auto& shader = holder.shader(img::BlendMode_Normal, false, false, aUseMask, false);
 
         mGgl->glBindFramebuffer(GL_FRAMEBUFFER, mFbo);
         mGgl->glViewport(0, 0, kW, kH);

@@ -83,6 +83,15 @@ float BlendSat(vec3 c) { return max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b)
 #variation USE_HSV_MASK 0
 #variation LAYER_MASK 0
 #variation PREMULTIPLIED_INPUT 0
+// 1: the layer's texture is PAGED (core::VirtualTexture). The one sampler this shader took for
+// granted becomes a page table lookup plus a read from one of up to four atlases, and a page
+// that is not resident samples the always-resident coarse chain instead. The layer's own
+// texture still exists as a uniform (unit 0) but is not read: uLayerSize carries what
+// textureSize used to.
+#variation VIRTUAL_TEXTURE 0
+// 1: the layer's MATTE is paged too (mask page stack on units 10..15). Only meaningful with
+// LAYER_MASK and VIRTUAL_TEXTURE; see LayerSampling.glsl's sampleMask.
+#variation MASK_VIRTUAL_TEXTURE 0
 
 uniform vec4 uColor;
 uniform sampler2D uTexture;
@@ -123,6 +132,9 @@ uniform vec4 uLayerMaskRect; // content x, y, w, h
 uniform int uClippingId;
 uniform usampler2D uClippingTexture;
 #endif
+
+// The sampler need the mask's uniforms, so the include comes after them.
+#include ":/shaders/LayerSampling.glsl"
 
 in vec2 vTexCoord;
 in vec2 vDestCoord;
@@ -191,55 +203,6 @@ vec4 blendColor(const vec4 src, const vec4 dst)
     return result;
 }
 
-// THE LAYER SAMPLE.
-//
-// The hardware's trilinear read takes TWO taps per axis and then blends two levels. That is the wrong
-// shape in both directions: it under-integrates the pixel's footprint (so a layer that slides by a
-// fraction of a pixel changes its sharpness - measured 24 % of the rendered gradient within one pixel
-// of travel at 4x minification) and it copies the level blend's blur into the result.
-//
-// This reads TWO taps per axis on EACH of the two levels the footprint falls between and blends them
-// by the LOD fraction: eight texel fetches, no sharpness swing, and - measured against a 4x
-// supersampled reference - error 0.88 of 255 against the hardware's 2.18, with the error's own
-// frame-to-frame variation 1.31 against 3.09. The per-level span is deconvolved by 0.8 for levels
-// above 0, because a level texel is already a box average of the level below.
-//
-// The footprint comes from the layer's TRANSFORM (uLayerFootprint), not from screen derivatives: a
-// derivative is per 2x2 quad and changes with the sub-pixel phase, which would modulate the very
-// sharpness this exists to keep constant. Magnification (LOD <= 0) keeps the hardware read, where
-// bilinear is exact and free.
-uniform vec2 uLayerFootprint;   // the layer's screen footprint, in level-0 texels
-uniform float uLayerLodBias;    // the layer's LOD bias, in levels
-uniform float uLayerMaxLod;     // the texture's deepest level
-
-vec4 layerTapLevel(sampler2D aTexture, vec2 aUv, float aLevel)
-{
-    float f = max(uLayerFootprint.x, uLayerFootprint.y);
-    ivec2 sizeL = textureSize(aTexture, int(aLevel));
-    float spanL = f / exp2(aLevel) * ((aLevel < 0.5) ? 1.0 : 0.8);
-    vec2 step = spanL * 0.5 / vec2(sizeL);
-    vec4 acc = vec4(0.0);
-    for (int j = 0; j < 2; ++j)
-        for (int i = 0; i < 2; ++i) {
-            vec2 off = (vec2(float(i), float(j)) + 0.5) * step - step;
-            acc += textureLod(aTexture, aUv + off, aLevel);
-        }
-    return acc * 0.25;
-}
-
-vec4 sampleLayer(sampler2D aTexture, vec2 aUv)
-{
-    float f = max(uLayerFootprint.x, uLayerFootprint.y);
-    float lod = log2(max(f, 1e-6)) + uLayerLodBias;
-    if (lod <= 0.0)
-        return texture(aTexture, aUv);    // magnified: bilinear is exact and free
-    float l0 = clamp(floor(lod), 0.0, uLayerMaxLod);
-    float l1 = min(l0 + 1.0, uLayerMaxLod);
-    vec4 a = layerTapLevel(aTexture, aUv, l0);
-    vec4 b = (l1 > l0) ? layerTapLevel(aTexture, aUv, l1) : a;
-    return mix(a, b, lod - l0);
-}
-
 void main(void)
 {
     vec4 color = sampleLayer(uTexture, vTexCoord);
@@ -284,7 +247,7 @@ void main(void)
         vec2 uv = (q - uLayerMaskRect.xy) / uLayerMaskRect.zw;
         float visible = (uv.x < 0.0 || 1.0 < uv.x || uv.y < 0.0 || 1.0 < uv.y)
             ? 1.0
-            : texture(uLayerMask, uv).r;
+            : sampleMask(uv);
         color.a *= visible;
         if (color.a <= 0.0)
             discard;
