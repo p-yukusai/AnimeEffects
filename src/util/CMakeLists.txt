@@ -24,6 +24,7 @@ add_library(${PROJECT_NAME}
         IDAssigner.h
         IDSolver.h
         IEasyIterator.h
+        RecentFiles.cpp RecentFiles.h
         IProgressReporter.h
         ITreeSeeker.h
         IndexTable.cpp IndexTable.h

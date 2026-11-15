@@ -18,6 +18,7 @@
 #include "ctrl/ProjectSaver.h"
 #include "ctrl/ProjectLoader.h"
 #include "ctrl/ImageFileLoader.h"
+#include "util/RecentFiles.h"
 
 using namespace core;
 
@@ -158,19 +159,10 @@ System::openProject(
             // recent-files list with a path that will not exist tomorrow.
             if (aRecordRecent) {
                 QSettings settings;
-                QStringList recentfiles = settings.value("projectloader/recents").toStringList();
-
-                // Check file length
-                if (recentfiles.length() != 8) {
-                    recentfiles.append(aFileName);
-                }
-                // If length eight remove first
-                else if (recentfiles.length() >= 8) {
-                    recentfiles.pop_front();
-                }
-                // Save
-                if (!settings.value("projectloader/recents").toStringList().contains(aFileName)) {
-                    settings.setValue("projectloader/recents", recentfiles);
+                const QStringList before = settings.value("projectloader/recents").toStringList();
+                const QStringList after = util::recent::record(before, aFileName);
+                if (after != before) {
+                    settings.setValue("projectloader/recents", after);
                     settings.sync();
                 }
             }

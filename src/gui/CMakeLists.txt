@@ -40,6 +40,7 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     KeyCommandInvoker.cpp KeyCommandInvoker.h
     KeyCommandMap.cpp KeyCommandMap.h
     LocaleDecider.cpp LocaleDecider.h
+    UiScale.cpp UiScale.h
     LocaleParam.h
     LeakSuppressions.cpp
     MSVCBackTracer.cpp MSVCBackTracer.h

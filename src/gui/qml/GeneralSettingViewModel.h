@@ -40,6 +40,10 @@ class GeneralSettingViewModel : public QObject {
 
     // ---- General ----------------------------------------------------------
     Q_PROPERTY(int languageIndex READ languageIndex WRITE setLanguageIndex NOTIFY languageIndexChanged)
+    // The application-wide UI scale, in percent. It is written to QSettings and
+    // applied to QT_SCALE_FACTOR at the next start (the dialog says so): Qt fixes
+    // its device-pixel ratio when the QGuiApplication is constructed.
+    Q_PROPERTY(int uiScalePercent READ uiScalePercent WRITE setUiScalePercent NOTIFY uiScalePercentChanged)
     Q_PROPERTY(int easingIndex READ easingIndex WRITE setEasingIndex NOTIFY easingIndexChanged)
     Q_PROPERTY(int rangeIndex READ rangeIndex WRITE setRangeIndex NOTIFY rangeIndexChanged)
     // The theme's settings id ("system"/"light"/"dark"), the value
@@ -103,6 +107,8 @@ public:
     // "before" and the "now" side, so nothing reads as changed on open.
     struct Init {
         int languageIndex = 0;              // "Auto"
+        // Generalsettings/ui/uiScale. 100 leaves the environment alone.
+        int uiScalePercent = 100;
         // util::Easing::Type_Linear's display index in util/Easing.cpp's
         // kEasingDisplayOrder - the SAME expression GeneralSettingDialog.cpp's read
         // block seeds when no setting is present, so a bare model and the dialog open
@@ -136,6 +142,7 @@ public:
 
     int currentTab() const { return mCurrentTab; }
     int languageIndex() const { return mLanguageIndex; }
+    int uiScalePercent() const { return mUiScalePercent; }
     int easingIndex() const { return mEasingIndex; }
     int rangeIndex() const { return mRangeIndex; }
     QString themeKey() const { return mThemeKey; }
@@ -175,6 +182,8 @@ public:
 
     void setCurrentTab(int aTab);
     void setLanguageIndex(int aIndex);
+    // Clamps into gui::ui_scale's [75, 200] range.
+    void setUiScalePercent(int aPercent);
     void setEasingIndex(int aIndex);
     void setRangeIndex(int aIndex);
     void setThemeKey(const QString& aKey);
@@ -201,6 +210,7 @@ public:
     // compares the seeded value with the current one; the widget's had the same
     // bodies (mInitialX != control->value()).
     Q_INVOKABLE bool languageHasChanged() const;
+    Q_INVOKABLE bool uiScaleHasChanged() const;
     Q_INVOKABLE bool easingHasChanged() const;
     Q_INVOKABLE bool rangeHasChanged() const;
     Q_INVOKABLE bool timeFormatHasChanged() const;
@@ -227,6 +237,7 @@ public:
 signals:
     void currentTabChanged();
     void languageIndexChanged();
+    void uiScalePercentChanged();
     void easingIndexChanged();
     void rangeIndexChanged();
     void themeKeyChanged();
@@ -255,6 +266,7 @@ private:
 
     // The "before" side, written only by seed().
     int mInitialLanguageIndex = 0;
+    int mInitialUiScalePercent = 100;
     int mInitialEasingIndex = 2;
     int mInitialRangeIndex = 2;
     int mInitialTimeFormatIndex = 0;
@@ -273,6 +285,7 @@ private:
 
     // The "now" side, written by the setters (and by seed()).
     int mLanguageIndex = 0;
+    int mUiScalePercent = 100;
     int mEasingIndex = 2;
     int mRangeIndex = 2;
     int mTimeFormatIndex = 0;

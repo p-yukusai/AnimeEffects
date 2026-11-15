@@ -4,6 +4,7 @@
 #include <QVariantMap>
 
 #include "util/Easing.h"
+#include "gui/UiScale.h"
 
 namespace {
 
@@ -140,6 +141,7 @@ void GeneralSettingViewModel::setThemeOptions(const QVariantList& aOptions) {
 
 void GeneralSettingViewModel::seed(const Init& aInit) {
     mInitialLanguageIndex = aInit.languageIndex;
+    mInitialUiScalePercent = ui_scale::clampPercent(aInit.uiScalePercent);
     mInitialEasingIndex = aInit.easingIndex;
     mInitialRangeIndex = aInit.rangeIndex;
     mInitialTimeFormatIndex = aInit.timeFormatIndex;
@@ -158,6 +160,7 @@ void GeneralSettingViewModel::seed(const Init& aInit) {
 
     // Through the setters, so the "now" side moves and every listener sees it.
     setLanguageIndex(aInit.languageIndex);
+    setUiScalePercent(aInit.uiScalePercent);
     setEasingIndex(aInit.easingIndex);
     setRangeIndex(aInit.rangeIndex);
     setTimeFormatIndex(aInit.timeFormatIndex);
@@ -188,6 +191,14 @@ void GeneralSettingViewModel::setLanguageIndex(int aIndex) {
         return;
     mLanguageIndex = aIndex;
     emit languageIndexChanged();
+}
+
+void GeneralSettingViewModel::setUiScalePercent(int aPercent) {
+    const int clamped = ui_scale::clampPercent(aPercent);
+    if (mUiScalePercent == clamped)
+        return;
+    mUiScalePercent = clamped;
+    emit uiScalePercentChanged();
 }
 
 void GeneralSettingViewModel::setEasingIndex(int aIndex) {
@@ -315,6 +326,8 @@ void GeneralSettingViewModel::setAccentOptions(const QVariantList& aOptions) {
 }
 
 bool GeneralSettingViewModel::languageHasChanged() const { return mInitialLanguageIndex != mLanguageIndex; }
+
+bool GeneralSettingViewModel::uiScaleHasChanged() const { return mInitialUiScalePercent != mUiScalePercent; }
 
 bool GeneralSettingViewModel::easingHasChanged() const { return mInitialEasingIndex != mEasingIndex; }
 

@@ -787,7 +787,9 @@ add_executable(general_setting_form general_setting_form.cpp
     # target that compiles Easing.cpp directly needs it beside it.
     ../src/util/EasingSegment.cpp
     ../src/util/EasingName.cpp
-    ../src/gui/MouseSetting.cpp)
+    ../src/gui/MouseSetting.cpp
+    # The model's UI-scale setter clamps through this Core-only helper.
+    ../src/gui/UiScale.cpp)
 target_include_directories(general_setting_form PRIVATE .. ../src ../src/gui)
 target_compile_definitions(general_setting_form PRIVATE
     AE_MAJOR_VERSION=1
@@ -2261,3 +2263,19 @@ target_compile_definitions(dock_slots PRIVATE
 target_link_libraries(dock_slots PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets
 )
+
+# The recent-project list: newest first, duplicates collapsed, capped at eight,
+# and an unavailable path removed. Pure QStringList logic, no GUI.
+add_executable(recent_files recent_files.cpp)
+target_include_directories(recent_files PRIVATE .. ../src)
+target_compile_definitions(recent_files PRIVATE
+    AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1)
+target_link_libraries(recent_files PRIVATE Qt6::Core util)
+
+# The UI scale's clamp and QT_SCALE_FACTOR string. Compiles the helper directly so
+# the test does not link the GUI stack.
+add_executable(ui_scale ui_scale.cpp ../src/gui/UiScale.cpp)
+target_include_directories(ui_scale PRIVATE .. ../src)
+target_compile_definitions(ui_scale PRIVATE
+    AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1)
+target_link_libraries(ui_scale PRIVATE Qt6::Core)

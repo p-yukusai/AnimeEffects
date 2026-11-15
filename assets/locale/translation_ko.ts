@@ -177,7 +177,7 @@
         <location filename="../../src/gui/qml/NewProjectDialog.qml" line="350"/>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="384"/>
         <location filename="../../src/gui/qml/KeyBindingDialog.qml" line="280"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="543"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="563"/>
         <source>Cancel</source>
         <translation>취소</translation>
     </message>
@@ -218,11 +218,13 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/AeIconButton.qml" line="47"/>
+        <location filename="../../src/gui/qml/HeaderSlotButton.qml" line="86"/>
         <source>On</source>
         <translation>켜짐</translation>
     </message>
     <message>
         <location filename="../../src/gui/qml/AeIconButton.qml" line="47"/>
+        <location filename="../../src/gui/qml/HeaderSlotButton.qml" line="86"/>
         <source>Off</source>
         <translation>꺼짐</translation>
     </message>
@@ -328,7 +330,7 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/ProjectSettingDialog.qml" line="389"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="548"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="568"/>
         <source>OK</source>
         <translation>확인</translation>
     </message>
@@ -381,96 +383,102 @@
     </message>
     <message>
         <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="232"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="234"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="238"/>
+        <source>UI scale (%, needs restart)</source>
+        <translation>UI 배율(%, 재시작 필요)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="252"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="254"/>
         <source>Default keyframe easing</source>
         <translation>기본 키프레임 이징</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="243"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="245"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="263"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="265"/>
         <source>Default keyframe range</source>
         <translation>기본 키프레임 범위</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="259"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="279"/>
         <source>Theme</source>
         <translation>테마</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="290"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="310"/>
         <source>Accent color</source>
         <translation>강조 색</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="306"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="326"/>
         <source>Accent color %1</source>
         <translation>강조 색 %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="327"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="347"/>
         <source>Allow donation menu</source>
         <translation>기부 메뉴 허용</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="339"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="359"/>
         <source>Reset recent files list</source>
         <translation>최근 파일 목록 초기화</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="345"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="365"/>
         <source>Deletes all project entries from your recents</source>
         <translation>최근 항목에서 모든 프로젝트 항목을 삭제합니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="363"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="383"/>
         <source>Automatically save your project</source>
         <translation>프로젝트 자동 저장</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="368"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="374"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="388"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="394"/>
         <source>Time (in minutes) between autosaves</source>
         <translation>자동 저장 간격(분)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="395"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="415"/>
         <source>Show mesh when selecting FFD</source>
         <translation>FFD 선택 시 메시 표시</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="402"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="422"/>
         <source>On copy send keys to the clipboard</source>
         <translation>복사 시 키를 클립보드로 전송</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="409"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="429"/>
         <source>Enforce ID check on asset download</source>
         <translation>에셋 다운로드 시 ID 확인 강제</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="416"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="436"/>
         <source>Ignore export warnings</source>
         <translation>내보내기 경고 무시</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="423"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="443"/>
         <source>Force project to load</source>
         <translation>프로젝트 강제 로드</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="428"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="430"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="448"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="450"/>
         <source>Timeline format</source>
         <translation>타임라인 형식</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="450"/>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="456"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="470"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="476"/>
         <source>Global keybind delay (ms)</source>
         <translation>전역 키 바인딩 지연(ms)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="486"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="506"/>
         <source>Invert zoom direction</source>
         <translation type="unfinished"></translation>
     </message>
@@ -483,7 +491,7 @@
         <translation type="vanished">타임라인 스크롤 반전</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="493"/>
+        <location filename="../../src/gui/qml/GeneralSettingDialog.qml" line="513"/>
         <source>Middle mouse moves canvas</source>
         <translation>가운데 마우스 버튼으로 캔버스 이동</translation>
     </message>
@@ -491,45 +499,43 @@
 <context>
     <name>AnimeEffects.Header</name>
     <message>
-        <location filename="../../src/gui/qml/HeaderSlotButton.qml" line="65"/>
         <source>On</source>
-        <translation type="unfinished">켜짐</translation>
+        <translation type="obsolete">켜짐</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/HeaderSlotButton.qml" line="65"/>
         <source>Off</source>
-        <translation type="unfinished">꺼짐</translation>
+        <translation type="obsolete">꺼짐</translation>
     </message>
 </context>
 <context>
     <name>AnimeEffects.Properties</name>
     <message>
-        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="89"/>
+        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="91"/>
         <source>Position X</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="100"/>
+        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="104"/>
         <source>Position Y</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="191"/>
+        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="203"/>
         <source>Scale X</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="202"/>
+        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="216"/>
         <source>Scale Y</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="277"/>
+        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="295"/>
         <source>Image center X</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="288"/>
+        <location filename="../../src/gui/qml/PropertiesPanel.qml" line="308"/>
         <source>Image center Y</source>
         <translation type="unfinished"></translation>
     </message>
@@ -559,7 +565,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorNumberField.qml" line="58"/>
+        <location filename="../../src/gui/qml/InspectorNumberField.qml" line="70"/>
         <source>Degrees</source>
         <translation type="unfinished"></translation>
     </message>
@@ -609,63 +615,63 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="397"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="403"/>
         <source>Blur amount</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="453"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="463"/>
         <source>Blur angle</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="473"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="485"/>
         <source>Wave strength</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="487"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="501"/>
         <source>Wave wavelength</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="501"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="517"/>
         <source>Wave direction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="517"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="535"/>
         <source>Wave phase</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="531"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="551"/>
         <source>Dual wave amount</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="557"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="579"/>
         <source>Wave speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="571"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="593"/>
         <source>Wave crest</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="585"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="607"/>
         <source>Dual wave direction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="601"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="623"/>
         <source>Dual wave scale</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="621"/>
-        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="657"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="643"/>
+        <location filename="../../src/gui/qml/InspectorFilterCard.qml" line="679"/>
         <source>Painting this mask</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1100,7 +1106,7 @@
 <context>
     <name>CmndName</name>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="427"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="442"/>
         <source>Move keys</source>
         <translation>키 이동</translation>
     </message>
@@ -1109,33 +1115,33 @@
         <translation type="vanished">클립보드 키 붙여넣기</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="897"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1001"/>
         <source>Paste clipboard keys</source>
         <translation>클립보드 키 붙여넣기</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1077"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1209"/>
         <source>Paste keys</source>
         <translation>키 붙여넣기</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1148"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1295"/>
         <source>Delete keys</source>
         <translation>키 삭제</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1251"/>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="3573"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1408"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="3665"/>
         <source>Make the segment after the key automatic</source>
         <translation>키 뒤 세그먼트를 자동으로 설정</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="499"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="588"/>
         <source>Make keys proportional</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="499"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="588"/>
         <source>Make keys absolute</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1152,7 +1158,7 @@
         <translation type="vanished">기본 회전 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="679"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="768"/>
         <source>Update rotation key</source>
         <translation>회전 키 업데이트</translation>
     </message>
@@ -1169,7 +1175,7 @@
         <translation type="vanished">기본 깊이 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="701"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="790"/>
         <source>Update depth key</source>
         <translation>깊이 키 업데이트</translation>
     </message>
@@ -1178,7 +1184,7 @@
         <translation type="vanished">기본 불투명도 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="712"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="801"/>
         <source>Update opacity key</source>
         <translation>불투명도 키 업데이트</translation>
     </message>
@@ -1187,7 +1193,7 @@
         <translation type="vanished">기본 HSV 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="723"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="812"/>
         <source>Update HSV key</source>
         <translation>HSV 키 업데이트</translation>
     </message>
@@ -1196,12 +1202,12 @@
         <translation type="vanished">기본 블러 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="734"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="823"/>
         <source>Update blur key</source>
         <translation>블러 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="745"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="834"/>
         <source>Update wave key</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1210,7 +1216,7 @@
         <translation type="vanished">기본 포즈 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="756"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="845"/>
         <source>Update pose key</source>
         <translation>포즈 키 업데이트</translation>
     </message>
@@ -1219,7 +1225,7 @@
         <translation type="vanished">기본 FFD 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="767"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="856"/>
         <source>Update FFD key</source>
         <translation>FFD 키 업데이트</translation>
     </message>
@@ -1248,192 +1254,202 @@
         <translation type="vanished">메시 크기 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="667"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="533"/>
+        <source>Link Channels</source>
+        <translation>채널 연결</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="533"/>
+        <source>Separate Channels</source>
+        <translation>채널 분리</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="756"/>
         <source>Update position</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="668"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="757"/>
         <source>Update position key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="678"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="767"/>
         <source>Update rotation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="689"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="778"/>
         <source>Update scale</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="690"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="779"/>
         <source>Update scale key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="700"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="789"/>
         <source>Update depth</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="711"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="800"/>
         <source>Update opacity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="722"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="811"/>
         <source>Update HSV</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="733"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="822"/>
         <source>Update blur</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="744"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="833"/>
         <source>Update wave</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="755"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="844"/>
         <source>Update pose</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="779"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="868"/>
         <source>Update image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="780"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="869"/>
         <source>Update image key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="800"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="903"/>
         <source>Update image offset</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="801"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="935"/>
         <source>Update image offset key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="820"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="988"/>
         <source>Update mesh spacing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="821"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="989"/>
         <source>Update mesh spacing key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="881"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1088"/>
         <source>Add new movement key</source>
         <translation>새 이동 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="885"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1092"/>
         <source>Add new rotation key</source>
         <translation>새 회전 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="890"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1097"/>
         <source>Add new scaling key</source>
         <translation>새 스케일 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="894"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1101"/>
         <source>Add new depth key</source>
         <translation>새 깊이 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="898"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1105"/>
         <source>Add new opacity key</source>
         <translation>새 불투명도 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="902"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1109"/>
         <source>Add new HSV key</source>
         <translation>새 HSV 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="906"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1113"/>
         <source>Add new blur key</source>
         <translation>새 블러 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="910"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1117"/>
         <source>Add new wave key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="916"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1123"/>
         <source>Add new pose key</source>
         <translation>새 포즈 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="923"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1130"/>
         <source>Add new FFD key</source>
         <translation>새 FFD 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="928"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1135"/>
         <source>Add new image key</source>
         <translation>새 이미지 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1065"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1272"/>
         <source>Clear mask</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1084"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1291"/>
         <source>Add mask</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1103"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1310"/>
         <source>Remove mask</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1139"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1346"/>
         <source>Invert mask</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1153"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1360"/>
         <source>Remove mask key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1169"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1376"/>
         <source>Add mask key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1191"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1398"/>
         <source>Add filter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1270"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1477"/>
         <source>Remove filter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1306"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1542"/>
         <source>Reorder filters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1331"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1567"/>
         <source>Toggle filter</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1472,7 +1488,7 @@
         <translation>본 이동</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="766"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="855"/>
         <location filename="../../src/ctrl/ffd/ffd_BrushMode.cpp" line="151"/>
         <source>Update FFD</source>
         <translation>FFD 업데이트</translation>
@@ -1523,27 +1539,41 @@
         <translation>포즈 키의 본 회전</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/srt/srt_CentroidMode.cpp" line="115"/>
+        <location filename="../../src/ctrl/srt/srt_CentroidMode.cpp" line="125"/>
         <source>update centroid of a moving key</source>
         <translation>이동 키의 중심점 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="180"/>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="206"/>
         <source>update a moving key</source>
         <translation>이동 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="220"/>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="251"/>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="416"/>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="431"/>
         <source>update a rotation key</source>
         <translation>회전 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="256"/>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="292"/>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="308"/>
+        <source>update a scale key</source>
+        <translation>스케일 키 업데이트</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="351"/>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="377"/>
+        <source>update a move key</source>
+        <translation>이동 키 업데이트</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/srt/srt_MoveMode.cpp" line="469"/>
         <source>update a scaling key</source>
         <translation>스케일 키 업데이트</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="464"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="475"/>
         <source>Change the canvas size</source>
         <translation>캔버스 크기 변경</translation>
     </message>
@@ -1552,74 +1582,74 @@
         <translation type="vanished">최대 프레임 변경</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="484"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="495"/>
         <source>Change the frame range</source>
         <translation>프레임 범위 변경</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="504"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="515"/>
         <source>Change loop settings</source>
         <translation>반복 설정 변경</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="525"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="536"/>
         <source>Change the FPS</source>
         <translation>초당 프레임 변경</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="553"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="564"/>
         <source>Change the viewport background</source>
         <translation>뷰포트 배경 변경</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="51"/>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="411"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="52"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="420"/>
         <source>Rename object</source>
         <translation>오브젝트 이름 바꾸기</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="537"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="546"/>
         <source>Create a layer</source>
         <translation>레이어 만들기</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="178"/>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="577"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="187"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="586"/>
         <source>Duplicate base folder</source>
         <translation>기본 폴더 복제</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="71"/>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="420"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="72"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="429"/>
         <source>Show object</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="71"/>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="420"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="72"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="429"/>
         <source>Hide object</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="88"/>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="429"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="89"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="438"/>
         <source>Contract object</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="178"/>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="577"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="187"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="586"/>
         <source>Duplicate layer</source>
         <translation>레이어 복제</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="522"/>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="555"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="531"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="564"/>
         <source>create a folder object</source>
         <translation>폴더 오브젝트 만들기</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="597"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="606"/>
         <source>Add keys at playhead</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1628,12 +1658,12 @@
         <translation type="obsolete">기본 키 추가</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="489"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="498"/>
         <source>Delete object</source>
         <translation>오브젝트 삭제</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/TreeActions.cpp" line="500"/>
+        <location filename="../../src/ctrl/TreeActions.cpp" line="509"/>
         <source>Move object</source>
         <translation>오브젝트 이동</translation>
     </message>
@@ -1648,7 +1678,7 @@
         <translation>에셋 이름 바꾸기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TargetWidget.cpp" line="474"/>
+        <location filename="../../src/gui/TargetWidget.cpp" line="481"/>
         <source>Change animation settings</source>
         <translation>애니메이션 설정 변경</translation>
     </message>
@@ -1676,54 +1706,59 @@
         <translation>이미지 삭제</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="1284"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="1300"/>
         <source>align handles</source>
         <translation>핸들 정렬</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="2917"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="2399"/>
+        <source>Add new key</source>
+        <translation>새 키 추가</translation>
+    </message>
+    <message>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="2987"/>
         <source>move a key</source>
         <translation>키 이동</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="3227"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="3297"/>
         <source>change a key easing</source>
         <translation>키 이징 변경</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="3485"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="3566"/>
         <source>remove a key</source>
         <translation>키 제거</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="3655"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="3747"/>
         <source>change key easing</source>
         <translation>키 이징 변경</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="3849"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="3941"/>
         <source>incoming</source>
         <translation>들어오는</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="3849"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="3941"/>
         <source>outgoing</source>
         <translation>나가는</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="3850"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="3942"/>
         <source>Change the %1 handle to %2</source>
         <translation>%1 핸들을 %2(으)로 변경</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1497"/>
-        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1211"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1680"/>
+        <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1368"/>
         <source>Change key(s) easing</source>
         <translation>키 이징 변경</translation>
     </message>
     <message>
         <location filename="../../src/ctrl/MaskEditor.cpp" line="196"/>
-        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1246"/>
+        <location filename="../../src/ctrl/TimeLineUtil.cpp" line="1453"/>
         <source>Clear filter mask</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3386,22 +3421,22 @@ The %2 encoder could not be opened either (%3).</source>
         </translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelModel.cpp" line="616"/>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="622"/>
         <source>No keys on the selected layers</source>
         <translation>선택한 레이어에 키가 없습니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelModel.cpp" line="617"/>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="623"/>
         <source>Select a layer to show its curves</source>
         <translation>레이어를 선택하면 곡선이 표시됩니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelModel.cpp" line="620"/>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="626"/>
         <source>All channels of the selected layers are hidden</source>
         <translation>선택한 레이어의 모든 채널이 숨겨져 있습니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelModel.cpp" line="764"/>
+        <location filename="../../src/gui/GraphPanelModel.cpp" line="770"/>
         <source>No room for the graph in this viewport</source>
         <translation>이 뷰포트에는 그래프를 넣을 공간이 없습니다</translation>
     </message>
@@ -4071,147 +4106,147 @@ Open it?</source>
         <translation type="vanished">%1 필요</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1754"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1817"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1917"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1962"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2012"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2039"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2070"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1770"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1833"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1933"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1978"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2028"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2055"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2086"/>
         <source>Export Error</source>
         <translation>내보내기 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1755"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1771"/>
         <source>Unknown export destination: %1</source>
         <translation>알 수 없는 내보내기 대상: %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1846"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1862"/>
         <source>File exists</source>
         <translation>파일이 이미 있음</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1847"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1863"/>
         <source>The file &quot;%1&quot; already exists. Overwrite?</source>
         <translation>파일 &quot;%1&quot;이(가) 이미 있습니다. 덮어쓰시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1918"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1934"/>
         <source>%1 caps the file size, which means encoding it more than once, and that needs all %2 frames in memory (~%3 MB). Export fewer frames, or choose a destination without a size limit.</source>
         <translation>%1은 파일 크기를 제한하므로 두 번 이상 인코딩해야 하고, 그러려면 %2개 프레임을 모두 메모리에 올려야 합니다(약 %3 MB). 프레임 수를 줄여 내보내거나 크기 제한이 없는 대상을 고르세요.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1936"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1952"/>
         <source>Fitting under %1&apos;s %2 KB limit...</source>
         <translation>%1의 %2 KB 제한에 맞추는 중...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1949"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1965"/>
         <source>Export Canceled</source>
         <translation>내보내기 취소됨</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1950"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1966"/>
         <source>The export was stopped while fitting under %1&apos;s size limit. The file already written is the last attempt, and may exceed the limit.</source>
         <translation>%1의 크기 제한에 맞추는 중에 내보내기가 중단되었습니다. 이미 기록된 파일은 마지막 시도 결과이며 제한을 넘을 수 있습니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1963"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1979"/>
         <source>%1 caps the file at %2 KB and even the smallest setting did not fit it (%3 KB).
 %4</source>
         <translation>%1은 파일을 %2 KB로 제한하는데 가장 작은 설정으로도 맞추지 못했습니다(%3 KB).
 %4</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1971"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1987"/>
         <source>Fitted to %1 bytes in %2 attempts (%3x%4).</source>
         <translation>%2회 시도 만에 %1바이트에 맞췄습니다(%3x%4).</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="228"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="251"/>
         <source>Y</source>
         <translation>Y</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="228"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="251"/>
         <source>X</source>
         <translation>X</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="230"/>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="238"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="253"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="261"/>
         <source>Angle</source>
         <translation>각도</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="232"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="255"/>
         <source>Depth</source>
         <translation>깊이</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="234"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="257"/>
         <source>Opacity</source>
         <translation>불투명도</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="237"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="260"/>
         <source>Radius Y</source>
         <translation>반경 Y</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="239"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="262"/>
         <source>Radius X</source>
         <translation>반경 X</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="243"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="266"/>
         <source>Saturation</source>
         <translation>채도</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="244"/>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="258"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="267"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="281"/>
         <source>Value</source>
         <translation>명도</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="245"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="268"/>
         <source>Hue</source>
         <translation>색조</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="249"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="272"/>
         <source>Wavelength</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="250"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="273"/>
         <source>Direction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="251"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="274"/>
         <source>Phase</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="252"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="275"/>
         <source>Mix</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="253"/>
+        <location filename="../../src/ctrl/graph/graph_Channel.cpp" line="276"/>
         <source>Strength</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="2719"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="2789"/>
         <source>The animation graph stopped moving: the dragged key changed.</source>
         <translation>애니메이션 그래프의 이동이 중단되었습니다: 끌고 있던 키가 바뀌었습니다.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/GraphEditor.cpp" line="2956"/>
+        <location filename="../../src/ctrl/GraphEditor.cpp" line="3026"/>
         <source>The animation graph stopped editing: the dragged key changed.</source>
         <translation>애니메이션 그래프의 편집이 중단되었습니다: 끌고 있던 키가 바뀌었습니다.</translation>
     </message>
@@ -4253,7 +4288,7 @@ Open it?</source>
 <context>
     <name>TimeLine</name>
     <message>
-        <location filename="../../src/ctrl/time/time_BodyModel.cpp" line="211"/>
+        <location filename="../../src/ctrl/time/time_BodyModel.cpp" line="278"/>
         <source>Children</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4299,7 +4334,7 @@ Open it?</source>
     </message>
     <message>
         <location filename="../../src/ctrl/PoseEditor.cpp" line="90"/>
-        <location filename="../../src/ctrl/SRTEditor.cpp" line="110"/>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="203"/>
         <source>An object with invalid posture was given.</source>
         <translation>유효하지 않은 자세의 오브젝트가 제공되었습니다.</translation>
     </message>
@@ -4309,13 +4344,13 @@ Open it?</source>
         <translation>선택한 레이어에 포즈를 취할 수 있는 본이 없습니다.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/SRTEditor.cpp" line="50"/>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="51"/>
         <source>The transformed object has one or more bones bound to it, SRT keys may not work as expected.</source>
         <translation>변형된 오브젝트에 하나 이상의 본이 바인딩되어 있어 SRT 키가 예상대로 작동하지 않을 수 있습니다.</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/SRTEditor.cpp" line="51"/>
-        <location filename="../../src/ctrl/SRTEditor.cpp" line="158"/>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="52"/>
+        <location filename="../../src/ctrl/SRTEditor.cpp" line="251"/>
         <source>SRT Editor : </source>
         <translation>SRT 편집기: </translation>
     </message>
@@ -4503,7 +4538,7 @@ Open it?</source>
 <context>
     <name>ctrl::ProjectLoader</name>
     <message>
-        <location filename="../../src/ctrl/ProjectLoader.cpp" line="26"/>
+        <location filename="../../src/ctrl/ProjectLoader.cpp" line="27"/>
         <source>The skeleton on &quot;%1&quot; (frame %2) has %3 bones; only the first %4 can deform a mesh.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4511,12 +4546,12 @@ Open it?</source>
 <context>
     <name>ctrl::System</name>
     <message>
-        <location filename="../../src/ctrl/System.cpp" line="64"/>
+        <location filename="../../src/ctrl/System.cpp" line="65"/>
         <source>Import Warnings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/System.cpp" line="68"/>
+        <location filename="../../src/ctrl/System.cpp" line="69"/>
         <source>The project opened, but some layers could not be reproduced exactly.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5300,17 +5335,17 @@ Open it?</source>
         <translation type="vanished">타임라인 형식</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="211"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
         <source>System</source>
         <translation>시스템</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="211"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
         <source>Light</source>
         <translation>라이트</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="211"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="215"/>
         <source>Dark</source>
         <translation>다크</translation>
     </message>
@@ -5367,12 +5402,12 @@ Open it?</source>
         <translation type="vanished">최근 항목에서 모든 프로젝트 항목을 삭제합니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="284"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
         <source>Success</source>
         <translation>성공</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="284"/>
+        <location filename="../../src/gui/GeneralSettingDialog.cpp" line="293"/>
         <source>All entries have been successfully removed</source>
         <translation>모든 항목이 성공적으로 제거되었습니다</translation>
     </message>
@@ -5596,7 +5631,7 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation>%1, 포커스: %2</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2385"/>
+        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2394"/>
         <source>%1, selected key: %2</source>
         <translation>%1, 선택한 키: %2</translation>
     </message>
@@ -5615,22 +5650,22 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">채널 목록 표시</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2416"/>
+        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2425"/>
         <source>Fit graph</source>
         <translation>그래프 맞춤</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2417"/>
+        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2426"/>
         <source>double-click the plot</source>
         <translation>플롯을 두 번 클릭</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2433"/>
+        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2442"/>
         <source>Key menu</source>
         <translation>키 메뉴</translation>
     </message>
     <message>
-        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2434"/>
+        <location filename="../../src/gui/GraphPanelFrame.cpp" line="2443"/>
         <source>right-click the key</source>
         <translation>키를 마우스 오른쪽 버튼으로 클릭</translation>
     </message>
@@ -5872,47 +5907,47 @@ In the following screen you can instruct AnimeEffects to download and install it
 <context>
     <name>gui::MainMenuBar</name>
     <message>
-        <location filename="../../src/gui/MainMenuBar.h" line="85"/>
+        <location filename="../../src/gui/MainMenuBar.h" line="91"/>
         <source>File</source>
         <translation>파일</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="106"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="108"/>
         <source>New project</source>
         <translation>새 프로젝트</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="107"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="109"/>
         <source>Open project</source>
         <translation>프로젝트 열기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.h" line="90"/>
+        <location filename="../../src/gui/MainMenuBar.h" line="96"/>
         <source>Open recent</source>
         <translation>최근 항목 열기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="149"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="433"/>
         <source>No other projects</source>
         <translation>다른 프로젝트가 없습니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="109"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="111"/>
         <source>Save project</source>
         <translation>프로젝트 저장</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="110"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="112"/>
         <source>Save project as</source>
         <translation>프로젝트 다른 이름으로 저장</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="128"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="130"/>
         <source>Close project</source>
         <translation>프로젝트 닫기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="113"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="115"/>
         <source>Export project as</source>
         <translation>프로젝트 내보내기</translation>
     </message>
@@ -5965,27 +6000,27 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">AVI 비디오</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.h" line="86"/>
+        <location filename="../../src/gui/MainMenuBar.h" line="92"/>
         <source>Edit</source>
         <translation>편집</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="158"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="140"/>
         <source>Undo</source>
         <translation>실행 취소</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="160"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="142"/>
         <source>Redo</source>
         <translation>다시 실행</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="164"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="146"/>
         <source>Assets</source>
         <translation>에셋</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.h" line="88"/>
+        <location filename="../../src/gui/MainMenuBar.h" line="94"/>
         <source>Preferences</source>
         <translation>환경 설정</translation>
     </message>
@@ -5998,175 +6033,175 @@ In the following screen you can instruct AnimeEffects to download and install it
         <translation type="vanished">마우스 설정</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="118"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="120"/>
         <source>Quickly export as...</source>
         <translation>빠르게 내보내기...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="123"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="125"/>
         <source>Export again</source>
         <translation>다시 내보내기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.h" line="87"/>
+        <location filename="../../src/gui/MainMenuBar.h" line="93"/>
         <source>Panels</source>
         <translation>패널</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="174"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="156"/>
         <source>Settings</source>
         <translation>설정</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="189"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="171"/>
         <source>Keybindings</source>
         <translation>키 바인딩</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.h" line="89"/>
+        <location filename="../../src/gui/MainMenuBar.h" line="95"/>
         <source>Help</source>
         <translation>도움말</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="196"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="178"/>
         <source>About AnimeEffects</source>
         <translation>AnimeEffects 정보</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="203"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="185"/>
         <source>### AnimeEffects for </source>
         <translation>### AnimeEffects </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="203"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="185"/>
         <source> version </source>
         <translation>용 버전 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="204"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="186"/>
         <source>An easy to use 2D animation software maintained by the [AnimeEffectsDevs](https://github.com/AnimeEffectsDevs).&lt;br /&gt;Licensed under the GPL v3.0 and powered by various open source libraries.</source>
         <translation>사용하기 쉬운 2D 애니메이션 소프트웨어로, [AnimeEffectsDevs](https://github.com/AnimeEffectsDevs)에서 유지 관리합니다.&lt;br /&gt;GPL v3.0 라이선스 하에 배포되며 다양한 오픈소스 라이브러리로 구동됩니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="207"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="189"/>
         <source>&lt;br /&gt;&lt;br /&gt;Video/audio encoding uses the FFmpeg libraries (https://ffmpeg.org), which are licensed under the GNU Lesser GPL v2.1+ (or GPL, depending on the build). Their corresponding source is available as required by that license.</source>
         <translation>&lt;br /&gt;&lt;br /&gt;비디오/오디오 인코딩은 FFmpeg 라이브러리(https://ffmpeg.org)를 사용하며, 이는 GNU Lesser GPL v2.1+(빌드에 따라 GPL)에 따라 라이선스됩니다. 해당 라이선스가 요구하는 대로 관련 소스를 제공합니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="211"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="193"/>
         <source>&lt;br /&gt;&lt;br /&gt;Contributors:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
 If we forgot to include you please let us know or open a PR!</source>
         <translation>&lt;br /&gt;&lt;br /&gt;기여자:&lt;br /&gt;[Hidefuku](https://github.com/hidefuku), [Yukusai](https://github.com/p-yukusai), [Gambot](https://github.com/GbotHQ), [Arrangemonk](https://github.com/Arrangemonk), [OneByStudio](https://onebystudio.com), [Larpon](https://github.com/larpon), [Herace](https://github.com/herace), [Aodaruma](https://github.com/Aodaruma), [Azagaya](https://github.com/azagaya), [FoxyHawk](https://github.com/FoxyHawk), [Nanashia](https://github.com/Nanashia), [Henrich](https://github.com/henrich), [mcddx330](https://github.com/mcddx330), [Freddii](https://github.com/freddii), [Aki017](https://github.com/aki017), [PicoHz](https://github.com/picoHz), [Peter9811](https://github.com/peter9811), [GES233](https://github.com/GES233), [h-banii](https://github.com/h-banii), [henrich](https://github.com/henrich), [Nanashia](https://github.com/Nanashia).
 혹시 기여자 명단에서 누락된 분이 계시다면 알려 주시거나 PR을 열어 주세요!</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="239"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="221"/>
         <source>About us</source>
         <translation>소개</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="244"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="226"/>
         <source>Check for updates</source>
         <translation>업데이트 확인</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="248"/>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="386"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="230"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="368"/>
         <source>System telemetry</source>
         <translation>시스템 정보</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="285"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="267"/>
         <source>Version: </source>
         <translation>버전: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="286"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="268"/>
         <source>Format version: </source>
         <translation>포맷 버전: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="287"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="269"/>
         <source>Platform: </source>
         <translation>플랫폼: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="288"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="270"/>
         <source>Build ABI: </source>
         <translation>빌드 ABI: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="311"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="293"/>
         <source>CPU vendor: </source>
         <translation>CPU 제조사: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="312"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="294"/>
         <source>CPU architecture: </source>
         <translation>CPU 아키텍처: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="313"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="295"/>
         <source>CPU threads: </source>
         <translation>CPU 스레드: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="317"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="299"/>
         <source>System RAM:</source>
         <translation>시스템 RAM:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="319"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="301"/>
         <source>System </source>
         <translation>시스템 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="321"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="303"/>
         <source>Current GPU: </source>
         <translation>현재 GPU: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="355"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="337"/>
         <source>GPU Vendor: </source>
         <translation>GPU 제조사: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="356"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="338"/>
         <source>Max VRAM: </source>
         <translation>최대 VRAM: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="357"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="339"/>
         <source>OpenGL version: </source>
         <translation>OpenGL 버전: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="358"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="340"/>
         <source>Qt Version: </source>
         <translation>Qt 버전: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="359"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="341"/>
         <source>System locale: </source>
         <translation>시스템 로케일: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="364"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="346"/>
         <source>Location Has Unicode: </source>
         <translation>위치에 유니코드 포함: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="376"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="358"/>
         <source>Location Is Writable: </source>
         <translation>위치 쓰기 가능: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="380"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="362"/>
         <source>libav licence: </source>
         <translation>libav 라이선스: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="381"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="363"/>
         <source>libav configuration: </source>
         <translation>libav 구성: </translation>
     </message>
@@ -6175,17 +6210,17 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">FFmpeg 접근 유형: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="382"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="364"/>
         <source>System specs successfully copied to the clipboard</source>
         <translation>시스템 사양이 클립보드에 복사되었습니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="400"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="382"/>
         <source>Donate</source>
         <translation>후원</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainMenuBar.cpp" line="161"/>
+        <location filename="../../src/gui/MainMenuBar.cpp" line="143"/>
         <source>Project settings</source>
         <translation>프로젝트 설정</translation>
     </message>
@@ -6197,79 +6232,79 @@ If we forgot to include you please let us know or open a PR!</source>
 <context>
     <name>gui::MainWindow</name>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="232"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="233"/>
         <source>Animation</source>
         <translation>애니메이션</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="265"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="266"/>
         <source>Properties</source>
         <translation>속성</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="313"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="314"/>
         <source>Tools</source>
         <translation>도구</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="444"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="445"/>
         <source>left side</source>
         <translation>왼쪽</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="445"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="446"/>
         <source>right side</source>
         <translation>오른쪽</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="446"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="447"/>
         <source>bottom</source>
         <translation>아래쪽</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="929"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="937"/>
         <source>Theme changed</source>
         <translation>테마 변경됨</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="931"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="939"/>
         <source>There may be visual artifacts after changing themes, we recommend you restart the application.</source>
         <translation>테마를 변경한 후 시각적 아티팩트가 나타날 수 있습니다. 애플리케이션을 다시 시작하는 것이 좋습니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1153"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1161"/>
         <source> has been modified. Save changes?</source>
         <translation> 이(가) 수정되었습니다. 변경 내용을 저장하시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1155"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1163"/>
         <source>Some projects have been modified. Save changes?</source>
         <translation>일부 프로젝트가 수정되었습니다. 변경 내용을 저장하시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1163"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1171"/>
         <source>Save Changes</source>
         <translation>변경 내용 저장</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1164"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1172"/>
         <source>Discard Changes</source>
         <translation>변경 내용 무시</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1165"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1173"/>
         <source>Cancel</source>
         <translation>취소</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2956"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2972"/>
         <source>Nothing is docked on the %1</source>
         <translation>%1에 도킹된 패널이 없습니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="454"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2955"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2957"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="455"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2971"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2973"/>
         <source>Show or hide the %1</source>
         <translation>%1 표시/숨기기</translation>
     </message>
@@ -6282,25 +6317,25 @@ If we forgot to include you please let us know or open a PR!</source>
         <translation type="vanished">다시 실행됨: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1306"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1383"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1414"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="1485"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1316"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1395"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1428"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1501"/>
         <source>Loading Error</source>
         <translation>불러오기 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1359"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1369"/>
         <source>Open File</source>
         <translation>파일 열기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1434"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1448"/>
         <source>Recover unsaved project?</source>
         <translation>저장되지 않은 프로젝트를 복구하시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1435"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1449"/>
         <source>AnimeEffects found an unsaved project from a previous session:
 %1
 
@@ -6311,32 +6346,32 @@ Open it?</source>
 여시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="1499"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="1515"/>
         <source>Save File</source>
         <translation>파일 저장</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2148"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2164"/>
         <source>Exported %1 (%2 KB)</source>
         <translation>%1 내보냄 (%2 KB)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2158"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2174"/>
         <source> (%1 of %2 KB allowed for %3)</source>
         <translation> (%3에 허용된 %2 KB 중 %1)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2163"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2179"/>
         <source>; OVER THE LIMIT, it will be rejected</source>
         <translation>; 제한을 초과하여 거부됩니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2202"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2218"/>
         <source>All files (*)</source>
         <translation>모든 파일 (*)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2203"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2219"/>
         <source>%1 files (*.%2)</source>
         <translation>%1 파일 (*.%2)</translation>
     </message>
@@ -6449,8 +6484,8 @@ Open it?</source>
         <translation type="vanished">Tagged Image</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2196"/>
-        <location filename="../../src/gui/MainWindow.cpp" line="2275"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2212"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2291"/>
         <source>Export Folder</source>
         <translation>내보내기 폴더</translation>
     </message>
@@ -6467,7 +6502,7 @@ Open it?</source>
         <translation type="vanished">내보내기 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/MainWindow.cpp" line="2204"/>
+        <location filename="../../src/gui/MainWindow.cpp" line="2220"/>
         <source>Export File</source>
         <translation>파일 내보내기</translation>
     </message>
@@ -7046,12 +7081,12 @@ The log is available below.</source>
         <translation type="vanished">전체</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="150"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="230"/>
         <source>Select spacing between keys</source>
         <translation>키 간 간격 선택</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="464"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="544"/>
         <source>Clear playback window</source>
         <translation>재생 창 지우기</translation>
     </message>
@@ -7060,49 +7095,69 @@ The log is available below.</source>
         <translation type="vanished">키 이징 변경...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="878"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <source>Separate Channels</source>
+        <translation>채널 분리</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <source>Link Channels</source>
+        <translation>채널 연결</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="732"/>
+        <source>Link Channels (all channels need a key here)</source>
+        <translation>채널 연결(모든 채널에 이 프레임의 키 필요)</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="734"/>
+        <source>Every channel must have a key at this frame before they can be linked.</source>
+        <translation>연결하려면 모든 채널에 이 프레임의 키가 있어야 합니다.</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
         <source>Operation Error</source>
         <translation>작업 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="878"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
         <source>Failed to paste keys. 
 (If you want to paste across objects copy the key to the clipboard and right-click and paste to the node instead)</source>
         <translation>키 붙여넣기에 실패했습니다. 
 (오브젝트 간에 붙여넣으려면 키를 클립보드에 복사한 다음 대상 노드를 마우스 오른쪽 버튼으로 클릭하여 붙여넣으세요)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1120"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1302"/>
         <source>A minimum of two keys in different frames are needed.</source>
         <translation>서로 다른 프레임에 최소 두 개의 키가 필요합니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1121"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1303"/>
         <source>Not enough targets</source>
         <translation>대상이 부족합니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1156"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1338"/>
         <source>Key spacing</source>
         <translation>키 간격</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1158"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1340"/>
         <source>Number of frames the selected keys should be spaced by:</source>
         <translation>선택한 키의 간격으로 지정할 프레임 수:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1207"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1389"/>
         <source>Key conflict detected for key type </source>
         <translation>키 충돌 감지됨 — 키 타입 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1208"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
         <source> in node </source>
         <translation> · 노드 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1208"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
         <source> at frame </source>
         <translation> · 프레임 </translation>
     </message>
@@ -7115,47 +7170,47 @@ The log is available below.</source>
         <translation type="vanished"> · 프레임 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1210"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1392"/>
         <source>Move error</source>
         <translation>이동 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1211"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
         <source>Unable to move </source>
         <translation>키 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1211"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
         <source> key(s), due to the following reasons: </source>
         <translation>개를 이동할 수 없습니다. 이유는 다음과 같습니다: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="136"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="216"/>
         <source>Copy</source>
         <translation>복사</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="145"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="225"/>
         <source>Copy to clipboard</source>
         <translation>클립보드에 복사</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="142"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="222"/>
         <source>Delete</source>
         <translation>삭제</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="139"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="219"/>
         <source>Paste</source>
         <translation>붙여넣기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="601"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
         <source>Make proportional</source>
         <translation>비례 키로 만들기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="601"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
         <source>Make absolute</source>
         <translation>절대 키로 만들기</translation>
     </message>
@@ -7643,7 +7698,7 @@ The log is available below.</source>
 <context>
     <name>gui::prop::DepthKeyGroup</name>
     <message>
-        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="47"/>
+        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="55"/>
         <source>Depth</source>
         <translation>깊이</translation>
     </message>
@@ -7711,7 +7766,7 @@ The log is available below.</source>
 <context>
     <name>gui::prop::FFDKeyGroup</name>
     <message>
-        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="51"/>
+        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="59"/>
         <source>FFD</source>
         <translation>FFD</translation>
     </message>
@@ -7913,7 +7968,7 @@ The log is available below.</source>
 <context>
     <name>gui::prop::ImageKeyGroup</name>
     <message>
-        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="49"/>
+        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="57"/>
         <source>Image</source>
         <translation>이미지</translation>
     </message>
@@ -7956,7 +8011,7 @@ The log is available below.</source>
         <translation type="vanished">스플라인</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="44"/>
+        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="52"/>
         <source>Position</source>
         <translation>위치</translation>
     </message>
@@ -7984,7 +8039,7 @@ The log is available below.</source>
 <context>
     <name>gui::prop::OpacityKeyGroup</name>
     <message>
-        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="48"/>
+        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="56"/>
         <source>Opacity</source>
         <translation>불투명도</translation>
     </message>
@@ -8000,7 +8055,7 @@ The log is available below.</source>
 <context>
     <name>gui::prop::PoseKeyGroup</name>
     <message>
-        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="50"/>
+        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="58"/>
         <source>Pose</source>
         <translation>포즈</translation>
     </message>
@@ -8024,7 +8079,7 @@ The log is available below.</source>
         <translation type="vanished">각도</translation>
     </message>
     <message>
-        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="45"/>
+        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="53"/>
         <source>Rotation</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8032,7 +8087,7 @@ The log is available below.</source>
 <context>
     <name>gui::prop::ScaleKeyGroup</name>
     <message>
-        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="46"/>
+        <location filename="../../src/gui/qml/InspectorRowModel.cpp" line="54"/>
         <source>Scale</source>
         <translation>스케일</translation>
     </message>
@@ -8568,14 +8623,14 @@ The log is available below.</source>
 <context>
     <name>projectSave</name>
     <message>
-        <location filename="../../src/ctrl/System.cpp" line="242"/>
+        <location filename="../../src/ctrl/System.cpp" line="234"/>
         <source>Non ascii characters detected, this may cause issues.
 Save anyway?</source>
         <translation>ASCII가 아닌 문자가 감지되었습니다. 문제가 발생할 수 있습니다.
 그래도 저장하시겠습니까?</translation>
     </message>
     <message>
-        <location filename="../../src/ctrl/System.cpp" line="248"/>
+        <location filename="../../src/ctrl/System.cpp" line="240"/>
         <source>Unicode on filename detected</source>
         <translation>파일 이름에 유니코드가 감지되었습니다.</translation>
     </message>

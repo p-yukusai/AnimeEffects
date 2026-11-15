@@ -52,7 +52,13 @@ class MainMenuBar: public QObject {
     Q_PROPERTY(QString preferencesTitle READ preferencesTitle CONSTANT)
     Q_PROPERTY(QString helpTitle READ helpTitle CONSTANT)
     Q_PROPERTY(QString openRecentTitle READ openRecentTitle CONSTANT)
-    Q_PROPERTY(QVariantList recentFiles READ recentFiles CONSTANT)
+    // NOT CONSTANT: the list changes when a project opens, when a path is removed from
+    // the settings by the loader, and when the settings dialog resets it. The scene's
+    // Instantiator over this property rebuilds the submenu on the change.
+    Q_PROPERTY(QVariantList recentFiles READ recentFiles NOTIFY recentFilesChanged)
+Q_SIGNALS:
+    void recentFilesChanged();
+
 public:
     MainMenuBar(MainWindow& aMainWindow,
                 ViaPoint& aViaPoint,
@@ -89,6 +95,10 @@ public:
     QString helpTitle() const { return tr("Help"); }
     QString openRecentTitle() const { return tr("Open recent"); }
     QVariantList recentFiles() const { return mRecentFiles; }
+    // Re-read projectloader/recents into the scene's list. Called after a successful
+    // open, after the loader drops an unavailable path, and after the settings dialog
+    // resets the list.
+    void refreshRecentFiles();
 
     // signals
     util::Signaler<void()> onVisualUpdated;

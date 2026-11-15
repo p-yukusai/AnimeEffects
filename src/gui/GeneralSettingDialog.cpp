@@ -132,6 +132,10 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
         if (language.isValid())
             init.languageIndex = languageToIndex(language.toString());
 
+        auto uiScale = settings.value("generalsettings/ui/uiScale");
+        if (uiScale.isValid())
+            init.uiScalePercent = uiScale.toInt();
+
         // ONE resolver for both stored forms (the enum ordinal of the shared-table
         // refactor and the older canonical NAME): a stored "Auto" or the retired
         // ordinal 14 meant the automatic (CLAMPED) handle pair, which the option
@@ -279,8 +283,13 @@ GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint
     connect(mModel, &GeneralSettingViewModel::currentTabChanged, this, &GeneralSettingDialog::resizeToScene);
     // The reset also raises the app's info popup, which is a WIDGET surface: the scene
     // asks, the shell answers.
-    connect(mModel, &GeneralSettingViewModel::resetRecentFilesRequested, this, []() {
+    ViaPoint* via = &aViaPoint;
+    connect(mModel, &GeneralSettingViewModel::resetRecentFilesRequested, this, [via]() {
         QSettings().remove(QStringLiteral("projectloader/recents"));
+        // The open "Recent projects" submenu reads the list live; without this it
+        // would keep the entries the reset just deleted until the next restart.
+        if (auto* menu = via->mainMenuBar())
+            menu->refreshRecentFiles();
         MainWindow::showInfoPopup(tr("Success"), tr("All entries have been successfully removed"), "Info");
     });
     // "Show mesh when selecting FFD" is not part of the accepted batch: the widget
@@ -380,6 +389,11 @@ void GeneralSettingDialog::saveSettings() {
     }
     if (themeHasChanged()) {
         settings.setValue("generalsettings/ui/theme", mModel->themeKey());
+    }
+    if (mModel->uiScaleHasChanged()) {
+        // Applied at the next start: QT_SCALE_FACTOR is read when QApplication is
+        // constructed, which is why the row says "needs restart".
+        settings.setValue("generalsettings/ui/uiScale", mModel->uiScalePercent());
     }
     if (donationHasChanged()) {
         settings.setValue("generalsettings/ui/donationAllowed", mModel->donationAllowed());

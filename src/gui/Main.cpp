@@ -11,6 +11,7 @@
 #include "gui/GUIResources.h"
 #include "gui/MSVCBackTracer.h"
 #include "gui/LocaleDecider.h"
+#include "gui/UiScale.h"
 #include "util/NetworkUtil.h"
 #include <QLoggingCategory>
 #include <QtConcurrent>
@@ -126,6 +127,16 @@ int entryPoint(int argc, char* argv[]) {
     // A painting brush loses its path exactly there - measured: 40 pointer positions delivered as 6
     // samples while a stroke painted. This is the platform's own switch, and it must be set before the
     // application exists.
+    // THE UI SCALE IS A PROCESS PROPERTY. QSettings carries the user's choice
+    // (generalsettings/ui/uiScale) and Qt reads QT_SCALE_FACTOR when the
+    // QGuiApplication is constructed, so both the organization names QSettings
+    // needs and the environment value must be set before the application exists.
+    // This is why the settings dialog says the scale needs a restart: changing it
+    // changes the DPR every widget and QML scene was already laid out against.
+    QCoreApplication::setOrganizationName(QStringLiteral("AnimeEffectsProject"));
+    QCoreApplication::setApplicationName(QStringLiteral("AnimeEffects"));
+    gui::ui_scale::applyToEnvironment();
+
     // create qt application
     QApplication app(argc, argv);
 
@@ -199,12 +210,9 @@ int entryPoint(int argc, char* argv[]) {
         QApplication::setFont(appFont);
     }
 
-    // set organization and application name for the application setting
-    // (BEFORE computing paths below: QStandardPaths::CacheLocation derives
-    // the dir from these, and QSettings uses them too)
-    QCoreApplication::setOrganizationName("AnimeEffectsProject");
-    QCoreApplication::setApplicationName("AnimeEffects");
-
+    // Organization and application name are set at the top, before QApplication, so
+    // QSettings can carry the UI scale into QT_SCALE_FACTOR. QStandardPaths below
+    // derives the cache dir from the same names.
     const QString stdCacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
     const QString cacheDir = !stdCacheDir.isEmpty() ? stdCacheDir : (appDir + "/cache");
 

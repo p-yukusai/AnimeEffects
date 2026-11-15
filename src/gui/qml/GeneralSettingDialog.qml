@@ -229,6 +229,26 @@ Item {
                         onActivated: (index) => generalSettingModel.languageIndex = index
                     }
 
+                    AeFieldLabel { text: qsTr("UI scale (%, needs restart)") }
+                    AeNumberField {
+                        id: uiScaleField
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 160
+                        Layout.maximumWidth: 260
+                        label: qsTr("UI scale (%, needs restart)")
+                        from: 75
+                        to: 200
+                        step: 5
+                        value: generalSettingModel.uiScalePercent
+                        onValueEdited: (value) => { generalSettingModel.uiScalePercent = value }
+                        Connections {
+                            target: generalSettingModel
+                            function onUiScalePercentChanged() {
+                                uiScaleField.value = generalSettingModel.uiScalePercent;
+                            }
+                        }
+                    }
+
                     AeFieldLabel { text: qsTr("Default keyframe easing") }
                     AeComboBox {
                         objectName: qsTr("Default keyframe easing")

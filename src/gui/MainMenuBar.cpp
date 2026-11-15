@@ -27,6 +27,8 @@
 #include "gui/GeneralSettingDialog.h"
 #include "gui/KeyBindingDialog.h"
 #include "gui/MainMenuBar.h"
+
+#include "util/RecentFiles.h"
 #include "gui/MainWindow.h"
 #include "gui/ProjectSettingDialog.h"
 #include "gui/ResourceDialog.h"
@@ -131,29 +133,7 @@ MainMenuBar::MainMenuBar(MainWindow& aMainWindow,
     // list, because the paths are dynamic and a menu is the documented place for a
     // dynamic list (Menu docs, "Dynamically Generating Menu Items"): each path is an
     // Action, and the Instantiator's onObjectAdded adds it to the recent Menu.
-    {
-        QSettings settings;
-        settings.sync();
-        const QStringList paths = settings.value("projectloader/recents").toStringList();
-        for (const QString& path : paths) {
-            if (mRecentFiles.size() >= 8)
-                break;
-            if (path.isEmpty() || path == QStringLiteral("Path placeholder"))
-                continue;
-            QVariantMap item;
-            item.insert(QStringLiteral("text"), path);
-            item.insert(QStringLiteral("path"), path);
-            item.insert(QStringLiteral("enabled"), true);
-            mRecentFiles.push_back(item);
-        }
-        if (mRecentFiles.isEmpty()) {
-            QVariantMap item;
-            item.insert(QStringLiteral("text"), tr("No other projects"));
-            item.insert(QStringLiteral("path"), QString());
-            item.insert(QStringLiteral("enabled"), false);
-            mRecentFiles.push_back(item);
-        }
-    }
+    refreshRecentFiles();
 
     // ---- Edit ---------------------------------------------------------------
     mProjectActions.push_back(
@@ -430,6 +410,35 @@ void MainMenuBar::setExportAgainEnabled(bool aOn) {
 void MainMenuBar::setProject(core::Project* aProject) {
     for (MenuCommand* action : mProjectActions)
         action->setEnabled(aProject != nullptr);
+}
+
+void MainMenuBar::refreshRecentFiles() {
+    QSettings settings;
+    settings.sync();
+    QVariantList files;
+    const QStringList paths = settings.value("projectloader/recents").toStringList();
+    for (const QString& path : paths) {
+        if (files.size() >= util::recent::kMaxCount)
+            break;
+        if (path.isEmpty() || path == QStringLiteral("Path placeholder"))
+            continue;
+        QVariantMap item;
+        item.insert(QStringLiteral("text"), path);
+        item.insert(QStringLiteral("path"), path);
+        item.insert(QStringLiteral("enabled"), true);
+        files.push_back(item);
+    }
+    if (files.isEmpty()) {
+        QVariantMap item;
+        item.insert(QStringLiteral("text"), tr("No other projects"));
+        item.insert(QStringLiteral("path"), QString());
+        item.insert(QStringLiteral("enabled"), false);
+        files.push_back(item);
+    }
+    if (files != mRecentFiles) {
+        mRecentFiles = files;
+        emit recentFilesChanged();
+    }
 }
 
 void MainMenuBar::openRecentPath(const QString& aPath) {

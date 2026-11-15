@@ -2,6 +2,7 @@
 #include <QCoreApplication>
 #include "qdir.h"
 #include "util/IDSolver.h"
+#include "util/RecentFiles.h"
 #include "ctrl/ProjectLoader.h"
 #include "core/BoneKey.h"
 #include "core/Deserializer.h"
@@ -109,13 +110,12 @@ bool ProjectLoader::load(
 
     if (file.fail()) {
         QSettings settings;
-        QStringList recentfiles = settings.value("projectloader/recents").toStringList();
+        const QStringList recentfiles = settings.value("projectloader/recents").toStringList();
         qInfo() << aPath;
-        if (recentfiles.contains(aPath)) {
-            auto unavailableIndex = recentfiles.indexOf(aPath);
-            recentfiles.removeAt(unavailableIndex);
-            settings.setValue("projectloader/recents", recentfiles);
-            qInfo() << recentfiles;
+        const QStringList remaining = util::recent::without(recentfiles, aPath);
+        if (remaining != recentfiles) {
+            settings.setValue("projectloader/recents", remaining);
+            qInfo() << remaining;
             mLog.push_back(
                 "Project removed, renamed or otherwise unavailable, please open it manually.\n"
                 "This path has been removed from your recents."

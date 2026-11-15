@@ -1303,6 +1303,8 @@ void MainWindow::onNewProjectTriggered() {
         // ImageFileLoader::warnings) or a skeleton past the deformable cap:
         // say so now, once, while the user is looking at the file they just opened.
         announceLoadWarnings(result);
+        if (mMainMenuBar)
+            mMainMenuBar->refreshRecentFiles();
 
         // The project is live now, so its assets are the ones to monitor. The
         // resource dialog was just handed the new project by resetProjectRefs,
@@ -1387,6 +1389,8 @@ void MainWindow::onOpenProjectTriggered() {
         mDriverHolder->driver()->updateProjectAttribute();
 
         announceLoadWarnings(result);
+        if (mMainMenuBar)
+            mMainMenuBar->refreshRecentFiles();
     } else {
         QMessageBox::warning(nullptr, tr("Loading Error"), result.messages());
 
@@ -1418,6 +1422,8 @@ void MainWindow::onOpenRecentTriggered(QString aFileName) {
         mMainDisplay->resetCamera();
 
         announceLoadWarnings(result);
+        if (mMainMenuBar)
+            mMainMenuBar->refreshRecentFiles();
     } else {
         QMessageBox::warning(nullptr, tr("Loading Error"), result.messages());
 
@@ -1486,6 +1492,8 @@ void MainWindow::openRecoveryCopy(const QString& aFilePath) {
         mDriverHolder->driver()->updateProjectAttribute();
 
         announceLoadWarnings(result);
+        if (mMainMenuBar)
+            mMainMenuBar->refreshRecentFiles();
 
         // Recovered: the copy has served its purpose.
         mSystem.removeRecoveryCopy(aFilePath);
