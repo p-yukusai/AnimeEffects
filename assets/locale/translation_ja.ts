@@ -1759,7 +1759,7 @@
         <translation>%1ハンドルを%2に変更</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1680"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1722"/>
         <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1368"/>
         <source>Change key(s) easing</source>
         <translation>キーのイージングを変更</translation>
@@ -7259,12 +7259,12 @@ The log is available below.</source>
         <translation type="vanished">オール</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="230"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="236"/>
         <source>Select spacing between keys</source>
         <translation>キー間の間隔を選択</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="544"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="550"/>
         <source>Clear playback window</source>
         <translation>再生ウィンドウをクリア</translation>
     </message>
@@ -7273,12 +7273,12 @@ The log is available below.</source>
         <translation type="vanished">キーのイージングを変更...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1072"/>
         <source>Operation Error</source>
         <translation>操作エラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1072"/>
         <source>Failed to paste keys. 
 (If you want to paste across objects copy the key to the clipboard and right-click and paste to the node instead)</source>
         <translation>キーの貼り付けに失敗しました。
@@ -7289,59 +7289,68 @@ The log is available below.</source>
         <translation type="vanished">キーの貼り付けに失敗しました。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="739"/>
         <source>Separate Channels</source>
         <translation>チャンネルを分離</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="739"/>
         <source>Link Channels</source>
         <translation>チャンネルをリンク</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="732"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="744"/>
         <source>Link Channels (all channels need a key here)</source>
         <translation>チャンネルをリンク（すべてのチャンネルにこのフレームのキーが必要）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="734"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="746"/>
         <source>Every channel must have a key at this frame before they can be linked.</source>
         <translation>リンクするには、すべてのチャンネルにこのフレームのキーが必要です。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1302"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1314"/>
         <source>A minimum of two keys in different frames are needed.</source>
         <translation>異なるフレームに少なくとも 2 つのキーが必要です。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1303"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1315"/>
         <source>Not enough targets</source>
         <translation>ターゲットが足りません</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1338"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1350"/>
         <source>Key spacing</source>
         <translation>キー間隔</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1340"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1352"/>
         <source>Number of frames the selected keys should be spaced by:</source>
         <translation>選択したキーの間隔を空けるフレーム数:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1389"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1401"/>
         <source>Key conflict detected for key type </source>
         <translation>キータイプにキー競合が検出されました </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1402"/>
         <source> in node </source>
         <translation> ノード </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1402"/>
         <source> at frame </source>
         <translation> 内、フレーム </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1421"/>
+        <source>The clipboard does not hold a cubic bezier.
+
+Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; y may overshoot.</source>
+        <translation>クリップボードに3次ベジェ曲線がありません。
+
+x1,y1,x2,y2 の4つの数値をカンマ区切りで貼り付けてください。x1 と x2 は 0〜1 の範囲で、y は超えてもかまいません。</translation>
     </message>
     <message>
         <source>Destination for key type </source>
@@ -7352,47 +7361,53 @@ The log is available below.</source>
         <translation type="vanished"> プロジェクトの最大フレーム外であるため、フレーム ターゲットへのキーの移動は無視されました. フレーム： </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1392"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1404"/>
         <source>Move error</source>
         <translation>移動エラー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1405"/>
         <source>Unable to move </source>
         <translation>次の理由により、キー </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1405"/>
         <source> key(s), due to the following reasons: </source>
         <translation> を移動できません </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="216"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="217"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="225"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="231"/>
         <source>Copy to clipboard</source>
         <translation>クリップボードにコピー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="222"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="228"/>
         <source>Delete</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="219"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="220"/>
         <source>Paste</source>
         <translation>貼り付け</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="223"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1420"/>
+        <source>Paste custom easing</source>
+        <translation>カスタムイージングを貼り付け</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="693"/>
         <source>Make proportional</source>
         <translation>プロポーショナルにする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="693"/>
         <source>Make absolute</source>
         <translation>絶対にする</translation>
     </message>
@@ -7900,49 +7915,63 @@ The log is available below.</source>
         <translation type="vanished">イージング</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="704"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="706"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="874"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="876"/>
         <source>Make the segment after the selected key automatic</source>
         <translation>選択したキーの後のセグメントを自動にする</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="875"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="877"/>
         <source>%1 (%2)</source>
         <translation>%1（%2）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="876"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="878"/>
         <source>%1 - %2 handles</source>
         <translation>%1 - %2 ハンドル</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="879"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="881"/>
         <source>Set the easing to %1</source>
         <translation>イージングを %1 に設定</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1028"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1030"/>
         <source>In</source>
         <translation>イン</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1029"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1031"/>
         <source>Out</source>
         <translation>アウト</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1073"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1075"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1076"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1078"/>
         <source>Paste</source>
         <translation>貼り付け</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1091"/>
+        <source>Paste custom easing</source>
+        <translation>カスタムイージングを貼り付け</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1092"/>
+        <source>The clipboard does not hold a cubic bezier.
+
+Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; y may overshoot.</source>
+        <translation>クリップボードに3次ベジェ曲線がありません。
+
+x1,y1,x2,y2 の4つの数値をカンマ区切りで貼り付けてください。x1 と x2 は 0〜1 の範囲で、y は超えてもかまいません。</translation>
     </message>
 </context>
 <context>

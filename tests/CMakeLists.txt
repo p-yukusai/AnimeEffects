@@ -2279,3 +2279,10 @@ target_include_directories(ui_scale PRIVATE .. ../src)
 target_compile_definitions(ui_scale PRIVATE
     AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1)
 target_link_libraries(ui_scale PRIVATE Qt6::Core)
+
+# The clipboard form of a custom easing: four finite fields, x in [0,1], y free.
+add_executable(bezier_text bezier_text.cpp ../src/util/BezierText.cpp)
+target_include_directories(bezier_text PRIVATE .. ../src)
+target_compile_definitions(bezier_text PRIVATE
+    AE_MAJOR_VERSION=1 AE_MINOR_VERSION=7 AE_MICRO_VERSION=1)
+target_link_libraries(bezier_text PRIVATE Qt6::Core)

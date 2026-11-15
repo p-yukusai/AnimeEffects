@@ -1,3 +1,4 @@
+#include <QMessageBox>
 #include <QIcon>
 #include "gui/prop/EasingPickWidget.h"
 #include <QApplication>
@@ -14,6 +15,7 @@
 #include "gui/AppStyle.h"
 #include "gui/PopupWindow.h"
 #include "gui/prop/bezierCurveEditor.h"
+#include "util/BezierText.h"
 #include <cmath>
 
 #include <QPainter>
@@ -1077,19 +1079,24 @@ QWidget* EasingPickWidget::buildBezierPanel() {
     paste->setObjectName("bezier-paste");
     paste->setProperty("role", "bact");
     connect(copy, &QPushButton::clicked, this, [this] {
-        const util::Easing::CubicBezier& b = mDraft.cubicBezier;
-        QGuiApplication::clipboard()->setText(
-            QStringLiteral("%1,%2,%3,%4").arg(b.x1).arg(b.y1).arg(b.x2).arg(b.y2));
+        QGuiApplication::clipboard()->setText(util::bezier_text::format(mDraft.cubicBezier));
     });
     connect(paste, &QPushButton::clicked, this, [this] {
-        const QStringList parts = QGuiApplication::clipboard()->text().split(',');
-        if (parts.size() != 4) return;
-        bool ok[4] = { false, false, false, false };
-        const double v[4] = { parts[0].toDouble(&ok[0]), parts[1].toDouble(&ok[1]),
-                              parts[2].toDouble(&ok[2]), parts[3].toDouble(&ok[3]) };
-        if (!(ok[0] && ok[1] && ok[2] && ok[3])) return;
+        util::Easing::CubicBezier bezier{};
+        if (!util::bezier_text::parse(QGuiApplication::clipboard()->text(), bezier)) {
+            // Parsing is not validation: "nan"/"inf" convert, and x outside [0,1]
+            // makes the curve non-monotonic. Both would reach the key silently.
+            QMessageBox::warning(
+                this,
+                tr("Paste custom easing"),
+                tr("The clipboard does not hold a cubic bezier.\n\n"
+                   "Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; "
+                   "y may overshoot.")
+            );
+            return;
+        }
         const util::Easing::Param old = mDraft;
-        mDraft.cubicBezier = { (float)v[0], (float)v[1], (float)v[2], (float)v[3] };
+        mDraft.cubicBezier = bezier;
         if (mDraft == old) return;
         // A pasted control point is a STORED value: any side it changed and that
         // derived its point must read it from now on (the drag's own rule).

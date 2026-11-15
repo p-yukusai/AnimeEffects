@@ -9,6 +9,7 @@ add_library(${PROJECT_NAME}
         ArrayBlock.h
         ArrayBuffer.h
         BinarySpacePartition2D.h
+        BezierText.cpp BezierText.h
         ByteBuffer.cpp ByteBuffer.h
         Circle.h
         CollDetect.cpp CollDetect.h

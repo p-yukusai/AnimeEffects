@@ -326,6 +326,10 @@ private:
     void onCopyKeyTriggered(bool);
     void onCopyCBTriggered(bool);
     void onPasteKeyTriggered(bool);
+    // The key menu's one easing action: parse the clipboard's four control points
+    // and apply the resulting Custom curve to every selected component in one undo
+    // step (see the comment in buildKeyMenu).
+    void onPasteCustomEasingTriggered();
     void onDeleteKeyTriggered(bool);
     void onSelectSpacingTriggered();
     // Hands the header's chip what it names: one easing per selected KEY, in
@@ -384,6 +388,7 @@ private:
     QAction* mCopyToClipboard;
     QAction* mSetSpacing;
     QAction* mPasteKey;
+    QAction* mPasteCustomEasing;
     QAction* mDeleteKey;
     QAction* mSelectSpacing;
     // The header's easing control, if a header hosts one: it owns the single

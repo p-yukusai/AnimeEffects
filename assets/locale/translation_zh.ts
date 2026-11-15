@@ -1759,7 +1759,7 @@
         <translation>将%1控制柄改为%2</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1680"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1722"/>
         <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1368"/>
         <source>Change key(s) easing</source>
         <translation>更改关键帧缓和</translation>
@@ -7226,12 +7226,12 @@ The log is available below.</source>
         <translation type="vanished">全部</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="230"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="236"/>
         <source>Select spacing between keys</source>
         <translation>选择关键帧之间的间隔</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="544"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="550"/>
         <source>Clear playback window</source>
         <translation>清除播放窗口</translation>
     </message>
@@ -7240,12 +7240,12 @@ The log is available below.</source>
         <translation type="vanished">更改关键帧缓和...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1072"/>
         <source>Operation Error</source>
         <translation>操作错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1072"/>
         <source>Failed to paste keys. 
 (If you want to paste across objects copy the key to the clipboard and right-click and paste to the node instead)</source>
         <translation>粘贴关键帧失败。
@@ -7256,59 +7256,68 @@ The log is available below.</source>
         <translation type="vanished">粘贴关键帧失败。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="739"/>
         <source>Separate Channels</source>
         <translation>分离通道</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="739"/>
         <source>Link Channels</source>
         <translation>链接通道</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="732"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="744"/>
         <source>Link Channels (all channels need a key here)</source>
         <translation>链接通道（所有通道都需要在此处有关键帧）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="734"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="746"/>
         <source>Every channel must have a key at this frame before they can be linked.</source>
         <translation>所有通道都必须在此处有关键帧才能链接。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1302"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1314"/>
         <source>A minimum of two keys in different frames are needed.</source>
         <translation>至少需要两个位于不同帧的关键帧。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1303"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1315"/>
         <source>Not enough targets</source>
         <translation>目标不足</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1338"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1350"/>
         <source>Key spacing</source>
         <translation>关键帧间隔</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1340"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1352"/>
         <source>Number of frames the selected keys should be spaced by:</source>
         <translation>选定关键帧之间应间隔的帧数：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1389"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1401"/>
         <source>Key conflict detected for key type </source>
         <translation>检测到关键帧类型冲突。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1402"/>
         <source> in node </source>
         <translation>在节点中</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1402"/>
         <source> at frame </source>
         <translation>帧中</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1421"/>
+        <source>The clipboard does not hold a cubic bezier.
+
+Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; y may overshoot.</source>
+        <translation>剪贴板中没有三次贝塞尔曲线。
+
+请粘贴四个以逗号分隔的数字：x1,y1,x2,y2，其中 x1 和 x2 必须在 0 到 1 之间；y 可以超出。</translation>
     </message>
     <message>
         <source>Destination for key type </source>
@@ -7319,47 +7328,53 @@ The log is available below.</source>
         <translation type="vanished">超出了项目的最大帧范围，忽略将关键帧移动到该帧的尝试。</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1392"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1404"/>
         <source>Move error</source>
         <translation>移动错误</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1405"/>
         <source>Unable to move </source>
         <translation>无法移动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1405"/>
         <source> key(s), due to the following reasons: </source>
         <translation>由于以下原因，无法移动关键帧：</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="216"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="217"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="225"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="231"/>
         <source>Copy to clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="222"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="228"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="219"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="220"/>
         <source>Paste</source>
         <translation>粘贴</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="223"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1420"/>
+        <source>Paste custom easing</source>
+        <translation>粘贴自定义缓动</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="693"/>
         <source>Make proportional</source>
         <translation>设为比例</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="693"/>
         <source>Make absolute</source>
         <translation>设为绝对</translation>
     </message>
@@ -7867,49 +7882,63 @@ The log is available below.</source>
         <translation type="vanished">缓动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="704"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="706"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="874"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="876"/>
         <source>Make the segment after the selected key automatic</source>
         <translation>将选中关键帧之后的区段设为自动</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="875"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="877"/>
         <source>%1 (%2)</source>
         <translation>%1（%2）</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="876"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="878"/>
         <source>%1 - %2 handles</source>
         <translation>%1 - %2 控制柄</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="879"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="881"/>
         <source>Set the easing to %1</source>
         <translation>将缓动设为 %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1028"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1030"/>
         <source>In</source>
         <translation>入</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1029"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1031"/>
         <source>Out</source>
         <translation>出</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1073"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1075"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1076"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1078"/>
         <source>Paste</source>
         <translation>粘贴</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1091"/>
+        <source>Paste custom easing</source>
+        <translation>粘贴自定义缓动</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1092"/>
+        <source>The clipboard does not hold a cubic bezier.
+
+Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; y may overshoot.</source>
+        <translation>剪贴板中没有三次贝塞尔曲线。
+
+请粘贴四个以逗号分隔的数字：x1,y1,x2,y2，其中 x1 和 x2 必须在 0 到 1 之间；y 可以超出。</translation>
     </message>
 </context>
 <context>

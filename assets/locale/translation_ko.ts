@@ -1751,7 +1751,7 @@
         <translation>%1 핸들을 %2(으)로 변경</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1680"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1722"/>
         <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1368"/>
         <source>Change key(s) easing</source>
         <translation>키 이징 변경</translation>
@@ -7081,12 +7081,12 @@ The log is available below.</source>
         <translation type="vanished">전체</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="230"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="236"/>
         <source>Select spacing between keys</source>
         <translation>키 간 간격 선택</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="544"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="550"/>
         <source>Clear playback window</source>
         <translation>재생 창 지우기</translation>
     </message>
@@ -7095,71 +7095,80 @@ The log is available below.</source>
         <translation type="vanished">키 이징 변경...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="739"/>
         <source>Separate Channels</source>
         <translation>채널 분리</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="739"/>
         <source>Link Channels</source>
         <translation>채널 연결</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="732"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="744"/>
         <source>Link Channels (all channels need a key here)</source>
         <translation>채널 연결(모든 채널에 이 프레임의 키 필요)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="734"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="746"/>
         <source>Every channel must have a key at this frame before they can be linked.</source>
         <translation>연결하려면 모든 채널에 이 프레임의 키가 있어야 합니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1072"/>
         <source>Operation Error</source>
         <translation>작업 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1072"/>
         <source>Failed to paste keys. 
 (If you want to paste across objects copy the key to the clipboard and right-click and paste to the node instead)</source>
         <translation>키 붙여넣기에 실패했습니다. 
 (오브젝트 간에 붙여넣으려면 키를 클립보드에 복사한 다음 대상 노드를 마우스 오른쪽 버튼으로 클릭하여 붙여넣으세요)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1302"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1314"/>
         <source>A minimum of two keys in different frames are needed.</source>
         <translation>서로 다른 프레임에 최소 두 개의 키가 필요합니다.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1303"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1315"/>
         <source>Not enough targets</source>
         <translation>대상이 부족합니다</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1338"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1350"/>
         <source>Key spacing</source>
         <translation>키 간격</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1340"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1352"/>
         <source>Number of frames the selected keys should be spaced by:</source>
         <translation>선택한 키의 간격으로 지정할 프레임 수:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1389"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1401"/>
         <source>Key conflict detected for key type </source>
         <translation>키 충돌 감지됨 — 키 타입 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1402"/>
         <source> in node </source>
         <translation> · 노드 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1402"/>
         <source> at frame </source>
         <translation> · 프레임 </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1421"/>
+        <source>The clipboard does not hold a cubic bezier.
+
+Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; y may overshoot.</source>
+        <translation>클립보드에 3차 베지어 곡선이 없습니다.
+
+x1,y1,x2,y2 네 숫자를 쉼표로 구분해 붙여넣으세요. x1과 x2는 0~1 사이여야 하며 y는 초과해도 됩니다.</translation>
     </message>
     <message>
         <source>Destination for key type </source>
@@ -7170,47 +7179,53 @@ The log is available below.</source>
         <translation type="vanished"> · 프레임 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1392"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1404"/>
         <source>Move error</source>
         <translation>이동 오류</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1405"/>
         <source>Unable to move </source>
         <translation>키 </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1405"/>
         <source> key(s), due to the following reasons: </source>
         <translation>개를 이동할 수 없습니다. 이유는 다음과 같습니다: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="216"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="217"/>
         <source>Copy</source>
         <translation>복사</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="225"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="231"/>
         <source>Copy to clipboard</source>
         <translation>클립보드에 복사</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="222"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="228"/>
         <source>Delete</source>
         <translation>삭제</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="219"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="220"/>
         <source>Paste</source>
         <translation>붙여넣기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="223"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1420"/>
+        <source>Paste custom easing</source>
+        <translation>사용자 지정 이징 붙여넣기</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="693"/>
         <source>Make proportional</source>
         <translation>비례 키로 만들기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="693"/>
         <source>Make absolute</source>
         <translation>절대 키로 만들기</translation>
     </message>
@@ -7718,49 +7733,63 @@ The log is available below.</source>
         <translation type="vanished">이징</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="704"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="706"/>
         <source>Close</source>
         <translation>닫기</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="874"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="876"/>
         <source>Make the segment after the selected key automatic</source>
         <translation>선택한 키 뒤 세그먼트를 자동으로 설정</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="875"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="877"/>
         <source>%1 (%2)</source>
         <translation>%1(%2)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="876"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="878"/>
         <source>%1 - %2 handles</source>
         <translation>%1 - %2 핸들</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="879"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="881"/>
         <source>Set the easing to %1</source>
         <translation>이징을 %1(으)로 설정</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1028"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1030"/>
         <source>In</source>
         <translation>인</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1029"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1031"/>
         <source>Out</source>
         <translation>아웃</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1073"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1075"/>
         <source>Copy</source>
         <translation>복사</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1076"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1078"/>
         <source>Paste</source>
         <translation>붙여넣기</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1091"/>
+        <source>Paste custom easing</source>
+        <translation>사용자 지정 이징 붙여넣기</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1092"/>
+        <source>The clipboard does not hold a cubic bezier.
+
+Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; y may overshoot.</source>
+        <translation>클립보드에 3차 베지어 곡선이 없습니다.
+
+x1,y1,x2,y2 네 숫자를 쉼표로 구분해 붙여넣으세요. x1과 x2는 0~1 사이여야 하며 y는 초과해도 됩니다.</translation>
     </message>
 </context>
 <context>

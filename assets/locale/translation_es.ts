@@ -1759,7 +1759,7 @@
         <translation>Cambiar el tirador %1 a %2</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1680"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1722"/>
         <location filename="../../src/ctrl/TimeLineEditor.cpp" line="1368"/>
         <source>Change key(s) easing</source>
         <translation>Cambiar la interpolación de la(s) clave(s)</translation>
@@ -7267,12 +7267,12 @@ El registro está disponible a continuación.</translation>
         <translation type="vanished">Todos</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="230"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="236"/>
         <source>Select spacing between keys</source>
         <translation>Seleccionar espacio entre teclas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="544"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="550"/>
         <source>Clear playback window</source>
         <translation>Limpiar ventana de reproducción</translation>
     </message>
@@ -7281,12 +7281,12 @@ El registro está disponible a continuación.</translation>
         <translation type="vanished">Cambiar la interpolación de la(s) clave(s)...</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1072"/>
         <source>Operation Error</source>
         <translation>Error de operación</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1060"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1072"/>
         <source>Failed to paste keys. 
 (If you want to paste across objects copy the key to the clipboard and right-click and paste to the node instead)</source>
         <translation>Error al pegar claves.
@@ -7297,59 +7297,68 @@ El registro está disponible a continuación.</translation>
         <translation type="vanished">Error al pegar claves.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="739"/>
         <source>Separate Channels</source>
         <translation>Separar canales</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="727"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="739"/>
         <source>Link Channels</source>
         <translation>Vincular canales</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="732"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="744"/>
         <source>Link Channels (all channels need a key here)</source>
         <translation>Vincular canales (todos los canales necesitan una clave aquí)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="734"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="746"/>
         <source>Every channel must have a key at this frame before they can be linked.</source>
         <translation>Todos los canales deben tener una clave en este fotograma para poder vincularse.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1302"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1314"/>
         <source>A minimum of two keys in different frames are needed.</source>
         <translation>Se necesita un mínimo de dos claves en diferentes fotogramas.</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1303"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1315"/>
         <source>Not enough targets</source>
         <translation>No hay suficientes objetivos</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1338"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1350"/>
         <source>Key spacing</source>
         <translation>Espacio de teclas</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1340"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1352"/>
         <source>Number of frames the selected keys should be spaced by:</source>
         <translation>Cantidad de fotogramas que las claves seleccionadas deben ser espaciadas por:</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1389"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1401"/>
         <source>Key conflict detected for key type </source>
         <translation>Conflicto de clave detectado para tipo de clave </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1402"/>
         <source> in node </source>
         <translation> en el nodo </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1390"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1402"/>
         <source> at frame </source>
         <translation> en fotograma </translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1421"/>
+        <source>The clipboard does not hold a cubic bezier.
+
+Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; y may overshoot.</source>
+        <translation>El portapapeles no contiene una curva bézier cúbica.
+
+Pega cuatro números separados por comas: x1,y1,x2,y2, con x1 y x2 entre 0 y 1; y puede sobrepasar.</translation>
     </message>
     <message>
         <source>Destination for key type </source>
@@ -7360,47 +7369,53 @@ El registro está disponible a continuación.</translation>
         <translation type="vanished"> está fuera del fotograma máximo del proyecto, ignorado intento de mover la tecla al fotograma </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1392"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1404"/>
         <source>Move error</source>
         <translation>Error al mover</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1405"/>
         <source>Unable to move </source>
         <translation>No se puede mover </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1393"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1405"/>
         <source> key(s), due to the following reasons: </source>
         <translation> clave(s), debido a las siguientes razones: </translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="216"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="217"/>
         <source>Copy</source>
         <translation>Copiar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="225"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="231"/>
         <source>Copy to clipboard</source>
         <translation>Copiar al portapapeles</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="222"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="228"/>
         <source>Delete</source>
         <translation>Eliminar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="219"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="220"/>
         <source>Paste</source>
         <translation>Pegar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="223"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="1420"/>
+        <source>Paste custom easing</source>
+        <translation>Pegar aceleración personalizada</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="693"/>
         <source>Make proportional</source>
         <translation>Hacer proporcional</translation>
     </message>
     <message>
-        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="681"/>
+        <location filename="../../src/gui/TimeLineEditorWidget.cpp" line="693"/>
         <source>Make absolute</source>
         <translation>Hacer absoluto</translation>
     </message>
@@ -7911,49 +7926,63 @@ El registro está disponible a continuación.</translation>
         <translation type="vanished">Interpolación</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="704"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="706"/>
         <source>Close</source>
         <translation>Cerrar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="874"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="876"/>
         <source>Make the segment after the selected key automatic</source>
         <translation>Hacer automático el segmento posterior a la clave seleccionada</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="875"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="877"/>
         <source>%1 (%2)</source>
         <translation>%1 (%2)</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="876"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="878"/>
         <source>%1 - %2 handles</source>
         <translation>%1 - %2 tiradores</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="879"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="881"/>
         <source>Set the easing to %1</source>
         <translation>Establecer la aceleración en %1</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1028"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1030"/>
         <source>In</source>
         <translation>Entrada</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1029"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1031"/>
         <source>Out</source>
         <translation>Salida</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1073"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1075"/>
         <source>Copy</source>
         <translation>Copiar</translation>
     </message>
     <message>
-        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1076"/>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1078"/>
         <source>Paste</source>
         <translation>Pegar</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1091"/>
+        <source>Paste custom easing</source>
+        <translation>Pegar aceleración personalizada</translation>
+    </message>
+    <message>
+        <location filename="../../src/gui/prop/EasingPickWidget.cpp" line="1092"/>
+        <source>The clipboard does not hold a cubic bezier.
+
+Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; y may overshoot.</source>
+        <translation>El portapapeles no contiene una curva bézier cúbica.
+
+Pega cuatro números separados por comas: x1,y1,x2,y2, con x1 y x2 entre 0 y 1; y puede sobrepasar.</translation>
     </message>
 </context>
 <context>

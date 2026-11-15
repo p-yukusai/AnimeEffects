@@ -12,6 +12,7 @@
 #include "core/StateKey.h"
 #include "core/Serializer.h"
 #include "util/StreamWriter.h"
+#include "util/BezierText.h"
 #include "core/ChannelSpec.h"
 #include "core/BlurKey.h"
 #include "core/WaveKey.h"
@@ -218,6 +219,11 @@ TimeLineEditorWidget::TimeLineEditorWidget(ViaPoint& aViaPoint, QWidget* aParent
 
         mPasteKey = new QAction(tr("Paste"), this);
         mPasteKey->connect(mPasteKey, &QAction::triggered, this, &TimeLineEditorWidget::onPasteKeyTriggered);
+
+        mPasteCustomEasing = new QAction(tr("Paste custom easing"), this);
+        mPasteCustomEasing->connect(
+            mPasteCustomEasing, &QAction::triggered, this, &TimeLineEditorWidget::onPasteCustomEasingTriggered
+        );
 
         mDeleteKey = new QAction(tr("Delete"), this);
         mDeleteKey->connect(mDeleteKey, &QAction::triggered, this, &TimeLineEditorWidget::onDeleteKeyTriggered);
@@ -640,13 +646,18 @@ void TimeLineEditorWidget::buildKeyMenu(QMenu& aMenu) {
     //     (the selection supplies the anchor here; what is written is the copied set).
     //   * Select spacing between keys: one dialog, then every target of mTargets moves.
     //   * Delete: one deleteCheckedKeys(mTargets) command over the whole set.
-    // Easing is deliberately absent: it lives in the dock header's own chip
-    // (openEasingPicker), so a menu entry would be a second route to one edit.
+    // Easing TYPE shortcuts are deliberately absent: they live in the dock header's
+    // own chip (openEasingPicker), and a type entry here would be a second route to
+    // one edit. The ONE exception is "Paste custom easing": that is a clipboard
+    // operation on the whole selection (the same four numbers the picker's paste
+    // reads), not a type pick, and it is the only route that does not require the
+    // picker to be open.
     // ACTIONS ARE INVARIANT VERBS. Unlike a count ("1 key"/"3 keys"), a command does
     // not change with the selection: "Copy", "Paste", "Delete" read the same for one
     // key or twenty and never inflect, which is the convention most software follows.
     // The count is the chip/ruler's job; the menu names the action.
     mPasteKey->setEnabled(mCopyTargets.hasAnyTargets());
+    mPasteCustomEasing->setEnabled(!mTargets.targets().isEmpty());
 
     if (mTargets.targets().isEmpty()) {
         aMenu.addAction(mPasteKey); // no key involved: paste is all there is
@@ -656,6 +667,7 @@ void TimeLineEditorWidget::buildKeyMenu(QMenu& aMenu) {
     aMenu.addAction(mCopyKey);
     aMenu.addAction(mCopyToClipboard);
     aMenu.addAction(mPasteKey);
+    aMenu.addAction(mPasteCustomEasing);
     // Proportional toggles the whole selection through ONE call, which pushes one
     // undo step (ctrl::TimeLineUtil::setProportionalKeys). The check reflects the
     // set: all keys proportional reads checked, a mixed or absolute set unchecked -
@@ -1396,6 +1408,36 @@ void TimeLineEditorWidget::onSelectSpacingTriggered() {
         }
     }
     diag->deleteLater();
+}
+
+void TimeLineEditorWidget::onPasteCustomEasingTriggered() {
+    if (!mEditor)
+        return;
+    util::Easing::CubicBezier bezier{};
+    if (!util::bezier_text::parse(QGuiApplication::clipboard()->text(), bezier)) {
+        QMessageBox::warning(
+            this,
+            tr("Paste custom easing"),
+            tr("The clipboard does not hold a cubic bezier.\n\n"
+               "Paste four comma-separated numbers - x1,y1,x2,y2 - with x1 and x2 between 0 and 1; "
+               "y may overshoot.")
+        );
+        return;
+    }
+    // ONE edit over the selection: assignSelectionEasing collects every component
+    // the selection names (the same rule the header's type shortcuts use) and pushes
+    // a single macro, so N keys are one undo step. The pasted curve is an EXPLICIT
+    // pair of control points, so both handle modes become Free: a derived mode would
+    // overwrite the stored point on the next evaluation.
+    mEditor->assignSelectionEasing([bezier](const util::Easing::Param& aCurrent) {
+        util::Easing::Param value = aCurrent;
+        value.type = util::Easing::Type_Custom;
+        value.cubicBezier = bezier;
+        value.handleIn = util::Easing::HandleMode_Free;
+        value.handleOut = util::Easing::HandleMode_Free;
+        return value;
+    });
+    this->update();
 }
 
 void TimeLineEditorWidget::onDeleteKeyTriggered(bool) {
