@@ -286,12 +286,11 @@ void Driver::renderQt(const core::RenderInfo& aRenderInfo, QPainter& aPainter) c
         drawBanMark(info, aPainter);
     }
 
-    // The animation graph is no longer painted here: it is drawn by
-    // gui::ImGuiOverlay, in the ImGui pass at the end of
-    // MainDisplayWidget::paintEvent (which is what draws it after this QPainter
-    // pass, so the panel still reads on top of everything the tools drew). The
-    // graph's own QPainter renderer (ctrl::graph::Renderer) and
-    // GraphEditor::renderQt were removed with that cutover.
+    // The animation graph is not painted here: it is the timeline dock's Graph page
+    // (gui::GraphPanelWidget), which composes its own frame from the shared editor.
+    // This pass is the viewport's canvas and tools only; the graph's old QPainter
+    // renderer (ctrl::graph::Renderer) and GraphEditor::renderQt were removed with the
+    // cutover.
 }
 
 void Driver::setGraphTargets(const QVector<core::ObjectNode*>& aTargets) {

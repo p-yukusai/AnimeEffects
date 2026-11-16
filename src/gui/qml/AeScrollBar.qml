@@ -15,7 +15,7 @@ import QtQuick.Controls
 // size the handle - Qt lays the handle out inside the control's own padding).
 //
 // The geometry is `ctrl::graph::scrollBar`'s, which is the ONE definition the widget
-// style and the ImGui graph panel already share (`kLaneThickness` 12,
+// style and the graph panel already share (`kLaneThickness` 12,
 // `kPillThickness` 4, `kPillRadius` 2, the pill centred in the lane). The INK is the
 // widget bar's: `theme.outline`, and `theme.hover` while the handle is hot - no fade,
 // because the widget bar has none, and a bar that dims itself when idle reads as a
