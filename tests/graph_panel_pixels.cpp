@@ -1097,7 +1097,7 @@ void addCurveSamples(std::vector<Geom>& aOut, const QVector<QPointF>& aPoints) {
             const double x = a.x() + t * (b.x() - a.x());
             const double y = a.y() + t * (b.y() - a.y());
             // The stroke's own half extent, PLUS one pixel of slack: the panel strokes its
-            // curves at 2.0px (gui::kCurveWidth), so a 2px band reaches 1px either side of
+            // curves at 2.0px (the curve width constant in GraphPanelFrame.cpp), so a 2px band reaches 1px either side of
             // the centreline and its antialiasing adds at most one more - a 5x5 box around
             // the floored sample grown by 1 is a bound, never a guess.
             aOut.push_back({"curve", grow(QRect(int(std::floor(x)) - 2, int(std::floor(y)) - 2, 5, 5), 1)});
