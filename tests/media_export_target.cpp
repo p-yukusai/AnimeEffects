@@ -1,3 +1,15 @@
+#if defined(_WIN32)
+// Unix-only gate: the destination table is verified with external ffprobe and
+// magick, driven through a POSIX shell (`>/dev/null 2>&1`, `2>/dev/null |
+// head`), which has no cmd.exe equivalent worth maintaining. It still BUILDS
+// on Windows so the target list does not change per OS.
+#include <cstdio>
+int main() {
+    std::printf("SKIP  media_export_target: Unix-only (drives ffmpeg/ffprobe/magick through a POSIX shell)\n");
+    return 0;
+}
+#else
+
 // Export-destination table prototype (DESIGN RESEARCH).
 //
 // This is the gate for the "destination-driven export" design: the table in
@@ -3586,3 +3598,5 @@ int main(int argc, char* argv[]) {
     QTextStream(stdout) << "\n" << (failures ? "FAILURES: " : "ALL PASS ") << failures << "\n";
     return failures ? 1 : 0;
 }
+
+#endif // !_WIN32

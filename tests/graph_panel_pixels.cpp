@@ -243,6 +243,7 @@
 #include <QApplication>
 #include <QByteArray>
 #include <QColor>
+#include <QtMath>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QImage>

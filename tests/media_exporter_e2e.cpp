@@ -1,3 +1,17 @@
+#if defined(_WIN32)
+// Unix-only gate. This harness drives ffmpeg/ffprobe through POSIX shell
+// pipelines (`2>/dev/null | head -1`, `| grep`) and reads raw frames from a
+// popen stream, none of which has a cmd.exe equivalent worth maintaining in a
+// verification gate. It still BUILDS on Windows - so the target list does not
+// change per OS and MSVC keeps compiling the Qt/GL half - and it reports the
+// skip instead of pretending to have run.
+#include <cstdio>
+int main() {
+    std::printf("SKIP  media_exporter_e2e: Unix-only (drives ffmpeg/ffprobe through a POSIX shell)\n");
+    return 0;
+}
+#else
+
 // Headless export harness (real path): loads a real .anie, renders a few frames
 // offscreen (GL via a QOpenGLWidget, like the GUI), and exports via
 // ctrl::Exporter (which now uses the in-process libav* VideoEncoder/AudioMixer),
@@ -1250,3 +1264,5 @@ int main(int argc, char** argv) {
                         << "\n";
     return failures == 0 ? 0 : 1;
 }
+
+#endif // !_WIN32

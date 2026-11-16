@@ -3,6 +3,17 @@
 # sections can silently not run is a test that reads as coverage.
 ae_enable_warnings()
 
+# Win32 libraries for the GUI units tests COMPILE DIRECTLY. A test that lists
+# src/gui/prop/EasingPickWidget.cpp or src/gui/AppStyle.cpp pulls in
+# gui::roundPopupWindow (src/gui/PopupWindow.h), which calls
+# DwmSetWindowAttribute and the user32 entry points around it. The application
+# target links both; a test target links what it names, so without this the
+# whole test tree failed to LINK on Windows while every object compiled.
+# Directory scope: every target below inherits it.
+if(WIN32)
+    link_libraries(dwmapi user32)
+endif()
+
 # The shared edge-autoscroll rule (ctrl/AutoScroll.h) used by the timeline and
 # the graph panel's marquee drags. Pure geometry, no widget and no GL.
 add_executable(autoscroll autoscroll.cpp)

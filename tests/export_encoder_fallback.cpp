@@ -1,3 +1,14 @@
+#if defined(_WIN32)
+// Unix-only gate: the encoded file is probed with ffprobe through a POSIX
+// shell, which has no cmd.exe equivalent worth maintaining. It still BUILDS on
+// Windows so the target list does not change per OS.
+#include <cstdio>
+int main() {
+    std::printf("SKIP  export_encoder_fallback: Unix-only (drives ffmpeg/ffprobe/magick through a POSIX shell)\n");
+    return 0;
+}
+#else
+
 // Fallback gate for the encoder OPEN, driven through the real ctrl::Exporter.
 //
 // What this pins (export-review-2026-10-09, MED item 3 / 2026-09-27 §5.3):
@@ -341,3 +352,5 @@ int main(int argc, char** argv) {
 
     return failures == 0 ? 0 : 1;
 }
+
+#endif // !_WIN32

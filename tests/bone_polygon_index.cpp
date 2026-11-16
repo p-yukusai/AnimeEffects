@@ -11,6 +11,7 @@
 // Headless: QPolygonF only, no GL and no project.
 #include <QPointF>
 #include <QPolygonF>
+#include <QtMath>
 #include <cmath>
 #include <cstdio>
 #include <limits>
