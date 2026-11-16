@@ -270,6 +270,21 @@ if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE user32 dwmapi)
 endif()
 
+# FFmpeg's runtime DLLs, next to the build-tree binary.
+#
+# The exe imports avcodec/avformat/avutil/swscale/swresample when it is LOADED,
+# so a build-tree launch failed with "The code execution cannot proceed because
+# avcodec-*.dll was not found" even though linking had succeeded: windeployqt
+# only knows Qt, and nothing else copies an SDK's DLLs. src/media resolves the
+# exact set from AE_FFMPEG_ROOT (see its CMakeLists) and exports it here; the
+# packaging paths assemble their deployment from the same idea.
+if(WIN32 AND AE_FFMPEG_RUNTIME_DLLS)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${AE_FFMPEG_RUNTIME_DLLS} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMENT "Copying the FFmpeg runtime DLLs next to AnimeEffects.exe")
+endif()
+
 # ---------------------------------------------------------------------------
 # The Dear ImGui units of the viewport overlay (the animation graph panel).
 #

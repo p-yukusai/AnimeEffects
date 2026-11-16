@@ -8,6 +8,12 @@
 #                    mingw64-qt6-{qtbase,qtsvg,qtmultimedia,qt5compat} \
 #                    qt6-qtbase cmake ninja-build
 #
+# NOTE: the tree needs Qt 6.12 (Canvas Painter) and FFmpeg's libav* for the
+# Windows target. Fedora's mingw64-qt6 is 6.11.2 and it has no mingw FFmpeg
+# packages, so a stock Fedora sysroot cannot configure this tree; either build
+# a newer sysroot or use the MSVC path the Windows CI takes (Qt 6.12 from
+# scripts/install-qt-windows.ps1, FFmpeg via AE_FFMPEG_ROOT).
+#
 # NOTE on the compiler: the top-level CMakeLists is normally configured with
 # clang (CC/CXX are usually set to clang/clang++ for the native build). Fedora's
 # mingw toolchain file only picks the cross compiler if CC/CXX are NOT set, so we
