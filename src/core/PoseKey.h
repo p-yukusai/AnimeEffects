@@ -1,10 +1,13 @@
 #ifndef CTRL_POSEKEY_H
 #define CTRL_POSEKEY_H
 
+#include <array>
 #include <memory>
 #include <QList>
+#include "XC.h"
 #include "util/LinkPointer.h"
 #include "util/Easing.h"
+#include "core/KeyEasing.h"
 #include "core/TimeKey.h"
 #include "core/Bone2.h"
 namespace core {
@@ -15,8 +18,13 @@ namespace core {
 
 class PoseKey: public TimeKey {
 public:
+    // Pose is structural: it carries ONE easing that shapes the whole key's
+    // rotation blend, addressed at index 0. It publishes no graph channel, so
+    // core::easingComponentCount(TimeKeyType_Pose) is 0 (see KeyEasing.h).
+    static constexpr int kComponents = easingStorageCount(TimeKeyType_Pose);
+
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         QList<Bone2*> mTopBones;
 
     public:
@@ -25,8 +33,14 @@ public:
         Data& operator=(const Data& aRhs);
         ~Data();
 
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(aComponent == 0);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(aComponent == 0);
+            return mEasings[aComponent];
+        }
 
         void createBonesBy(BoneKey& aAreaBone);
 

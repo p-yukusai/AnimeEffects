@@ -13,11 +13,13 @@
 #include <QtWidgets/QTabWidget>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidget>
+#include <QtWidgets/QSlider>
 #include <QDir>
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QtMultimedia/QMediaPlayer>
 #include <QtMultimedia/QAudioOutput>
+#include <utility>
 
 #include "gui/tool/ToolSlider.h"
 
@@ -27,7 +29,12 @@ namespace theme { class Theme; }
 struct audioConfig{
     QString audioName = "Placeholder";
     QFileInfo audioPath = QFileInfo();
+    // Whether the track is heard while animating, and whether it is mixed into
+    // an export. These are DIFFERENT on purpose: a track loaded purely as timing
+    // reference (a voice pass, a temp music bed) is played back but must not
+    // appear in the exported file.
     bool playbackEnable = true;
+    bool exportEnable = true;
     int volume = 100;
     int startFrame = 0;
     int endFrame = 500;
@@ -42,6 +49,10 @@ struct UIState{
     QToolButton *addNewTrack{ new QToolButton };
     QToolButton *selectMusButton{ new QToolButton };
     QCheckBox *playAudio{ new QCheckBox };
+    // Heard while animating vs mixed into an export. Separate on purpose (see
+    // audioConfig), and this is the only control that sets exportEnable: without it
+    // a reference track could not be kept out of the file at all.
+    QCheckBox *exportAudio{ new QCheckBox };
     QSpinBox *endSpinBox{ new QSpinBox };
     QSpinBox *startSpinBox{ new QSpinBox };
     QLabel *startLabel{ new QLabel };

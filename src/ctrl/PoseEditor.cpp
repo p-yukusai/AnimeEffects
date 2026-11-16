@@ -147,10 +147,8 @@ bool PoseEditor::initializeKey(TimeLine& aLine) {
             // create from original bones
             mKeyOwner.key->data().createBonesBy(*current.bone().areaKey());
         }
-        util::Easing::Param aParam;
-        aParam.range = util::Easing::rangeToEnum(QString());
-        aParam.type = util::Easing::easingToEnum(QString());
-        mKeyOwner.key->data().easing() = aParam;
+        const util::Easing::Param aParam = util::Easing::defaultParam();
+        mKeyOwner.key->data().easing(0) = aParam;
         return true;
     }
 

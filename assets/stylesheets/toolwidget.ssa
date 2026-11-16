@@ -1,0 +1,18 @@
+/*
+ *  Tool dock surface (breeze_dark tokens).
+ *
+ *  THE DOCK'S CONTENT IS A QT QUICK SCENE NOW (qml/ToolsPanel.qml), so this sheet
+ *  carries ONE rule. Everything the rest of it used to style - the group boxes, the
+ *  toolbox buttons and their accent checked state, the mode rows, the hover/pressed
+ *  cascade, the check-box indicator - is drawn by the scene from the same
+ *  theme::Colors tokens, and a QSS rule beside it would be a second spelling of a
+ *  design the QML already states.
+ *
+ *  The one survivor is the surface: the QQuickWidget paints its own base-coloured
+ *  rectangle, but the dock's own background shows around it (the widget's layout
+ *  margins and the moment between a resize and the next frame), and it must be the
+ *  same cell.
+ */
+#toolWidget {
+    background-color: @base@;
+}

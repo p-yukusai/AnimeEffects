@@ -10,7 +10,7 @@ namespace gui {
 namespace tool {
 
     PosePanel::PosePanel(QWidget* aParent, GUIResources& aResources):
-        QGroupBox(aParent), mResources(aResources), mParam(), mTypeGroup(), mDIWeight(), mEIRadius(), mEIPressure() {
+        QGroupBox(aParent), mResources(aResources), mParam(), mTypeGroup(), mDIWeight(), mBrush() {
         this->setTitle(tr("Pose editor"));
         mResources.onThemeChanged.connect(this, &PosePanel::onThemeUpdated);
         createMode();
@@ -49,29 +49,15 @@ namespace tool {
             this->mParam.diWeight = (float)aValue / kScale;
             this->onParamUpdated(false);
         });
-        // eraser radius
-        mEIRadius.reset(new SliderItem(tr("Radius"), this->palette(), this));
-        mEIRadius->setAttribute(util::Range(5, 1000), mParam.eiRadius, 50);
-        mEIRadius->connectOnAny([=](int aValue) {
-            this->mParam.eiRadius = aValue;
-            this->onParamUpdated(false);
-        });
-
-        // eraser pressure
-        mEIPressure.reset(new SliderItem(tr("Pressure"), this->palette(), this));
-        mEIPressure->setAttribute(util::Range(0, kScale), mParam.eiPressure * kScale, kScale / 10);
-        mEIPressure->connectOnAny([=](int aValue) {
-            this->mParam.eiPressure = (float)aValue / kScale;
-            this->onParamUpdated(false);
-        });
+        mBrush.reset(new BrushPanel(this, mParam.brush));
+        mBrush->onParamUpdated.connect([=](bool aDirect) { this->onParamUpdated(aDirect); });
     }
 
     void PosePanel::updateTypeParam(ctrl::PoseEditMode aType) {
         const bool isDraw = aType == ctrl::PoseEditMode_Draw;
         const bool isErase = aType == ctrl::PoseEditMode_Erase;
         mDIWeight->setVisible(isDraw);
-        mEIRadius->setVisible(isErase);
-        mEIPressure->setVisible(isErase);
+        mBrush->setVisible(isErase);
     }
 
     int PosePanel::updateGeometry(const QPoint& aPos, int aWidth) {
@@ -89,10 +75,8 @@ namespace tool {
             // weight
             curPos.setY(mDIWeight->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
         } else if (mParam.mode == ctrl::PoseEditMode_Erase) {
-            // radius
-            curPos.setY(mEIRadius->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-            // pressure
-            curPos.setY(mEIPressure->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
+            // the brush block answers an ABSOLUTE bottom edge, so a bare gap
+            curPos.setY(mBrush->updateGeometry(curPos, itemWidth) + 5);
         }
 
         // myself: card height = content extent + bottom padding (see ViewPanel)

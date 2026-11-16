@@ -16,13 +16,17 @@ public:
     static void clearFunctions();
     static Functions& functions();
 
-    // static void setContext(QOpenGLContext& aContext, QSurface& aSurface);
+    /// The context to make current, in either of two shapes: a WIDGET (the app's viewport) or a
+    /// CONTEXT plus a SURFACE (an offscreen surface in a tool or a test - no window, no display
+    /// server). Exactly one of them is registered.
+    static void setContext(QOpenGLContext& aContext, QSurface& aSurface);
     static void setContext(QOpenGLWidget& aWidget);
     static void clearContext();
     static void makeCurrent();
     static void doneCurrent();
-    // makes the global QOpenGLWidget's context current when it is set and visible,
-    // no-op (returns false) otherwise so callers can harden non-paint GL work.
+    // makes the registered context current when it is usable - the widget's when a widget is
+    // registered (and it is visible), the offscreen context's otherwise - and returns false when
+    // none is, so callers can harden non-paint GL work.
     static bool makeCurrentIfReady();
 
 private:

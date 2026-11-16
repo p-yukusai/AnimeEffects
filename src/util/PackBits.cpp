@@ -55,9 +55,14 @@ bool PackBits::decode(const XCMemBlock& aSrc, XCMemBlock& aDst) {
         const char head = (char)(*p);
 
         if (head < 0) {
-            // noop operation
-            if (head == -128)
+            // noop operation: the header byte is the whole packet, so decoding
+            // it must consume that byte. Without the step this loop never
+            // advances on a 0x80 byte, and a project carrying one spins here
+            // forever instead of loading.
+            if (head == -128) {
+                ++p;
                 continue;
+            }
 
             // continuos operation
             const size_t count = -head + 1;

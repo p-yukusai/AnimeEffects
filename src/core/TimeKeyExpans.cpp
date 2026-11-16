@@ -4,9 +4,12 @@ namespace core {
 
 TimeKeyExpans::TimeKeyExpans():
     mMasterCache(),
+    mMasterCached(false),
+    mRevision(0),
     mKeyCaches(),
+    mKeyCached(),
     mSRT(),
-    mOpa(),
+    mOpacity(),
     mHSV(),
     mBlurX(0.0f),
     mBlurY(0.0f),
@@ -27,22 +30,33 @@ TimeKeyExpans::TimeKeyExpans():
     clearCaches();
 }
 
-void TimeKeyExpans::setMasterCache(Frame aFrame) { mMasterCache = aFrame; }
+void TimeKeyExpans::setMasterCache(Frame aFrame) {
+    mMasterCache = aFrame;
+    mMasterCached = true;
+}
 
-bool TimeKeyExpans::hasMasterCache(Frame aFrame) const { return mMasterCache >= 0 && mMasterCache == aFrame; }
+bool TimeKeyExpans::hasMasterCache(Frame aFrame) const { return mMasterCached && mMasterCache == aFrame; }
 
-void TimeKeyExpans::clearMasterCache() { mMasterCache.set(-1); }
+void TimeKeyExpans::clearMasterCache() {
+    mMasterCached = false;
+    mMasterCache.set(-1);
+}
 
-void TimeKeyExpans::setKeyCache(TimeKeyType aType, Frame aFrame) { mKeyCaches[aType] = aFrame; }
+void TimeKeyExpans::setKeyCache(TimeKeyType aType, Frame aFrame) {
+    mKeyCaches[aType] = aFrame;
+    mKeyCached[aType] = true;
+}
 
 bool TimeKeyExpans::hasKeyCache(TimeKeyType aType, Frame aFrame) const {
-    return aFrame >= 0 && mKeyCaches[aType] == aFrame;
+    return mKeyCached[aType] && mKeyCaches[aType] == aFrame;
 }
 
 void TimeKeyExpans::clearCaches() {
+    mMasterCached = false;
     mMasterCache.set(-1);
 
     for (int i = 0; i < TimeKeyType_TERM; ++i) {
+        mKeyCached[i] = false;
         mKeyCaches[i].set(-1);
     }
     mSRT.clearSplineCache();
@@ -50,7 +64,19 @@ void TimeKeyExpans::clearCaches() {
 
 //-------------------------------------------------------------------------------------------------
 const gl::Texture* TimeKeyExpans::areaTexture() const {
-    return mAreaImageKey ? &(mAreaImageKey->cache().texture()) : nullptr;
+    if (!mAreaImageKey || mAreaImageKey->cache().isPaged())
+        return nullptr;
+    return &(mAreaImageKey->cache().texture());
+}
+
+VirtualTexture* TimeKeyExpans::areaVirtualTexture() const {
+    return mAreaImageKey ? mAreaImageKey->cache().virtualTexture() : nullptr;
+}
+
+QSize TimeKeyExpans::areaTextureSize() const {
+    if (!mAreaImageKey)
+        return QSize();
+    return mAreaImageKey->cache().sourceSize();
 }
 
 img::BlendMode TimeKeyExpans::blendMode() const {

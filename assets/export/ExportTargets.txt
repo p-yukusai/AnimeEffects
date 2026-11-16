@@ -1,0 +1,1262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Export destination table — DESIGN PROTOTYPE.
+
+  This is the data asset the export UI is built from: every destination is a row
+  that resolves to (container, codec, constraints, capabilities). It is DATA and
+  not code because every fact in it moves — Discord moved GIF -> WebP, Twitch
+  emote specs change, Safari's VP9-alpha support is in flight. Adding or
+  correcting a destination must be an edit here, never a code change.
+
+  Attributes:
+    id          stable key, dotted: <platform>.<family>
+    icon        icon file stem in assets/icons (no extension), resolved through the
+                theme's tinting pass so it takes a theme colour like every other
+                glyph. See assets/icons/README.md for provenance and licence.
+    label       user-facing name (the thing they recognize)
+    group       the section this row is listed under in the destination picker,
+                keyed into the <groups> block above. The grouping axis is the
+                PLATFORM a person is posting to ("telegram"), because that is the
+                one thing they know before they start; `general` for the rows that
+                have no platform of their own.
+                NOT the family: that axis puts 29 of these 55 rows in one block and
+                mixes what a file IS (sticker) with what it is FOR (post).
+    family      sticker | chat | post | overlay | file | archive
+                WHAT KIND of handover this is, which is what decides how hard to
+                optimise for compatibility (and what the search field can match):
+                sticker  a sticker or emoji for a chat app
+                chat     sending a file in a conversation (an "attachment")
+                post     uploading to a platform's feed or video host
+                overlay  video that must keep its transparency (streaming, embedding)
+                file     a generic deliverable: a video for a destination we do
+                         not know
+                archive  a master to keep
+    order       rank of this row inside its section, when that order is a DESIGN
+                decision rather than an alphabet. 0/absent = unranked. The picker
+                lists ranked rows first, by their number, and only then falls back
+                to the label - which is TRANSLATED, so a label sort is a different
+                order in every language (it would put "Animated image" above
+                "Video", and re-shuffle the block again under a translation). A
+                rank says nothing outside its own section. Carried by the four
+                `general` rows, whose order IS the design: Video, Animated image,
+                Image sequence, Archive file.
+    artifact    what the destination produces. Default (absent) is a muxed video.
+                still    ONE image file: the illustration case. `container` names
+                         the image format (png, jpg) because there is no container
+                         to mux, and the file goes to the name the user typed.
+                sequence a directory of numbered stills (pixiv ugoira). The plan
+                         applies maxFrames, so a 601-frame range becomes the 150
+                         stills the platform accepts.
+    fps         absent (default) | ignored. `ignored` means the export's frame rate
+                does not reach the file at all, so the form does not ask for one:
+                pixiv ugoira is a folder of numbered stills whose TIMING is authored
+                on the upload page. The frame COUNT still applies (maxFrames).
+    class       fixed    - the destination dictates the codec (most rows)
+                reencode - platform re-encodes our upload (YouTube, X, TikTok)
+                direct   - platform serves our file as-is (website, messaging)
+                archive  - keep a master
+    codecs      the codecs this destination ACCEPTS, most preferred first: a
+                space-separated list of format keys (h264 hevc av1 vp9 vp8 webp
+                apng gif ffv1 prores). A LIST, not a mode: the facts name what
+                the platform takes ("H.264 or HEVC in a closed GOP"), and the
+                codec row offers exactly this list minus whatever this build
+                cannot produce. Absent = the row produces an image (still /
+                sequence) and has no codec to pick.
+    default     which accepted codec is the default. Absent = the row states no
+                preference and the class policy decides - constrained to
+                @codecs, so the policy can never pick what the row does not
+                accept (a master-archive row that accepts FFV1 and H.265 gets
+                FFV1 at Lossless and H.265 otherwise; YouTube, which does not
+                accept FFV1, no longer receives one at Lossless).
+    codec       the ENCODER implementation this row pins for its codecs (an
+                internal, not a fact): libx264, libvpx-vp9, libwebp, apng, gif,
+                hevc_videotoolbox. Absent = the format's own table decides.
+    alpha/audio/loop
+                required   - forced on; stated in the UI, never a control
+                forbidden  - impossible or rejected; stated or hidden
+                default-on / default-off - pre-set checkbox, overridable
+                choice     - a real user decision
+    checked     ISO date the facts below were last verified
+    source      primary source for the facts
+    verified    "true" only when checked against that primary source
+    platform    any (default) | apple | windows | linux — rows whose codec only
+                exists on one OS must say so, so validation can skip them
+
+  Size modes:
+    free          the destination imposes no size: the export dialog's own
+                  Width/Height apply (they start at the project size)
+    exact         exactly w x h. The art cannot match every aspect, so the remainder
+                  is PADDED (`fit="crop"` crops instead, for a row whose platform
+                  forbids margins). The margin is the export's background: fully
+                  transparent while "Export with transparency" is on, and the
+                  effective viewport colour (the project's override, else the
+                  theme's recessed canvas token) when it is off — ruled 2026-10-11
+                  in docs/export-dialog-behavior.md item 42. Every exact row here
+                  pads: Discord requires a square canvas, WhatsApp recommends a
+                  stroke, Signal asks for a margin, and WeChat's own pipeline crops
+                  over-spec art, so a margin is either required or accepted by all
+                  of them. Crop exists for the row that will need it (LINE-style
+                  "no margins" specs), and the table test asserts that an exact rule
+                  NEVER silently stretches the art.
+    max           fit inside w x h, preserve aspect
+    maxExactSide  long side == @side, short side <= @side
+    maxMinSide    fit inside w x h, then ensure long side >= @side
+
+  <caps>          hard limits; 0 = unlimited. max* are ceilings (applied: the
+                  plan trims frames, lowers fps or fits the file); minDurationSec
+                  and minFrames are floors, which cannot be met by exporting less,
+                  so they are stated rather than applied.
+  <encOptions>    private encoder options (avcodec_open2). e.g. libvpx's
+                  auto-alt-ref=0, which VP9+alpha requires.
+  <codecTag>      four-char stream codec tag. NOT an encoder option — it lives
+                  in the container's stream entry (hvc1 for HEVC). The optional
+                  codec="<family>" attribute qualifies it to that codec FAMILY:
+                  the planner writes the tag only when the codec it resolved for
+                  the plan is that family. No attribute = unconditional. Both
+                  sides are canonicalized the same way (family key or encoder
+                  name: "hevc" and "libx265" match; a container spelling such as
+                  "hev1" matches nothing, so the tag would never be written).
+  <audio>         per-destination audio parameters. Empty codec = derive from
+                  the container (WebM cannot carry AAC).
+  minScalePct     floor for fit-to-cap's scale phase (never shrink past this).
+-->
+<export_targets>
+
+  <!-- ===== groups: the picker's sections =============================
+       A group is the PLATFORM a person is posting to: the one thing they know
+       before they start, and therefore the axis the destination list is grouped
+       by. A destination names its group with @group, and the order here IS the
+       order of the sections on screen: `general` first, because the rows with no
+       platform of their own are the honest answer for someone who has not decided
+       (and the generic video, the safe thing to hand anything whose rules we do
+       not know, is then the row a fresh install has selected), then the platforms
+       alphabetically. The rows inside a section are listed in the explicit `order`
+       some of them carry, and by label otherwise.
+
+       Titles are SHORT names, not labels: the row underneath already says what
+       it makes ("Telegram sticker"), so the section only has to say where. A
+       group with no rows is not drawn, and a row whose group is not declared
+       here still appears, under its own key, at the end.
+
+       @variants (default true) says the rows here are VARIANTS of one platform,
+       so the picker draws the platform as a section you OPEN, with the
+       destinations inside it. `variants="false"` means the rows merely share the
+       absence of a platform - they are not alternatives to each other - so they
+       are listed directly, and a platform with a single destination is listed
+       directly for the same reason: a level of hierarchy that asks nothing is a
+       click for nothing.
+
+       @separatorAfter (default false) draws a full-width RULE after the rows
+       this group contributes. It is a property of the list's STRUCTURE - where
+       one kind of block ends and the next begins - so it is declared here with
+       the grouping rather than fixed as a constant in the view, exactly as
+       @variants is.
+
+       It is set on `general` alone, and deliberately after the WHOLE block: all
+       four of its rows, the archive row included. The archive row is the
+       argument for the position - a master copy is no more a platform than the
+       video, the animated image and the sequence above it, so a rule drawn
+       between it and the platform sections would be a lie about what those
+       sections mean. The rule therefore says "everything above is a file with no
+       platform of its own; everything below is grouped by platform", and it may
+       only sit where that sentence is true of every row on both sides.
+
+       The picker draws it with an EMPTY search field only. A filtered list is a
+       list of matches, and a rule about the list's structure says nothing about
+       the rows that happened to match, so under a query the rule is hidden along
+       with the structure it describes (the model owns that rule - see
+       DestinationPickerModel::isSeparator). -->
+  <groups>
+    <group id="general" title="General" variants="false" separatorAfter="true"/>
+    <group id="bilibili" title="Bilibili"/>
+    <group id="bluesky" title="Bluesky"/>
+    <group id="dailymotion" title="Dailymotion"/>
+    <group id="deviantart" title="DeviantArt"/>
+    <group id="discord" title="Discord"/>
+    <group id="douyin" title="Douyin"/>
+    <group id="facebook" title="Facebook"/>
+    <group id="instagram" title="Instagram"/>
+    <group id="kakaotalk" title="KakaoTalk"/>
+    <group id="line" title="LINE"/>
+    <group id="mastodon" title="Mastodon"/>
+    <group id="messenger" title="Messenger"/>
+    <group id="newgrounds" title="Newgrounds"/>
+    <group id="niconico" title="Nico Nico"/>
+    <group id="obs" title="OBS"/>
+    <group id="pinterest" title="Pinterest"/>
+    <group id="pixiv" title="pixiv"/>
+    <group id="qq" title="QQ"/>
+    <group id="reddit" title="Reddit"/>
+    <group id="safari" title="Safari"/>
+    <group id="signal" title="Signal"/>
+    <group id="snapchat" title="Snapchat"/>
+    <group id="telegram" title="Telegram"/>
+    <group id="tiktok" title="TikTok"/>
+    <group id="tumblr" title="Tumblr"/>
+    <group id="twitch" title="Twitch"/>
+    <group id="vimeo" title="Vimeo"/>
+    <group id="vk" title="VK"/>
+    <group id="wechat" title="WeChat"/>
+    <group id="weibo" title="Weibo"/>
+    <group id="whatsapp" title="WhatsApp"/>
+    <group id="x" title="X"/>
+    <group id="youtube" title="YouTube"/>
+  </groups>
+
+  <!-- ===== sticker / emote ============================================= -->
+
+  <destination id="telegram.sticker" group="telegram" label="Telegram sticker"
+               icon="brand-telegram" family="sticker"
+               class="fixed"
+               container="webm" codec="libvpx-vp9" codecs="vp9" default="vp9" pixfmt="yuva420p"
+               alpha="required" audio="forbidden" loop="default-on"
+               checked="2026-09-05" source="https://core.telegram.org/stickers" verified="true">
+    <size mode="maxExactSide" side="512"/>
+    <caps maxBytes="262144" maxDurationSec="3" maxFps="30"/>
+    <encOptions><opt name="auto-alt-ref" value="0"/></encOptions>
+    <note>Video must have no audio stream. Should loop.</note>
+  </destination>
+
+  <destination id="telegram.emoji" group="telegram" label="Telegram custom emoji"
+               icon="brand-telegram" family="sticker"
+               class="fixed"
+               container="webm" codec="libvpx-vp9" codecs="vp9" default="vp9" pixfmt="yuva420p"
+               alpha="required" audio="forbidden" loop="default-on"
+               checked="2026-09-05" source="https://core.telegram.org/stickers" verified="true">
+    <size mode="exact" w="100" h="100"/>
+    <caps maxBytes="262144" maxDurationSec="3" maxFps="30"/>
+    <encOptions><opt name="auto-alt-ref" value="0"/></encOptions>
+  </destination>
+
+  <destination id="discord.sticker" group="discord" label="Discord sticker"
+               icon="brand-discord" family="sticker"
+               class="fixed"
+               container="apng" codec="apng" codecs="apng" default="apng" pixfmt="rgba"
+               alpha="required" audio="forbidden" loop="default-on"
+               checked="2026-09-05" source="https://discord.com/blog/how-to-create-upload-your-own-stickers-on-discord" verified="true">
+    <size mode="exact" w="320" h="320"/>
+    <caps maxBytes="524288" maxDurationSec="5"/>
+    <note>Discord animated stickers are APNG (GIF and Lottie also accepted). 320x320 EXACT.</note>
+  </destination>
+
+  <destination id="discord.emoji" group="discord" label="Discord emoji" icon="brand-discord" family="sticker"
+               class="fixed"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
+               alpha="required" audio="forbidden" loop="default-on"
+               checked="2026-09-05" source="https://github.com/discord/discord-api-docs" verified="true">
+    <size mode="max" w="128" h="128"/>
+    <caps maxBytes="262144"/>
+    <note>Animated emoji are served as animated WebP; upload accepts JPEG/PNG/GIF/WebP/AVIF.</note>
+  </destination>
+
+  <destination id="whatsapp.sticker" group="whatsapp" label="WhatsApp sticker"
+               icon="brand-whatsapp" family="sticker"
+               class="fixed"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
+               alpha="required" audio="forbidden" loop="default-on"
+               checked="2026-09-05" source="https://github.com/WhatsApp/stickers" verified="true">
+    <size mode="exact" w="512" h="512"/>
+    <caps maxBytes="512000" maxDurationSec="10"/>
+    <note>Animated stickers are WebP ONLY. Minimum frame duration 8ms.</note>
+  </destination>
+
+  <destination id="signal.sticker" group="signal" label="Signal sticker" icon="brand-signal" family="sticker"
+               class="fixed"
+               container="apng" codec="apng" codecs="apng" default="apng" pixfmt="rgba"
+               alpha="required" audio="forbidden" loop="default-on"
+               checked="2026-09-05" source="https://support.signal.org/hc/en-us/articles/360031836512-Stickers" verified="true">
+    <size mode="exact" w="512" h="512"/>
+    <caps maxBytes="307200" maxDurationSec="3"/>
+    <note>Animated stickers must be APNG ("Please do not upload GIFs").</note>
+  </destination>
+
+  <destination id="line.sticker" group="line" label="LINE sticker" icon="brand-line" family="sticker"
+               class="fixed"
+               container="apng" codec="apng" codecs="apng" default="apng" pixfmt="rgba"
+               alpha="required" audio="forbidden" loop="required"
+               checked="2026-09-05" source="https://creator.line.me/en/guideline/animationsticker/" verified="true">
+    <size mode="maxMinSide" w="320" h="270" side="270"/>
+    <caps maxBytes="307200" maxDurationSec="4" minFrames="5" maxFrames="20"/>
+    <note>RGB colour space; transparent background required; 1-4 loops.</note>
+  </destination>
+
+  <destination id="twitch.emote" group="twitch" label="Twitch emote" icon="brand-twitch" family="sticker"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="choice" audio="forbidden" loop="default-on"
+               checked="2026-09-11" source="https://help.twitch.tv/s/article/emote-guidelines" verified="true">
+    <size mode="exact" w="112" h="112"/>
+    <caps maxBytes="1048576" maxFrames="60"/>
+    <note>GIF only ("The image must be in .gif format"), and SQUARE: "GIF images must be
+          square shape". 112x112 is the upload for auto-resize, which is the mode a
+          single file belongs to, and 1 MB is that mode's cap; uploading the three
+          manual sizes instead caps each at 512 KB. 28/56/112 are the sizes Twitch
+          SERVES, not what you upload. At most 60 frames, and "must not flash or
+          flicker more than 3 times within a 1 second period". Twitch resizes and
+          re-serves its own variants. NOT PUBLISHED: any duration limit, any frame
+          rate limit, and any transparency rule for ANIMATED emotes (transparency is
+          stated for static ones), so transparency is offered but not promised.</note>
+  </destination>
+
+
+  <!-- ===== chat attachments ============================================== -->
+
+  <destination id="chat.whatsapp.video" group="whatsapp" label="WhatsApp (video)" icon="brand-whatsapp" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://faq.whatsapp.com/453914586839706" verified="true">
+    <size mode="max" w="1280" h="720"/>
+    <caps maxBytes="67108864"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>A video sent in a chat: 64 MB over a slow connection, 100 MB over a fast one,
+          and WhatsApp DOWNSCALES rather than rejecting. Sending it as a Document
+          instead allows 2 GB untouched, which is a different intent and not this row.
+          Status is limited to 90 seconds and is also not this row.</note>
+  </destination>
+
+  <destination id="chat.whatsapp.gif" group="whatsapp" label="WhatsApp (animated GIF)" icon="brand-whatsapp" family="chat"
+               class="direct"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="choice" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://faq.whatsapp.com/674208810641277/ (GIFs are a supported chat surface)" verified="false">
+    <size mode="free"/>
+    <note>UNVERIFIED (WhatsApp publishes no organic cap for an animated image): GIFs are a
+          documented chat surface, but WhatsApp publishes no byte cap, format list,
+          dimension rule, frame count or duration for an image sent in a chat, and no
+          statement about whether it transcodes one. The numbers that could be borrowed are
+          all for other surfaces and are NOT applied here: 2 GB for a DOCUMENT, 100 MB or
+          64 MB for a VIDEO (fast and slow connections), 90 seconds for a status video, and
+          the Cloud API's 5 MB image with a 500 KB animated sticker. No cap is applied, and
+          the fit loop therefore has nothing to enforce.</note>
+  </destination>
+
+  <destination id="chat.telegram.video" group="telegram" label="Telegram (video)" icon="brand-telegram" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://telegram.org/faq" verified="true">
+    <size mode="free"/>
+    <caps maxBytes="2147483648"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>2 GB per file, 4 GB with Premium; Telegram re-encodes into renditions. Note
+          this is the USER limit: the Bot API's 50 MB is for bots uploading, not for
+          you sending a file. Telegram also converts a real GIF to MP4 on its servers,
+          so transparency never survives here.</note>
+  </destination>
+
+  <destination id="chat.telegram.gif" group="telegram" label="Telegram (animated GIF)" icon="brand-telegram" family="chat"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://core.telegram.org/api/gifs (GIFs are converted server-side to MPEG-4 H.264 without sound)" verified="true">
+    <size mode="max" w="1280" h="720"/>
+    <caps maxBytes="20971520"/>
+    <note>Telegram CONVERTS an uploaded GIF itself: "GIFs are actually MPEG4 (h264) videos
+          without sound; if the user tries to upload an actual GIF file, it will be
+          automatically converted to an MPEG4 file by the server". So this destination writes
+          the file Telegram would have made anyway, without the round trip through a GIF
+          palette: silent H.264 in MP4, and transparency CANNOT survive (the conversion is
+          lossy and H.264 4:2:0 carries no alpha). Animated WebP is not accepted as a
+          sticker ("Animated .WEBP is NOT currently supported"); a chat file may be up to
+          2 GB (4 GB with Premium), which is the cloud-file limit rather than a GIF limit.
+          No frame count, duration or frame rate is published for a chat animation.</note>
+  </destination>
+
+  <destination id="chat.discord.file" group="discord" label="Discord (video)" icon="brand-discord" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264 hevc av1" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://support.discord.com/hc/en-us/articles/25444343291031" verified="true">
+    <size mode="max" w="1280" h="720"/>
+    <caps maxBytes="20971520"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
+    <note>20 MB to send, 50 MB with Nitro Basic, 500 MB with Nitro; a boosted server
+          lifts everyone to 50 MB (level 2) or 100 MB (level 3). Discord's older help
+          pages still say 10 MB. On mobile the size is now measured BEFORE
+          compression, so a video that used to fit may not.</note>
+  </destination>
+
+  <destination id="discord.animation" group="discord" label="Discord (animated image)" icon="brand-discord" family="chat"
+               class="direct"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
+               alpha="default-on" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://discord.com/blog/modern-image-formats-at-discord-supporting-webp-and-avif (animated WebP in attachments, all platforms since mobile 252) and https://support.discord.com/hc/en-us/articles/25444343291031 (upload sizes)" verified="true">
+    <size mode="free"/>
+    <caps maxBytes="10485760"/>
+    <note>An animated image, not a video: WebP is the format Discord's own pipeline produces
+          for animation (they have served and accepted animated WebP since the 2024 mobile
+          release 252), and a GIF upload is transcoded to WebP for display, so this goes out
+          animated either way. Alpha survives here, which GIF's palette cannot carry. The
+          English FAQ caps a non-Nitro upload at 10 MB (its Hindi page says 25 MB): 10 MB is
+          used, and it is also the size above which Discord stops animating inline and offers
+          the file as a download instead. One frame in the export gives a still WebP, so this
+          row carries a still illustration as well as an animation. Transparency is on by
+          default (WebP keeps it, GIF's palette cannot) and can be turned off.</note>
+  </destination>
+
+  <destination id="chat.signal.video" group="signal" label="Signal (video)" icon="brand-signal" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="Signal-Android PushMediaConstraints.java / RemoteConfig.kt" verified="true">
+    <size mode="max" w="1280" h="720"/>
+    <caps maxBytes="52428800"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>Signal re-encodes client-side to 720p at roughly 2 Mbps and targets about
+          50 MB of output. The server flag is 100 MiB and remote-configurable, so 50 MB
+          is the number to stay under. Sending as a File skips the transcode.</note>
+  </destination>
+
+  <destination id="chat.signal.gif" group="signal" label="Signal (animated GIF)" icon="brand-signal" family="chat"
+               class="direct"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="choice" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://support.signal.org/hc/en-us/articles/360007317471 (GIFs are a first-class attachment) and https://github.com/signalapp/Signal-Android/issues/13098 (maintainer: 100 MB)" verified="false">
+    <size mode="free"/>
+    <caps maxBytes="26214400"/>
+    <note>UNVERIFIED (Signal publishes nothing usable here): a GIF is a first-class
+          attachment ("image, gif, video, voice message, or audio file"), but Signal has no
+          help page stating an attachment byte cap, a format list, a dimension rule, a frame
+          count or a transcode rule for one. The only numbers that exist are in source code
+          and issue threads rather than documentation: a GIF threshold of min(25 MB, the
+          attachment limit) and a maintainer note that sending is still capped at 100 MB.
+          25 MB is used here as the code-level threshold, and every other fact is left
+          unstated rather than invented. Note that Signal's STICKER page says "Please do not
+          upload GIFs" - that is the sticker surface (APNG, 300 KB), a different thing from
+          an attachment, and reading it as "Signal rejects GIFs" is a documented trap.</note>
+  </destination>
+
+  <destination id="chat.messenger.video" group="messenger" label="Messenger (video)"
+               icon="brand-messenger" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://developers.facebook.com/docs/graph-api/reference/page/asset" verified="false">
+    <size mode="max" w="1280" h="720"/>
+    <caps maxBytes="26214400"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED: 25 MB is the published DEVELOPER API limit. Meta does not publish
+          the consumer chat limit anywhere, so this is the closest sourced number, not
+          the app's own. 75 seconds appears in the docs as a fetch timeout, NOT a
+          duration limit.</note>
+  </destination>
+
+  <destination id="chat.messenger.gif" group="messenger" label="Messenger (animated GIF)" icon="brand-messenger" family="chat"
+               class="direct"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="choice" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://www.facebook.com/help/messenger-app/141024792690630 (send GIF) and https://developers.facebook.com/docs/messenger-platform/send-messages/template/media/ (API: GIFs play in the conversation)" verified="false">
+    <size mode="free"/>
+    <note>UNVERIFIED (the consumer chat publishes no cap): Messenger offers a "Send GIF"
+          action with no published formats, and Meta's API documentation says animated GIFs
+          "are playable in the conversation", but the consumer chat states no byte cap,
+          dimension rule, frame count or transcode behaviour. The API numbers that exist
+          (25 MB per asset, 8 MB for an image uploaded by URL) are labelled as API values and
+          are not applied here, because Meta does not say they bind the in-app picker. The
+          API template also lists only image and video as media types with no GIF value,
+          which is a contradiction Meta leaves unresolved.</note>
+  </destination>
+
+  <destination id="chat.kakaotalk.video" group="kakaotalk" label="KakaoTalk (카카오톡)"
+               icon="brand-kakaotalk" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://cs.kakao.com/helps_html/2128" verified="false">
+    <size mode="max" w="1280" h="720"/>
+    <caps maxBytes="314572800"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED for mobile: 300 MB is the PC desktop file-send limit. Kakao does
+          not publish the mobile chat limit. MP4/MOV/MKV/AVI/TS and others are accepted.</note>
+  </destination>
+
+  <destination id="chat.wechat.video" group="wechat" label="WeChat (微信)" icon="brand-wechat" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="(no primary source exists: Tencent does not publish personal-chat limits)" verified="false">
+    <size mode="max" w="1280" h="720"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED: Tencent publishes no size or duration limit for video sent in a
+          personal chat, and no codec list. MP4/H.264 at 720p is the safe choice. The
+          official-account route IS documented (10 MB per upload, 2 GB chunked) and is
+          a different thing entirely.</note>
+  </destination>
+
+  <destination id="chat.qq.video" group="qq" label="QQ" icon="brand-qq" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/send-receive/rich-media.html" verified="false">
+    <size mode="max" w="1280" h="720"/>
+    <caps maxBytes="314572800"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED for the consumer app: 30 MB soft (silently becomes a FILE instead
+          of an inline video) and 200 MB hard are BOT API numbers. Consumer chat limits
+          are not published.</note>
+  </destination>
+
+  <destination id="chat.vk.video" group="vk" label="VK (ВКонтакте)" icon="brand-vk" family="chat"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://vk.com/@business-kak-rabotat-s-formatami-video-vkontakte" verified="true">
+    <size mode="free"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>No cap worth encoding: 256 GB, up to 4K, and VK re-encodes. MP4/H.264 at
+          1280x720 or above, and they recommend 16:9.</note>
+  </destination>
+
+  <!-- ===== posting to a platform ========================================== -->
+
+  <destination id="post.x.video" group="x" label="X (Twitter)" icon="brand-x" family="post"
+               class="reencode"
+               container="mp4" codec="" codecs="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://docs.x.com/x-api/media/quickstart/best-practices" verified="true">
+    <size mode="max" w="1920" h="1080"/>
+    <caps maxBytes="8589934592" maxDurationSec="1200"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>A post accepts up to 8 GB and 20 minutes (16 GB / 125 minutes with Premium).
+          The "140 seconds / 512 MB" figure repeated all over the web is X's DIRECT
+          MESSAGE limit, not a post, and is 50x too small here. H.264 High, AAC-LC,
+          yuv420p, closed GOP.</note>
+  </destination>
+
+  <destination id="post.x.gif" group="x" label="X (animated GIF)" icon="brand-x" family="post"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="choice" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://docs.x.com/x-api/media/quickstart/best-practices (API surface; X publishes NO organic byte cap)" verified="true">
+    <size mode="max" w="1280" h="1080"/>
+    <caps maxBytes="15728640" maxFrames="350"/>
+    <note>X accepts JPG, PNG, GIF and WEBP, and an animated GIF is its own media category
+          (tweet_gif). The caps here come from X's API documentation, NOT from its help
+          pages: 15 MB per animated GIF, resolution at most 1280x1080, at most 350 frames
+          and at most 300 million pixels in total (width x height x frames). X's own API
+          page adds that a GIF "may fail during Post creation even if it is within the file
+          size limit", so treat 15 MB as soft. The figure repeated across the web (5 MB
+          mobile, 15 MB web) appears on no X-owned page, and X publishes nothing about
+          transparency, looping, frame rate or duration for GIFs.</note>
+  </destination>
+
+  <destination id="post.instagram.reels" group="instagram" label="Instagram Reels"
+               icon="brand-instagram" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264 hevc" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://developers.facebook.com/docs/instagram-platform/content-publishing" verified="true">
+    <size mode="max" w="1080" h="1920"/>
+    <caps maxBytes="314572800" maxDurationSec="900"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
+    <note>300 MB, 3 seconds to 15 minutes, 9:16 up to 1920 px wide, H.264 or HEVC in a
+          closed GOP. The moov atom must be at the FRONT of the file with no edit lists,
+          which is what the faststart muxer option below does: without it the upload is
+          rejected.</note>
+  </destination>
+
+  <destination id="post.tiktok.video" group="tiktok" label="TikTok" icon="brand-tiktok" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://developers.tiktok.com/doc/media-transfer-guide/" verified="true">
+    <size mode="max" w="1080" h="1920"/>
+    <caps maxBytes="4294967296" maxDurationSec="600"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>4 GB, up to 10 minutes on some routes and 3 on others. 1080x1920 (9:16). GIF
+          files are NOT accepted. WebM/MOV are accepted alongside MP4.</note>
+  </destination>
+
+  <destination id="post.bilibili.video" group="bilibili" label="Bilibili (哔哩哔哩)"
+               icon="brand-bilibili" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://www.bilibili.com/blackboard/help.html (qid 3845), conflicting with their API docs" verified="false">
+    <size mode="max" w="3840" h="2160"/>
+    <caps maxBytes="4294967296"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED (conflicting sources): Bilibili's help centre says 16 GB (64 GB at higher web
+          levels), their own open-platform API documentation says 4 GB, and the page
+          could not be re-fetched to settle it. 4 GB is used here as the floor that both
+          agree on. Up to 4096x4096 at 120 fps, H.264/AAC, yuv420p.</note>
+  </destination>
+
+  <destination id="post.weibo.video" group="weibo" label="Weibo (微博)" icon="brand-sinaweibo" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://kefu.weibo.com/faqdetail?id=21503" verified="true">
+    <size mode="max" w="1920" h="1080"/>
+    <caps maxBytes="16106127360"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>15 GB from the desktop web, 4 GB from mobile. There is a MINIMUM of 3 seconds
+          and no published maximum duration. 720p or better for the video section;
+          2K/4K are gated behind play counts. Codec list is not published: MP4/H.264.</note>
+  </destination>
+
+  <destination id="post.weibo.gif" group="weibo" label="Weibo (animated GIF)" icon="brand-sinaweibo" family="post"
+               class="direct"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="choice" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://kefu.weibo.com/faqdetail?id=21352 (updated 2024-08-21: at most 1080 px wide, and 原图 must be ticked, or the GIF posts as a still) and id=12483 (updated 2026-04-01: 20 MB per image)" verified="true">
+    <size mode="max" w="1080" h="1080"/>
+    <caps maxBytes="20971520"/>
+    <note>Weibo LOSES the animation rather than converting it: "原始图片需不超过1080宽，超宽会导致动图不动"
+          (the original must be at most 1080 wide, wider makes the animation stop) and the
+          original-quality box (原图) must be ticked or the GIF posts as a static image. So
+          the width ceiling is a real constraint here, and this row caps the long side at
+          1080 px, which is stricter than the published rule but can never lose the
+          animation. 20 MB is the published per-image cap from Weibo's own help centre (the
+          API's 10 MB belongs to the API surface). No frame count, duration, frame rate or
+          transparency statement is published for a GIF, and Weibo's two help pages
+          contradict each other about ticking 原图: one requires it for animation, the other
+          recommends leaving it off to avoid a colour cast.</note>
+  </destination>
+
+  <destination id="post.bluesky.video" group="bluesky" label="Bluesky (video)" icon="brand-bluesky" family="post"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://github.com/bluesky-social/atproto (video lexicon) and social-app constants" verified="true">
+    <size mode="max" w="1920" h="1080"/>
+    <caps maxBytes="300000000" maxDurationSec="600"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>MP4 ONLY: the lexicon accepts video/mp4 and nothing else. 300 MB and 10
+          minutes (both raised recently, so most guides are out of date). No pixel cap;
+          the aspect ratio travels as metadata.</note>
+  </destination>
+
+  <destination id="post.bluesky.animation" group="bluesky" label="Bluesky (animation)" icon="brand-bluesky" family="post"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://github.com/bluesky-social/social-app/pull/6433 (animated GIFs are processed as video) and https://github.com/bluesky-social/atproto (app.bsky.embed.video accepts only video/mp4)" verified="true">
+    <size mode="max" w="1920" h="1080"/>
+    <caps maxBytes="314572800" maxDurationSec="600"/>
+    <note>Bluesky keeps the animation by routing it down the VIDEO path: an animated GIF is
+          "processed as video", and the video embed lexicon accepts only video/mp4, so a GIF
+          that arrives at Bluesky becomes an MP4. This row writes the MP4 directly, silent
+          and H.264, which is what the platform serves anyway, and transparency cannot
+          survive it. THE 2 MB IMAGE CAP DOES NOT APPLY HERE: 2,000,000 bytes is the
+          app.bsky.embed.images lexicon limit for a STILL; the video embed allows 300 MB and
+          10 minutes, which is what is used. Note that Bluesky's own documentation
+          contradicts itself about the still-image number (the code on that page enforces
+          2,000,000 while the prose beside it still says 1,000,000). No dimension, frame or
+          frame-rate rule is published, and the 720p/30 fps/5000 kbps figures in circulation
+          come from a user comment, not from documentation.</note>
+  </destination>
+
+  <destination id="post.mastodon.video" group="mastodon" label="Mastodon" icon="brand-mastodon" family="post"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="default-on"
+               checked="2026-09-11" source="https://docs.joinmastodon.org/user/posting/ and the instance's /api/v2/instance" verified="true">
+    <size mode="max" w="1920" h="1080"/>
+    <caps maxBytes="103809024"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>99 MB for video and 16 MB for images are UPSTREAM DEFAULTS; every instance sets
+          its own, and instances drift from upstream (mastodon.social reports double the
+          upstream pixel limit). The authoritative answer is the server's own
+          /api/v2/instance configuration. GIFs are converted to silent MP4, so
+          transparency does not survive.</note>
+  </destination>
+
+  <destination id="post.reddit.video" group="reddit" label="Reddit (video)" icon="brand-reddit" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="(Reddit publishes no limit for native video posts; the 15-minute figure is from a 2017 announcement)" verified="false">
+    <size mode="max" w="1920" h="1080"/>
+    <caps maxDurationSec="900"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED: Reddit does not publish a size limit for native video posts. No
+          byte cap is applied rather than inventing one. The 15-minute figure comes from
+          their 2017 launch post, and comment videos are capped much shorter.</note>
+  </destination>
+
+  <destination id="post.reddit.gif" group="reddit" label="Reddit (animated GIF)" icon="brand-reddit" family="post"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="forbidden" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://cdn.jsdelivr.net/npm/@devvit/reddit@0.13.9/models/Post.d.ts (isGif / videogif) and https://support.reddithelp.com/hc/en-us/articles/10516331142932 (comment images)" verified="false">
+    <size mode="free"/>
+    <note>UNVERIFIED (no organic numbers published): Reddit documents no byte cap for an
+          image or GIF post. What IS visible is that a GIF post is stored and served as a
+          Reddit VIDEO (Reddit's own Devvit model carries a media kind "videogif" and a
+          RedditVideo.isGif flag), so animation survives but transparency does not, which is
+          why alpha is forbidden here. The widely quoted "20 MB image / 100 MB GIF" figures
+          come from third parties, and the Reddit numbers that are published belong to other
+          surfaces (comment images at most 240 px, comment video under 1 GB and 3 minutes,
+          and advertising specs that reject animated GIF outright). No frame, duration or
+          frame-rate rule is published for an animated image.</note>
+  </destination>
+
+  <destination id="wechat.sticker" group="wechat" label="WeChat sticker (微信表情)"
+               icon="brand-wechat" family="sticker"
+               class="fixed"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="required" audio="forbidden" loop="required"
+               checked="2026-09-11" source="https://sticker.weixin.qq.com/cgi-bin/mmemoticon-bin/readtemplate?t=guide/index.html" verified="true">
+    <size mode="exact" w="240" h="240"/>
+    <caps maxBytes="512000"/>
+    <note>Animated stickers are GIF only, exactly 240x240, 500 KB, and must loop. Art
+          that exceeds the spec is compressed AND CROPPED by WeChat rather than
+          rejected, so an oversized export comes back with its edges cut off. Sticker
+          sets are 8 to 24 images.</note>
+  </destination>
+
+  <destination id="kakaotalk.sticker" group="kakaotalk" label="KakaoTalk sticker (카카오톡 스티커)"
+               icon="brand-kakaotalk" family="sticker"
+               class="fixed"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
+               alpha="required" audio="forbidden" loop="required"
+               checked="2026-09-11" source="https://emoticonstudio.kakao.com/pages/webp-animator" verified="true">
+    <size mode="exact" w="360" h="360"/>
+    <caps maxBytes="665600" maxFrames="24"/>
+    <note>Animated WebP, 360x360 (180x180 for mini, 540x540 for big), 650 KB, 24 frames
+          maximum and four loops. Kakao publishes its own WebP animator, which is a
+          useful sign of exactly which encoder behaviour they expect.</note>
+  </destination>
+
+  <destination id="qq.sticker" group="qq" label="QQ sticker" icon="brand-qq" family="sticker"
+               class="fixed"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="required" audio="forbidden" loop="required"
+               checked="2018-10-07" source="https://web.archive.org/web/20181007163610/http://yuanchuang.qq.com/html/design_rule.html" verified="false">
+    <size mode="exact" w="300" h="300"/>
+    <caps maxBytes="307200"/>
+    <note>UNVERIFIED and DATE-STAMPED 2018-10-07: this is the last Tencent-owned
+          specification that exists anywhere. yuanchuang.qq.com no longer resolves and
+          archive.org holds no capture after October 2018, so the values below are what
+          Tencent said eight years ago and nothing current confirms them. 16 GIFs at
+          exactly 300x300, each 300 KB or less ("表情大小：≤300kb/个", raised from 90 KB
+          in 2016), on a transparent background ("文件均为无色透明底"). A white stroke
+          is required but 3 px is only PREFERRED ("以3像素的白色描边为佳"), not an exact
+          value. The same page contradicts itself about the 300x300 PNG thumbnail: its
+          table says 200 KB and its body text says 20 KB, so no thumbnail cap is
+          applied. Nothing is published about frame count, duration, frame rate, or
+          re-encoding.</note>
+  </destination>
+  <!-- Research batch 2, checked 2026-09-11. Two traps shape these rows: several
+       widely repeated caps are ADVERTISING specs, not organic upload limits
+       (Facebook video 4 GB / 240 min, Pinterest 2 GB / 15 min, Snapchat 1 GB /
+       3-30 min), and a platform's docs can contradict each other (Douyin 4 GB vs
+       128 MB, DeviantArt 80 vs 95 MB). Where two official numbers exist, the
+       smaller one is used and both are named in the note. -->
+
+  <destination id="post.niconico.video" group="niconico" label="Nico Nico Douga (ニコニコ動画)"
+               icon="brand-niconico" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://www.nicovideo.jp/help/video/upload" verified="true">
+    <size mode="max" w="4096" h="2160"/>
+    <caps maxBytes="6442450944" maxDurationSec="21600" maxFps="60"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>6 GB or 6 hours, whichever comes first; raised from 3 GB on 2024-10-29, so
+          older guides are a revision behind. Up to 4096x2160 (or 2160x4096 vertical)
+          and 60 fps. Their own page caps the vertical Short surface at 180 seconds,
+          which is a different destination with the same name.</note>
+  </destination>
+
+  <destination id="post.douyin.video" group="douyin" label="Douyin (抖音)" icon="film-strip" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://partner.open-douyin.com/docs/resource/zh-CN/dop/develop/openapi/video-management/douyin/create-video/upload-video" verified="false">
+    <size mode="max" w="4096" h="2160"/>
+    <caps maxBytes="4294967296" maxDurationSec="3600"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED (conflicting): ByteDance contradicts itself. The current upload
+          endpoint says 4 GB total with chunked upload mandatory above 300 MB, while a
+          2024-04-09 chunked-upload page says 128 MB and 15 minutes, and the Android
+          share SDK says 60 minutes. The widely quoted 500 MB could not be found on any
+          ByteDance page. Short side under 2160, long side under 4096, 720p or above.</note>
+  </destination>
+
+  <destination id="post.facebook.video" group="facebook" label="Facebook (video)"
+               icon="brand-facebook" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://www.facebook.com/help/1041366099316573" verified="false">
+    <size mode="free"/>
+    <caps maxFps="30"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED (partial): Meta publishes NO byte or duration cap for organic video.
+          The 4 GB and 240-minute figures that circulate are the ADVERTISING spec. Since
+          September 2025 every video posted to Facebook is shared as a reel, so this and
+          the reels destination differ only in the length the API enforces. Recommended:
+          maximum width 4000 px with dimensions divisible by 16, 30 fps or lower, H.264
+          with AAC.</note>
+  </destination>
+
+  <destination id="post.facebook.gif" group="facebook" label="Facebook (animated GIF)" icon="brand-facebook" family="post"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="choice" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://www.facebook.com/help/167931376599294 (photo formats) and https://www.facebook.com/business/help/1006874066021923 (ads: a GIF plays as video)" verified="false">
+    <size mode="free"/>
+    <caps maxBytes="15728640"/>
+    <note>UNVERIFIED (advisory, not a published hard cap): Facebook lists GIF among the
+          photo formats it recommends uploading ("JPEG, BMP, PNG, GIF or TIFF") and
+          recommends keeping photos under 15 MB, which is the number used here. No organic
+          byte cap, dimension rule, frame count, duration or frame rate is published for an
+          animated image; the only transcode statement Facebook makes is in the ADS
+          documentation (a GIF there "plays in the same way as all video files"), and the
+          numbers that circulate for GIF (4 GB, "as video") belong to that advertising
+          surface rather than to a photo post.</note>
+  </destination>
+
+  <destination id="post.facebook.reels" group="facebook" label="Facebook Reels"
+               icon="brand-facebook" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://developers.facebook.com/docs/video-api/guides/reels-publishing" verified="false">
+    <size mode="max" w="1080" h="1920"/>
+    <caps maxDurationSec="90" maxFps="60"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED (conflicting): Meta Business Help says reels can be any length; the
+          Reels Publishing API enforces 3 to 90 seconds and rejects anything else. 90 s is
+          used here because it is the number that is enforced. 1080x1920 recommended,
+          540x960 minimum, 24 to 60 fps, no published byte cap.</note>
+  </destination>
+
+  <destination id="post.tumblr.video" group="tumblr" label="Tumblr (video)" icon="brand-tumblr" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://help.tumblr.com/knowledge-base/how-to-upload-a-video/" verified="true">
+    <size mode="free"/>
+    <caps maxBytes="524288000" maxDurationSec="600"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>500 MB and 10 minutes, and 20 posts a day. MOV or MP4; Tumblr transcodes toward
+          720p H.264. Photos are a separate destination: a static image gets 20 MB, but an
+          animated GIF is served only up to about 5 MB and above that is reduced to its
+          first frame.</note>
+  </destination>
+
+  <destination id="post.tumblr.gif" group="tumblr" label="Tumblr (animated GIF)" icon="brand-tumblr" family="post"
+               class="reencode"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="choice" audio="forbidden" loop="default-on"
+               checked="2026-09-13" source="https://help.tumblr.com/knowledge-base/adding-creating-gifs/ and https://engineering.tumblr.com/post/690135035533230080/making-gifs-load-faster (2022-07-18)" verified="true">
+    <size mode="max" w="540" h="540"/>
+    <caps maxBytes="5242880" minScalePct="25"/>
+    <note>Tumblr transcodes EVERY uploaded GIF ("we do convert all uploaded GIFs to the GIFV
+          format", typically animated WebP, and on the web sometimes MP4), so the file it
+          serves is not the file you send. It publishes three size numbers in one section
+          (keep GIFs to 10 MB, a compressed GIF no larger than 5 MB, and "we will do our
+          best to compress" between them) plus the consequence that matters: above 5 MB
+          Tumblr may serve ONLY THE FIRST FRAME, so 5 MB is the cap used here and the file
+          is fitted to it. 540 px wide is Tumblr's own recommendation. Frames are not
+          counted ("we only count bytes and seconds"), no duration cap exists for a GIF, and
+          transparency is documented only as a conversion criterion, not as a promise.</note>
+  </destination>
+
+  <destination id="post.pinterest.video" group="pinterest" label="Pinterest (video Pin)"
+               icon="brand-pinterest" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264 hevc" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://help.pinterest.com/en/business/article/video-pins" verified="true">
+    <size mode="max" w="1080" h="1920"/>
+    <caps maxDurationSec="300"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
+    <note>4 seconds to 5 minutes. No byte cap is published for organic video Pins; the
+          "2 GB / 15 minutes" figure belongs to the ADVERTISING spec, which is a different
+          surface and is quoted constantly as if it were this one. MP4/M4V, H.264 or
+          H.265, 9:16 recommended.</note>
+  </destination>
+
+  <destination id="post.snapchat.spotlight" group="snapchat" label="Snapchat Spotlight"
+               icon="brand-snapchat" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://help.snapchat.com/hc/en-us/articles/7012288096532" verified="false">
+    <size mode="free"/>
+    <caps minDurationSec="5"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED (partial): Snapchat publishes a minimum of 5 seconds and a vertical
+          requirement, and nothing else: no byte cap, no maximum duration, no accepted
+          format list and no pixel specification. Still images are excluded. The
+          "1 GB / 3 to 30 minutes" figure is the ADS spec. Vertical with sound; a
+          landscape export will not be shown in Spotlight, and no size rule here can
+          force that, so the file is exported as composed.</note>
+  </destination>
+
+  <destination id="post.dailymotion.video" group="dailymotion" label="Dailymotion"
+               icon="brand-dailymotion" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://faq.dailymotion.com/hc/en-us/articles/202592305-Video-upload-specifications" verified="true">
+    <size mode="max" w="3840" h="2160"/>
+    <caps maxBytes="4294967296" maxDurationSec="7200" maxFps="60"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>4 GB (64 GB on the top tier) and 2 hours. Up to 3840x2160 or 2160x3840, 24 to
+          60 fps. MOV, MP4, AVI, WMV, MKV and FLV are all accepted; MP4/H.264 is the
+          practical target.</note>
+  </destination>
+
+  <destination id="post.vimeo.video" group="vimeo" label="Vimeo" icon="brand-vimeo" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264 prores" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://help.vimeo.com/hc/en-us/articles/12426199699985" verified="false">
+    <size mode="free"/>
+    <caps maxBytes="214748364800" maxDurationSec="86400"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>UNVERIFIED (conflicting): Vimeo's advice to keep files under 200 GB, a plan note
+          about 250 GB per video for legacy subscribers and an uploader page claiming no
+          size limit cannot all be true; 200 GB is used as a soft ceiling. 24 hours is a
+          hard refusal at upload. Vimeo states plainly that it has no alpha channel
+          support, so transparency can never survive here. MP4/MOV, H.264 or ProRes.</note>
+  </destination>
+
+  <destination id="post.deviantart.video" group="deviantart" label="DeviantArt (video, Core members)"
+               icon="brand-deviantart" family="post"
+               class="reencode"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-11" source="https://help.deviantart.com/161/" verified="true">
+    <size mode="max" w="1920" h="1080"/>
+    <caps maxBytes="1073741824" maxDurationSec="720"/>
+    <audio codec="aac" bitrate="128000" channels="2" rate="48000"/>
+    <note>1 GB and 10 to 12 minutes, and video submission is a Core membership feature.
+          1920x1080 recommended; the first frame becomes the preview, so it should not be
+          a blank or transitional frame. An animated GIF is NOT a video here: DeviantArt
+          counts it as an image and gives it the much larger image cap.</note>
+  </destination>
+
+  <destination id="post.newgrounds.movie" group="newgrounds" label="Newgrounds (animation)"
+               icon="brand-newgrounds" family="post"
+               class="direct"
+               container="mp4" codec="libx264" codecs="h264" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="choice"
+               checked="2026-09-11" source="https://www.newgrounds.com/wiki/creator-resources/animation-resources" verified="false">
+    <size mode="max" w="1920" h="1080"/>
+    <note>UNVERIFIED (partial): Newgrounds publishes NO byte or duration cap. Their own
+          wiki says the limit is shown on the signed-in upload form and can be raised on
+          request, so it is per-account; the 100 MB and 6.3 GB figures in circulation come
+          from a member forum post, not from Newgrounds. MP4/MOV/WMV and SWF are accepted,
+          at 3840x2160, 1920x1080, 1280x720 or 640x380, around 10 to 20 Mbps at 1080p.
+          Loop is an upload option for MP4 here, unlike everywhere else.</note>
+  </destination>
+
+  <!-- ===== still images and frame sequences ==============================
+       Artifact="still" writes ONE image file at the path the user names;
+       artifact="sequence" writes a directory of numbered frames. Neither goes
+       through an encoder: Qt's own image writers produce them, so there is no
+       codec and no container, and `container` names the image format instead.
+
+       These are the illustrator's half of the audience. pixiv, DeviantArt and
+       Nico Nico Seiga are where the art goes; Instagram and Facebook photos are
+       the general case; and ugoira is the animation format pixiv actually
+       accepts, which is a frame SEQUENCE rather than a video or a GIF.
+       ===================================================================== -->
+
+  <destination id="still.pixiv.illustration" group="pixiv" label="pixiv (illustration)"
+               icon="brand-pixiv" family="post"
+               class="reencode" artifact="still"
+               container="png"
+               alpha="default-on" audio="forbidden" loop="forbidden"
+               checked="2026-09-11" source="https://www.pixiv.help/hc/en-us/articles/235584628" verified="true">
+    <size mode="free"/>
+    <caps maxBytes="33554432"/>
+    <note>32 MB per image, 200 MB per post, JPG or PNG. No pixel cap is published.
+          The 8 MB and 10 MB figures still quoted in guides are obsolete: pixiv
+          raised the per-image limit to 32 MB. A post mixing formats is converted
+          to JPG, so pick one format per post; PNG is the one that keeps
+          transparency.</note>
+  </destination>
+
+  <destination id="post.pixiv.ugoira" group="pixiv" label="pixiv (ugoira animation)"
+               icon="brand-pixiv" family="post"
+               class="reencode" artifact="sequence" fps="ignored"
+               container="png" minScalePct="25"
+               alpha="default-on" audio="forbidden" loop="forbidden"
+               checked="2026-09-11" source="https://www.pixiv.help/hc/en-us/articles/235584628-What-are-Ugoira" verified="true">
+    <size mode="free"/>
+    <caps maxBytes="31457280" maxFrames="150"/>
+    <note>ugoira is a folder of numbered stills, not a video: up
+           to 150 frames, 30 MB in total, 8 MB per frame, and every frame must share
+          one format AND one canvas size. PNG or JPEG only, and pixiv rejects APNG
+          and WebP outright. Frame TIMING is authored on the upload page, so no fps
+          applies here. The alternative route is one animated GIF (16 MB, 500
+          frames), which costs you the palette. Desktop site only.</note>
+  </destination>
+
+  <destination id="still.niconico.seiga" group="niconico" label="Nico Nico Seiga (ニコニコ静画)"
+               icon="brand-niconico" family="post"
+               class="reencode" artifact="still"
+               container="png"
+               alpha="default-on" audio="forbidden" loop="forbidden"
+               checked="2026-09-11" source="https://www.nicovideo.jp/help/seiga/upload" verified="false">
+    <size mode="free"/>
+    <caps maxBytes="10485760"/>
+    <note>UNVERIFIED (partial): 10 MB per image, PNG or JPEG or GIF, no pixel cap
+          published. Whether a posted illustration is re-encoded, whether PNG alpha
+          survives, and whether an animated GIF animates on Seiga are all
+          undocumented, so transparency is exported but not promised. Seiga is the
+          still-image half of Nico Nico; videos go to Nico Nico Douga.</note>
+  </destination>
+
+  <destination id="still.instagram.feed" group="instagram" label="Instagram (photo)"
+               icon="brand-instagram" family="post"
+               class="reencode" artifact="still"
+               container="jpg"
+               alpha="forbidden" audio="forbidden" loop="forbidden"
+               checked="2026-09-11" source="https://help.instagram.com/1631821640426723" verified="true">
+    <size mode="max" w="1440" h="1800"/>
+    <caps maxBytes="8388608"/>
+    <note>8 MB, JPEG ONLY, width between 320 and 1440 px, and an aspect ratio from
+          4:5 to 1.91:1. Transparency cannot survive a JPEG: a transparent
+          background is written as solid black, so flatten the art first. Reels are
+          a separate destination and do take video.</note>
+  </destination>
+
+  <destination id="still.facebook.photo" group="facebook" label="Facebook (photo)"
+               icon="brand-facebook" family="post"
+               class="reencode" artifact="still"
+               container="png"
+               alpha="default-on" audio="forbidden" loop="forbidden"
+               checked="2026-09-11" source="https://developers.facebook.com/docs/graph-api/reference/user/photos/" verified="false">
+    <size mode="free"/>
+    <caps maxBytes="10485760"/>
+    <note>UNVERIFIED (conflicting): Meta's Graph API says a photo must be under
+          10 MB and that animated photos are not supported, while their help centre
+          recommends below 15 MB and lists GIF as a photo format. The stricter API
+          figure is used. PNG is accepted but Meta warns that a PNG above 1 MB may
+          be shown pixelated, because it is re-compressed.</note>
+  </destination>
+
+  <destination id="still.tumblr.photo" group="tumblr" label="Tumblr (photo)" icon="brand-tumblr" family="post"
+               class="reencode" artifact="still"
+               container="png"
+               alpha="default-on" audio="forbidden" loop="forbidden"
+               checked="2026-09-11" source="https://help.tumblr.com/knowledge-base/uploading-photos/" verified="true">
+    <size mode="max" w="2048" h="3072"/>
+    <caps maxBytes="20971520"/>
+    <note>20 MB for a static image. 540x810 is the recommended size and 2048x3072 is
+          the largest view served. ANIMATION IS A DIFFERENT LIMIT: a GIF is only
+          served up to about 5 MB, and above that Tumblr shows its first frame
+          instead of animating, so a long animation should go out as a video.</note>
+  </destination>
+
+  <destination id="still.pinterest.image" group="pinterest" label="Pinterest (image Pin)"
+               icon="brand-pinterest" family="post"
+               class="reencode" artifact="still"
+               container="png"
+               alpha="default-on" audio="forbidden" loop="forbidden"
+               checked="2026-09-11" source="https://help.pinterest.com/en/business/article/image-pins" verified="true">
+    <size mode="max" w="1000" h="1500"/>
+    <caps maxBytes="20971520"/>
+    <note>20 MB on the web. PNG, JPEG, BMP, TIFF or WEBP; GIF is not accepted as an
+          organic Pin, so animation belongs on a video Pin. 2:3 is the recommended
+          shape (1000x1500) and 9:16 also works; keep the art out of the bottom
+          safe zone, where the interface covers it.</note>
+  </destination>
+
+  <destination id="still.deviantart.image" group="deviantart" label="DeviantArt (image)"
+               icon="brand-deviantart" family="post"
+               class="reencode" artifact="still"
+               container="png"
+               alpha="default-on" audio="forbidden" loop="forbidden"
+               checked="2026-09-11" source="https://help.deviantart.com/161/" verified="false">
+    <size mode="free"/>
+    <caps maxBytes="83886080"/>
+    <note>UNVERIFIED (conflicting): one DeviantArt help page says images are capped
+          at 80 MB and another says 95 MB; 80 MB is used so a file that passes here
+          passes both. JPEG, PNG or GIF, no pixel cap. An animated GIF counts as an
+          IMAGE and gets this same cap, which is 16x what Tumblr allows a GIF.</note>
+  </destination>
+
+  <destination id="post.deviantart.gif" group="deviantart" label="DeviantArt (animation)"
+               icon="brand-deviantart" family="post"
+               class="fixed"
+               container="gif" codec="gif" codecs="gif" default="gif" pixfmt="pal8"
+               alpha="required" audio="forbidden" loop="required"
+               checked="2026-09-11" source="https://help.deviantart.com/161/" verified="false">
+    <size mode="free"/>
+    <caps maxBytes="83886080"/>
+    <note>UNVERIFIED (conflicting): see the image row: 80 MB versus 95 MB on two
+          official pages, and an animated GIF is submitted as an image rather than a
+          video, so it gets that cap instead of the 1 GB video one. GIF means a
+          256-colour palette, which is a real cost for gradients but nothing else
+          here animates on a free account.</note>
+  </destination>
+
+  <!-- ===== overlay ===================================================== -->
+
+  <destination id="obs.overlay" group="obs" label="Stream overlay (OBS)" icon="brand-obsstudio" family="overlay"
+               class="fixed"
+               container="webm" codec="libvpx-vp9" codecs="vp9" default="vp9" pixfmt="yuva420p"
+               alpha="required" audio="choice" loop="choice"
+               checked="2026-09-05" source="https://github.com/kasunjith713/obs-transparent-webm-guide" verified="true">
+    <size mode="free"/>
+    <encOptions><opt name="auto-alt-ref" value="0"/></encOptions>
+    <audio codec="libopus" bitrate="128000" channels="2" rate="48000"/>
+    <note>VP9 WebM is native in OBS; no chroma-key. WebKit CANNOT decode alpha in WebM.</note>
+  </destination>
+
+  <destination id="safari.transparent" group="safari" label="Transparent video (Safari / iOS)"
+               icon="brand-obsstudio" family="overlay"
+               class="fixed"
+               platform="apple"
+               container="mov" codec="hevc_videotoolbox" codecs="hevc" default="hevc" pixfmt="yuva420p"
+               alpha="required" audio="choice" loop="choice"
+               checked="2026-09-05" source="https://github.com/kasunjith713/obs-transparent-webm-guide" verified="true">
+    <size mode="free"/>
+    <encOptions><opt name="alpha_quality" value="0.9"/></encOptions>
+    <codecTag value="hvc1"/>
+    <note>HEVC+alpha needs Apple's VideoToolbox encoder; libx265 ADVERTISES yuva420p and
+          then refuses it at open. hvc1 is mandatory: Safari rejects untagged hev1. Where
+          VideoToolbox is unavailable, use the WebM/VP9 overlay destination instead.</note>
+  </destination>
+
+  <!-- ===== file ======================================================== -->
+
+  <destination id="youtube.video" group="youtube" label="YouTube" icon="brand-youtube" family="post"
+               class="reencode"
+               container="mp4" codec="" codecs="h264 hevc av1" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-09-05" source="https://support.google.com/youtube/answer/1722171" verified="true">
+    <size mode="free"/>
+    <audio codec="aac" bitrate="256000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
+    <note>YouTube re-encodes every upload. Official docs still recommend H.264/AAC;
+          AV1/H.265 give more quality per bit. Codec is resolved by the ladder.</note>
+  </destination>
+
+  <!-- ===== general: the rows with no platform of their own ==============
+
+       The picker lists these four at the TOP (the `general` group is declared
+       first and is `variants="false"`, so its rows are listed directly), in the
+       explicit `order` they carry: a designed order, not an alphabet. Sorted by
+       the translated label alone, "Animated image" would come out above "Video"
+       and the block would re-shuffle in every language; and a rank is also the
+       only way these rows can sit above the ARCHIVE row below, which is a
+       sibling of theirs rather than a platform's variant.
+
+       They are the honest answer for someone who has not decided where the file
+       is going: a video is the safe thing to hand anything whose rules we do not
+       know, an animated image and a frame sequence are what a platform that
+       takes animation-as-media wants, and keeping a master is here because it is
+       not a platform. Every ceiling that belongs to a platform stays on that
+       platform's row, which is why none of these three has caps.
+  -->
+
+  <destination id="generic.video" group="general" label="Video" order="1"
+               icon="film-strip" family="file"
+               class="direct"
+               container="mp4" codec="" codecs="h264 hevc av1" default="h264" pixfmt="yuv420p"
+               alpha="forbidden" audio="default-on" loop="forbidden"
+               checked="2026-10-08" source="(design decision; the generic video, with no platform's ceiling)" verified="true">
+    <size mode="free"/>
+    <audio codec="aac" bitrate="160000" channels="2" rate="48000"/>
+    <codecTag value="hvc1" codec="hevc"/>
+    <note>The generic video: MP4 with H.264 (HEVC or AV1 where the destination takes
+          one) and AAC, at the project's own resolution, with no size, duration or
+          frame-rate ceiling of its own. Pick it when the destination is not one of
+          the platforms below; when it is, take that platform's row, because the
+          ceiling on it is the reason that row exists.</note>
+  </destination>
+
+  <destination id="generic.animation" group="general" label="Animated image" order="2"
+               icon="image" family="file"
+               class="direct"
+               container="webp" codec="libwebp" codecs="webp" default="webp" pixfmt="yuva420p"
+               alpha="default-on" audio="forbidden" loop="default-on"
+               checked="2026-10-08" source="(design decision; the generic animated image, with no platform's upload cap)" verified="true">
+    <size mode="free"/>
+    <note>An animated image, not a video: WebP, which keeps the transparency a GIF's
+          palette cannot carry and is the format the chat apps' own pipelines produce
+          for an animation. One frame gives a still WebP, so this row carries an
+          illustration as well as an animation. No upload cap of its own: take a
+          platform row when that platform's cap is what you are up against.</note>
+  </destination>
+
+  <destination id="generic.sequence" group="general" label="Image sequence" order="3"
+               icon="images" family="file"
+               class="reencode" artifact="sequence" fps="ignored"
+               container="png" minScalePct="25"
+               alpha="default-on" audio="forbidden" loop="forbidden"
+               checked="2026-10-08" source="(design decision; the generic frame sequence, with no platform's frame cap)" verified="true">
+    <size mode="free"/>
+    <note>A folder of numbered stills, not a video: PNG keeps the transparency, every
+          frame shares one format and one canvas size, and frame TIMING is authored
+          where the sequence is uploaded, so no frame rate applies. No frame or byte
+          cap of its own: take a platform row when that platform's limit is what you
+          are up against.</note>
+  </destination>
+
+  <!-- ===== archive ===================================================== -->
+
+  <destination id="archive.master" group="general" label="Archive file (highest quality)" order="4"
+               icon="folder" family="archive"
+               class="archive"
+               container="mkv" codec="" codecs="ffv1 av1 hevc vp9" pixfmt="yuva420p"
+               alpha="default-on" audio="default-on" loop="forbidden"
+               checked="2026-10-01" source="(design decision)" verified="true">
+    <size mode="free"/>
+    <audio codec="flac" channels="2" rate="48000"/>
+    <note>Lossless quality always writes FFV1, which carries transparency. With transparency ON
+          the other quality buckets use VP9, the lossy codec that keeps the alpha channel here
+          (AV1 drops it silently and H.265 refuses it). With transparency OFF AV1 is used at every
+          quality bucket — Best, Balanced and Smaller file alike; H.265 is only the fallback for a
+          build with no usable AV1 encoder.</note>
+  </destination>
+
+  <!-- ===== quality control (for the post-encode fit-to-cap loop) ============
+
+       The knob that trades quality for bytes, per codec. "best" is the value
+       we start from, "worst" the lowest quality we will accept before falling
+       back to shrinking the image instead. Absent = the codec has no usable
+       quality knob (lossless formats), so fit-to-cap goes straight to scale.
+  -->
+  <quality_control>
+    <codec name="libvpx-vp9" option="crf" best="24" worst="52"/>
+    <codec name="libsvtav1"  option="crf" best="26" worst="55"/>
+    <codec name="libx264"    option="crf" best="19" worst="34"/>
+    <codec name="libx265"    option="crf" best="23" worst="38"/>
+    <codec name="libwebp"    option="quality" best="80" worst="30"/>
+    <!-- GIF has no CRF: its quality knob is how many palette entries it may use,
+         which is what lets a capped GIF quantise harder before the fit loop starts
+         throwing away resolution or frames. -->
+    <codec name="gif"        option="palette" best="256" worst="8"/>
+  </quality_control>
+
+  <!-- ===== where each quality intent STARTS, within a codec's [best, worst] ==
+
+       Without this the Quality selector was inert for every destination whose
+       codec is FIXED (ten of these fourteen rows): the bucket picked the codec
+       only when the codec came from the ladder, so "Smaller file" and "Best
+       quality" produced byte-identical instructions for Telegram, Discord,
+       WhatsApp or LINE. The bucket now sets the codec's own quality knob, and
+       this is where its starting point is declared.
+
+       position 0 = the codec's best value, 1 = the lowest we accept before the
+       fit-to-cap loop gives up on quality and starts shrinking the image
+       instead. ONE table for every codec, because the intent is about the trade
+       the user is willing to make, not about a particular encoder — and a
+       position rather than a CRF, because the numbers themselves are per-codec
+       and already declared above.
+
+       Policy, not fact: these are the numbers to tune, so they are data.
+  -->
+  <bucket_positions>
+    <bucket name="smaller"  position="0.70"/>
+    <bucket name="balanced" position="0.25"/>
+    <bucket name="best"     position="0.00"/>
+    <bucket name="lossless" position="0.00"/>
+  </bucket_positions>
+
+</export_targets>

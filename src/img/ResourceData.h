@@ -15,7 +15,7 @@ class ResourceData {
 public:
     typedef std::function<bool(ResourceData& aData)> ImageLoader;
 
-    ResourceData(const QString& aIdentifier, const ResourceNode* aSerialAddress);
+    ResourceData(const QString& aIdentifier, const QString& aIdentityId, const ResourceNode* aSerialAddress);
     virtual ~ResourceData() {}
 
     void grabImage(const XCMemBlock& aBlock, const QSize& aSize, Format aFormat);
@@ -24,7 +24,6 @@ public:
 
     void setIdentifier(const QString& aId) { mIdentifier = aId; }
     void setPos(const QPoint& aPos);
-    void setUserData(void* aData) { mUserData = aData; }
     void setIsLayer(bool aIsLayer) { mIsLayer = aIsLayer; }
     void setBlendMode(BlendMode aMode);
     void setIsVisible(bool aIsVisible) { mIsVisible = aIsVisible; }
@@ -36,12 +35,21 @@ public:
     const QString& identifier() const { return mIdentifier; }
     const img::Buffer& image() const { return mBuffer; }
     const QPoint& pos() const { return mPos; }
-    void* userData() const { return mUserData; }
     BlendMode blendMode() const { return mBlendMode; }
     const ResourceNode* serialAddress() const { return mSerialAddress; }
 
+    // The identity this layer is matched by when its source file is reimported.
+    // It is Photoshop's stable per-layer id ("lyid"), not the display name: a
+    // rename in the source must not orphan the project's edits, and two layers
+    // renamed to the same name must not be matched to each other. Writers that
+    // carry no stable id (ORA, older PSDs, non-Photoshop writers) have nothing
+    // but the name, so this holds the identifier for them -- that fallback is
+    // applied here, in the constructor, so every consumer sees one usable value.
+    // See ResourceNode's constructor and img::Util::createResourceNodes.
+    const QString& identityId() const { return mIdentityId; }
+
     void setImageLoader(const ImageLoader& aLoader) { mImageLoader = aLoader; }
-    bool loadImage() { return (mImageLoader && mImageLoader(*this)); }
+    bool loadImage();
 
     QRect rect() const;
     QVector2D center() const;
@@ -51,9 +59,9 @@ public:
 private:
     img::Buffer mBuffer;
     QPoint mPos;
-    void* mUserData;
     bool mIsLayer;
     QString mIdentifier;
+    QString mIdentityId;
     BlendMode mBlendMode;
     bool mIsVisible;
     ImageLoader mImageLoader;

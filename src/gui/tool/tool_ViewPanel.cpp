@@ -1,12 +1,10 @@
 #include "gui/tool/tool_ViewPanel.h"
 
-#include "AnimationSettingDialog.h"
-
 namespace {
 // Same button family as the toolbox: 24x24 with explicit 18px glyphs.
 // Sizes are logical pixels; Qt6 scales the whole window on high-DPI screens.
-constexpr double kButtonSize = 24.0 * 1.2;
-constexpr double kIconSize = 18.0 * 1.2;
+const int kButtonSize = 24;
+const int kIconSize = 18;
 } // namespace
 
 namespace gui {
@@ -20,16 +18,14 @@ namespace tool {
         mGUIResources.onThemeChanged.connect(this, &ViewPanel::onThemeUpdated);
     }
 
-    void ViewPanel::addButton(
+    QPushButton* ViewPanel::addButton(
         const QString& aIconName, bool aCheckable, const QString& aToolTip, const PushDelegate& aDelegate
     ) {
-        QSettings settings;
-        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
         QPushButton* button = new QPushButton();
         button->setObjectName(aIconName);
         button->setIcon(mGUIResources.icon(aIconName));
-        button->setIconSize(QSize(kIconSize * uiScale, kIconSize * uiScale));
-        button->setFixedSize(kButtonSize * uiScale, kButtonSize * uiScale);
+        button->setIconSize(QSize(kIconSize, kIconSize));
+        button->setFixedSize(kButtonSize, kButtonSize);
         button->setCheckable(aCheckable);
         if (aCheckable) {
             // active-state button: press reads as hover, not the sunken press
@@ -42,6 +38,8 @@ namespace tool {
         mLayout.addWidget(button);
 
         this->connect(button, &QPushButton::clicked, aDelegate);
+
+        return button;
     }
 
     int ViewPanel::updateGeometry(const QPoint& aPos, int aWidth) {
@@ -62,12 +60,8 @@ namespace tool {
 
     void ViewPanel::onThemeUpdated(theme::Theme&) {
         if (mButtons.size() > 0) {
-            QSettings settings;
-            auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0).toDouble();
             for (auto button : mButtons) {
                 button->setIcon(mGUIResources.icon(button->objectName()));
-                button->setIconSize(QSize(kIconSize * uiScale, kIconSize * uiScale));
-                button->setFixedSize(kButtonSize * uiScale, kButtonSize * uiScale);
             }
         }
     }

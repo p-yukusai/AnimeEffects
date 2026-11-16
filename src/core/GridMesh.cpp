@@ -1,3 +1,4 @@
+#include <cstring>
 #include <float.h>
 #include <QVector3D>
 #include <QMatrix4x4>
@@ -19,6 +20,7 @@ GridMesh::GridMesh():
     mSize(),
     mOriginOffset(),
     mCellPx(0),
+    mContentAlphaThreshold(img::GridMeshCreator::kContentAlphaThreshold),
     mIndexCount(0),
     mVertexCount(0),
     mVertexRect(),
@@ -38,6 +40,7 @@ GridMesh::GridMesh(const GridMesh& aRhs):
     mSize(aRhs.mSize),
     mOriginOffset(aRhs.mOriginOffset),
     mCellPx(aRhs.mCellPx),
+    mContentAlphaThreshold(aRhs.mContentAlphaThreshold),
     mIndexCount(aRhs.mIndexCount),
     mVertexCount(aRhs.mVertexCount),
     mVertexRect(aRhs.mVertexRect),
@@ -59,6 +62,7 @@ GridMesh& GridMesh::operator=(const GridMesh& aRhs) {
     mSize = aRhs.mSize;
     mOriginOffset = aRhs.mOriginOffset;
     mCellPx = aRhs.mCellPx;
+    mContentAlphaThreshold = aRhs.mContentAlphaThreshold;
     mIndexCount = aRhs.mIndexCount;
     mVertexCount = aRhs.mVertexCount;
     mVertexRect = aRhs.mVertexRect;
@@ -84,6 +88,7 @@ void GridMesh::swap(GridMesh& aRhs) {
     std::swap(mSize, aRhs.mSize);
     std::swap(mOriginOffset, aRhs.mOriginOffset);
     std::swap(mCellPx, aRhs.mCellPx);
+    std::swap(mContentAlphaThreshold, aRhs.mContentAlphaThreshold);
     std::swap(mIndexCount, aRhs.mIndexCount);
     std::swap(mVertexCount, aRhs.mVertexCount);
     std::swap(mVertexRect, aRhs.mVertexRect);
@@ -139,7 +144,8 @@ void GridMesh::initializeVertexBuffers(int aVertexCount) {
     }
 }
 
-void GridMesh::createFromImage(const void* aImagePtr, const QSize& aSize, int aCellPx) {
+void GridMesh::createFromImage(const void* aImagePtr, const QSize& aSize, int aCellPx,
+                               int aContentAlphaThreshold) {
     XC_ASSERT(aCellPx > 0);
 
     // free old buffers
@@ -147,6 +153,9 @@ void GridMesh::createFromImage(const void* aImagePtr, const QSize& aSize, int aC
 
     mSize = aSize;
     mCellPx = aCellPx;
+    mContentAlphaThreshold = (aContentAlphaThreshold == img::MeshContentLevel::kDerive)
+                                 ? img::MeshContentLevel::derive(aImagePtr, aSize)
+                                 : aContentAlphaThreshold;
 
     if (!aImagePtr || aSize.isEmpty() || (aSize == QSize(1, 1) && *((uint32*)aImagePtr) == 0)) {
         mVertexRect = QRect(QPoint(), QSize());
@@ -160,7 +169,7 @@ void GridMesh::createFromImage(const void* aImagePtr, const QSize& aSize, int aC
 }
 
 void GridMesh::createGridMesh(const void* aImagePtr) {
-    img::GridMeshCreator creator((const uint8*)aImagePtr, mSize, mCellPx);
+    img::GridMeshCreator creator((const uint8*)aImagePtr, mSize, mCellPx, mContentAlphaThreshold);
 
     mVertexRect = creator.vertexRect();
     mVertexCount = creator.vertexCount();
@@ -298,7 +307,14 @@ void GridMesh::resetArrayedConnection(ArrayedConnectionList& aDest, const gl::Ve
     }
 }
 
-Frame GridMesh::frameSign() const { return Frame(TimeLine::kDefaultKeyIndex); }
+Frame GridMesh::frameSign() const {
+    // The base mesh's cache signature: "no mesh key". This is a serialized
+    // value (bone influence caches store it) and old files carry -1, so it
+    // must NOT track TimeKey::kBaseValueIndex — which moved to INT_MIN so
+    // -1 could be a real key frame. The sign is a cache-identity marker,
+    // never a frame index, so keeping it at -1 collides with nothing.
+    return Frame(-1);
+}
 
 util::ArrayBlock<gl::Vector3>
 GridMesh::createFFD(util::ArrayBlock<const gl::Vector3> aPrevFFD, const Transitions& aTrans) const {
@@ -534,56 +550,57 @@ QJsonObject GridMesh::serializeToJson() const {
         grid["Offsets"] = glToArray(mOffsets.data(), mVertexCount);
         grid["TexCoords"] = glToArray(mTexCoords.data(), mVertexCount);
         grid["Normals"] = glToArray(mNormals.data(), mVertexCount);
-        grid["ConnectSize"] = QString::number(size_t(mVertexCount * sizeof(HexaConnection)));
+        // The connection table is the only raw-binary field here, so it travels
+        // as base64. It used to be assigned straight from a char* to a
+        // QJsonValue, which builds a QString (UTF-8, NUL terminated): verified
+        // that 6 bytes {1,0,2,3,FF,FE} come back as a *single character*, so the
+        // data was corrupt before it ever reached the reader. The old code also
+        // advanced the pointer by up to 3 bytes (a "pad" that skipped data) and
+        // the byte count is implied by mVertexCount anyway, so neither a size
+        // nor a pad field is written now. The removed XCMemSize was a JSON
+        // string that the reader called toInt() on, which reads as 0 and skipped
+        // the entire restore.
         const size_t connectSize = mVertexCount * sizeof(HexaConnection);
         auto xcmem = XCMemBlock((uint8*)mHexaConnections.data(), connectSize);
-        grid["XCMemSize"] = QString::number((uint64)xcmem.size);
-        if (xcmem.data) {
-            const char* memdata;
-            auto pad = xcmem.size % 4;
-            if (pad) {
-                int size;
-                for (size = 0; size < (4 - (int)pad); ++size)
-                    ;
-                memdata = (const char*)xcmem.data + (char)size;
-            } else {
-                memdata = (const char*)xcmem.data;
-            }
-            grid["XCMemData"] = memdata;
+        if (xcmem.data && xcmem.size > 0) {
+            grid["XCMemData"] = QString::fromLatin1(
+                QByteArray(reinterpret_cast<const char*>(xcmem.data), (int)xcmem.size).toBase64());
         }
     }
     return grid;
 }
 
 bool GridMesh::deserializeFromJson(QJsonObject json) {
-    QJsonObject mesh = json["GridMesh"].toObject();
-    mSize = jsonToSize(json);
-    mOriginOffset = jsonToPos(json);
-    mCellPx = json["CellPx"].toInt();
-    mIndexCount = json["IndexCount"].toInt();
+    // The caller hands in the ImageKey payload and the mesh's fields live in its
+    // "GridMesh" child. Reading them off the PARENT object meant VertexCount
+    // read as 0, every guard below was false, and pasting an image key silently
+    // restored no mesh at all — the "mesh" local was computed and never used,
+    // which is what made that mistake look intentional.
+    const QJsonObject mesh = json["GridMesh"].toObject();
+    mSize = jsonToSize(mesh);
+    mOriginOffset = jsonToPos(mesh);
+    mCellPx = mesh["CellPx"].toInt();
+    mIndexCount = mesh["IndexCount"].toInt();
     if (mIndexCount > 0) {
-        mIndices = arrayToGL(json["Indices"].toArray(), mIndexCount);
+        mIndices = arrayToGL(mesh["Indices"].toArray(), mIndexCount);
     }
-    mVertexCount = json["VertexCount"].toInt();
+    mVertexCount = mesh["VertexCount"].toInt();
     if (mVertexCount > 0) {
-        mPositions = arrayToVec3(json["Positions"].toArray(), mVertexCount);
-        mOffsets = arrayToVec3(json["Offsets"].toArray(), mVertexCount);
-        mTexCoords = arrayToVec2(json["TexCoords"].toArray(), mVertexCount);
-        mNormals = arrayToVec3(json["Normals"].toArray(), mVertexCount);
-        const uint64 rawSize = json["XCMemSize"].toInt();
-        if (std::numeric_limits<size_t>::max() < rawSize)
-            return false;
-        const size_t size = (size_t)rawSize;
-        auto xcmemString = json["XCMemData"].toString().toStdString();
-        const char* XCMemData = xcmemString.c_str();
-        if (size > 0) {
-            mHexaConnections.construct(size);
-            for (auto x = 0; x < rawSize; x++) {
-                std::vector<int> id;
-                for (auto x = 0; x < 6; x++) {
-                    mHexaConnections.data()->id[x] = (uint8)XCMemData[x];
-                }
-            }
+        mPositions = arrayToVec3(mesh["Positions"].toArray(), mVertexCount);
+        mOffsets = arrayToVec3(mesh["Offsets"].toArray(), mVertexCount);
+        mTexCoords = arrayToVec2(mesh["TexCoords"].toArray(), mVertexCount);
+        mNormals = arrayToVec3(mesh["Normals"].toArray(), mVertexCount);
+
+        // The connection table is mVertexCount records, so its byte length is
+        // implied and only the bytes travel. The table is copied whole: this
+        // used to construct the array with a BYTE count (six times too many
+        // elements) and then write through a shadowed inner index, which filled
+        // record 0's six bytes `size` times and left every other record empty.
+        const int connectBytes = (int)(mVertexCount * sizeof(HexaConnection));
+        const QByteArray block = QByteArray::fromBase64(mesh["XCMemData"].toString().toLatin1());
+        if (block.size() >= connectBytes && connectBytes > 0) {
+            mHexaConnections.construct(mVertexCount);
+            std::memcpy(mHexaConnections.data(), block.constData(), (size_t)connectBytes);
         }
     }
     return true;

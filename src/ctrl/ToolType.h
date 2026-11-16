@@ -9,6 +9,7 @@ enum ToolType {
     ToolType_Pose,
     ToolType_Mesh,
     ToolType_FFD,
+    ToolType_Mask,
     ToolType_TERM
 };
 } // namespace ctrl

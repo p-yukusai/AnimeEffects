@@ -1,22 +1,39 @@
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <algorithm>
 #include <memory>
 #include <qstandardpaths.h>
+#ifdef Q_OS_WINDOWS
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include "gl/Global.h"
 #include "gl/DeviceInfo.h"
 #include "ctrl/System.h"
 
-#include "core/BoneKey.h"
-#include "core/TimeKeyBlender.h"
+#include "core/TimeKeyExpans.h"
+#include "core/TimeLine.h"
 #include "ctrl/ProjectSaver.h"
 #include "ctrl/ProjectLoader.h"
 #include "ctrl/ImageFileLoader.h"
+#include "util/RecentFiles.h"
 
 using namespace core;
 
 namespace {
-static const int kStandardFps = 24;
+
+// Recovery copies of never-saved projects land in a dedicated subdir of the
+// app cache (same per-user transient area as lastproject.cache). The filename
+// is the project's own UUID: stable per project across repeated autosaves
+// (the same file is overwritten) and unique across projects and app sessions
+// — no pid/address reuse, no ASLR address in a user-visible name.
+QString recoveryDirName() { return QStringLiteral("autosave"); }
+QString recoveryFileName(const core::Project& aProject) {
+    return QStringLiteral("AnimeEffects_unsaved_%1.anie").arg(aProject.id().toString(QUuid::WithoutBraces));
 }
+} // namespace
 
 namespace ctrl {
 //-------------------------------------------------------------------------------------------------
@@ -41,9 +58,22 @@ QString System::LoadResult::messages() const {
     return msgs;
 }
 
+QString System::LoadResult::warningTitle() {
+    // Shared by the PSD importer's degraded layers and the loader's skeleton
+    // cap, so the title stays the generic one. New source text here would make
+    // the catalogs stale; the line itself carries the specifics.
+    return QCoreApplication::translate("ctrl::System", "Import Warnings");
+}
+
+QString System::LoadResult::warningSummary() {
+    return QCoreApplication::translate(
+        "ctrl::System", "The project opened, but some layers could not be reproduced exactly."
+    );
+}
+
 //-------------------------------------------------------------------------------------------------
-System::System(const QString& aResourceDir, const QString& aCacheDir):
-    mResourceDir(aResourceDir), mCacheDir(aCacheDir), mProjects(), mAnimator() {}
+System::System(const QString& aCacheDir):
+    mCacheDir(aCacheDir), mProjects(), mAnimator() {}
 
 System::~System() { closeAllProjects(); }
 
@@ -73,7 +103,11 @@ System::LoadResult System::newProject(
 
     if (loader.load(aFileName, *projectScope, aReporter)) {
         mProjects.push_back(projectScope.release());
-        return LoadResult(mProjects.back(), "Success.");
+        // The project opened, but the importer may have had to degrade a layer it
+        // cannot reproduce. Carry those notes out on the result instead of
+        // dropping them: the GUI shows them on success, which is the only moment
+        // the user can learn why the file looks different from its source.
+        return LoadResult(mProjects.back(), loader.warnings());
     }
 
     LoadResult result;
@@ -83,7 +117,9 @@ System::LoadResult System::newProject(
 }
 
 System::LoadResult
-System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util::IProgressReporter& aReporter) {
+System::openProject(
+    const QString& aFileName, Project::Hook* aHookGrabbed, util::IProgressReporter& aReporter, bool aRecordRecent
+) {
     std::unique_ptr<core::Project::Hook> hookScope(aHookGrabbed);
 
     XC_ASSERT(mAnimator);
@@ -92,23 +128,20 @@ System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util:
     gl::Global::makeCurrent();
 
     if (!aFileName.isEmpty()) {
-        std::unique_ptr<Project> projectScope;
+        std::unique_ptr<core::Project> projectScope;
         projectScope.reset(new Project(aFileName, *mAnimator, hookScope.release()));
 
-        ProjectLoader loader(mainMenu);
+        ctrl::ProjectLoader loader;
         if (loader.load(aFileName, *projectScope, gl::DeviceInfo::instance(), aReporter)) {
             mProjects.push_back(projectScope.release());
             {
-                // Apparently this fixed itself in newer qt6 versions? TODO: Check if no longer necessary and if not, remove
+                // ProjectLoader has already rebuilt the derived bone influence
+                // caches; this block only drops the timeline blend, master and
+                // pose state that deserialisation filled.
                 const auto aOwner = mProjects.back()->objectTree().topNode();
                 for (ObjectNode::Iterator itr(aOwner); itr.hasNext();) {
                     ObjectNode* node = itr.next();
                     XC_PTR_ASSERT(node);
-                    // Clear deserialized bone cache
-                    for (const auto bone: node->timeLine()->map(TimeKeyType_Bone)) {
-                        auto* boneKey = dynamic_cast<BoneKey*>(node->timeLine()->timeKey(TimeKeyType_Bone, bone->frame()));
-                        boneKey->resetCaches(*mProjects.back(), *node);
-                    }
                     // Clear cache, master cache and pose palette
                     auto& curr = node->timeLine()->current();
                     curr.clearCaches();
@@ -121,26 +154,23 @@ System::openProject(const QString& aFileName, Project::Hook* aHookGrabbed, util:
                 }
             }
             // Get settings
-            QSettings settings;
-            QStringList recentfiles = settings.value("projectloader/recents").toStringList();
+            // Recovery copies are transient (the file is deleted after a
+            // successful recovery open), so they must not pollute the
+            // recent-files list with a path that will not exist tomorrow.
+            if (aRecordRecent) {
+                QSettings settings;
+                const QStringList before = settings.value("projectloader/recents").toStringList();
+                const QStringList after = util::recent::record(before, aFileName);
+                if (after != before) {
+                    settings.setValue("projectloader/recents", after);
+                    settings.sync();
+                }
+            }
 
-            // Check file length
-            if (recentfiles.length() != 8) {
-                recentfiles.append(aFileName);
-            }
-            // If length eight remove first
-            else if (recentfiles.length() >= 8) {
-                recentfiles.pop_front();
-            }
-            // Save
-            if (!settings.value("projectloader/recents").toStringList().contains(aFileName)) {
-                settings.setValue("projectloader/recents", recentfiles);
-                settings.sync();
-            }
-            if (mainMenu != nullptr) {
-                mainMenu->onRecentsUpdate();
-            }
-            return LoadResult(mProjects.back(), "Success.");
+            // A successful .anie load can still carry a limitation (a skeleton
+            // past PosePalette::kMaxCount). The loader's warnings are the lines
+            // the GUI shows once, while the user is looking at the file.
+            return LoadResult(mProjects.back(), loader.warnings());
         }
 
         for (auto log : loader.log()) {
@@ -166,7 +196,7 @@ bool isAllAscii(const std::string& str)
                 });
 }
 
-System::SaveResult System::saveProject(core::Project& aProject) {
+System::SaveResult System::saveProject(core::Project& aProject, bool aInteractive) {
     const int index = mProjects.indexOf(&aProject);
 
     if (index < 0 || mProjects.count() <= index) {
@@ -193,19 +223,27 @@ System::SaveResult System::saveProject(core::Project& aProject) {
         // ensure only ascii is used
         std::string filename = QFileInfo(outputPath).completeBaseName().toStdString();
         if (!isAllAscii(filename)) {
-            QMessageBox confirmation;
-            confirmation.setText(QCoreApplication::translate(
-                "projectSave", "Non ascii characters detected, this may cause issues.\nSave anyway?", nullptr
-            ));
-            confirmation.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
-            confirmation.setDefaultButton(QMessageBox::Cancel);
-            confirmation.setWindowTitle(
-                QCoreApplication::translate("projectSave", "Unicode on filename detected", nullptr)
-            );
-            if (confirmation.exec() != QMessageBox::Yes) {
-                return SaveResult(false, "Please only utilize ASCII characters for naming .anie files.");
+            // The confirmation is interactive-only: an autosave must never
+            // block the user. A non-ASCII project was already saved (and the
+            // override accepted) once to reach this path, so re-saving it is
+            // no new risk — proceed silently.
+            if (!aInteractive) {
+                saver.log().append("ASCII override.");
+            } else {
+                QMessageBox confirmation;
+                confirmation.setText(QCoreApplication::translate(
+                    "projectSave", "Non ascii characters detected, this may cause issues.\nSave anyway?", nullptr
+                ));
+                confirmation.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
+                confirmation.setDefaultButton(QMessageBox::Cancel);
+                confirmation.setWindowTitle(
+                    QCoreApplication::translate("projectSave", "Unicode on filename detected", nullptr)
+                );
+                if (confirmation.exec() != QMessageBox::Yes) {
+                    return SaveResult(false, "Please only utilize ASCII characters for naming .anie files.");
+                }
+                saver.log().append("ASCII override.");
             }
-            saver.log().append("ASCII override.");
         }
 
         if (!saver.save(cachePath, *project)) {
@@ -222,6 +260,74 @@ System::SaveResult System::saveProject(core::Project& aProject) {
     }
 
     return SaveResult(false, "Invalid operation.");
+}
+
+System::SaveResult System::saveRecoveryCopy(core::Project& aProject, QString& aOutFilePath) {
+    const int index = mProjects.indexOf(&aProject);
+    if (index < 0) {
+        return SaveResult(false, "Invalid project reference.");
+    }
+
+    const QString dir = mCacheDir + "/" + recoveryDirName();
+    if (!makeSureCacheDirectory(dir)) {
+        return SaveResult(false, "Failed to create the autosave directory.");
+    }
+
+    const QString path = QDir(dir).filePath(recoveryFileName(aProject));
+    const QString tmpPath = path + ".tmp";
+
+    ctrl::ProjectSaver saver;
+    if (!saver.save(tmpPath, aProject)) {
+        return SaveResult(false, "Failed to save the recovery copy. (" + saver.log() + ")");
+    }
+    if (!safeRename(tmpPath, path)) {
+        return SaveResult(false, "Failed to finalize the recovery copy.");
+    }
+
+    aOutFilePath = path;
+    return SaveResult(true, "Success.");
+}
+
+void System::clearRecoveryCopy(core::Project& aProject) {
+    const QString path = QDir(mCacheDir + "/" + recoveryDirName()).filePath(recoveryFileName(aProject));
+    removeRecoveryCopy(path);
+}
+
+QStringList System::recoveryCopyPaths() const {
+    const QDir dir(mCacheDir + "/" + recoveryDirName());
+    if (!dir.exists()) {
+        return {};
+    }
+
+    QStringList paths;
+    const auto names = dir.entryList({QStringLiteral("AnimeEffects_unsaved_*.anie")}, QDir::Files);
+    for (const auto& name : names) {
+        paths << dir.filePath(name);
+    }
+
+    // Newest first: the most recent work is offered first.
+    std::sort(paths.begin(), paths.end(), [](const QString& a, const QString& b) {
+        return QFileInfo(a).lastModified() > QFileInfo(b).lastModified();
+    });
+    return paths;
+}
+
+void System::removeRecoveryCopy(const QString& aFilePath) {
+    QFile::remove(aFilePath);
+}
+void System::sweepStaleRecoveryTmp() {
+    // The autosave dir is dedicated to these files: the only writer is
+    // saveRecoveryCopy, whose `<name>.anie.tmp` is either renamed to
+    // `<name>.anie` or left behind by a crash. Sweeping just the `.tmp`
+    // pattern (never the finished `<name>.anie`) removes that litter; it can
+    // never touch a real project file, which lives outside this dir.
+    const QDir dir(mCacheDir + "/" + recoveryDirName());
+    if (!dir.exists())
+        return;
+    const auto names = dir.entryList({QStringLiteral("AnimeEffects_unsaved_*.anie.tmp")}, QDir::Files);
+    for (const auto& name : names) {
+        QFile::remove(dir.filePath(name));
+    }
 }
 
 bool System::closeProject(core::Project& aProject) {
@@ -275,18 +381,40 @@ bool System::safeRename(const QString& aSrc, const QString& aDst) {
         return false;
     }
 
+#ifdef Q_OS_WINDOWS
+    // MoveFileExW with MOVEFILE_REPLACE_EXISTING replaces the destination in
+    // one step on the same volume — no delete-then-rename window where a
+    // crash destroys the project file. (QFile::rename on Windows refuses to
+    // overwrite; don't depend on Qt internals for that.)
+    if (::MoveFileExW(reinterpret_cast<const wchar_t*>(aSrc.utf16()),
+                      reinterpret_cast<const wchar_t*>(aDst.utf16()),
+                      MOVEFILE_REPLACE_EXISTING)) {
+        return true;
+    }
+#else
+    // Unix: QFile::rename maps to rename(2), which replaces an existing
+    // destination atomically.
+    if (QFile::rename(aSrc, aDst)) {
+        return true;
+    }
+#endif
+
+    // Last resort: remove + rename. The remove runs only when the destination
+    // exists; the rename itself is attempted unconditionally, so a missing
+    // destination (or a transient platform-branch/atomic failure) still gets
+    // a plain rename instead of a spurious failure.
     if (QFile::exists(aDst)) {
         if (!QFile::remove(aDst)) {
             qDebug() << "failed to remove a project file.";
             return false;
         }
     }
-
-    if (!QFile::rename(aSrc, aDst)) {
-        qDebug() << "failed to rename a project file.";
-        return false;
+    if (QFile::rename(aSrc, aDst)) {
+        return true;
     }
-    return true;
+
+    qDebug() << "failed to rename a project file.";
+    return false;
 }
 
 } // namespace ctrl

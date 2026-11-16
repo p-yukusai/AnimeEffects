@@ -1,5 +1,7 @@
 #include "util/CollDetect.h"
 #include "ctrl/Driver.h"
+#include "core/VirtualTexture.h"
+#include "ctrl/MaskEditor.h"
 
 namespace {
 
@@ -21,6 +23,9 @@ Driver::Driver(core::Project& aProject, DriverResources& aResources, GraphicStyl
     mToolType(ToolType_TERM),
     mBlender(aProject.objectTree()),
     mEditor(),
+    mGraphEditor(new GraphEditor(aProject, aUILogger)),
+    mMaskEditor(nullptr),
+    mBoneEditor(nullptr),
     mCurrentNode(),
     mOnUpdating(0),
     mRejectedTarget() {
@@ -47,13 +52,29 @@ void Driver::setTool(ToolType aType) {
     } else if (mToolType == ToolType_SRT) {
         mEditor.reset(new SRTEditor(mProject, mUILogger));
     } else if (mToolType == ToolType_Bone) {
-        mEditor.reset(new BoneEditor(mProject, mGraphicStyle, mUILogger));
+        auto* editor = new BoneEditor(mProject, mGraphicStyle, mUILogger);
+        mBoneEditor = editor;
+        // The editor owns the selected bone; its state changes must reach the
+        // panel even when the change came from a canvas click.
+        editor->onWeightsStateChanged.connect([this]() { onBoneWeightsStateChanged(); });
+        mEditor.reset(editor);
     } else if (mToolType == ToolType_Pose) {
         mEditor.reset(new PoseEditor(mProject, mUILogger));
     } else if (mToolType == ToolType_Mesh) {
         mEditor.reset(new MeshEditor(mProject, mUILogger));
     } else if (mToolType == ToolType_FFD) {
         mEditor.reset(new FFDEditor(mProject, mResources, mUILogger));
+    } else if (mToolType == ToolType_Mask) {
+        // the raster paint tool; it keeps a raw pointer for the panel's Clear, so it
+        // is cleared with the editor's lifetime
+        mMaskEditor = new MaskEditor(mProject);
+        mEditor.reset(mMaskEditor);
+    }
+    if (mToolType != ToolType_Mask) {
+        mMaskEditor = nullptr;
+    }
+    if (mToolType != ToolType_Bone) {
+        mBoneEditor = nullptr;
     }
 
     setTarget(mCurrentNode);
@@ -67,6 +88,14 @@ bool Driver::updateCursor(const core::AbstractCursor& aCursor, const core::Camer
         mProject.animator().stop();
     }
 
+    // THE VIEWPORT'S events are the TOOLS' alone. The graph panel used to arbitrate
+    // here as a viewport overlay, against GraphEditor::currentPanelRect (the WHOLE
+    // viewport), so a canvas press could open a graph marquee instead of running the
+    // current tool. The panel lives in the dock now: gui::GraphPanelWidget owns its
+    // own page's events and is the only thing that routes them to the editor (see
+    // its routeCursor), so nothing of the panel's is decided here - no rect test, no
+    // visibility flag, and no press the user aimed at the canvas can be swallowed by
+    // it.
     if (mEditor) {
         return mEditor->updateCursor(aCamera, aCursor);
     }
@@ -85,6 +114,18 @@ void Driver::updateFrame() {
     }
 }
 
+void Driver::markPendingBlend(core::TimeLineEvent& aEvent) {
+    if (mPendingBlend) {
+        for (core::TimeLineEvent::Target& target : aEvent.targets())
+            mPendingEvent.targets().append(target);
+        if (mPendingEvent.type() < aEvent.type())
+            mPendingEvent.setType(aEvent.type());
+    } else {
+        mPendingEvent = aEvent;
+        mPendingBlend = true;
+    }
+}
+
 void Driver::updateKey(core::TimeLineEvent& aEvent, bool aUndo) {
 #if 0
     qDebug() << "type: " << aEvent.type() << (aUndo ? " undo" : " redo");
@@ -95,9 +136,12 @@ void Driver::updateKey(core::TimeLineEvent& aEvent, bool aUndo) {
 #endif
     (void)aUndo;
 
-    // reset blending
-    mBlender.clearCaches(aEvent);
-    mBlender.updateCurrents(mProject.objectTree().topNode(), mProject.currentTimeInfo());
+    // MARK DIRTY, DO NOT RE-BLEND. Re-blending here means once per mouse sample, and a drag
+    // delivers dozens: the loop is then busy in the blend instead of draining the pointer, and the
+    // platform collapses the motion it could not deliver (measured: 40 of 40 moves with no drag in
+    // flight, 8-10 of 40 during one, handler 0.4ms). The pan had the same shape and was fixed the
+    // same way - mark, and do the work once per painted frame (flushPendingBlend).
+    markPendingBlend(aEvent);
 
     if (mOnUpdating > 0)
         return;
@@ -105,6 +149,54 @@ void Driver::updateKey(core::TimeLineEvent& aEvent, bool aUndo) {
     if (mEditor) {
         mEditor->updateEvent(IEditor::EventType_TimeKey);
     }
+}
+
+void Driver::frameTick() {
+    // THE EDITOR'S DEFERRED WORK IS DRAINED HERE, INDEPENDENT OF THE BLEND. Measured on an FFD stroke:
+    // 22 drag updates reached `ffd::BrushMode` in State_Draw with a valid target and queued their
+    // stamps, while `flushPendingWork` never ran (26 calls of flushPendingBlend all had pending=0 and
+    // returned first) - so every stamp stayed in the queue and the brush did nothing. The frame drains
+    // it unconditionally; blending is a separate duty that still only happens when something changed.
+    if (mEditor)
+        mEditor->flushPendingWork();
+}
+
+void Driver::updateSkinWeights(core::ObjectNode& aOwner) {
+    // The owner's BoneKey caches were already rebuilt by BoneKeyUpdater (the
+    // Project signal that got us here); the blend only has to re-derive the
+    // per-node expans pointers and matrices from them. No editor event: this is
+    // not a key edit, and a mode reset here would end the stroke that asked for
+    // it. The next paint's flushPendingBlend does the work once.
+    core::TimeLineEvent event;
+    event.setType(core::TimeLineEvent::Type_ChangeKeyValue);
+    event.pushTarget(aOwner, core::TimeKeyType_Bone, mProject.animator().currentFrame().get());
+    markPendingBlend(event);
+    // An undo/redo of an authored-weight command reaches the document without
+    // the mode, so the panel's state has to be re-read here too.
+    onBoneWeightsStateChanged();
+}
+
+bool Driver::bakeBoneWeights(bool aReplace, QString* aError) {
+    return mBoneEditor && mBoneEditor->bakeWeights(aReplace, aError);
+}
+
+bool Driver::revertBoneWeights(QString* aError) {
+    return mBoneEditor && mBoneEditor->revertWeights(aError);
+}
+
+bool Driver::clearBoneWeights(QString* aError) {
+    return mBoneEditor && mBoneEditor->clearWeights(aError);
+}
+
+void Driver::flushPendingBlend() {
+    if (!mPendingBlend)
+        return;
+    mPendingBlend = false;
+    // ONE reset for the union of everything the frame asked for: clearCaches walks targets, so a
+    // merged list is the same answer as the sum of the parts.
+    mBlender.clearCaches(mPendingEvent);
+    mPendingEvent = core::TimeLineEvent();
+    mBlender.updateCurrents(mProject.objectTree().topNode(), mProject.currentTimeInfo());
 }
 
 void Driver::updateTree(core::ObjectTreeEvent& aEvent, bool aUndo) {
@@ -150,6 +242,12 @@ void Driver::updateProjectAttribute() {
 }
 
 void Driver::renderGL(const core::RenderInfo& aRenderInfo, core::ObjectNode* aGridTarget) const {
+    // THE PAGED TEXTURES' FRAME: map last frame's demand, upload what this frame will sample,
+    // then draw; afterwards issue this frame's demand readbacks. Both are no-ops with the
+    // switch off, and both are inside this one call so the viewport, the exporter and the
+    // headless render tool share one frame boundary.
+    core::VirtualTexture::beginFrame();
+
     auto& tree = mProject.objectTree();
     auto info = aRenderInfo;
     if (mToolType == ToolType_Bone) {
@@ -165,6 +263,8 @@ void Driver::renderGL(const core::RenderInfo& aRenderInfo, core::ObjectNode* aGr
         core::TimeCacheAccessor accessor(*aGridTarget, tree.timeCacheLock(), info.time, false);
         aGridTarget->renderer()->render(info, accessor);
     }
+
+    core::VirtualTexture::endFrame();
 }
 
 void Driver::renderQt(const core::RenderInfo& aRenderInfo, QPainter& aPainter) const {
@@ -185,6 +285,20 @@ void Driver::renderQt(const core::RenderInfo& aRenderInfo, QPainter& aPainter) c
     if (mRejectedTarget) {
         drawBanMark(info, aPainter);
     }
+
+    // The animation graph is not painted here: it is the timeline dock's Graph page
+    // (gui::GraphPanelWidget), which composes its own frame from the shared editor.
+    // This pass is the viewport's canvas and tools only; the graph's old QPainter
+    // renderer (ctrl::graph::Renderer) and GraphEditor::renderQt were removed with the
+    // cutover.
+}
+
+void Driver::setGraphTargets(const QVector<core::ObjectNode*>& aTargets) {
+    mGraphEditor->setTargets(aTargets);
+}
+
+void Driver::setGraphModifiers(Qt::KeyboardModifiers aModifiers) {
+    mGraphEditor->setModifiers(aModifiers);
 }
 
 void Driver::drawOutline(const core::RenderInfo& aRenderInfo, QPainter& aPainter) {
@@ -280,6 +394,19 @@ void Driver::updateParam(const MeshParam& aParam) {
     XC_ASSERT(mToolType == ToolType_Mesh);
 
     ((MeshEditor*)mEditor.data())->updateParam(aParam);
+}
+
+void Driver::updateParam(const MaskParam& aParam) {
+    XC_ASSERT(mToolType == ToolType_Mask);
+    if (!mMaskEditor)
+        return;
+
+    mMaskEditor->setParam(aParam);
+}
+
+void Driver::clearMask() {
+    if (mMaskEditor)
+        mMaskEditor->clearMask();
 }
 
 } // namespace ctrl

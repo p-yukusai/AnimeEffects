@@ -7,6 +7,7 @@
 #include "img/ResourceNode.h"
 #include "core/LayerNode.h"
 #include "core/FolderNode.h"
+#include "core/MaskKey.h"
 #include "core/ObjectNodeUtil.h"
 #include "ctrl/ImageFileLoader.h"
 #include "gl/Global.h"
@@ -17,7 +18,89 @@
 
 using namespace core;
 
+
+namespace {
+
+// A PSD LAYER MASK as the matte this application stores: the mask channel is plane
+// data (8-bit, 0 = hidden, 255 = visible) over the mask record's own rect, which is
+// the document box in Photoshop. Returns an empty image when the layer has no mask
+// or the channel cannot be decoded - a mask is a fidelity nicety, never a reason to
+// refuse a file.
+QImage decodePsdMask(const img::PSDFormat::Layer& aLayer, const img::PSDFormat::LayerMask& aMask) {
+    const img::PSDFormat::Channel* plane = nullptr;
+    for (const img::PSDFormat::ChannelPtr& channel : aLayer.channels) {
+        if (channel && channel->id == -2) {   // the user mask channel
+            plane = channel.get();
+            break;
+        }
+    }
+    if (!plane || !plane->data)
+        return QImage();
+
+    int w = aMask.rect.width();
+    int h = aMask.rect.height();
+    if (w <= 0 || h <= 0) {
+        w = aLayer.rect.width();
+        h = aLayer.rect.height();
+    }
+    if (w <= 0 || h <= 0)
+        return QImage();
+
+    QImage field(w, h, QImage::Format_Grayscale8);
+    if (plane->compressionId == 0) {
+        if (plane->dataLength < size_t(w) * size_t(h))
+            return QImage();
+        for (int y = 0; y < h; ++y) {
+            memcpy(field.scanLine(y), plane->data.get() + size_t(y) * size_t(w), size_t(w));
+        }
+        return field;
+    }
+    if (plane->compressionId == 1) {
+        // the RLE decoder writes one plane with a stride, which is what a mask is
+        std::vector<uint8> raw(size_t(w) * size_t(h));
+        if (!img::PSDUtil::decodePlanePackBits(
+                raw.data(), raw.size(), plane->data.get(), (size_t)plane->dataLength, w, h, 1
+            )) {
+            return QImage();
+        }
+        for (int y = 0; y < h; ++y) {
+            memcpy(field.scanLine(y), raw.data() + size_t(y) * size_t(w), size_t(w));
+        }
+        return field;
+    }
+    return QImage();   // ZIP-compressed masks are not decoded here; the layer still loads
+}
+
+// Attach a decoded matte to a freshly created node, at the node's own content rect. The field is
+// stored as it came: masks are one texel per content pixel (see core/MaskKey.h).
+void attachMask(core::ObjectNode& aNode, const QImage& aField, const QRectF& aContentRect) {
+    if (aField.isNull() || !aContentRect.isValid() || aContentRect.isEmpty())
+        return;
+    auto* key = new core::MaskKey();
+    key->data().write(aField, aContentRect);
+    key->data().easing(0) = util::Easing::defaultParam();
+    aNode.timeLine()->setBaseValue(core::TimeKeyType_Mask, key);
+}
+
+} // namespace
+
 namespace ctrl {
+
+//-------------------------------------------------------------------------------------------------
+// The sentence for one layer the importer could not reproduce. The kind words
+// come from img::psdUnsupportedLayerName, which the relink walker also uses, so
+// the same layer is named the same way on both paths; only the sentence itself
+// lives here, under the class's translation context (see the tr() note near the
+// ORA prompt below).
+QString unsupportedLayerWarning(const QString& aName, img::PsdUnsupportedLayer aKind, bool aFlattened) {
+    const QString kind = QString::fromLatin1(img::psdUnsupportedLayerName(aKind));
+    if (aFlattened) {
+        return ImageFileLoader::tr(
+                   "Layer \"%1\" is not supported (%2); it was imported as a flattened image.")
+            .arg(aName, kind);
+    }
+    return ImageFileLoader::tr("Layer \"%1\" is not supported (%2); it was imported empty.").arg(aName, kind);
+}
 
 //-------------------------------------------------------------------------------------------------
 img::ResourceNode* createLayerResource(
@@ -98,8 +181,12 @@ img::ResourceNode* createMergedResource(
         return nullptr;
     }
 
-    mem = img::Util::recreateForBiLinearSampling(mem, aCanvasSize);
-    const QRect rect(QPoint(-1, -1), aCanvasSize + QSize(2, 2));
+    mem = img::Util::prepareForSampling(mem, aCanvasSize);
+    // the texture image is the layer's own rect, unpadded, so the artwork sits at the texture's
+    // origin (the mip chain's level grids are anchored to multiples of 2^l in the TEXTURE - see
+    // img::Util::prepareForSampling) and the merged image still lands at (0, 0) of the canvas: the
+    // ring used to be paired with a rect at (-1, -1) that cancelled its (1, 1) inset
+    const QRect rect(QPoint(0, 0), aCanvasSize);
 
     auto resNode = new img::ResourceNode(aName);
     resNode->data().grabImage(mem, rect.size(), img::Format_RGBA8);
@@ -122,7 +209,12 @@ FolderNode* createTopNode(const QString& aName, const QRect& aInitialRect) {
 
 //-------------------------------------------------------------------------------------------------
 ImageFileLoader::ImageFileLoader(gl::DeviceInfo  aDeviceInfo):
-    mLog(), mFileInfo(), mGLDeviceInfo(std::move(aDeviceInfo)), mCanvasSize(512, 512), mForceCanvasSize(false) {}
+    mLog(),
+    mWarnings(),
+    mFileInfo(),
+    mGLDeviceInfo(std::move(aDeviceInfo)),
+    mCanvasSize(512, 512),
+    mForceCanvasSize(false) {}
 
 void ImageFileLoader::setCanvasSize(const QSize& aSize, bool aForce) {
     if (aSize.width() <= 0 || aSize.height() <= 0)
@@ -135,6 +227,7 @@ void ImageFileLoader::setCanvasSize(const QSize& aSize, bool aForce) {
 bool ImageFileLoader::load(const QString& aPath, core::Project& aProject, util::IProgressReporter& aReporter) {
     XC_DEBUG_REPORT("------------------------------------------");
 
+    mWarnings.clear();
     mFileInfo = QFileInfo(aPath);
     const QString suffix = mFileInfo.suffix();
 
@@ -223,7 +316,6 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     using img::PSDFormat;
     using img::PSDReader;
     using img::PSDUtil;
-    typedef PSDFormat::LayerList::reverse_iterator ReverseIterator;
 
     aReporter.setSection("Loading PSD file...");
     aReporter.setMaximum(1);
@@ -271,6 +363,12 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     aReporter.setMaximum(reader.format()->layerAndMaskInfo().layerCount);
     aReporter.setProgress(0);
     int progress = 0;
+
+    // Layer masks are parsed and re-written by the reader but never composited,
+    // so a masked layer renders exactly as if its mask were absent. Counting them
+    // here and reporting one line at the end keeps that file-wide omission from
+    // burying the per-layer notes that explain why a particular layer is missing.
+    int ignoredMaskCount = 0;
 
     // build tree by a psd format
     std::unique_ptr<PSDFormat>& format = reader.format();
@@ -341,6 +439,16 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
         QRect rect(layer.rect.left(), layer.rect.top(), layer.rect.width(), layer.rect.height());
         const float parentDepth = ObjectNodeUtil::getInitialWorldDepth(*current);
 
+        // A LAYER MASK BECOMES A MATTE (core::MaskKey): the channel is decoded here
+        // and attached to the node once it exists. What cannot be decoded still counts,
+        // so the warning keeps naming the layers that lost it.
+        QImage maskField;
+        if (layer.mask) {
+            maskField = decodePsdMask(layer, *layer.mask);
+            if (maskField.isNull())
+                ++ignoredMaskCount;
+        }
+
         XC_REPORT() << "name =" << name << "size =" << rect.width() << "," << rect.height();
 
         // check the image has valid size as a texture.
@@ -349,11 +457,41 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
         }
 
         if (layer.entryType == PSDFormat::LayerEntryType_Layer) {
+            // A fill or adjustment layer keeps its appearance as parameters, not
+            // as pixel channels, and a plain layer stripped of its colour planes
+            // has nothing to decode either. None of those is a broken file: the
+            // project must still open, so such a layer becomes the same 1x1
+            // transparent placeholder the zero-size adjustment path already
+            // produced, and the warning below says which layer was lost and what
+            // it used to be.
+            const auto unsupportedKind = img::psdUnsupportedLayerKind(layer);
+            const QPoint layerPos = rect.topLeft();
+
             // create layer resource (Note that the rect be modified.)
             auto resNode = createLayerResource(format->header(), layer, name, rect);
             if (!resNode->data().hasImage()) {
-                mLog = "Failed to decode the image data of a layer ('" + name + "').";
-                return false;
+                if (unsupportedKind == img::PsdUnsupportedLayer_None) {
+                    // The layer had colour planes and a non-empty rect, so this is
+                    // a genuine decode failure rather than an unsupported kind.
+                    mLog = "Failed to decode the image data of a layer ('" + name + "').";
+                    return false;
+                }
+
+                // value-initialised, so the placeholder is a fully transparent
+                // RGBA pixel, exactly what createTextureImage returns for a
+                // zero-size layer.
+                XCMemBlock placeholder(new uint8[4](), 4);
+                rect = QRect(layerPos, QSize(1, 1));
+                resNode->data().grabImage(placeholder, rect.size(), img::Format_RGBA8);
+                resNode->data().setPos(layerPos);
+            }
+            if (unsupportedKind != img::PsdUnsupportedLayer_None) {
+                // hasImage() decides between the two outcomes: a text or smart
+                // object with its rasterized pixels looks right but is no longer
+                // editable, while a fill or adjustment has nothing to draw.
+                const bool flattened =
+                    img::psdUnsupportedLayerKeepsRaster(unsupportedKind) && resNode->data().hasImage();
+                mWarnings.append(unsupportedLayerWarning(name, unsupportedKind, flattened));
             }
             resCurrent->children().pushBack(resNode);
 
@@ -367,6 +505,12 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
             layerNode->setDefaultImage(resNode->handle());
             layerNode->setDefaultDepth(globalDepth - parentDepth);
             layerNode->setDefaultOpacity(static_cast<float>(layer.opacity) / 255.0f);
+
+            // the matte covers the layer's own content box, which is what every
+            // content-space field in this application means by "content rect"
+            attachMask(
+                *layerNode, maskField, QRectF(QPointF(0.0, 0.0), QSizeF(layerNode->initialRect().size()))
+            );
 
             current->children().pushBack(layerNode);
 
@@ -401,6 +545,18 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
             folderNode->setBlendMode(
                 folderBlend == img::BlendMode_TERM ? img::BlendMode_Normal : folderBlend);
 
+            // A GROUP MASK masks the group's COMPOSITE in Photoshop, which is exactly
+            // what a folder's matte does here. It covers the document box (a group's
+            // mask rect is drawn in document space), and the folder's own content box
+            // is that canvas once it has been measured.
+            if (!maskField.isNull()) {
+                // the folder's content space is the CANVAS this import establishes, so the
+                // field is anchored to the same box the folder will be measured against -
+                // not the header's, which a forced canvas size can differ from
+                const QRectF groupRect(QPointF(0.0, 0.0), QSizeF(canvasSize));
+                attachMask(*folderNode, maskField, groupRect);
+            }
+
             // push tree
             current->children().pushBack(folderNode);
             treeStack.push_back(folderNode);
@@ -416,14 +572,23 @@ bool ImageFileLoader::loadPsd(core::Project& aProject, util::IProgressReporter& 
     // setup default positions
     setDefaultPosturesFromInitialRects(*topNode);
 
+    if (ignoredMaskCount > 0) {
+        // One line for the whole file. Naming every masked layer would push the
+        // per-layer notes that explain an actually-missing layer out of the log.
+        mWarnings.append(tr("Layer masks are not supported by AnimeEffects; %1 ignored.").arg(ignoredMaskCount));
+    }
+
     XC_DEBUG_REPORT("------------------------------------------");
 
     mLog = "success";
     return true;
 }
-QString tr(const QString& str){
-    return QCoreApplication::translate("image_file_loader", str.toStdString().c_str());
-}
+// The free tr() that used to stand here asked for the context "image_file_loader",
+// which no catalog has, while lupdate files these five strings under "ImageFileLoader"
+// (the class) and all six catalogs translate them THERE. So the ORA import prompt was
+// English in every language with its translations sitting one context away. The class
+// declares tr() for itself now (see ImageFileLoader.h), which is the same mechanism
+// the Qt Ui classes use and the context the catalogs already carry.
 void ImageFileLoader::parseOraLayer(layer &lyr, FolderNode* current, img::ResourceNode* resCurrent,  const float* globalDepth, const float* parentDepth, core::Project* aProject){
     auto resNode = createLayerResource(lyr);
     resCurrent->children().pushBack(resNode);
@@ -521,7 +686,9 @@ bool ImageFileLoader::loadOra(Project& aProject, util::IProgressReporter& aRepor
         loadMerged.setText(tr("How do you wish to load this ORA file?"));
         QAbstractButton* layerButton = loadMerged.addButton(tr("Load layered"), QMessageBox::YesRole);
         QAbstractButton* mergeButton = loadMerged.addButton(tr("Load merged"), QMessageBox::YesRole);
-        QAbstractButton* cancelButton = loadMerged.addButton(tr("Cancel file load"), QMessageBox::NoRole);
+        // Any other outcome (this button, Escape or the window close box) falls
+        // through to the cancel branch below, so the button is not read back.
+        loadMerged.addButton(tr("Cancel file load"), QMessageBox::NoRole);
         loadMerged.exec();
         if (loadMerged.clickedButton() != mergeButton && loadMerged.clickedButton() != layerButton) {
             mLog = "User cancelled image load";

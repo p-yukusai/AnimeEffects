@@ -107,7 +107,7 @@ namespace bone {
         }
     }
 
-    void Renderer::renderBrush(const util::Circle& aBrush, bool aPressed) {
+    void Renderer::renderBrush(const util::Circle& aBrush, bool aPressed, float aHardness) {
         const QColor idleColor(100, 100, 255, 128);
         const QColor focusColor(255, 255, 255, 255);
 
@@ -119,6 +119,14 @@ namespace bone {
         auto center = mInfo.camera.toScreenPos(aBrush.center().toPointF());
         auto radius = mInfo.camera.toScreenLength(aBrush.radius());
         mPainter.drawEllipse(center, radius, radius);
+
+        const float core = mInfo.camera.toScreenLength(aBrush.radius() * aHardness);
+        if (core > 1.0f) {
+            QColor coreColor = brush.color();
+            coreColor.setAlpha(96);
+            mPainter.setPen(QPen(QBrush(coreColor), 1.0f));
+            mPainter.drawEllipse(center, core, core);
+        }
     }
 
 #if 0

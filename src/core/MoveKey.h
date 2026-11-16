@@ -1,8 +1,11 @@
 #ifndef CORE_MOVEKEY_H
 #define CORE_MOVEKEY_H
 
+#include <array>
 #include <QVector2D>
+#include "XC.h"
 #include "util/Easing.h"
+#include "core/KeyEasing.h"
 #include "core/TimeKey.h"
 
 namespace core {
@@ -11,9 +14,11 @@ class MoveKey: public TimeKey {
 public:
     enum SplineType { SplineType_Linear, SplineType_CatmullRom, SplineType_TERM };
     static const SplineType kDefaultSplineType;
+    // One easing per graph channel: 0 is pos x, 1 is pos y (see KeyEasing.h).
+    static constexpr int kComponents = easingComponentCount(TimeKeyType_Move);
 
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         SplineType mSpline;
         QVector2D mPos;
         QVector2D mCentroid;
@@ -23,8 +28,14 @@ public:
     public:
         Data();
 
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
 
         void setSpline(SplineType aType) { mSpline = aType; }
         SplineType spline() const { return mSpline; }
@@ -72,6 +83,14 @@ public:
 
     static std::array<QVector2D, 2>
     getCatmullRomVels(const MoveKey* aKey0, const MoveKey* aKey1, const MoveKey* aKey2, const MoveKey* aKey3);
+
+    // The same velocity rule over plain positions and the two segments' spline
+    // flags, for the per-channel track evaluator (which has no MoveKey objects).
+    // aP0/aP3 are null when that neighbour is missing or linear; aFromLinear and
+    // aToLinear are the spline flags of the segment's from/to ends.
+    static std::array<QVector2D, 2> getCatmullRomVels(
+        const QVector2D& aP1, const QVector2D& aP2, const QVector2D* aP0, const QVector2D* aP3,
+        bool aFromLinear, bool aToLinear);
 
     MoveKey();
 

@@ -12,6 +12,7 @@
 #include "gl/EasyShaderProgram.h"
 #include "img/BlendMode.h"
 #include "util/NonCopyable.h"
+#include "core/WavePass.h"
 
 namespace core {
 
@@ -24,7 +25,13 @@ public:
         Kind_HSV, // presentation: applies per-pass HSV (folder key) and/or the given
                   // blend func against the captured scene
         Kind_Blur,
-        Kind_Resample // premultiplied passthrough (bilinear) for blur ladder down/upsampling
+        Kind_Resample, // premultiplied passthrough (bilinear) for blur ladder down/upsampling
+        Kind_Wave,     // UV deformation of the composite (see waveTexture)
+        Kind_Mix,      // `mix(sharp, blurred, mask)` for a masked blur (see mixTexture)
+        Kind_Tint,     // the mask preview over the content (see tintTexture)
+        Kind_LayerMask, // the node's own matte over its isolated composite (see maskTexture)
+        Kind_MaskOverlay, // the painting RUBYLITH over a matte's hidden region
+        Kind_TERM
     };
 
     // Largest radius rendered directly (two full-resolution passes). Larger radii go
@@ -102,6 +109,90 @@ public:
     GLuint blurApply(
         int aCompositeSlot, const QVector2D& aDirX, float aRadiusX, const QVector2D& aDirY, float aRadiusY);
 
+    // The two stack passes over an arbitrary source texture and target slot. The
+    // filter pipeline uses these so a stack can apply HSV before blur, blur before
+    // HSV, or either alone without duplicating the render-target dance in every
+    // node type. `aTargetSlot` may equal the source's slot for blur (its direct
+    // path reuses it); HSV needs a different slot because it samples the source.
+    GLuint blurTexture(
+        int aTargetSlot, GLuint aSrcTexture, const QVector2D& aDirX, float aRadiusX,
+        const QVector2D& aDirY, float aRadiusY
+    );
+    // THE RUBYLITH from a PAGED matte (kind MaskOverlay): the overlay's fragment shader compiled
+    // with MASK_VIRTUAL_TEXTURE=1, so the field comes from the mask's page stack (see
+    // core::VirtualTexture::bindMask). Built on first use; the full-texture variant is
+    // mPassShaders[Kind_MaskOverlay].
+    gl::EasyShaderProgram& maskOverlayShader();
+
+    // The HSV pass. A mask makes the adjustment PER PIXEL: the field's texel there
+    // scales how much of the adjustment applies, sampled in the node's content space
+    // through aScreenToLayer (the same matrix the wave pass uses). An invalid mask
+    // keeps the plain pass - the shader skips the sample entirely.
+    GLuint hsvTexture(
+        int aTargetSlot, GLuint aSrcTexture, const QList<int>& aHSV, const MaskInput& aMask = MaskInput(),
+        const QMatrix4x4& aScreenToLayer = QMatrix4x4()
+    );
+
+    // The WAVE DEFORM pass: samples aSrcTexture at coordinates displaced by a
+    // two-wave field evaluated in the node's CONTENT space (aWave's matrices),
+    // and writes the result into aTargetSlot. Sampling the composite instead of
+    // deforming geometry is what keeps mesh cells from tearing apart: the
+    // displaced content is the layer's own already-rasterized pixels, so
+    // neighbouring triangles still share them. The composite is premultiplied,
+    // so a bilinear sample of it is a correct alpha-weighted average (no dark
+    // fringe at the silhouette).
+    GLuint waveTexture(int aTargetSlot, GLuint aSrcTexture, const WavePassParams& aWave);
+
+    // A premultiplied passthrough into another slot. The blur LADDER writes its input
+    // slot in place (blurApply reads and writes the same slot), so a caller that must
+    // keep the sharp content - a masked blur - copies it here first.
+    GLuint copyTexture(int aTargetSlot, GLuint aSrcTexture);
+
+    // THE MASK PREVIEW: a tint over the content where the field has been painted, so
+    // the artist sees the field while painting it (see RenderInfo::maskPreview). The
+    // tint is the DEVIATION from the channel's neutral value, so an unpainted field
+    // tints nothing.
+    GLuint tintTexture(
+        int aTargetSlot, GLuint aSrcTexture, const MaskInput& aMask, const QMatrix4x4& aScreenToLayer,
+        const QColor& aColor
+    );
+
+    // Multiplies a node's isolated composite by its MATTE (core/MaskKey): a folder's
+    // present path applies it here, the way a layer applies it in its own shader. The
+    // field is read through the SAME reconstruction as a layer mask (LayerSampling.glsl's
+    // sampleMask), so a folder matte and a layer matte cannot disagree at their edges.
+    GLuint maskTexture(
+        int aTargetSlot, GLuint aSrcTexture, GLuint aMaskTexture, const QRectF& aMaskRect,
+        const QMatrix4x4& aScreenToLayer
+    );
+    /// The same pass for a mask source that may be paged (see MaskInput::paged). A pageable
+    /// folder matte has no full chain at all, so the field comes from its page stack.
+    GLuint maskTexture(
+        int aTargetSlot, GLuint aSrcTexture, const MaskInput& aMask, const QMatrix4x4& aScreenToLayer
+    );
+
+    // The painting RUBYLITH: a flat translucent overlay where the field says HIDDEN,
+    // over the content and over nothing (a tint cannot do that - it only shows where the
+    // composite has colour, which dyed the artwork's lines instead of marking the area).
+    GLuint maskOverlayTexture(
+        int aTargetSlot, GLuint aSrcTexture, GLuint aMaskTexture, const QRectF& aMaskRect,
+        const QMatrix4x4& aScreenToLayer, const QColor& aOverlayColor
+    );
+    /// The same pass for a mask source that may be paged (see MaskInput::paged).
+    GLuint maskOverlayTexture(
+        int aTargetSlot, GLuint aSrcTexture, const MaskInput& aMask, const QMatrix4x4& aScreenToLayer,
+        const QColor& aOverlayColor
+    );
+
+    // THE MASKED BLUR'S MIX: `mix(aSharp, aBlurred, mask)` per pixel, in content
+    // space. A blur cannot vary its kernel per pixel affordably, so a masked blur
+    // renders both results and mixes them - one full-screen pass, no extra blur
+    // taps. Both sources are premultiplied, like every composite.
+    GLuint mixTexture(
+        int aTargetSlot, GLuint aSharpTexture, GLuint aBlurredTexture, const MaskInput& aMask,
+        const QMatrix4x4& aScreenToLayer
+    );
+
     // draws srcTexture through the given filter into the currently bound framebuffer.
     // aNeedHSV requests per-pass HSV (folder presentation of its own keyed HSV, where the
     // composite content is still in plain RGB); when false the content's HSV is already
@@ -116,7 +207,10 @@ public:
         GLuint aSrcTexture, Kind aKind, const QList<int>& aHSV, const BlurParams& aBlur, float aOpacity,
         bool aNeedHSV = false, const QSizeF& aTargetSize = QSizeF(), const QSizeF& aSrcSize = QSizeF(),
         bool aFlipY = false, img::BlendMode aPresentBlend = img::BlendMode_Normal,
-        GLuint aPresentDest = 0
+        GLuint aPresentDest = 0, const WavePassParams* aWave = nullptr, const MaskInput* aHsvMask = nullptr,
+        const QMatrix4x4& aScreenToLayer = QMatrix4x4(), GLuint aSecondTexture = 0, const MaskInput* aMixMask = nullptr,
+        const MaskInput* aTintMask = nullptr, const QColor& aTintColor = QColor(),
+        const MaskInput* aLayerMask = nullptr
     );
 
     // LAYER-LEVEL PRESENTATION for the blend-aware composite:
@@ -135,6 +229,8 @@ private:
     // mSize >> l); a size change frees all targets, so presence implies the right size
     void ensureLadder(int aLevel);
 
+    // lazily compiled LayerDrawingFrag variants with USE_HSV_MASK (see hsvTexture)
+    gl::EasyShaderProgram& hsvMaskShader();
     // lazily compiled LayerDrawingFrag variant for the present pass above:
     // PREMULTIPLIED_INPUT=1 (the composite slot holds premultiplied pixels), the given
     // blend func, no per-pass HSV (a blurred layer's own HSV is already baked into its
@@ -143,6 +239,10 @@ private:
     // same, but with USE_HSV=1: a folder presenting its own HSV key with a non-Normal
     // blend mode needs the combined variant (the plain HSV pass is fixed to BlendNormal)
     gl::EasyShaderProgram& presentHSVShader(img::BlendMode aMode);
+
+    // lazily compiled LayerMaskFrag variant for a PAGED folder matte (MASK_VIRTUAL_TEXTURE=1);
+    // the full-texture variant is mPassShaders[Kind_LayerMask]
+    gl::EasyShaderProgram& layerMaskPagedShader();
 
     GLuint ladderFramebuffer(int aLevel) const { return mFramebuffersL[aLevel - 1]->id(); }
     GLuint ladderFramebuffer2(int aLevel) const { return mFramebuffersL2[aLevel - 1]->id(); }
@@ -165,7 +265,13 @@ private:
     std::array<QScopedPointer<gl::Texture>, kMaxLadderLevels> mTexturesL;
     std::array<QScopedPointer<gl::Framebuffer>, kMaxLadderLevels> mFramebuffersL2;
     std::array<QScopedPointer<gl::Texture>, kMaxLadderLevels> mTexturesL2;
-    gl::EasyShaderProgram mPassShaders[3];
+    // SIZED BY THE ENUM, not by a count: this was a literal 6, and adding the
+    // Kind_LayerMask pass wrote one past its end - a segfault inside Qt's shader
+    // program init on the first frame, which reads like a driver fault.
+    gl::EasyShaderProgram mPassShaders[Kind_TERM];
+    QScopedPointer<gl::EasyShaderProgram> mHsvMaskShader;
+    QScopedPointer<gl::EasyShaderProgram> mMaskOverlayPaged;
+    QScopedPointer<gl::EasyShaderProgram> mLayerMaskPaged;
     // per-blend present variants (see presentShader)
     std::array<QScopedPointer<gl::EasyShaderProgram>, img::BlendMode_TERM> mPresentShaders;
     // per-blend present variants with per-pass HSV (see presentHSVShader)

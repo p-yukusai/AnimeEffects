@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+:root{
+  --base:#171717; --raised:#262626; --recessed:#0a0a0a; --hairline:#262626;
+  --outline:#404040; --text:#f5f5f5; --muted:#a3a3a3; --disabled:#737373;
+  --move:#818cf8; --rotate:#c084fc; --scale:#e879f9; --depth:#fb7185;
+  --opa:#fbbf24; --image:#38bdf8; --ffd:#22d3ee;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0f0f0f;color:var(--text);font:12px/1.35 Inter,"Segoe UI",sans-serif}
+.panel{width:320px;min-height:900px;background:var(--base);border-left:1px solid #262626}
+.dock-title{padding:12px 16px 10px;font-weight:600;color:var(--text)}
+.sep{height:1px;background:var(--hairline)}
+.section-title{display:flex;align-items:center;gap:6px;padding:16px 16px 6px 12px;color:var(--muted);font-weight:600;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.section-title .caret{color:var(--muted);width:10px}
+.row,.subrow{display:grid;grid-template-columns:20px 72px minmax(0,1fr);column-gap:6px;align-items:center;padding-left:16px;padding-right:16px;min-height:27px}
+.row .keycell,.subrow .keycell{width:20px;height:20px;display:grid;place-items:center}
+.row .dot{width:18px;height:20px;display:grid;place-items:center}
+.row .dot i{display:block;width:8px;height:8px;border:1px solid var(--move);border-radius:50%}
+.row .dot.rotate i{border-color:var(--rotate)} .row .dot.scale i{border-color:var(--scale)}
+.row .dot.depth i{border-color:var(--depth)} .row .dot.opa i{border-color:var(--opa)}
+.row .dot.image i{border-color:var(--image)} .row .dot.ffd i{border-color:var(--ffd)}
+.row .dot.keyed i{background:var(--move)}
+.row .label,.subrow .label{width:72px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subrow .label{text-align:left}
+.row .field,.subrow .field{display:flex;gap:6px;justify-content:flex-start;min-width:0;margin-left:4px}
+.input{height:23px;width:100%;max-width:180px;background:var(--raised);border:1px solid var(--outline);border-radius:4px;color:var(--text);display:flex;align-items:center;justify-content:flex-end;padding:0 7px;white-space:nowrap;overflow:hidden}
+.input.two{width:87px;max-width:87px;flex:1}
+.assetfield{width:180px;max-width:180px;height:23px;background:var(--raised);border:1px solid var(--raised);border-radius:4px;display:flex;align-items:center;justify-content:space-between;padding:0 4px 0 6px;color:var(--text);overflow:hidden}
+.assetfield .file{color:var(--text);font-size:12px}
+.check{height:23px;display:flex;align-items:center;gap:6px;color:var(--text)}
+.check .box{width:12px;height:12px;border:1px solid var(--outline);border-radius:3px;background:var(--raised)}
+.chev{color:var(--muted);font-size:9px}
+.deform{margin-top:10px}
+.filter-head{display:flex;align-items:center;padding:18px 16px 8px 36px;color:var(--text);font-weight:600}
+.filter-head .plus{margin-left:auto;color:var(--muted);font-size:16px}
+.muted{padding:2px 16px 8px 36px;color:var(--muted)}
+</style></head><body>
+<div class="panel">
+  <div class="dock-title">Properties</div>
+  <div class="row"><span class="keycell"></span><span class="label">Blend</span><span class="field"><span class="input wide">Normal</span></span></div>
+  <div class="row"><span class="keycell"></span><span class="label">Clipped</span><span class="field"><span class="input" style="width:14px;max-width:14px;height:14px;border-radius:50%"></span></span></div>
+  <div class="row"><span class="keycell"><span class="dot"><i></i></span></span><span class="label">Position</span><span class="field"><span class="input two">357.5</span><span class="input two">1096</span></span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Centroid</span><span class="field"><span class="input two">0</span><span class="input two">0</span></span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Path</span><span class="field"><span class="check"><span class="box"></span>Smooth</span></span></div>
+
+  <div class="row"><span class="keycell"><span class="dot rotate"><i></i></span></span><span class="label">Rotation</span><span class="field"><span class="input">0</span></span></div>
+  <div class="row"><span class="keycell"><span class="dot scale keyed"><i></i></span></span><span class="label">Scale</span><span class="field"><span class="input two">1</span><span class="input two">1</span></span></div>
+  <div class="row"><span class="keycell"><span class="dot depth"><i></i></span></span><span class="label">Depth</span><span class="field"><span class="input">-10</span></span></div>
+  <div class="row"><span class="keycell"><span class="dot opa"><i></i></span></span><span class="label">Opacity</span><span class="field"><span class="input">1</span></span></div>
+
+  <div class="row asset"><span class="keycell"><span class="dot image"><i></i></span></span><span class="label">Image</span><span class="field"><span class="assetfield"><span>Paint Layer 1</span><span class="file">▤</span></span></span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Center</span><span class="field"><span class="input two">336.5</span><span class="input two">72</span></span></div>
+  <div class="subrow"><span class="keycell"></span><span class="label">Mesh spacing</span><span class="field"><span class="input">16</span></span></div>
+
+  <div class="row"><span class="keycell"><span class="dot ffd"><i></i></span></span><span class="label">FFD</span></div>
+
+  <div class="filter-head"><span class="chev">▾</span>&nbsp;Filters<span class="plus">+</span></div>
+  <div class="muted">No filters</div>
+</div>
+</body></html>

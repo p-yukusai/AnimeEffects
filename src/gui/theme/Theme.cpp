@@ -25,7 +25,7 @@ bool Theme::isDark() const {
 QString Theme::loadStylesheet(const QString& aName) const {
     // The templates are shared (one file per stylesheet, not per theme); the
     // token values live in theme::Colors, so the same text serves every theme.
-    QFile file(mResourceDir + "/stylesheet/" + aName);
+    QFile file(mResourceDir + "/stylesheets/" + aName);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return QString();
     return Colors::current().substitute(QTextStream(&file).readAll(), iconDir());

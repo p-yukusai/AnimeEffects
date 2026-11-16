@@ -164,9 +164,9 @@ core::LayerNode* addLayer(
     auto* layer = new core::LayerNode(aName, aTree.shaderHolder());
     layer->setDefaultImage(aRes->handle());
     layer->setDefaultPosture(aPos);
-    core::getOrCreateDefaultKey<core::RotateKey, core::TimeKeyType_Rotate>(*layer->timeLine())
+    core::getOrCreateBaseValue<core::RotateKey, core::TimeKeyType_Rotate>(*layer->timeLine())
         ->setRotate((float)(aRotDeg * kDegToRad));
-    core::getOrCreateDefaultKey<core::ScaleKey, core::TimeKeyType_Scale>(*layer->timeLine())->setScale(aScale);
+    core::getOrCreateBaseValue<core::ScaleKey, core::TimeKeyType_Scale>(*layer->timeLine())->setScale(aScale);
     aParent->children().pushBack(layer);
     return layer;
 }
@@ -176,9 +176,9 @@ core::FolderNode* addFolder(
 ) {
     auto* folder = new core::FolderNode(aName);
     folder->setDefaultPosture(aPos);
-    core::getOrCreateDefaultKey<core::RotateKey, core::TimeKeyType_Rotate>(*folder->timeLine())
+    core::getOrCreateBaseValue<core::RotateKey, core::TimeKeyType_Rotate>(*folder->timeLine())
         ->setRotate((float)(aRotDeg * kDegToRad));
-    core::getOrCreateDefaultKey<core::ScaleKey, core::TimeKeyType_Scale>(*folder->timeLine())->setScale(aScale);
+    core::getOrCreateBaseValue<core::ScaleKey, core::TimeKeyType_Scale>(*folder->timeLine())->setScale(aScale);
     aParent->children().pushBack(folder);
     return folder;
 }

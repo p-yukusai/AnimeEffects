@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor">
+<!-- Phosphor "sidebar-simple", rebuilt rather than rotated: the source glyph is a
+     landscape frame, so rotating it for the top/bottom sides gave those toggles a
+     portrait footprint. All four variants share the source frame and only the
+     divider moves, so they read as one family and keep one aspect ratio. -->
+<path fill-rule="evenodd" d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM40,56H160V200H40ZM176,56H216V200H176Z"/></svg>

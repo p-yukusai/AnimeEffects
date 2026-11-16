@@ -3,7 +3,7 @@
 
 namespace core {
 //-------------------------------------------------------------------------------------------------
-DepthKey::Data::Data(): mEasing(), mDepth(0.0f) {}
+DepthKey::Data::Data(): mEasings(), mDepth(0.0f) {}
 
 void DepthKey::Data::clamp() { mDepth = xc_clamp(mDepth, Constant::transMin(), Constant::transMax()); }
 
@@ -17,7 +17,7 @@ TimeKey* DepthKey::createClone() {
 }
 
 bool DepthKey::serialize(Serializer& aOut) const {
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
     aOut.write(mData.depth());
     return aOut.checkStream();
 }
@@ -26,7 +26,7 @@ bool DepthKey::deserialize(Deserializer& aIn) {
     aIn.pushLogScope("DepthKey");
 
     // easing
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
 

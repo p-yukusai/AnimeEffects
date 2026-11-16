@@ -215,7 +215,7 @@ QFileInfo NetworkUtil::downloadGithubFile(const QString& aURL, const QString& aF
     return {};
 }
 
-void NetworkUtil::checkForUpdate(const QString& url, NetworkUtil networking, QWidget* aParent, const bool showWithoutUpdate) {
+void NetworkUtil::checkForUpdate(const QString& url, QWidget* aParent, const bool showWithoutUpdate) {
     qDebug("--------");
     qInfo() << "Checking for updates on : " << url;
 

@@ -99,6 +99,12 @@ namespace ffd {
         }
     }
 
+    void Task::setBrush(const BrushStamp& aStamp) {
+        mStamp = aStamp;
+        mBrushCenter = aStamp.center;
+        mBrushVel = aStamp.delta;
+    }
+
     void Task::setBrush(const QVector2D& aBrushCenter, const QVector2D& aBrushVel) {
         mBrushCenter = aBrushCenter;
         mBrushVel = aBrushVel;
@@ -107,14 +113,14 @@ namespace ffd {
     gl::EasyShaderProgram& Task::selectShaderProgram() const {
         switch (mType) {
         case Type_Deformer:
-            return mResource.program(TaskResource::kTypeDeformer, mParam.hardness);
+            return mResource.program(TaskResource::kTypeDeformer);
         case Type_Eraser:
-            return mResource.program(TaskResource::kTypeEraser, mParam.eraseHardness);
+            return mResource.program(TaskResource::kTypeEraser);
         case Type_Focuser:
-            return mResource.program(TaskResource::kTypeFocuser, 0);
+            return mResource.program(TaskResource::kTypeFocuser);
         default:
             XC_ASSERT(0);
-            return mResource.program(0, 0);
+            return mResource.program(TaskResource::kTypeDeformer);
         }
     }
 
@@ -123,7 +129,7 @@ namespace ffd {
         XC_PTR_ASSERT(mSrcExpans);
         XC_ASSERT(mSrcMesh);
         XC_ASSERT(mOutMesh);
-        XC_ASSERT(mParam.radius > 0.0f);
+        XC_ASSERT(mStamp.radius > 0.0f);
         XC_ASSERT(mSrcMesh.count() <= mOutMesh.dataCount());
 
         mMeshBuffer.reserve(mSrcMesh.count());
@@ -145,10 +151,12 @@ namespace ffd {
                 program.setAttributeBuffer("inXArrow", mMeshTransformer.xArrows(), GL_FLOAT, 3);
                 program.setAttributeBuffer("inYArrow", mMeshTransformer.yArrows(), GL_FLOAT, 3);
 
-                program.setUniformValue("uBrushCenter", mBrushCenter);
-                program.setUniformValue("uBrushVel", mBrushVel);
-                program.setUniformValue("uBrushRadius", (float)mParam.radius);
-                program.setUniformValue("uBrushPressure", mParam.pressure);
+                program.setUniformValue("uBrushCenter", mStamp.center);
+                program.setUniformValue("uBrushVel", mStamp.delta);
+                program.setUniformValue("uBrushRadius", mStamp.radius);
+                program.setUniformValue("uBrushPressure", 1.0f);
+                program.setUniformValue("uBrushHardness", mStamp.hardness);
+                program.setUniformValue("uBrushAmount", mStamp.amount);
                 program.setUniformValue("uDividable", Constant::dividable());
 
                 ggl.glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, mOutMesh.id());
@@ -158,15 +166,17 @@ namespace ffd {
                 program.setAttributeBuffer("inWorldPosition", mMeshTransformer.positions(), GL_FLOAT, 3);
                 program.setAttributeArray("inOriginPosition", mOriginMesh, srcVtxCount);
 
-                program.setUniformValue("uBrushCenter", mBrushCenter);
-                program.setUniformValue("uBrushRadius", (float)mParam.eraseRadius);
-                program.setUniformValue("uBrushPressure", mParam.erasePressure);
+                program.setUniformValue("uBrushCenter", mStamp.center);
+                program.setUniformValue("uBrushRadius", mStamp.radius);
+                program.setUniformValue("uBrushPressure", 1.0f);
+                program.setUniformValue("uBrushHardness", mStamp.hardness);
+                program.setUniformValue("uBrushAmount", mStamp.amount);
 
                 ggl.glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, mOutMesh.id());
             } else if (mType == Type_Focuser) {
                 program.setAttributeBuffer("inWorldPosition", mMeshTransformer.positions(), GL_FLOAT, 3);
 
-                program.setUniformValue("uBrushCenter", mBrushCenter);
+                program.setUniformValue("uBrushCenter", mStamp.center);
                 program.setUniformValue("uBrushRadius", mParam.focusRadius);
 
                 ggl.glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, mOutMesh.id());

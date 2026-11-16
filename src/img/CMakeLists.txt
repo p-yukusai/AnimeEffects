@@ -1,4 +1,5 @@
 project(img)
+ae_enable_warnings()
 
 add_library(${PROJECT_NAME}
     ../XC.h
@@ -11,11 +12,13 @@ add_library(${PROJECT_NAME}
     ColorRGBA.h
     Format.h
     GridMeshCreator.cpp GridMeshCreator.h
+    MeshContentLevel.cpp MeshContentLevel.h
     PSDFormat.h
     PSDReader.cpp PSDReader.h
     PSDUtil.cpp PSDUtil.h
     PSDWriter.cpp PSDWriter.h
     PixelPos.h
+    Premultiply.h
     Quad.h
     ResourceData.cpp ResourceData.h
     ResourceHandle.cpp ResourceHandle.h
@@ -27,6 +30,22 @@ add_library(${PROJECT_NAME}
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
     ..
+)
+
+# Vendored third-party headers (src/deps) are SYSTEM headers, so they are passed
+# with -isystem and their warnings are not reported as ours.
+#
+# zip_file.h is Thomas Fussell's MIT-licensed single-header library bundling
+# miniz 1.15: 5692 lines exposing ~199 public API functions, of which we use a
+# handful. Under -Wall that is 24 "unused function" warnings per translation unit
+# that includes it, ~2976 across the project. The honest answer is neither to
+# edit a vendored file to placate our linter nor to suppress the diagnostic, but
+# to say plainly that this is not our code. Verified both ways: the same header
+# warns 24 times through a plain -I and zero times through -isystem.
+#
+# PUBLIC, because gui and ctrl link img and include the same header.
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/deps
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC

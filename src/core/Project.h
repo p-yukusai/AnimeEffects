@@ -1,12 +1,14 @@
 #ifndef CORE_PROJECT_H
 #define CORE_PROJECT_H
 
-#include <QSize>
-#include <QString>
-#include <QScopedPointer>
+#include <QUuid>
+#include <QColor>
+#include <functional>
+#include <functional>
 #include "util/LifeLink.h"
 #include "util/Signaler.h"
 #include "util/NonCopyable.h"
+#include "util/Range.h"
 #include "thr/Paralleler.h"
 #include "cmnd/Stack.h"
 #include "core/ObjectTree.h"
@@ -26,20 +28,46 @@ public:
     class Attribute {
     public:
         Attribute();
-        void setImageSize(const QSize& aSize) { mImageSize = aSize; }
+
+        // Attribute setters are OBSERVABLE: changing a value emits the owning
+        // project's onProjectAttributeModified (with a matching event type), so
+        // a value change is a first-class notification independent of any undo
+        // command. The settings dialog and the attribute commands both set the
+        // attribute and get the same re-sync; undo is a separate grain that
+        // records the before/after of a session.
+        void setImageSize(const QSize& aSize);
         const QSize& imageSize() const { return mImageSize; }
-        void setMaxFrame(int aFrame) { mMaxFrame = aFrame; }
-        int maxFrame() const { return mMaxFrame; }
-        void setFps(int aFps) { mFps = aFps; }
+        // The project's frame range (inclusive). Everything playback-related
+        // (transport, the playhead, the playback tick) is bounded by it; the
+        // temporary playback window (ctrl::TimeLineEditor) overrides it while
+        // active.
+        void setFrameRange(const util::Range& aRange);
+        const util::Range& frameRange() const { return mFrameRange; }
+        void setFps(int aFps);
         int fps() const { return mFps; }
-        void setLoop(bool aLoop) { mLoop = aLoop; }
+        void setLoop(bool aLoop);
         bool loop() const { return mLoop; }
+
+        // Optional viewport background override. Unset is the default for every
+        // project that never picked one, and means "follow the theme" (see
+        // gui::GUIResources::viewportBackground); the colour is only meaningful
+        // while hasViewportBackground() is true.
+        void setViewportBackground(const QColor& aColor);
+        void clearViewportBackground();
+        bool hasViewportBackground() const { return mHasViewportBackground; }
+        const QColor& viewportBackground() const { return mViewportBackground; }
+
+        // Wire the observable change notification (called by the owning Project).
+        void setChangeNotifier(std::function<void(ProjectEvent::Type)> aNotifier) { mChangeNotifier = std::move(aNotifier); }
 
     private:
         QSize mImageSize;
-        int mMaxFrame;
+        util::Range mFrameRange;
         int mFps;
         bool mLoop;
+        bool mHasViewportBackground;
+        QColor mViewportBackground;
+        std::function<void(ProjectEvent::Type)> mChangeNotifier;
     };
 
     class Hook {
@@ -80,12 +108,22 @@ public:
     const thr::Paralleler& paralleler() const { return *mParalleler; }
 
     Hook* hook() { return mHook.data(); }
+    // Per-project identity, used for transient cache artifacts (the crash-
+    // recovery copies). Stable for the lifetime of this object and unique
+    // across sessions, so two nameless tabs never collide and repeated
+    // autosaves overwrite the same file.
+    const QUuid& id() const { return mId; }
 
     util::Signaler<void(TimeLineEvent&, bool)> onTimeLineModified;
     util::Signaler<void(ObjectNode&, bool)> onNodeAttributeModified;
     util::Signaler<void(ResourceEvent&, bool)> onResourceModified;
     util::Signaler<void(ObjectTreeEvent&, bool)> onTreeRestructured;
     util::Signaler<void(ProjectEvent&, bool)> onProjectAttributeModified;
+    // Authored skin weights changed on the owner node. Deliberately separate
+    // from the attribute/pose events: a pose or move rebuilds one affected key,
+    // while one baked field is addressed by every BoneKey of the owner (all
+    // frames). The bool is the command's undo flag, as the other signals use it.
+    util::Signaler<void(ObjectNode&, bool)> onSkinWeightsModified;
     // Audio
     std::vector<audioConfig>* pConf = new std::vector<audioConfig>();
     mediaState* mediaPlayer = new mediaState();
@@ -96,6 +134,7 @@ private:
     util::LifeLink mLifeLink;
     QString mFileName;
     Attribute mAttribute;
+    QUuid mId;
 
     QScopedPointer<thr::Paralleler> mParalleler;
     ResourceHolder mResourceHolder;

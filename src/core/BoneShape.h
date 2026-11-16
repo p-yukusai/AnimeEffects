@@ -6,6 +6,7 @@
 #include "util/Segment2D.h"
 #include "core/Serializer.h"
 #include "core/Deserializer.h"
+#include "core/BonePolygonIndex.h"
 
 namespace core {
 
@@ -29,6 +30,10 @@ public:
 
     float influence(const QVector2D& aPos) const;
 
+    // Exact authored-geometry comparison, ignoring derived values (validity,
+    // unit vector, length, bounding box and the polygon index). Two shapes that
+    // compare equal produce the same influence for every point.
+    bool hasSameAuthoredGeometry(const BoneShape& aRhs) const;
 
     // serialize
     bool serialize(Serializer& aOut) const;
@@ -52,6 +57,9 @@ private:
     std::array<QVector2D, 2> mRadius;
     QRectF mBounding;
     QPolygonF mPolygon;
+    // Derived from mPolygon; never serialized, rebuilt by the setters and the
+    // two deserialisers.
+    BonePolygonIndex mPolygonIndex;
     BendRange mRootBendRange;
     BendRange mTailBendRange;
 };

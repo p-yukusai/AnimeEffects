@@ -20,6 +20,12 @@ class DockSash: public QObject {
 public:
     explicit DockSash(QMainWindow* aWindow);
 
+signals:
+    /// The first press of a seam drag. MainWindow uses it to drop the panels'
+    /// opening-size floors, which are minimums until the user resizes: keeping
+    /// them would stop a slot ever reaching its area's range.
+    void resizeStarted();
+
 protected:
     bool eventFilter(QObject* aWatched, QEvent* aEvent) override;
 
@@ -30,6 +36,10 @@ private:
     void watchDocks();
 
     QMainWindow* mWindow;
+    /// Pool of hitboxes: seams are enumerated now (dock against dock, and dock
+    /// against the central widget), and there are only ever a handful, so the
+    /// pool is a bound rather than something indexed by dock.
+    static constexpr int kMaxHitBoxes = 16;
     QVector<HitBox*> mHitBoxes;
 };
 

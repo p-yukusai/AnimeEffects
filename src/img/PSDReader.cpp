@@ -1,6 +1,36 @@
 #include <memory>
+#include <QString>
+#include <vector>
 #include "XC.h"
 #include "img/PSDReader.h"
+
+namespace img {
+
+namespace {
+// Decodes the bytes of a "luni" block into text. The block holds UTF-16BE with a
+// leading code-unit count; writers differ on whether the trailing null is counted,
+// so the nulls are dropped here either way rather than trusted from the count.
+QString decodeUnicodeName(const uint8* aData, uint32 aUnitCount)
+{
+    // Swap the units to native order by hand: QString::fromUtf16 reads the host's byte
+    // order, and the block is big-endian by definition.
+    //
+    // THE BUFFER IS char16_t, which is the type QString::fromUtf16 takes (the
+    // `unsigned short*` overload is deprecated): the units are decoded into it directly
+    // rather than poured into a uint16 buffer and reinterpret_cast - two 16-bit integer
+    // types are not interchangeable through a pointer without breaking the aliasing rule,
+    // and the cast would have been the only reason to do it.
+    std::vector<char16_t> units(aUnitCount);
+    for (uint32 i = 0; i < aUnitCount; ++i) {
+        units[i] = char16_t((aData[i * 2] << 8) | aData[i * 2 + 1]);
+    }
+    QString name = QString::fromUtf16(units.data(), qsizetype(units.size()));
+    while (!name.isEmpty() && name.at(name.size() - 1).isNull()) {
+        name.chop(1);
+    }
+    return name;
+}
+} // unnamed
 
 
 // #define PSDREADER_DUMP(...) XC_DEBUG_REPORT(__VA_ARGS__)
@@ -8,8 +38,6 @@
 
 // #define PSDREADER_VERBOSE(...) XC_DEBUG_REPORT(__VA_ARGS__)
 #define PSDREADER_VERBOSE(...)
-
-namespace img {
 
 PSDReader::PSDReader(std::istream& aIo):
     StreamReader(aIo), mResultCode(ResultCode_TERM){
@@ -650,6 +678,44 @@ bool PSDReader::loadAdditionalLayerInfo(
             }
             if (checkFailure())
                 return false;
+
+            skipTo(dataBeginPos);
+        } else if (aLayer && info->key == "lyid" && info->dataLength >= 4) {
+            // Photoshop's stable layer id. It is the identity the layer is
+            // reimport-matched by; see PSDFormat::Layer::identity.
+            std::ios::pos_type dataBeginPos = tellg();
+            const uint32 layerId = readUInt32();
+            if (checkFailure())
+                return false;
+            // decimal text: the identity travels as a string, like the name does.
+            aLayer->identity = std::to_string(layerId);
+
+            skipTo(dataBeginPos);
+        } else if (aLayer && info->key == "luni" && info->dataLength >= 4) {
+            // The Unicode layer name, which is the real name where it disagrees
+            // with the padded Pascal field.
+            std::ios::pos_type dataBeginPos = tellg();
+            const uint32 charCount = readUInt32();
+            if (checkFailure())
+                return false;
+
+            // 4-byte count, then that many UTF-16 units -- but never read past
+            // the end of the block, whatever the count claims.
+            uint32 unitCount = charCount;
+            const uint32 available = (info->dataLength - 4) / 2;
+            if (unitCount > available) {
+                unitCount = available;
+            }
+            if (unitCount > 0) {
+                std::vector<uint8> utf16(unitCount * 2);
+                readBuf(utf16.data(), utf16.size());
+                if (checkFailure())
+                    return false;
+                const QString unicodeName = decodeUnicodeName(utf16.data(), unitCount);
+                if (!unicodeName.isEmpty()) {
+                    aLayer->unicodeName = unicodeName.toStdString();
+                }
+            }
 
             skipTo(dataBeginPos);
         }

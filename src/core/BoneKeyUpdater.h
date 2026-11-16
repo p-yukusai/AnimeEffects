@@ -38,11 +38,16 @@ public:
 
     static void onProjectAttributeModified(ProjectEvent& aEvent);
 
+    // One authored SkinWeights record on aOwner changed. Every BoneKey of that
+    // owner reads the same field, so every key's influence caches are rebuilt;
+    // a single-key update would leave the other frames showing the old paint.
+    static void onSkinWeightsModified(Project& aProject, ObjectNode& aOwner, bool aIsUndo);
+
     // for tree restructuring
     static cmnd::Base* createNodeUnbinderForDelete(ObjectNode& aNode);
     // static cmnd::Base* createNodeUnbinderForMove(
     //         ObjectTree& aTree, const util::TreePos& aFrom, const util::TreePos& aTo);
-    static cmnd::Base* createNodesUnbinderForMove(ObjectTree& aTree, const BoneUnbindWorkspacePtr& aWorkspace);
+    static cmnd::Base* createNodesUnbinderForMove(const BoneUnbindWorkspacePtr& aWorkspace);
 
 private:
     static void onTimeLineModified(

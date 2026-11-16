@@ -14,7 +14,8 @@ void GridMeshCreator::HexaConnection::clear() {
 }
 
 //-------------------------------------------------------------------------------------------------
-GridMeshCreator::Image::Image(const uint8* aPtr, const QSize& aSize): mBuffer(), mData(), mSize(aSize) {
+GridMeshCreator::Image::Image(const uint8* aPtr, const QSize& aSize, int aContentAlphaThreshold):
+    mBuffer(), mData(), mSize(aSize), mContentAlphaThreshold(aContentAlphaThreshold) {
     XC_PTR_ASSERT(aPtr);
     XC_ASSERT(!aSize.isEmpty());
 
@@ -27,7 +28,7 @@ GridMeshCreator::Image::Image(const uint8* aPtr, const QSize& aSize): mBuffer(),
 bool GridMeshCreator::Image::hasSomeAlphaIn3x3(int aX, int aY) const {
     for (int i = -1; i < 2; ++i) {
         for (int k = -1; k < 2; ++k) {
-            if (hasAlpha(aX + i, aY + k))
+            if (hasEdgeAlpha(aX + i, aY + k))
                 return true;
         }
     }
@@ -320,6 +321,22 @@ GridMeshCreator::Cell* GridMeshCreator::CellTable::findExistingCell(int aX, int 
     return cell;
 }
 
+GridMeshCreator::Cell* GridMeshCreator::CellTable::cellAtPixel(int aPixX, int aPixY) {
+    const float halfWidth = mCellSize.width() * 0.5f;
+    const int row = (int)((float)aPixY / mCellSize.height());
+    const int col = (int)((float)aPixX / halfWidth) + 1;
+
+    // the row's triangles zig-zag, so the pixel can belong to the column either side of the
+    // estimate: take the first existing one
+    for (int dy = 0; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            if (Cell* cell = findExistingCell(col + dx, row + dy))
+                return cell;
+        }
+    }
+    return nullptr;
+}
+
 //-------------------------------------------------------------------------------------------------
 int GridMeshCreator::getCellTableCount(const QSize& aImageSize, int aCellWidth) {
     auto cellSize = CellTable::calculateCellSize(aCellWidth);
@@ -328,8 +345,10 @@ int GridMeshCreator::getCellTableCount(const QSize& aImageSize, int aCellWidth) 
 }
 
 //-------------------------------------------------------------------------------------------------
-GridMeshCreator::GridMeshCreator(const uint8* aPtr, const QSize& aSize, int aCellPx):
-    mCells(), mVertices(), mVertexCount(), mIndexCount(), mImageSize(aSize) {
+GridMeshCreator::GridMeshCreator(const uint8* aPtr, const QSize& aSize, int aCellPx,
+                                 int aContentAlphaThreshold):
+    mCells(), mVertices(), mVertexCount(), mIndexCount(), mImageSize(aSize),
+    mContentAlphaThreshold(aContentAlphaThreshold) {
     execute(aPtr, aSize, aCellPx);
 }
 
@@ -404,7 +423,7 @@ void GridMeshCreator::writeConnections(HexaConnection* aDest) {
 }
 
 void GridMeshCreator::execute(const uint8* aPtr, const QSize& aSize, int aCellPx) {
-    Image image(aPtr, aSize);
+    Image image(aPtr, aSize, mContentAlphaThreshold);
 
     mCells.reset(new CellTable(aCellPx));
     mIndexCount = 3 * mCells->initCells(image);
@@ -558,7 +577,24 @@ void GridMeshCreator::reduceBurrs(VertexTable& aTable, const Image& aImage) {
         }
     }
 
-    // shorten reducing vectors if they are riding on an opaque pixel.
+    // Shorten a reducing vector until the pull no longer sweeps over ink. Testing only the endpoint
+    // misses a thin line: the endpoint can land beyond it while the path crosses it.
+    auto sweepsInk = [&](const Vertex& aVtx) {
+        const QVector2D from = aVtx.pos();
+        const QVector2D to = aVtx.posReduced();
+        const float dx = to.x() - from.x();
+        const float dy = to.y() - from.y();
+        const int steps = std::max(1, (int)std::ceil(std::sqrt(dx * dx + dy * dy)));
+        for (int i = 0; i <= steps; ++i) {
+            const float t = (float)i / (float)steps;
+            const int sx = (int)(from.x() + dx * t);
+            const int sy = (int)(from.y() + dy * t);
+            if (aImage.hasSomeAlphaIn3x3(sx, sy)) {
+                return true;
+            }
+        }
+        return false;
+    };
     for (int y = 0; y < aTable.height(); ++y) {
         for (int x = 0; x < aTable.width(); ++x) {
             auto& vtx = aTable.vertex(x, y);
@@ -568,9 +604,7 @@ void GridMeshCreator::reduceBurrs(VertexTable& aTable, const Image& aImage) {
                     const float maxReduce = vtx.maxReduce;
 
                     for (int div = 0; div < 9; ++div) {
-                        auto pos = vtx.posReduced();
-
-                        if (!aImage.hasSomeAlphaIn3x3((int)pos.x(), (int)pos.y())) {
+                        if (!sweepsInk(vtx)) {
                             break;
                         }
                         vtx.maxReduce = (1.0f - (div + 1) * 0.125f) * maxReduce;
@@ -683,37 +717,42 @@ void GridMeshCreator::reduceBurrs(VertexTable& aTable, const Image& aImage) {
             for (int x = 0; x < iw; ++x) {
                 auto pix = line + x;
                 uint8& usebit = useBits[pix];
-                if (usebit == 1) {
-                    auto cellIdx = cellIds[pix];
-                    const int cellY = cellIdx / cellTableWidth;
-                    const int cellX = cellIdx - cellY * cellTableWidth;
-                    Cell* cell = &(mCells->cell(cellX, cellY));
+                if (usebit != 1) {
+                    continue;
+                }
+
+                // A content pixel that no reduced cell rasterized over: cellIds is still -1 here,
+                // and the old code used it as a table index, which trips the bounds assert. Find
+                // the cell that owns the pixel geometrically instead.
+                const int cellIdx = cellIds[pix];
+                const int cellY = cellIdx >= 0 ? cellIdx / cellTableWidth : 0;
+                const int cellX = cellIdx >= 0 ? cellIdx - cellY * cellTableWidth : 0;
+                Cell* cell = cellIdx >= 0 ? &(mCells->cell(cellX, cellY)) : mCells->cellAtPixel(x, y);
 
     #if 1
-                    if (cell && !cell->nonReducing) {
-                        cell->reducingFixed = false;
-                        cell->vtx[0]->reduceRate = nextRate;
-                        cell->vtx[1]->reduceRate = nextRate;
-                        cell->vtx[2]->reduceRate = nextRate;
-                    }
-    #else
-                    Cell* arounds[4] = {
-                        cell,
-                        mCells->findExistingCell(cellX - 1, cellY),
-                        mCells->findExistingCell(cellX + 1, cellY),
-                        mCells->findExistingCell(cellX, cellY + (cell->inverted ? -1 : 1))};
-
-                    for (int i = 0; i < 4; ++i) {
-                        Cell* a = arounds[i];
-                        if (a && !a->nonReducing) {
-                            a->reducingFixed = false;
-                            a->vtx[0]->reduceRate = nextRate;
-                            a->vtx[1]->reduceRate = nextRate;
-                            a->vtx[2]->reduceRate = nextRate;
-                        }
-                    }
-    #endif
+                if (cell && !cell->nonReducing) {
+                    cell->reducingFixed = false;
+                    cell->vtx[0]->reduceRate = nextRate;
+                    cell->vtx[1]->reduceRate = nextRate;
+                    cell->vtx[2]->reduceRate = nextRate;
                 }
+    #else
+                Cell* arounds[4] = {
+                    cell,
+                    mCells->findExistingCell(cellX - 1, cellY),
+                    mCells->findExistingCell(cellX + 1, cellY),
+                    mCells->findExistingCell(cellX, cellY + (cell && cell->inverted ? -1 : 1))};
+
+                for (int i = 0; i < 4; ++i) {
+                    Cell* a = arounds[i];
+                    if (a && !a->nonReducing) {
+                        a->reducingFixed = false;
+                        a->vtx[0]->reduceRate = nextRate;
+                        a->vtx[1]->reduceRate = nextRate;
+                        a->vtx[2]->reduceRate = nextRate;
+                    }
+                }
+    #endif
             }
         }
     }

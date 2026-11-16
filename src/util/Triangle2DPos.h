@@ -17,6 +17,13 @@ public:
     QVector2D get(const Triangle2D& aTriangle) const;
     QVector2D get(const std::array<QVector2D, 3>& aTriangle) const;
 
+    /// The three vertex weights this position encodes: result[i] is the weight
+    /// of the triangle's vertex i (the corner scheme is mIndex,
+    /// (mIndex + 1) % 3, (mIndex + 2) % 3). They sum to one, which is what lets
+    /// an attribute be interpolated by the same barycentric coordinates as the
+    /// position.
+    std::array<float, 3> weights() const;
+
 private:
     int mIndex;
     float mFirst;

@@ -13,6 +13,7 @@
 #include "core/TimeLine.h"
 #include "core/Serializer.h"
 #include "core/Deserializer.h"
+#include "core/SkinWeights.h"
 namespace core {
 class ObjectTreeEvent;
 }
@@ -23,11 +24,11 @@ class ResourceEvent;
 namespace core {
 
 template <typename KeyType, TimeKeyType keyEnum>
-KeyType* getOrCreateDefaultKey(TimeLine& timeLine) {
-    auto key = static_cast<KeyType*>(timeLine.defaultKey(keyEnum));
+KeyType* getOrCreateBaseValue(TimeLine& timeLine) {
+    auto key = static_cast<KeyType*>(timeLine.baseValue(keyEnum));
     if (!key) {
         key = new KeyType();
-        timeLine.grabDefaultKey(keyEnum, key);
+        timeLine.setBaseValue(keyEnum, key);
     }
     return key;
 }
@@ -71,6 +72,12 @@ public:
     virtual bool hasAnyMesh() const { return false; }
     virtual bool hasAnyImage() const { return false; }
 
+    // Authored skin weights for this node as an owner (a rig anchor) and as an
+    // influenced target. The record is keyed by this node's own pointer inside
+    // the owner's SkinWeights, so one value type covers both directions.
+    SkinWeights& skinWeights() { return mSkinWeights; }
+    const SkinWeights& skinWeights() const { return mSkinWeights; }
+
     virtual bool serialize(Serializer& aOut) const = 0;
     virtual bool deserialize(Deserializer& aIn) = 0;
 
@@ -82,6 +89,7 @@ protected:
 
 private:
     util::LifeLink mLifeLink;
+    SkinWeights mSkinWeights;
 };
 
 } // namespace core

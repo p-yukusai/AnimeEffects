@@ -3,6 +3,33 @@
 
 namespace ctrl {
 
+int unshiftedKeyForShift(int aKey) {
+    switch (aKey) {
+    case Qt::Key_BraceLeft: return Qt::Key_BracketLeft;
+    case Qt::Key_BraceRight: return Qt::Key_BracketRight;
+    case Qt::Key_Exclam: return Qt::Key_1;
+    case Qt::Key_At: return Qt::Key_2;
+    case Qt::Key_NumberSign: return Qt::Key_3;
+    case Qt::Key_Dollar: return Qt::Key_4;
+    case Qt::Key_Percent: return Qt::Key_5;
+    case Qt::Key_AsciiCircum: return Qt::Key_6;
+    case Qt::Key_Ampersand: return Qt::Key_7;
+    case Qt::Key_Asterisk: return Qt::Key_8;
+    case Qt::Key_ParenLeft: return Qt::Key_9;
+    case Qt::Key_ParenRight: return Qt::Key_0;
+    case Qt::Key_Underscore: return Qt::Key_Minus;
+    case Qt::Key_Plus: return Qt::Key_Equal;
+    case Qt::Key_Colon: return Qt::Key_Semicolon;
+    case Qt::Key_QuoteDbl: return Qt::Key_Apostrophe;
+    case Qt::Key_Less: return Qt::Key_Comma;
+    case Qt::Key_Greater: return Qt::Key_Period;
+    case Qt::Key_Question: return Qt::Key_Slash;
+    case Qt::Key_AsciiTilde: return Qt::Key_QuoteLeft;
+    case Qt::Key_Bar: return Qt::Key_Backslash;
+    default: return aKey;
+    }
+}
+
 //-------------------------------------------------------------------------------------------------
 bool KeyBinding::getKeyValidity(int aKeyCode) {
     if (Qt::Key_Space <= aKeyCode && aKeyCode <= Qt::Key_AsciiTilde) {

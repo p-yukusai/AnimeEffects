@@ -28,10 +28,29 @@ public:
     static QMatrix4x4 getWorldCSRTMatrix(ObjectNode& aNode, const TimeInfo& aTime);
     static QMatrix4x4 getRelativeMatrix(ObjectNode& aNode, const TimeInfo& aTime, const ObjectNode* aParent);
     static LayerMesh* getAreaMesh(ObjectNode& aNode, const TimeInfo& aTime);
+    // The key that OWNS that mesh (a Mesh key, or the Image key whose grid it is) with the
+    // mesh itself: the pair a caller needs to attach an FFD key to its parent. Public because
+    // the clipboard's paste has to re-attach a key it just made, and the tree used to own a
+    // second copy of this query in the GUI.
+    static std::pair<TimeKey*, LayerMesh*> getAreaMeshImpl(ObjectNode& aNode, const TimeInfo& aTime);
     static BoneKey* getAreaBone(ObjectNode& aNode, const TimeInfo& aTime);
     static BoneKey* getNearestInfluencerBone(ObjectNode& aNode, const TimeInfo& aTime);
     static QVector2D getImageOffset(ObjectNode& aNode, const TimeInfo& aTime);
     static QVector2D getOriginOffset(ObjectNode& aNode, const TimeInfo& aTime);
+
+    // THE influence-map matrix: the node's relative matrix to the owner,
+    // translated by its origin offset. The influence build, the bake and the
+    // heatmap all read this one function; before it they each assembled the
+    // product by hand, so a change in one could silently stop matching the
+    // other. The overload takes an inner matrix already computed (BoneKey's
+    // cache) so the heatmap can reuse it instead of recomputing the relative
+    // matrix.
+    static QMatrix4x4 getInfluenceMapMatrix(
+        const QMatrix4x4& aInnerMtx, ObjectNode& aNode, const TimeInfo& aTime
+    );
+    static QMatrix4x4 getInfluenceMapMatrix(
+        ObjectNode& aNode, const TimeInfo& aTime, const ObjectNode* aParent
+    );
     static QVector2D getCentroid(const ObjectNode& aNode, const TimeInfo& aTime);
 
     TimeKeyBlender(ObjectTree& aTree);
@@ -43,7 +62,6 @@ public:
     void clearCaches(TimeLineEvent& aEvent);
 
 private:
-    static std::pair<TimeKey*, LayerMesh*> getAreaMeshImpl(ObjectNode& aNode, const TimeInfo& aTime);
     static MeshKey* getMeshKey(const ObjectNode& aNode, const TimeInfo& aTime);
     static ImageKey* getImageKey(const ObjectNode& aNode, const TimeInfo& aTime);
 
@@ -53,13 +71,15 @@ private:
 
     void blendSRTKeys(PositionType aPos, const TimeInfo& aTime);
     void blendDepthKey(PositionType aPos, const TimeInfo& aTime);
-    void blendOpaKey(PositionType aPos, const TimeInfo& aTime);
+    void blendOpacityKey(PositionType aPos, const TimeInfo& aTime);
     void blendHSVKey(PositionType aPos, const TimeInfo& aTime);
     void blendBlurKey(PositionType aPos, const TimeInfo& aTime);
+    void blendWaveKey(PositionType aPos, const TimeInfo& aTime);
     void blendBoneKey(PositionType aPos, const TimeInfo& aTime);
     void blendPoseKey(PositionType aPos, const TimeInfo& aTime);
     void blendMeshKey(PositionType aPos, const TimeInfo& aTime);
     void blendFFDKey(PositionType aPos, const TimeInfo& aTime);
+    void blendMaskKey(PositionType aPos, const TimeInfo& aTime);
     void blendImageKey(PositionType aPos, const TimeInfo& aTime);
     // void buildPosePalette(ObjectNode& aNode, PosePalette::KeyPairs& aPairs);
     void buildPosePalette(ObjectNode& aNode, PosePalette::KeyPair aPair);

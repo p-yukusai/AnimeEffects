@@ -20,6 +20,10 @@ namespace ctrl::srt {
         mAssignMoveRef(),
         mAssignRotateRef(),
         mAssignScaleRef(),
+        mTrackRotateRef(),
+        mTrackRotateBaseRef(),
+        mTrackScaleRef(),
+        mTrackMoveRef(),
         mSuspend(),
         mBaseVec(),
         mBaseValue() {
@@ -134,17 +138,33 @@ namespace ctrl::srt {
         mAssignMoveRef = nullptr;
         mAssignRotateRef = nullptr;
         mAssignScaleRef = nullptr;
+        mTrackRotateRef = nullptr;
+        mTrackRotateBaseRef = nullptr;
+        mTrackScaleRef = nullptr;
+        mTrackMoveRef = nullptr;
         mFocus.first = FocusType_TERM;
         mSuspend.destruct();
     }
 
-    void MoveMode::setAssignNotifier(cmnd::ScopedMacro& aMacro, TimeKeyType aKeyType, bool aPushKey) {
+    void MoveMode::setAssignNotifier(
+        cmnd::ScopedMacro& aMacro, TimeKeyType aKeyType, bool aPushKey, bool aBaseValue
+    ) {
         auto notifyType = aPushKey ? TimeLineEvent::Type_PushKey : TimeLineEvent::Type_ChangeKeyValue;
         const int frame = mProject.animator().currentFrame().get();
 
         auto notifier = new TimeLineUtil::Notifier(mProject);
         notifier->event().setType(notifyType);
-        notifier->event().pushTarget(mTarget, aKeyType, frame);
+        if (aBaseValue) {
+            notifier->event().pushBaseValueTarget(mTarget, aKeyType);
+        } else if (TimeLine::usesChannelTracks(aKeyType)) {
+            for (int component = 0; component < core::propertyChannelCount(aKeyType); ++component) {
+                notifier->event().pushTarget(
+                    mTarget, TimeKeyPos(*mTarget.timeLine(), aKeyType, frame, component)
+                );
+            }
+        } else {
+            notifier->event().pushTarget(mTarget, aKeyType, frame);
+        }
         aMacro.grabListener(notifier);
     }
 
@@ -154,11 +174,22 @@ namespace ctrl::srt {
         // singleshot notify
         TimeLineEvent event;
         event.setType(TimeLineEvent::Type_ChangeKeyValue);
-        event.pushTarget(mTarget, aKeyType, frame);
+        if (TimeLine::usesChannelTracks(aKeyType)) {
+            for (int component = 0; component < core::propertyChannelCount(aKeyType); ++component) {
+                event.pushTarget(mTarget, TimeKeyPos(*mTarget.timeLine(), aKeyType, frame, component));
+            }
+        } else {
+            event.pushTarget(mTarget, aKeyType, frame);
+        }
         mProject.onTimeLineModified(event, false);
     }
 
     void MoveMode::assignMoveKey(MoveKey::Data& aNewData) {
+        if (mKeyOwner.moveIsTrack) {
+            assignTrackMoveKey(aNewData);
+            return;
+        }
+
         const int frame = mProject.animator().currentFrame().get();
         TimeLine& timeLine = *mTarget.timeLine();
         cmnd::Stack& stack = mProject.commandStack();
@@ -173,7 +204,9 @@ namespace ctrl::srt {
             notifyAssignModification(TimeKeyType_Move);
         } else {
             cmnd::ScopedMacro macro(stack, CmndName::tr("update a moving key"));
-            setAssignNotifier(macro, TimeKeyType_Move, mKeyOwner.ownsMoveKey || appendKeys);
+            setAssignNotifier(
+                macro, TimeKeyType_Move, mKeyOwner.ownsMoveKey || appendKeys, mKeyOwner.moveIsBaseValue
+            );
             // push commands
             mKeyOwner.pushOwningMoveKey(stack, timeLine, frame);
 
@@ -184,12 +217,24 @@ namespace ctrl::srt {
                 mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
             }
 
-            mAssignMoveRef = new AssignMoveCommand(&(mKeyOwner.moveKey->data()), aNewData);
-            stack.push(mAssignMoveRef);
+            // The command owns the KEY and its LINE, not the Data field: a
+            // proportional companion's reflow needs the map the key lives in.
+            // pushOwningMoveKey() guarantees the key here; a null is never a
+            // dereference, whatever happens.
+            mAssignMoveRef = nullptr;
+            if (mKeyOwner.moveKey) {
+                mAssignMoveRef = new AssignMoveCommand(*mKeyOwner.moveKey, timeLine, aNewData);
+                stack.push(mAssignMoveRef);
+            }
         }
     }
 
     void MoveMode::assignRotateKey(RotateKey::Data& aNewData) {
+        if (mKeyOwner.rotateIsTrack) {
+            assignTrackRotateKey(aNewData);
+            return;
+        }
+
         const int frame = mProject.animator().currentFrame().get();
         TimeLine& timeLine = *mTarget.timeLine();
         cmnd::Stack& stack = mProject.commandStack();
@@ -204,7 +249,9 @@ namespace ctrl::srt {
             notifyAssignModification(TimeKeyType_Rotate);
         } else {
             cmnd::ScopedMacro macro(stack, CmndName::tr("update a rotation key"));
-            setAssignNotifier(macro, TimeKeyType_Rotate, mKeyOwner.ownsRotateKey || appendKeys);
+            setAssignNotifier(
+                macro, TimeKeyType_Rotate, mKeyOwner.ownsRotateKey || appendKeys, mKeyOwner.rotateIsBaseValue
+            );
             // push commands
             mKeyOwner.pushOwningRotateKey(stack, timeLine, frame);
 
@@ -215,12 +262,197 @@ namespace ctrl::srt {
                 mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
             }
 
-            mAssignRotateRef = new AssignRotateCommand(&(mKeyOwner.rotateKey->data()), aNewData);
-            stack.push(mAssignRotateRef);
+            mAssignRotateRef = nullptr;
+            if (mKeyOwner.rotateKey) {
+                mAssignRotateRef = new AssignRotateCommand(*mKeyOwner.rotateKey, timeLine, aNewData);
+                stack.push(mAssignRotateRef);
+            }
+        }
+    }
+
+    void MoveMode::assignTrackScaleKey(ScaleKey::Data& aNewData) {
+        const int frame = mProject.animator().currentFrame().get();
+        TimeLine& timeLine = *mTarget.timeLine();
+        cmnd::Stack& stack = mProject.commandStack();
+        ChannelTrack* xTrack = timeLine.channelTrack(TimeKeyType_Scale, 0);
+        ChannelTrack* yTrack = timeLine.channelTrack(TimeKeyType_Scale, 1);
+        if (!xTrack || !yTrack) {
+            return;
+        }
+        const QVector2D value = aNewData.scale();
+
+        const bool appendKeys = (mSRTParam.necessarilyMove && mKeyOwner.ownsMoveKey) ||
+            (mSRTParam.necessarilyRotate && mKeyOwner.ownsRotateKey);
+
+        if (mKeyOwner.scaleIsBaseValue) {
+            if (mTrackScaleRef && stack.isModifiable(mTrackScaleRef)) {
+                mTrackScaleRef->modifyValue(value);
+                notifyAssignModification(TimeKeyType_Scale);
+            } else {
+                cmnd::ScopedMacro macro(stack, CmndName::tr("update a scale key"));
+                setAssignNotifier(macro, TimeKeyType_Scale, false, true);
+                mTrackScaleRef = new AssignScaleTrackCommand(*xTrack, nullptr, *yTrack, nullptr, value);
+                stack.push(mTrackScaleRef);
+            }
+            return;
+        }
+
+        ChannelKey* xKey = timeLine.channelKey(TimeKeyType_Scale, 0, frame);
+        ChannelKey* yKey = timeLine.channelKey(TimeKeyType_Scale, 1, frame);
+        if (!appendKeys && mTrackScaleRef && stack.isModifiable(mTrackScaleRef) && xKey && yKey) {
+            mTrackScaleRef->modifyValue(value);
+            notifyAssignModification(TimeKeyType_Scale);
+            return;
+        }
+
+        cmnd::ScopedMacro macro(stack, CmndName::tr("update a scale key"));
+        setAssignNotifier(
+            macro, TimeKeyType_Scale, mKeyOwner.ownsScaleKey || appendKeys, false
+        );
+        mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
+        if (mSRTParam.necessarilyMove) {
+            mKeyOwner.pushOwningMoveKey(stack, timeLine, frame);
+        }
+        if (mSRTParam.necessarilyRotate) {
+            mKeyOwner.pushOwningRotateKey(stack, timeLine, frame);
+        }
+
+        xKey = timeLine.channelKey(TimeKeyType_Scale, 0, frame);
+        yKey = timeLine.channelKey(TimeKeyType_Scale, 1, frame);
+        mTrackScaleRef = nullptr;
+        if (xKey && yKey) {
+            mTrackScaleRef = new AssignScaleTrackCommand(*xTrack, xKey, *yTrack, yKey, value);
+            stack.push(mTrackScaleRef);
+        }
+    }
+
+    void MoveMode::assignTrackMoveKey(MoveKey::Data& aNewData) {
+        const int frame = mProject.animator().currentFrame().get();
+        TimeLine& timeLine = *mTarget.timeLine();
+        cmnd::Stack& stack = mProject.commandStack();
+        AssignMoveTrackCommand::Channels channels;
+        for (int c = 0; c < 4; ++c) {
+            channels.track[c] = timeLine.channelTrack(TimeKeyType_Move, c);
+            if (!channels.track[c]) {
+                return;
+            }
+        }
+        const QVector2D pos = aNewData.pos();
+        const QVector2D centroid = aNewData.centroid();
+
+        const bool appendKeys = (mSRTParam.necessarilyRotate && mKeyOwner.ownsRotateKey) ||
+            (mSRTParam.necessarilyScale && mKeyOwner.ownsScaleKey);
+
+        if (mKeyOwner.moveIsBaseValue) {
+            if (mTrackMoveRef && stack.isModifiable(mTrackMoveRef)) {
+                mTrackMoveRef->modifyValue(pos, centroid);
+                notifyAssignModification(TimeKeyType_Move);
+            } else {
+                cmnd::ScopedMacro macro(stack, CmndName::tr("update a move key"));
+                setAssignNotifier(macro, TimeKeyType_Move, false, true);
+                // A checked Rotate/Scale box still creates that key on the same
+                // gesture, exactly as the legacy move write did.
+                if (mSRTParam.necessarilyRotate) {
+                    mKeyOwner.pushOwningRotateKey(stack, timeLine, frame);
+                }
+                if (mSRTParam.necessarilyScale) {
+                    mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
+                }
+                mTrackMoveRef = new AssignMoveTrackCommand(channels, pos, centroid);
+                stack.push(mTrackMoveRef);
+            }
+            return;
+        }
+
+        for (int c = 0; c < 4; ++c) {
+            channels.key[c] = timeLine.channelKey(TimeKeyType_Move, c, frame);
+        }
+        const bool allKeys = channels.key[0] && channels.key[1] && channels.key[2] && channels.key[3];
+        if (!appendKeys && mTrackMoveRef && stack.isModifiable(mTrackMoveRef) && allKeys) {
+            mTrackMoveRef->modifyValue(pos, centroid);
+            notifyAssignModification(TimeKeyType_Move);
+            return;
+        }
+
+        cmnd::ScopedMacro macro(stack, CmndName::tr("update a move key"));
+        setAssignNotifier(
+            macro, TimeKeyType_Move, mKeyOwner.ownsMoveKey || appendKeys, false
+        );
+        mKeyOwner.pushOwningMoveKey(stack, timeLine, frame);
+        if (mSRTParam.necessarilyRotate) {
+            mKeyOwner.pushOwningRotateKey(stack, timeLine, frame);
+        }
+        if (mSRTParam.necessarilyScale) {
+            mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
+        }
+
+        for (int c = 0; c < 4; ++c) {
+            channels.key[c] = timeLine.channelKey(TimeKeyType_Move, c, frame);
+        }
+        mTrackMoveRef = nullptr;
+        if (channels.key[0] && channels.key[1] && channels.key[2] && channels.key[3]) {
+            mTrackMoveRef = new AssignMoveTrackCommand(channels, pos, centroid);
+            stack.push(mTrackMoveRef);
+        }
+    }
+
+    void MoveMode::assignTrackRotateKey(RotateKey::Data& aNewData) {
+        const int frame = mProject.animator().currentFrame().get();
+        TimeLine& timeLine = *mTarget.timeLine();
+        cmnd::Stack& stack = mProject.commandStack();
+        ChannelTrack* track = timeLine.channelTrack(TimeKeyType_Rotate, 0);
+        if (!track) {
+            return;
+        }
+
+        const bool appendKeys = (mSRTParam.necessarilyMove && mKeyOwner.ownsMoveKey) ||
+            (mSRTParam.necessarilyScale && mKeyOwner.ownsScaleKey);
+
+        if (mKeyOwner.rotateIsBaseValue) {
+            if (mTrackRotateBaseRef && stack.isModifiable(mTrackRotateBaseRef)) {
+                mTrackRotateBaseRef->modifyValue(aNewData.rotate());
+                notifyAssignModification(TimeKeyType_Rotate);
+            } else {
+                cmnd::ScopedMacro macro(stack, CmndName::tr("update a rotation key"));
+                setAssignNotifier(macro, TimeKeyType_Rotate, false, true);
+                mTrackRotateBaseRef = new AssignChannelBaseCommand(*track, aNewData.rotate());
+                stack.push(mTrackRotateBaseRef);
+            }
+            return;
+        }
+
+        if (!appendKeys && mTrackRotateRef && stack.isModifiable(mTrackRotateRef)
+            && timeLine.hasChannelKey(TimeKeyType_Rotate, 0, frame)) {
+            mTrackRotateRef->modifyValue(aNewData.rotate());
+            notifyAssignModification(TimeKeyType_Rotate);
+            return;
+        }
+
+        cmnd::ScopedMacro macro(stack, CmndName::tr("update a rotation key"));
+        setAssignNotifier(
+            macro, TimeKeyType_Rotate, mKeyOwner.ownsRotateKey || appendKeys, false
+        );
+        mKeyOwner.pushOwningRotateKey(stack, timeLine, frame);
+        if (mSRTParam.necessarilyMove) {
+            mKeyOwner.pushOwningMoveKey(stack, timeLine, frame);
+        }
+        if (mSRTParam.necessarilyScale) {
+            mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
+        }
+
+        mTrackRotateRef = nullptr;
+        if (ChannelKey* key = timeLine.channelKey(TimeKeyType_Rotate, 0, frame)) {
+            mTrackRotateRef = new AssignChannelValueCommand(*track, *key, aNewData.rotate());
+            stack.push(mTrackRotateRef);
         }
     }
 
     void MoveMode::assignScaleKey(ScaleKey::Data& aNewData) {
+        if (mKeyOwner.scaleIsTrack) {
+            assignTrackScaleKey(aNewData);
+            return;
+        }
+
         const int frame = mProject.animator().currentFrame().get();
         TimeLine& timeLine = *mTarget.timeLine();
         cmnd::Stack& stack = mProject.commandStack();
@@ -235,7 +467,9 @@ namespace ctrl::srt {
             notifyAssignModification(TimeKeyType_Scale);
         } else {
             cmnd::ScopedMacro macro(stack, CmndName::tr("update a scaling key"));
-            setAssignNotifier(macro, TimeKeyType_Scale, mKeyOwner.ownsScaleKey || appendKeys);
+            setAssignNotifier(
+                macro, TimeKeyType_Scale, mKeyOwner.ownsScaleKey || appendKeys, mKeyOwner.scaleIsBaseValue
+            );
             // push commands
             mKeyOwner.pushOwningScaleKey(stack, timeLine, frame);
 
@@ -246,8 +480,11 @@ namespace ctrl::srt {
                 mKeyOwner.pushOwningRotateKey(stack, timeLine, frame);
             }
 
-            mAssignScaleRef = new AssignScaleCommand(&(mKeyOwner.scaleKey->data()), aNewData);
-            stack.push(mAssignScaleRef);
+            mAssignScaleRef = nullptr;
+            if (mKeyOwner.scaleKey) {
+                mAssignScaleRef = new AssignScaleCommand(*mKeyOwner.scaleKey, timeLine, aNewData);
+                stack.push(mAssignScaleRef);
+            }
         }
     }
 

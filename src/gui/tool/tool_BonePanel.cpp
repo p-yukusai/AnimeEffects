@@ -14,10 +14,7 @@ namespace tool {
         mResources(aResources),
         mParam(),
         mTypeGroup(),
-        mPIRadius(),
-        mPIPressure(),
-        mEIRadius(),
-        mEIPressure() {
+        mBrush() {
         this->setTitle(tr("Bone editor"));
         mResources.onThemeChanged.connect(this, &BonePanel::onThemeUpdated);
         createMode();
@@ -27,8 +24,9 @@ namespace tool {
     void BonePanel::applyIcons() {
         mTypeGroup->setIcons(
             QVector<QIcon>() << mResources.icon("plus-bold") << mResources.icon("minus-bold") << mResources.icon("navigation-arrow")
-                             << mResources.icon("link") << mResources.icon("broadcast") << mResources.icon("paint-brush")
-                             << mResources.icon("eraser")
+                             << mResources.icon("link") << mResources.icon("envelope")
+                             << mResources.icon("paint-envelope") << mResources.icon("eraser")
+                             << mResources.icon("paint-brush")
         , QSize(18, 18));
     }
 
@@ -43,7 +41,8 @@ namespace tool {
         mTypeGroup->setChoice(mParam.mode);
         mTypeGroup->setToolTips(
             QStringList() << tr("Add bones") << tr("Remove bones") << tr("Move joints") << tr("Bind bone to node")
-                          << tr("Adjust influence") << tr("Paint influence") << tr("Erase influence")
+                          << tr("Adjust envelope") << tr("Grow envelope") << tr("Shrink envelope")
+                          << tr("Paint weights")
         );
         applyIcons();
 
@@ -53,56 +52,14 @@ namespace tool {
             this->onParamUpdated(true);
         });
 
-        static const int kScale = 100;
-
-        // paint influence radius
-        mPIRadius.reset(new SliderItem(tr("Radius"), this->palette(), this));
-        mPIRadius->setAttribute(util::Range(5, 1000), mParam.piRadius, 50);
-        mPIRadius->connectOnAny([=](int aValue) {
-            this->mParam.piRadius = aValue;
-            this->onParamUpdated(false);
-        });
-
-        // paint influence pressure
-        mPIPressure.reset(new SliderItem(tr("Pressure"), this->palette(), this));
-        mPIPressure->setAttribute(util::Range(0, kScale), static_cast<int>(mParam.piPressure * kScale), kScale / 10);
-        mPIPressure->connectOnAny([=](const int aValue) {
-            this->mParam.piPressure = static_cast<float>(aValue) / kScale;
-            this->onParamUpdated(true);
-        });
-        // erase influence radius
-        mEIRadius.reset(new SliderItem(tr("Radius"), this->palette(), this));
-        mEIRadius->setAttribute(util::Range(5, 1000), mParam.eiRadius, 50);
-        mEIRadius->connectOnAny([=](int aValue) {
-            this->mParam.eiRadius = aValue;
-            this->onParamUpdated(false);
-        });
-
-        // erase influence pressure
-        mEIPressure.reset(new SliderItem(tr("Pressure"), this->palette(), this));
-        mEIPressure->setAttribute(util::Range(0, kScale), mParam.eiPressure * kScale, kScale / 10);
-        mEIPressure->connectOnAny([=](int aValue) {
-            this->mParam.eiPressure = (float)aValue / kScale;
-            this->onParamUpdated(false);
-        });
+        mBrush.reset(new BrushPanel(this, mParam.brush));
+        mBrush->onParamUpdated.connect([=](bool aDirect) { this->onParamUpdated(aDirect); });
     }
 
     void BonePanel::updateTypeParam(ctrl::BoneEditMode aType) {
-        if (aType == ctrl::BoneEditMode_PaintInfl) {
-            mPIRadius->show();
-            mPIPressure->show();
-        } else {
-            mPIRadius->hide();
-            mPIPressure->hide();
-        }
-
-        if (aType == ctrl::BoneEditMode_EraseInfl) {
-            mEIRadius->show();
-            mEIPressure->show();
-        } else {
-            mEIRadius->hide();
-            mEIPressure->hide();
-        }
+        const bool influencing = (aType == ctrl::BoneEditMode_PaintInfl
+            || aType == ctrl::BoneEditMode_EraseInfl || aType == ctrl::BoneEditMode_PaintWeights);
+        mBrush->setVisible(influencing);
     }
 
     int BonePanel::updateGeometry(const QPoint& aPos, int aWidth) {
@@ -116,16 +73,10 @@ namespace tool {
         // type
         curPos.setY(mTypeGroup->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
 
-        if (mParam.mode == ctrl::BoneEditMode_PaintInfl) {
-            // radius
-            curPos.setY(mPIRadius->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-            // pressure
-            curPos.setY(mPIPressure->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-        } else if (mParam.mode == ctrl::BoneEditMode_EraseInfl) {
-            // radius
-            curPos.setY(mEIRadius->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
-            // pressure
-            curPos.setY(mEIPressure->updateGeometry(curPos, itemWidth) + curPos.y() + 5);
+        if (mParam.mode == ctrl::BoneEditMode_PaintInfl || mParam.mode == ctrl::BoneEditMode_EraseInfl
+            || mParam.mode == ctrl::BoneEditMode_PaintWeights) {
+            // the brush block answers an ABSOLUTE bottom edge, so a bare gap
+            curPos.setY(mBrush->updateGeometry(curPos, itemWidth) + 5);
         }
 
         // myself: card height = content extent + bottom padding (see ViewPanel)

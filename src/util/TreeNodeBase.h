@@ -33,9 +33,16 @@ public:
     SizeType size() const { return mListImpl.size(); }
 
     TreeNodeType*& front() { return mListImpl.front(); }
-    const TreeNodeType*& front() const { return mListImpl.front(); }
+    // A const tree still hands out a POINTER TO A MUTABLE NODE (the node's own
+    // contents are the document; only the CHILD LIST is const here), so the const
+    // overloads return `TreeNodeType* const&` - a const reference TO the pointer.
+    // They used to say `const TreeNodeType*&`, which cannot bind to what the
+    // container returns (`TreeNodeType* const&`); that is ill-formed and simply
+    // never instantiated until a const caller appeared (2026-10-26: the PSD
+    // import gate walked a const tree and the build stopped here).
+    TreeNodeType* const& front() const { return mListImpl.front(); }
     TreeNodeType*& back() { return mListImpl.back(); }
-    const TreeNodeType*& back() const { return mListImpl.back(); }
+    TreeNodeType* const& back() const { return mListImpl.back(); }
 
     Iterator at(int aIndex) {
         int index = 0;

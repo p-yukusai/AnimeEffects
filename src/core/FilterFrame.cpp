@@ -1,8 +1,12 @@
+#include <QVector4D>
+#include <QtMath>
 #include "gl/Global.h"
 #include "gl/Util.h"
 #include "gl/ExtendShader.h"
 #include "img/BlendMode.h"
 #include "core/FilterFrame.h"
+#include "core/ImageKey.h"
+#include "core/VirtualTexture.h"
 
 namespace {
 
@@ -64,6 +68,167 @@ static const char* kBlurFrag =
     "  }"
     "  oFragColor = uColor * (c / wsum);"
     "}";
+
+// WAVE DEFORM pass. Evaluates a two-wave field in the node's CONTENT space and
+// samples the composite at the displaced coordinate.
+//
+// Everything below is in content pixels: vDestCoord is a composite pixel, and
+// uScreenToLayer maps it to the layer's image pixels (or the folder's local
+// frame), so the wave is measured against the ARTWORK, not the screen - it stays
+// put while the camera zooms or the layer rotates. uLayerToScreen maps the
+// displaced coordinate back. Both are the exact matrices the layer was drawn
+// with, which is why the deformation cannot drift from the content.
+//
+// The two deform modes are the two things a wave can do to an image:
+//   * uWaveMode == 1 (Sway): displace ACROSS the travel direction by the field's
+//     height - cloth, hair, flags;
+//   * otherwise (Ripple): displace ALONG the field's gradient - water, ripples,
+//     heat haze, the refraction offset Wallpaper Engine's water effects use.
+// `crest` shapes the sine and its derivative together, so a sharp crest has a
+// sharp slope instead of a sharp displacement with a smooth slope.
+static const char* kWaveFrag =
+    "#version 330 \n"
+    "uniform sampler2D uTexture;"
+    "uniform vec2 uScreenSize;"
+    "uniform mat3 uLayerToScreen;"
+    "uniform mat3 uScreenToLayer;"
+    "uniform vec2 uClampMin;"
+    "uniform vec2 uClampMax;"
+    "uniform vec4 uWaveA;" // strength px, wavelength px, angle rad, phase cycles
+    "uniform vec4 uWaveB;" // mix 0..1, crest, dual angle rad, dual scale
+    "uniform vec2 uWaveC;" // speed cycles/s, document seconds
+    "uniform int uWaveMode;" // 0 ripple, 1 sway
+    "uniform sampler2D uAmountMask;"
+    "uniform vec4 uAmountMaskRect;" // content x, y, w, h
+    "uniform sampler2D uTimeMask;"
+    "uniform vec4 uTimeMaskRect;"
+    "uniform float uTimeMaskCycles;"
+    "in vec2 vDestCoord;"
+    "layout(location = 0, index = 0) out vec4 oFragColor;"
+    "const float kTau = 6.28318530717958647692;"
+    "float waveSin(float p, float e) {"
+    "  float s = sin(p);"
+    "  return sign(s) * pow(abs(s), e);"
+    "}"
+    "float maskAt(sampler2D aMask, vec4 aRect, vec2 q) {"
+    "  vec2 uv = (q - aRect.xy) / aRect.zw;"
+    "  if (uv.x < 0.0 || 1.0 < uv.x || uv.y < 0.0 || 1.0 < uv.y) return 0.0;"
+    "  return texture(aMask, uv).r;"
+    "}"
+    "float waveCos(float p, float e) {"
+    "  float s = sin(p);"
+    "  return e * pow(max(abs(s), 1.0e-3), e - 1.0) * cos(p);"
+    "}"
+    "void main() {"
+    "  vec2 q = (uScreenToLayer * vec3(vDestCoord, 1.0)).xy;"
+    "  float wavelength = max(uWaveA.y, 1.0e-3);"
+    "  float wavelength2 = max(wavelength * uWaveB.w, 1.0e-3);"
+    "  float phase = uWaveA.w + uWaveC.x * uWaveC.y;"
+    // the TIME OFFSET mask delays this pixel's phase; the AMOUNT mask scales how
+    // far it may move. Both are uniform branches, so an unmasked filter pays for
+    // neither the sample nor the arithmetic.
+    "  if (uTimeMaskCycles != 0.0) {"
+    "    phase += maskAt(uTimeMask, uTimeMaskRect, q) * uTimeMaskCycles;"
+    "  }"
+    "  float amountScale = 1.0;"
+    "  if (uAmountMaskRect.z > 0.0) {"
+    "    amountScale = maskAt(uAmountMask, uAmountMaskRect, q);"
+    "  }"
+    "  vec2 dir1 = vec2(cos(uWaveA.z), sin(uWaveA.z));"
+    "  vec2 dir2 = vec2(cos(uWaveA.z + uWaveB.z), sin(uWaveA.z + uWaveB.z));"
+    // The second wave crosses the first and drifts at its own rate; the quarter
+    // cycle offset keeps the pair from collapsing into one sine.
+    "  float phase1 = kTau * (dot(q, dir1) / wavelength - phase);"
+    "  float phase2 = kTau * (dot(q, dir2) / wavelength2 - phase * 1.37 + 0.25);"
+    "  float amount2 = uWaveB.x;"
+    "  float crest = uWaveB.y;"
+    "  float weight = 1.0 / (1.0 + amount2);"
+    "  vec2 offset;"
+    "  if (uWaveMode == 1) {"
+    "    vec2 across1 = vec2(-dir1.y, dir1.x);"
+    "    float height = waveSin(phase1, crest) + amount2 * waveSin(phase2, crest);"
+    "    offset = (uWaveA.x * weight * amountScale) * height * across1;"
+    "  } else {"
+    "    vec2 gradient = waveCos(phase1, crest) * dir1"
+    "      + amount2 * waveCos(phase2, crest) * dir2 * (wavelength / wavelength2);"
+    "    offset = (uWaveA.x * weight * amountScale) * gradient;"
+    "  }"
+    "  vec2 samplePos = q + offset;"
+    // The clamp protects a pixel that IS content: a displaced sample there may not
+    // leave the content rectangle, so the edge texels are stretched instead of a
+    // hole opening (this is an image effect's texture clamp). It must NOT be
+    // applied to every pixel of the composite: a layer covers a part of the
+    // screen, and clamping the pixels outside its rectangle would smear its edge
+    // texel over the whole viewport. Those pixels sample q + offset untouched.
+    // The inside test carries half a content texel of slack: a content pixel's q
+    // is a texel CENTRE (k + 0.5) recovered through a float matrix, so an exact
+    // comparison against the box's own 0.5-inset edge can miss by one ULP - and a
+    // missed clamp is a tear, which is exactly what the box exists to prevent.
+    // The slack also covers the half-texel band that belongs to the last content
+    // texel but lies outside the inset box.
+    "  const float kContentEdgeSlack = 0.5;"
+    "  if (uClampMax.x > uClampMin.x && uClampMax.y > uClampMin.y"
+    "      && all(greaterThanEqual(q, uClampMin - vec2(kContentEdgeSlack)))"
+    "      && all(lessThanEqual(q, uClampMax + vec2(kContentEdgeSlack)))) {"
+    "    samplePos = clamp(samplePos, uClampMin, uClampMax);"
+    "  }"
+    "  vec2 pixel = (uLayerToScreen * vec3(samplePos, 1.0)).xy;"
+    "  vec2 uv = clamp(pixel / uScreenSize, vec2(0.0), vec2(1.0));"
+    "  oFragColor = texture(uTexture, uv);"
+    "}";
+// MASKED BLUR MIX: `mix(sharp, blurred, mask)`, premultiplied in and out. The mask is
+// sampled in the node's content space, exactly like the wave pass and the HSV amount
+// mask, so one painted field means the same thing to every filter.
+static const char* kMixFrag =
+    "#version 330 \n"
+    "uniform sampler2D uTexture;"      // sharp
+    "uniform sampler2D uSecondTexture;" // blurred
+    "uniform sampler2D uMixMask;"
+    "uniform vec4 uMixMaskRect;"
+    "uniform mat3 uScreenToLayer;"
+    "in vec2 vDestCoord;"
+    "layout(location = 0, index = 0) out vec4 oFragColor;"
+    "void main() {"
+    "  vec4 sharp = texture(uTexture, vDestCoord / vec2(textureSize(uTexture, 0)));"
+    "  vec4 blurred = texture(uSecondTexture, vDestCoord / vec2(textureSize(uSecondTexture, 0)));"
+    "  vec2 q = (uScreenToLayer * vec3(vDestCoord, 1.0)).xy;"
+    "  vec2 uv = (q - uMixMaskRect.xy) / uMixMaskRect.zw;"
+    "  float amount = (uv.x < 0.0 || 1.0 < uv.x || uv.y < 0.0 || 1.0 < uv.y) ? 1.0 : texture(uMixMask, uv).r;"
+    // the field says how much of the BLUR applies: 1 = fully blurred, 0 = sharp
+    "  oFragColor = mix(sharp, blurred, amount);"
+    "}";
+
+// MASK PREVIEW: adds the tint where the field DEVIATES from its neutral value, so a
+// fresh (neutral) field tints nothing and a painted area reads at a glance. The
+// content is premultiplied, and the tint adds colour without touching alpha, so it
+// lands inside the artwork only.
+static const char* kTintFrag =
+    "#version 330 \n"
+    "uniform sampler2D uTexture;"
+    "uniform sampler2D uTintMask;"
+    "uniform vec4 uTintMaskRect;"
+    "uniform vec4 uTintColor;"   // rgb + strength
+    "uniform float uTintNeutral;"
+    "uniform mat3 uScreenToLayer;"
+    "in vec2 vDestCoord;"
+    "layout(location = 0, index = 0) out vec4 oFragColor;"
+    "void main() {"
+    "  vec4 color = texture(uTexture, vDestCoord / vec2(textureSize(uTexture, 0)));"
+    "  vec2 q = (uScreenToLayer * vec3(vDestCoord, 1.0)).xy;"
+    "  vec2 uv = (q - uTintMaskRect.xy) / uTintMaskRect.zw;"
+    "  if (0.0 <= uv.x && uv.x <= 1.0 && 0.0 <= uv.y && uv.y <= 1.0) {"
+    "    float value = texture(uTintMask, uv).r;"
+    "    float deviation = abs(value - uTintNeutral);"
+    "    color.rgb += uTintColor.rgb * (deviation * uTintColor.a);"
+    "  }"
+    "  oFragColor = color;"
+    "}";
+
+// THE NODE'S OWN MATTE, applied to a FOLDER's isolated composite, lives in
+// assets/shaders/LayerMaskFrag.glsl: it includes LayerSampling.glsl and reads the
+// field through sampleMask, because a folder matte and a layer matte must be one
+// filter (and because a pageable matte has no full chain to read).
+
 } // namespace
 
 namespace core {
@@ -268,6 +433,179 @@ GLuint FilterFrame::blurApply(
     return texture(aCompositeSlot);
 }
 
+GLuint FilterFrame::blurTexture(
+    int aTargetSlot, GLuint aSrcTexture, const QVector2D& aDirX, float aRadiusX,
+    const QVector2D& aDirY, float aRadiusY
+) {
+    if (blurLadderLevel(aRadiusX, aRadiusY, mSize) > 0)
+        return blurApply(aTargetSlot, aDirX, aRadiusX, aDirY, aRadiusY);
+
+    // Direct two-pass path, rewritten against an explicit target slot so callers
+    // can chain filters through scratch slots.
+    BlurParams h;
+    h.direction = QVector2D(aDirX.x(), -aDirX.y());
+    h.radiusTexels = aRadiusX;
+    BlurParams v;
+    v.direction = QVector2D(aDirY.x(), -aDirY.y());
+    v.radiusTexels = aRadiusY;
+
+    ScopedSlot hSlot(*this);
+    bind(hSlot.slot());
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(aSrcTexture, Kind_Blur, QList<int>(), h, 1.0f);
+
+    bind(aTargetSlot);
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(hSlot.texture(), Kind_Blur, QList<int>(), v, 1.0f);
+    return texture(aTargetSlot);
+}
+
+GLuint FilterFrame::waveTexture(int aTargetSlot, GLuint aSrcTexture, const WavePassParams& aWave) {
+    bind(aTargetSlot);
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(
+        aSrcTexture, Kind_Wave, QList<int>(), BlurParams(), 1.0f, false, QSizeF(), QSizeF(), false,
+        img::BlendMode_Normal, 0, &aWave
+    );
+    return texture(aTargetSlot);
+}
+
+GLuint FilterFrame::hsvTexture(
+    int aTargetSlot, GLuint aSrcTexture, const QList<int>& aHSV, const MaskInput& aMask,
+    const QMatrix4x4& aScreenToLayer
+) {
+    bind(aTargetSlot);
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(
+        aSrcTexture, Kind_HSV, aHSV, BlurParams(), 1.0f, true, QSizeF(), QSizeF(), false, img::BlendMode_Normal, 0,
+        nullptr, aMask.isValid() ? &aMask : nullptr, aScreenToLayer
+    );
+    return texture(aTargetSlot);
+}
+
+// defined next to createShaders(); this pass needs it earlier
+static void fBuildLayerDrawingVariant(
+    gl::EasyShaderProgram& aShader, const QString& aBlendFunc, int aIsClippee, int aUseHSV, int aPremultiplied,
+    int aNonSeparable, int aPremultipliedSrc, int aUseHsvMask
+);
+
+GLuint FilterFrame::copyTexture(int aTargetSlot, GLuint aSrcTexture) {
+    bind(aTargetSlot);
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(
+        aSrcTexture, Kind_Resample, QList<int>(), BlurParams(), 1.0f, false, QSizeF(), QSizeF(), false,
+        img::BlendMode_Normal, 0
+    );
+    return texture(aTargetSlot);
+}
+
+GLuint FilterFrame::tintTexture(
+    int aTargetSlot, GLuint aSrcTexture, const MaskInput& aMask, const QMatrix4x4& aScreenToLayer,
+    const QColor& aColor
+) {
+    bind(aTargetSlot);
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(
+        aSrcTexture, Kind_Tint, QList<int>(), BlurParams(), 1.0f, false, QSizeF(), QSizeF(), false,
+        img::BlendMode_Normal, 0, nullptr, nullptr, aScreenToLayer, 0, nullptr, &aMask, aColor
+    );
+    return texture(aTargetSlot);
+}
+
+GLuint FilterFrame::maskTexture(
+    int aTargetSlot, GLuint aSrcTexture, GLuint aMaskTexture, const QRectF& aMaskRect,
+    const QMatrix4x4& aScreenToLayer
+) {
+    MaskInput mask;
+    mask.texture = aMaskTexture;
+    mask.rect = aMaskRect;
+    mask.neutral = 1.0f;
+    return maskTexture(aTargetSlot, aSrcTexture, mask, aScreenToLayer);
+}
+
+GLuint FilterFrame::maskTexture(
+    int aTargetSlot, GLuint aSrcTexture, const MaskInput& aMask, const QMatrix4x4& aScreenToLayer
+) {
+    bind(aTargetSlot);
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(
+        aSrcTexture, Kind_LayerMask, QList<int>(), BlurParams(), 1.0f, false, QSizeF(), QSizeF(), false,
+        img::BlendMode_Normal, 0, nullptr, nullptr, aScreenToLayer, 0, nullptr, nullptr, QColor(), &aMask
+    );
+    return texture(aTargetSlot);
+}
+
+GLuint FilterFrame::maskOverlayTexture(
+    int aTargetSlot, GLuint aSrcTexture, GLuint aMaskTexture, const QRectF& aMaskRect,
+    const QMatrix4x4& aScreenToLayer, const QColor& aOverlayColor
+) {
+    MaskInput mask;
+    mask.texture = aMaskTexture;
+    mask.rect = aMaskRect;
+    return maskOverlayTexture(aTargetSlot, aSrcTexture, mask, aScreenToLayer, aOverlayColor);
+}
+
+GLuint FilterFrame::maskOverlayTexture(
+    int aTargetSlot, GLuint aSrcTexture, const MaskInput& aMask, const QMatrix4x4& aScreenToLayer,
+    const QColor& aOverlayColor
+) {
+    bind(aTargetSlot);
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(
+        aSrcTexture, Kind_MaskOverlay, QList<int>(), BlurParams(), 1.0f, false, QSizeF(), QSizeF(), false,
+        img::BlendMode_Normal, 0, nullptr, nullptr, aScreenToLayer, 0, nullptr, nullptr, aOverlayColor, &aMask
+    );
+    return texture(aTargetSlot);
+}
+
+GLuint FilterFrame::mixTexture(
+    int aTargetSlot, GLuint aSharpTexture, GLuint aBlurredTexture, const MaskInput& aMask,
+    const QMatrix4x4& aScreenToLayer
+) {
+    bind(aTargetSlot);
+    gl::Util::setViewportAsActualPixels(size());
+    gl::Util::resetRenderState();
+    gl::Global::functions().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl::Global::functions().glClear(GL_COLOR_BUFFER_BIT);
+    drawQuad(
+        aSharpTexture, Kind_Mix, QList<int>(), BlurParams(), 1.0f, false, QSizeF(), QSizeF(), false,
+        img::BlendMode_Normal, 0, nullptr, nullptr, aScreenToLayer, aBlurredTexture, &aMask
+    );
+    return texture(aTargetSlot);
+}
+
+gl::EasyShaderProgram& FilterFrame::hsvMaskShader() {
+    if (!mHsvMaskShader) {
+        mHsvMaskShader.reset(new gl::EasyShaderProgram());
+        fBuildLayerDrawingVariant(*mHsvMaskShader.data(), QString("BlendNormal"), 0, 1, 1, 0, 0, 1);
+    }
+    return *mHsvMaskShader;
+}
+
 void FilterFrame::createQuadBuffers() {
     static const GLuint kIndices[4] = {0, 1, 3, 2};
     mIndices.resetData(4, GL_STATIC_DRAW, kIndices);
@@ -275,13 +613,13 @@ void FilterFrame::createQuadBuffers() {
 
 static void fBuildLayerDrawingVariant(
     gl::EasyShaderProgram& aShader, const QString& aBlendFunc, int aIsClippee, int aUseHSV, int aPremultiplied,
-    int aNonSeparable, int aPremultipliedSrc
+    int aNonSeparable, int aPremultipliedSrc, int aUseHsvMask = 0
 ) {
     gl::ExtendShader source;
-    if (!source.openFromFileVert("./data/shader/LayerDrawingVert.glsl")) {
+    if (!source.openFromFileVert(":/shaders/LayerDrawingVert.glsl")) {
         XC_FATAL_ERROR("FileIO Error", "Failed to open vertex shader file.", source.log());
     }
-    if (!source.openFromFileFrag("./data/shader/LayerDrawingFrag.glsl")) {
+    if (!source.openFromFileFrag(":/shaders/LayerDrawingFrag.glsl")) {
         XC_FATAL_ERROR("FileIO Error", "Failed to open fragment shader file.", source.log());
     }
     source.setVariationValue("BLEND_FUNC", aBlendFunc);
@@ -289,6 +627,7 @@ static void fBuildLayerDrawingVariant(
     source.setVariationValue("BLEND_PREMULTIPLIED_SRC", aPremultipliedSrc ? "1" : "0");
     source.setVariationValue("IS_CLIPPEE", aIsClippee ? "1" : "0");
     source.setVariationValue("USE_HSV", aUseHSV ? "1" : "0");
+    source.setVariationValue("USE_HSV_MASK", aUseHsvMask ? "1" : "0");
     source.setVariationValue("PREMULTIPLIED_INPUT", aPremultiplied ? "1" : "0");
     if (!source.resolveVariation()) {
         XC_FATAL_ERROR("OpenGL Error", "Failed to resolve shader variation.", source.log());
@@ -299,6 +638,56 @@ static void fBuildLayerDrawingVariant(
     if (!aShader.link()) {
         XC_FATAL_ERROR("OpenGL Error", "Failed to link shader.", aShader.log());
     }
+}
+
+namespace {
+
+// One fullscreen fragment pass from a shader FILE, with one variation switched on or off.
+// The file is expanded (LayerSampling.glsl's #include) and varied before compilation, which is
+// what lets the mask passes share one source between their full-texture and paged variants.
+void fBuildFullscreenFileVariant(
+    gl::EasyShaderProgram& aShader, const char* aFragFile, const char* aVariation, bool aValue,
+    const char* aWhat
+) {
+    gl::ExtendShader source;
+    source.openFromTextVert(QString(kFullscreenVert));
+    if (!source.openFromFileFrag(aFragFile)) {
+        XC_FATAL_ERROR("FileIO Error", QString("Failed to open %1.").arg(aWhat), source.log());
+    }
+    source.setVariationValue(aVariation, aValue ? "1" : "0");
+    if (!source.resolveVariation()) {
+        XC_FATAL_ERROR("OpenGL Error", QString("Failed to resolve %1.").arg(aWhat), source.log());
+    }
+    if (!aShader.setAllSource(source)) {
+        XC_FATAL_ERROR("OpenGL Error", QString("Failed to compile %1.").arg(aWhat), aShader.log());
+    }
+    if (!aShader.link()) {
+        XC_FATAL_ERROR("OpenGL Error", QString("Failed to link %1.").arg(aWhat), aShader.log());
+    }
+}
+
+} // namespace
+
+gl::EasyShaderProgram& FilterFrame::maskOverlayShader() {
+    if (!mMaskOverlayPaged) {
+        auto shader = std::make_unique<gl::EasyShaderProgram>();
+        fBuildFullscreenFileVariant(
+            *shader, ":/shaders/MaskOverlayFrag.glsl", "MASK_VIRTUAL_TEXTURE", true, "mask overlay shader"
+        );
+        mMaskOverlayPaged.reset(shader.release());
+    }
+    return *mMaskOverlayPaged;
+}
+
+gl::EasyShaderProgram& FilterFrame::layerMaskPagedShader() {
+    if (!mLayerMaskPaged) {
+        auto shader = std::make_unique<gl::EasyShaderProgram>();
+        fBuildFullscreenFileVariant(
+            *shader, ":/shaders/LayerMaskFrag.glsl", "MASK_VIRTUAL_TEXTURE", true, "paged layer mask shader"
+        );
+        mLayerMaskPaged.reset(shader.release());
+    }
+    return *mLayerMaskPaged;
 }
 
 void FilterFrame::createShaders() {
@@ -316,6 +705,23 @@ void FilterFrame::createShaders() {
     };
     build(Kind_Blur, kFullscreenVert, kBlurFrag);
     build(Kind_Resample, kFullscreenVert, kResampleFrag);
+    build(Kind_Wave, kFullscreenVert, kWaveFrag);
+    build(Kind_Mix, kFullscreenVert, kMixFrag);
+    build(Kind_Tint, kFullscreenVert, kTintFrag);
+
+    // THE FOLDER MATTE'S FULL-TEXTURE VARIANT, from the same file as the paged one
+    // (layerMaskPagedShader): both read the field through sampleMask, so paging is a
+    // residency change and not a filter change.
+    fBuildFullscreenFileVariant(
+        mPassShaders[Kind_LayerMask], ":/shaders/LayerMaskFrag.glsl", "MASK_VIRTUAL_TEXTURE", false,
+        "layer mask shader"
+    );
+
+    // THE RUBYLITH'S FULL-TEXTURE VARIANT, from the same file as the paged one (maskOverlayShader)
+    fBuildFullscreenFileVariant(
+        mPassShaders[Kind_MaskOverlay], ":/shaders/MaskOverlayFrag.glsl", "MASK_VIRTUAL_TEXTURE", false,
+        "mask overlay shader"
+    );
 
     // HSV pass: shared layer fragment shader with variations
     fBuildLayerDrawingVariant(mPassShaders[Kind_HSV], QString("BlendNormal"), 0, 1, 1, 0, 0);
@@ -352,7 +758,9 @@ gl::EasyShaderProgram& FilterFrame::presentHSVShader(img::BlendMode aMode) {
 void FilterFrame::drawQuad(
     GLuint aSrcTexture, Kind aKind, const QList<int>& aHSV, const BlurParams& aBlur, float aOpacity,
     bool aNeedHSV, const QSizeF& aTargetSize, const QSizeF& aSrcSize, bool aFlipY, img::BlendMode aPresentBlend,
-    GLuint aPresentDest
+    GLuint aPresentDest, const WavePassParams* aWave, const MaskInput* aHsvMask, const QMatrix4x4& aScreenToLayer,
+    GLuint aSecondTexture, const MaskInput* aMixMask, const MaskInput* aTintMask, const QColor& aTintColor,
+    const MaskInput* aLayerMask
 ) {
     if (mSize.isEmpty())
         return;
@@ -413,10 +821,19 @@ void FilterFrame::drawQuad(
     // A folder with BOTH its own HSV and a non-Normal blend mode needs the combined
     // USE_HSV + per-mode blend variant (the plain HSV pass is fixed to BlendNormal).
     gl::EasyShaderProgram* shader;
-    if (aKind == Kind_HSV && !aNeedHSV) {
+    if (aKind == Kind_HSV && aHsvMask) {
+        // the per-pixel HSV adjustment; the mask's texture goes to unit 3 so the
+        // present pass's unit 1 (the scene) is untouched
+        shader = &hsvMaskShader();
+    } else if (aKind == Kind_HSV && !aNeedHSV) {
         shader = &presentShader(aPresentBlend);
     } else if (aKind == Kind_HSV && aNeedHSV && aPresentBlend != img::BlendMode_Normal) {
         shader = &presentHSVShader(aPresentBlend);
+    } else if (aKind == Kind_MaskOverlay && aLayerMask && aLayerMask->paged) {
+        shader = &maskOverlayShader();
+    } else if (aKind == Kind_LayerMask && aLayerMask && aLayerMask->paged) {
+        // a pageable matte has no full chain: its field comes from the mask's page stack
+        shader = &layerMaskPagedShader();
     } else {
         shader = &mPassShaders[aKind];
     }
@@ -435,6 +852,20 @@ void FilterFrame::drawQuad(
         QMatrix4x4 ident;
         shader->setUniformValue("uViewMatrix", ident);
         shader->setUniformValue("uDestTexture", 1);
+        if (aHsvMask) {
+            ggl.glActiveTexture(GL_TEXTURE3);
+            ggl.glBindTexture(GL_TEXTURE_2D, aHsvMask->texture);
+            ggl.glActiveTexture(GL_TEXTURE0);
+            shader->setUniformValue("uHsvMask", 3);
+            shader->setUniformValue(
+                "uHsvMaskRect",
+                QVector4D(
+                    float(aHsvMask->rect.x()), float(aHsvMask->rect.y()), float(aHsvMask->rect.width()),
+                    float(aHsvMask->rect.height())
+                )
+            );
+            shader->setUniformValue("uScreenToLayer", waveAffine3(aScreenToLayer));
+        }
         if (aNeedHSV) {
             // per-pass HSV (folder presentation of its own key)
             shader->setUniformValue("setColor", bool(aHSV.size() > 3 ? aHSV[3] : 0));
@@ -446,6 +877,138 @@ void FilterFrame::drawQuad(
         shader->setUniformValue("uTexelSize", QVector2D(1.0f / target.width(), 1.0f / target.height()));
         shader->setUniformValue("uBlurDirection", aBlur.direction);
         shader->setUniformValue("uBlurRadius", aBlur.radiusTexels);
+    } else if (aKind == Kind_Mix) {
+        // ONE branch: the bindings AND the uniforms (an earlier version split them,
+        // and the second half sat in a dead `else if`, so the mix sampled the sharp
+        // texture twice and every masked blur looked like "no blur anywhere")
+        XC_PTR_ASSERT(aMixMask);
+        ggl.glActiveTexture(GL_TEXTURE1);
+        ggl.glBindTexture(GL_TEXTURE_2D, aSecondTexture);
+        ggl.glActiveTexture(GL_TEXTURE2);
+        ggl.glBindTexture(GL_TEXTURE_2D, aMixMask->texture);
+        ggl.glActiveTexture(GL_TEXTURE0);
+        shader->setUniformValue("uSecondTexture", 1);
+        shader->setUniformValue("uMixMask", 2);
+        shader->setUniformValue(
+            "uMixMaskRect",
+            QVector4D(
+                float(aMixMask->rect.x()), float(aMixMask->rect.y()), float(aMixMask->rect.width()),
+                float(aMixMask->rect.height())
+            )
+        );
+        shader->setUniformValue("uScreenToLayer", waveAffine3(aScreenToLayer));
+    } else if (aKind == Kind_Tint) {
+        // the tint's field is the SAME channel every filter mask uses; `maskPreviewColor`
+        // carries the tint
+        XC_PTR_ASSERT(aTintMask);
+        ggl.glActiveTexture(GL_TEXTURE1);
+        ggl.glBindTexture(GL_TEXTURE_2D, aTintMask->texture);
+        ggl.glActiveTexture(GL_TEXTURE0);
+        shader->setUniformValue("uTintMask", 1);
+        shader->setUniformValue(
+            "uTintMaskRect",
+            QVector4D(
+                float(aTintMask->rect.x()), float(aTintMask->rect.y()), float(aTintMask->rect.width()),
+                float(aTintMask->rect.height())
+            )
+        );
+        shader->setUniformValue("uScreenToLayer", waveAffine3(aScreenToLayer));
+        shader->setUniformValue(
+            "uTintColor", QVector4D(aTintColor.redF(), aTintColor.greenF(), aTintColor.blueF(), aTintColor.alphaF())
+        );
+        shader->setUniformValue("uTintNeutral", aTintMask->neutral);
+    } else if (aKind == Kind_MaskOverlay) {
+        XC_PTR_ASSERT(aLayerMask);
+        // the TWO variants read different sources, and their uniforms differ accordingly
+        if (aLayerMask->paged) {
+            aLayerMask->paged->bindMask(*shader);
+        } else {
+            ggl.glActiveTexture(GL_TEXTURE1);
+            ggl.glBindTexture(GL_TEXTURE_2D, aLayerMask->texture);
+            ggl.glActiveTexture(GL_TEXTURE0);
+            shader->setUniformValue("uLayerMask", 1);
+        }
+        shader->setUniformValue("uLayerLodBias", core::ImageKey::layerLodBias());
+        shader->setUniformValue(
+            "uLayerMaskRect",
+            QVector4D(
+                float(aLayerMask->rect.x()), float(aLayerMask->rect.y()), float(aLayerMask->rect.width()),
+                float(aLayerMask->rect.height())
+            )
+        );
+        shader->setUniformValue("uScreenToLayer", waveAffine3(aScreenToLayer));
+        shader->setUniformValue(
+            "uOverlayColor", QVector4D(aTintColor.redF(), aTintColor.greenF(), aTintColor.blueF(), aTintColor.alphaF())
+        );
+    } else if (aKind == Kind_LayerMask) {
+        XC_PTR_ASSERT(aLayerMask);
+        if (aLayerMask->paged) {
+            aLayerMask->paged->bindMask(*shader);
+        } else {
+            ggl.glActiveTexture(GL_TEXTURE1);
+            ggl.glBindTexture(GL_TEXTURE_2D, aLayerMask->texture);
+            ggl.glActiveTexture(GL_TEXTURE0);
+            shader->setUniformValue("uLayerMask", 1);
+        }
+        // the reconstruction is LayerSampling.glsl's, so the pass states the same LOD bias a
+        // layer mask does - otherwise the two mattes would pick different levels at the same zoom
+        shader->setUniformValue("uLayerLodBias", core::ImageKey::layerLodBias());
+        shader->setUniformValue(
+            "uLayerMaskRect",
+            QVector4D(
+                float(aLayerMask->rect.x()), float(aLayerMask->rect.y()), float(aLayerMask->rect.width()),
+                float(aLayerMask->rect.height())
+            )
+        );
+        shader->setUniformValue("uScreenToLayer", waveAffine3(aScreenToLayer));
+    } else if (aKind == Kind_Wave) {
+        XC_PTR_ASSERT(aWave);
+        const WavePassParams& wave = *aWave;
+        // The masks are separate textures: unit 0 is the composite. An absent mask
+        // is not bound and its rect is empty, which is the shader's own "do not
+        // sample" switch.
+        if (aWave->amountMask) {
+            ggl.glActiveTexture(GL_TEXTURE1);
+            ggl.glBindTexture(GL_TEXTURE_2D, aWave->amountMask);
+        }
+        if (aWave->timeMask) {
+            ggl.glActiveTexture(GL_TEXTURE2);
+            ggl.glBindTexture(GL_TEXTURE_2D, aWave->timeMask);
+        }
+        ggl.glActiveTexture(GL_TEXTURE0);
+        shader->setUniformValue("uLayerToScreen", waveAffine3(wave.layerToScreen));
+        shader->setUniformValue("uScreenToLayer", waveAffine3(wave.screenToLayer));
+        shader->setUniformValue("uClampMin", wave.clampMin);
+        shader->setUniformValue("uClampMax", wave.clampMax);
+        shader->setUniformValue(
+            "uWaveA",
+            QVector4D(
+                wave.strength, wave.wavelength, qDegreesToRadians(wave.angleDeg), wave.phase
+            )
+        );
+        shader->setUniformValue(
+            "uWaveB",
+            QVector4D(wave.mix, wave.crest, qDegreesToRadians(wave.dualAngleDeg), wave.dualScale)
+        );
+        shader->setUniformValue("uWaveC", QVector2D(wave.speed, wave.seconds));
+        shader->setUniformValue("uWaveMode", wave.deform == WaveKey::Deform_Sway ? 1 : 0);
+        shader->setUniformValue("uAmountMask", 1);
+        shader->setUniformValue(
+            "uAmountMaskRect",
+            wave.amountMask ? QVector4D(
+                float(wave.amountMaskRect.x()), float(wave.amountMaskRect.y()),
+                float(wave.amountMaskRect.width()), float(wave.amountMaskRect.height())
+            ) : QVector4D(0.0f, 0.0f, 0.0f, 0.0f)
+        );
+        shader->setUniformValue("uTimeMask", 2);
+        shader->setUniformValue(
+            "uTimeMaskRect",
+            wave.timeMask ? QVector4D(
+                float(wave.timeMaskRect.x()), float(wave.timeMaskRect.y()),
+                float(wave.timeMaskRect.width()), float(wave.timeMaskRect.height())
+            ) : QVector4D(0.0f, 0.0f, 0.0f, 0.0f)
+        );
+        shader->setUniformValue("uTimeMaskCycles", wave.timeMask ? wave.timeMaskCycles : 0.0f);
     }
 
     gl::Util::drawElements(GL_TRIANGLE_STRIP, GL_UNSIGNED_INT, mIndices);

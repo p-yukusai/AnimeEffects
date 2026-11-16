@@ -15,6 +15,9 @@ namespace ffd {
         virtual void updateParam(const FFDParam&) {}
         virtual bool updateCursor(const core::CameraInfo&, const core::AbstractCursor&) = 0;
         virtual void renderQt(const core::RenderInfo&, QPainter&) = 0;
+        // one batch per painted frame (see IEditor::flushPendingWork)
+        virtual void flushPendingWork() {}
+
     };
 
 } // namespace ffd

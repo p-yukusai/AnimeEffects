@@ -122,7 +122,12 @@ void Deserializer::read(Frame& aValue) {
 bool Deserializer::read(util::Easing::Param& aValue, bool errorCorrection) {
     // Future: This will bite me in the ass later...
     bool postBezier = mVersion >= QVersionNumber(0, 8);
-    aValue.type = (util::Easing::Type)mIn.readSInt32();
+    // One handle-link flag landed in 0.13, appended after the bezier; 0.15
+    // replaced it with the two per-side modes (handleOut then handleIn).
+    const bool postAligned = mVersion >= QVersionNumber(0, 13);
+    const bool postHandleModes = mVersion >= QVersionNumber(0, 15);
+    const int rawType = mIn.readSInt32();
+    aValue.type = static_cast<util::Easing::Type>(rawType);
     aValue.range = (util::Easing::Range)mIn.readSInt32();
     aValue.weight = mIn.readFloat32();
     if (postBezier) {
@@ -133,6 +138,37 @@ bool Deserializer::read(util::Easing::Param& aValue, bool errorCorrection) {
     } else {
         aValue.cubicBezier = util::Easing::CubicBezier();
     }
+    if (postHandleModes) {
+        int handleOut = 0;
+        int handleIn = 0;
+        read(handleOut);
+        read(handleIn);
+        aValue.handleOut = static_cast<util::Easing::HandleMode>(handleOut);
+        aValue.handleIn = static_cast<util::Easing::HandleMode>(handleIn);
+    } else if (postAligned) {
+        // The single link flag: LINKED was two collinear sides, FREE was two
+        // sides a drag moved independently.
+        bool linked = false;
+        read(linked);
+        aValue.handleOut = linked ? util::Easing::HandleMode_Aligned : util::Easing::HandleMode_Free;
+        aValue.handleIn = aValue.handleOut;
+    } else {
+        aValue.handleOut = util::Easing::HandleMode_Free;
+        aValue.handleIn = util::Easing::HandleMode_Free;
+    }
+    // THE RETIRED TYPE. Id 14 was Type_Auto, which had no stored handles: its
+    // pair was derived from the neighbours and ALWAYS CLAMPED into the value
+    // range (the old autoHandles clamped unconditionally). It becomes Type_Custom
+    // with both sides on kDefaultAutomaticHandleMode - auto CLAMPED - so a legacy curve
+    // keeps the shape it played; unclamped Auto would change it and can overshoot.
+    // The test is only for pre-0.15 files: at 0.15 the value is Type_TERM and
+    // isValidParam() rejects it rather than silently accepting a file that should
+    // never have written it.
+    if (!postHandleModes && rawType == 14) {
+        aValue.type = util::Easing::Type_Custom;
+        aValue.handleOut = util::Easing::kDefaultAutomaticHandleMode;
+        aValue.handleIn = util::Easing::kDefaultAutomaticHandleMode;
+    }
     if (!aValue.isValidParam() && errorCorrection) {
         aValue = util::Easing::Param();
         qDebug("Correcting bytes.");
@@ -140,6 +176,25 @@ bool Deserializer::read(util::Easing::Param& aValue, bool errorCorrection) {
         return true;
     }
     return aValue.isValidParam();
+}
+
+bool Deserializer::readEasings(util::Easing::Param* aValue, int aCount, bool errorCorrection) {
+    // Per-component easing landed in 0.14. Before it, a key wrote exactly ONE
+    // param shared by every component it drove: reading that one and copying it
+    // to all of them is lossless (they were the same value by construction).
+    const bool perComponent = mVersion >= QVersionNumber(0, 14);
+    const int writeCount = perComponent ? aCount : 1;
+    for (int i = 0; i < writeCount; ++i) {
+        if (!read(aValue[i], errorCorrection)) {
+            return false;
+        }
+    }
+    if (!perComponent) {
+        for (int i = 1; i < aCount; ++i) {
+            aValue[i] = aValue[0];
+        }
+    }
+    return true;
 }
 
 void Deserializer::read(QPolygonF& aValue) {
@@ -262,6 +317,23 @@ void Deserializer::readGL(gl::Vector3* aArray, int aCount) {
     }
 }
 
+bool Deserializer::skipBytes(size_t aBytes) {
+    if (aBytes > getRestSize())
+        return false;
+
+    // StreamReader::skip takes an int; a run can be larger than one chunk even
+    // when it is inside the file, so consume it in chunks.
+    while (aBytes > 0) {
+        const size_t chunk = aBytes < (size_t)std::numeric_limits<int>::max()
+            ? aBytes : (size_t)std::numeric_limits<int>::max();
+        mIn.skip((int)chunk);
+        if (mIn.isFailed())
+            return false;
+        aBytes -= chunk;
+    }
+    return true;
+}
+
 bool Deserializer::bindIDData(void* aData) {
     const int id = mIn.readSInt32();
     if (id >= 0)
@@ -341,8 +413,15 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
         for (int i = 0; i < 4; ++i) {
             // line length
             const size_t linelen = (size_t)mIn.readUInt32();
+            // One line of w pixels can not be described by more encoded bytes
+            // than the whole line's worth the buffer holds; without this a
+            // damaged length writes past `src`.
+            if (srcSize < linelen)
+                return false;
             // compressed bytes
             mIn.readBuf(src.get(), linelen);
+            if (mIn.isFailed())
+                return false;
 
             // decode
             if (!decoder.decode(XCMemBlock(src.get(), linelen), wrkBlock)) {
@@ -371,6 +450,16 @@ bool Deserializer::readImage(XCMemBlock& aValue) {
     aValue.data = dst.release();
 
     return true;
+}
+
+bool Deserializer::hasBlock(const std::string& aSignature) {
+    if (remainingBytes() < 8) {
+        return false;
+    }
+    const auto pos = mIn.tellg();
+    const std::string bytes = mIn.readString(8);
+    mIn.skipTo(pos);
+    return bytes == aSignature;
 }
 
 bool Deserializer::beginBlock(const std::string& aSignature) {

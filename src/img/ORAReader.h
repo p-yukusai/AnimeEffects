@@ -11,7 +11,7 @@
 #ifndef ANIMEEFFECTS_ORAREADER_H
 #define ANIMEEFFECTS_ORAREADER_H
 
-#include "deps/zip_file.h"
+#include <zip_file.h>
 #include "img/BlendMode.h"
 #include <QImage>
 #include <QDebug>

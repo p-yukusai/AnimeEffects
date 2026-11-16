@@ -8,7 +8,7 @@
 namespace theme {
 
 // Each canonical glyph is tinted with one token, chosen by its role.
-enum class IconRole { Text, Muted, Hairline, Accent, Outline, Disabled };
+enum class IconRole { Text, Muted, MutedDim, Hairline, Accent, Outline, Disabled };
 
 // Token color for a role under a palette.
 QColor roleColor(IconRole aRole, const Colors& aColors);

@@ -25,9 +25,9 @@ public:
     // The same glyph in the active (max-contrast) color as the only state;
     // button widgets swap to it while hovered.
     QIcon iconActive(const QString& aName) const;
-    static QColor viewportBackground() ;
+    QColor viewportBackground() const;
 
-    static QStringList themeList();
+    QStringList themeList();
     void setTheme(const QString& aThemeId);
     void setAccent(theme::AccentColor aAccent);
     theme::AccentColor accent() const { return mAccent; }

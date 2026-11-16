@@ -5,11 +5,14 @@
 #include "cmnd/Stable.h"
 #include "core/ObjectNode.h"
 #include "core/Project.h"
+#include "core/ChannelKey.h"
+#include "core/ChannelTrack.h"
 namespace core {
 class MoveKey;
 }
 namespace core {
-class ImageKey;
+class ImageStateKey;
+using ImageKey = ImageStateKey;
 }
 namespace core {
 class MeshKey;
@@ -30,7 +33,7 @@ class CentroidMover : public cmnd::Stable
     void addAllTargets(
             core::ObjectNode& aTarget,
             core::TimeKeyType aType,
-            bool aContainDefault,
+            bool aContainBaseValue,
             const std::function<void(core::TimeKey*)>& aPusher);
 
     core::Project& mProject;
@@ -65,9 +68,12 @@ public:
 };
 #else
     class CentroidMover: public cmnd::Stable {
-        core::Project& mProject;
         core::ObjectNode& mTarget;
         core::MoveKey* mKey;
+        core::TimeLine* mLine;
+        core::ChannelTrack* mTracks[4];
+        core::ChannelKey* mKeys[4];
+        bool mTrack;
         QVector2D mCentroidMove;
         QVector2D mPositionMove;
         QVector2D mPrevPosition;
@@ -78,12 +84,12 @@ public:
 
     public:
         CentroidMover(
-            core::Project& aProject,
             core::ObjectNode& aTarget,
             const QVector2D& aCentroidMove,
             const QVector2D& aPositionMove,
             int aFrame,
-            bool aAdjustPos
+            bool aAdjustPos,
+            bool aTrack = false
         );
 
         void modifyValue(const QVector2D& aNewCentroidMove, const QVector2D& aNewPositionMove);

@@ -1,5 +1,5 @@
 #include "gui/ViaPoint.h"
-#include "gui/theme/Colors.h"
+#include "gui/CommandLogView.h"
 
 #include "gl/Global.h"
 #include "gui/ResourceDialog.h"
@@ -25,6 +25,7 @@ void ViaPoint::setMainMenuBar(MainMenuBar* aMainMenuBar) { mMainMenuBar = aMainM
 
 void ViaPoint::setResourceDialog(ResourceDialog* aResDialog) { mResDialog = aResDialog; }
 
+
 img::ResourceNode* ViaPoint::requireOneResource() {
     QScopedPointer<ResourceDialog> dialog(new ResourceDialog(*this, true, mParent));
     dialog->setProject(mProject);
@@ -36,24 +37,23 @@ img::ResourceNode* ViaPoint::requireOneResource() {
     return nullptr;
 }
 
-void ViaPoint::setLogView(QPlainTextEdit* aLogView) { mLogView = aLogView; }
+void ViaPoint::setLogView(CommandLogView* aLogView) { mLogView = aLogView; }
 
 void ViaPoint::pushLog(const QString& aText, ctrl::UILogType aType) {
-    (void)aType;
-    if (mLogView) {
-        mLogView->appendPlainText(aText);
-    }
+    if (!mLogView) return;
+    // The type used to be discarded here ((void)aType) because the view could only
+    // append plain text: a warning and an informational line were indistinguishable
+    // once written. The entry keeps the kind so the view can give a warning its own
+    // ink and badge.
+    LogEntry entry;
+    entry.kind = (aType == ctrl::UILogType_Warn) ? LogKind::Warning : LogKind::Info;
+    entry.text = aText;
+    mLogView->append(entry);
 }
 
-void ViaPoint::pushUndoneLog(const QString& aText) {
+void ViaPoint::pushCommandLog(bool aRedo, const QString& aName) {
     if (mLogView) {
-        mLogView->appendHtml("<font color=\"" + theme::Colors::current().textMuted.name() + "\">" + aText + "</font>");
-    }
-}
-
-void ViaPoint::pushRedoneLog(const QString& aText) {
-    if (mLogView) {
-        mLogView->appendHtml("<font color=\"" + theme::Colors::current().accentBright.name() + "\">" + aText + "</font>");
+        mLogView->append(LogEntry{aRedo ? LogKind::Redo : LogKind::Undo, aName});
     }
 }
 

@@ -10,6 +10,7 @@
 #include "util/Signaler.h"
 #include "ctrl/FFDParam.h"
 #include "gui/GUIResources.h"
+#include "gui/tool/tool_BrushPanel.h"
 #include "gui/tool/tool_Items.h"
 
 namespace gui {
@@ -21,6 +22,8 @@ namespace tool {
         FFDPanel(QWidget* aParent, GUIResources& aResources);
 
         int updateGeometry(const QPoint& aPos, int aWidth);
+
+        BrushPanel* brushPanel() { return mBrush.data(); }
 
         const ctrl::FFDParam& param() const { return mParam; }
 
@@ -36,13 +39,10 @@ namespace tool {
         GUIResources& mResources;
         ctrl::FFDParam mParam;
         QScopedPointer<SingleOutItem> mTypeGroup;
-        QScopedPointer<SingleOutItem> mHardnessGroup;
-        QScopedPointer<SliderItem> mRadius;
-        QScopedPointer<SliderItem> mPressure;
+        // the shared brush rows (Size, Hardness, Flow, the pressure switches),
+        // hiding Opacity: a mesh displacement has no per-stroke cap
+        QScopedPointer<BrushPanel> mBrush;
         QScopedPointer<SliderItem> mBlur;
-        QScopedPointer<SingleOutItem> mEraseHardnessGroup;
-        QScopedPointer<SliderItem> mEraseRadius;
-        QScopedPointer<SliderItem> mErasePressure;
     };
 
 } // namespace tool

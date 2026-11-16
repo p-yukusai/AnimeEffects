@@ -1,4 +1,5 @@
 project(util)
+ae_enable_warnings()
 
 add_library(${PROJECT_NAME}
         ../XC.h
@@ -8,12 +9,15 @@ add_library(${PROJECT_NAME}
         ArrayBlock.h
         ArrayBuffer.h
         BinarySpacePartition2D.h
+        BezierText.cpp BezierText.h
         ByteBuffer.cpp ByteBuffer.h
         Circle.h
         CollDetect.cpp CollDetect.h
         DealtList.h
         Dir4.cpp Dir4.h
         Easing.cpp Easing.h
+        EasingSegment.cpp EasingSegment.h
+        UnitBezier.h
         EasingName.cpp EasingName.h
         FergusonCoonsSpline.h
         Finally.h
@@ -21,6 +25,7 @@ add_library(${PROJECT_NAME}
         IDAssigner.h
         IDSolver.h
         IEasyIterator.h
+        RecentFiles.cpp RecentFiles.h
         IProgressReporter.h
         ITreeSeeker.h
         IndexTable.cpp IndexTable.h

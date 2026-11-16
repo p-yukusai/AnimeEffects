@@ -1,158 +1,105 @@
 #ifndef GUI_OBJECTTREEWIDGET_H
 #define GUI_OBJECTTREEWIDGET_H
 
-#include <QTreeWidget>
-#include <QHeaderView>
-#include <QAction>
-#include "ctrl/TimeLineEditor.h"
-#include "util/PlacePointer.h"
-#include "util/LinkPointer.h"
-#include "util/TreePos.h"
-#include "util/Signaler.h"
-#include "cmnd/ScopedMacro.h"
-#include "core/Project.h"
-#include "core/ObjectTree.h"
-#include "core/ObjectTreeNotifier.h"
+#include <QWidget>
+#include <QVector>
+
+#include "core/ObjectNode.h"
+#include "core/TimeLineEvent.h"
+#include "gui/AnimationRow.h"
 #include "gui/GUIResources.h"
+#include "gui/LocaleParam.h"
 #include "gui/ViaPoint.h"
-#include "gui/obj/obj_Item.h"
+#include "util/LinkPointer.h"
+#include "util/Signaler.h"
+
+class QQuickWidget;
 
 namespace gui {
 
-//-------------------------------------------------------------------------------------------------
-class ObjectTreeWidget: public QTreeWidget {
+class ObjectTreeModel;
+class QmlTheme;
+class KeyForwardingQuickWidget;
+
+// THE ANIMATION DOCK'S TREE COLUMN.
+//
+// It is a Qt Quick scene now (qml/ObjectTreePanel.qml), hosted the same way the
+// Properties and Tools docks are: a QQuickWidget with the model and the theme as context
+// properties. What is left in C++ is the HOST's own job - the widgets an action needs
+// (the asset chooser, the relink walker's tree selector, message boxes, the context menu),
+// the project hand-over, and the two outward signals the dock wires.
+//
+// EVERYTHING ABOUT THE TREE ITSELF lives in gui::ObjectTreeModel: the rows (which the
+// timeline draws too), the selection and its anchor/cursor rules, expansion, drag and drop,
+// rename, and the actions - each one undo step, through ctrl/TreeActions.h. This class
+// neither lays out a row nor decides what a click means.
+//
+// THE ROWS ARE THE TIMELINE'S ROWS. onRowsUpdated says "the row list is now this", and the
+// dock hands rows() to TimeLineWidget::setRows: the tree's row heights and the lane blocks
+// beside it come from ONE definition (ctrl::TimeLineRow::displayHeight), where the widget
+// used to have its items' geometry read back by the timeline.
+class ObjectTreeWidget: public QWidget {
     Q_OBJECT
-    obj::Item* createFileItem(core::ObjectNode& aNode);
-    void updateItemVisibilityAppearance(QTreeWidgetItem* aItem, bool aVisible);
-
 public:
-    enum { kItemColumn = 0 };
-    enum { kColumnCount = 1 };
-
-    ObjectTreeWidget(ViaPoint& aViaPoint, GUIResources& aResources, QWidget* aParent);
+    ObjectTreeWidget(
+        ViaPoint& aViaPoint, GUIResources& aResources, QWidget* aParent, const LocaleParam& aLocale
+    );
+    ~ObjectTreeWidget() override;
 
     void setProject(core::Project* aProject);
+
+    // The one selected layer, or null when nothing (or a whole group) is selected: the
+    // authority for the lane tint, the row rail and the inspector's target.
     core::ObjectNode* findSelectingRepresentNode();
 
-    // signals
+    // The selected nodes in row order - the graph panel draws every one of them.
+    QVector<core::ObjectNode*> selectedNodes() const;
+
+    // The row list the timeline draws (see gui/AnimationRow.h).
+    const AnimationRows& rows() const;
+
+    // A vertical scroll request from the timeline (a pan, a key): the scene applies it and
+    // reports the value it actually reached through onScrollUpdated.
+    void setScrollOffset(int aOffset);
+
+    // The timeline's Link/Separate Channels view state changed: the row heights
+    // are derived from the lane count, so re-derive them and announce rows().
+    void refreshRows();
+
+    // The dock forwards the timeline's frame notification: a mask chip previews the matte
+    // at the CURRENT frame, so an animated one has to be re-rendered.
+    void frameChanged();
+
+    void refreshTheme();
+
+    // The dock's column: wide enough to name a layer and narrow enough to leave the lanes
+    // theirs. The widget sized itself to its widest row (a column that jumped as names
+    // changed); the splitter starts here and the user's drag is what moves it.
+    QSize sizeHint() const override { return QSize(240, 240); }
+
+    // signals (the dock's wiring, unchanged in name and meaning)
     util::Signaler<void()> onVisibilityUpdated;
-    util::Signaler<void(QTreeWidgetItem*)> onTreeViewUpdated;
     util::Signaler<void(core::ObjectNode*)> onSelectionChanged;
+    // the row list changed: push rows() into the timeline
+    util::Signaler<void()> onRowsUpdated;
+    // the tree's vertical scroll offset in pixels (positive = scrolled down)
     util::Signaler<void(int)> onScrollUpdated;
 
-    // for Notifiers
-    void notifyViewUpdated();
-    void notifyRestructure();
-
-    struct resource {
-        QString name{};
-        img::ResourceNode* node{};
-        bool isFolder = false;
-        int childCount = 0;
-        QVector<img::ResourceNode*> children;
-    };
-
-    static core::MeshKey *getMeshKey(const core::ObjectNode &aNode, int frame);
-
-    static core::ImageKey *getImageKey(const core::ObjectNode &aNode, int frame);
-
-    static std::pair<core::TimeKey *, core::LayerMesh *> getAreaMeshImpl(core::ObjectNode &aNode, int frame);
-
 private:
-    struct ItemInfo {
-        ItemInfo(): ptr(nullptr), pos() {}
-        ItemInfo(QTreeWidgetItem* aPtr, const util::TreePos& aPos): ptr(aPtr), pos(aPos) {}
-        QTreeWidgetItem* ptr;
-        util::TreePos pos;
-    };
-
-    // from QTreeWidget
-    virtual void paintEvent(QPaintEvent* aEvent);
-    virtual void dragMoveEvent(QDragMoveEvent* aEvent);
-    virtual void dropEvent(QDropEvent* aEvent);
-    virtual void rowsAboutToBeRemoved(const QModelIndex& aParent, int aStart, int aEnd);
-    virtual void rowsInserted(const QModelIndex& aParent, int aStart, int aEnd);
-    virtual void scrollContentsBy(int aDx, int aDy);
-    virtual void resizeEvent(QResizeEvent* aEvent);
-    virtual void scrollTo(const QModelIndex& aIndex, ScrollHint aHint);
-    virtual void updateGeometries();
-
-    void createTree(core::ObjectTree* aTree);
-    void addItemRecursive(QTreeWidgetItem* aItem, core::ObjectNode* aNode);
-    obj::Item* createFolderItem(core::ObjectNode& aNode);
-    QModelIndex cheatDragDropPos(QPoint& aPos);
-    QPoint treeTopLeftPosition() const;
-    int scrollHeight() const { return -treeTopLeftPosition().y(); }
-    void endRenameEditor();
-    int itemHeight(const core::ObjectNode& aNode) const;
-    bool updateItemHeights(QTreeWidgetItem* aItem);
-    int contentWidth() const;
-    void updateColumnWidth();
-
-    void onTimeLineModified(core::TimeLineEvent&, bool);
-    void onItemChanged(QTreeWidgetItem* aItem, int aColumn);
-    void onItemClicked(QTreeWidgetItem* aItem, int aColumn);
-    void onItemCollapsed(QTreeWidgetItem* aItem);
-    void onItemExpanded(QTreeWidgetItem* aItem);
-    void onItemSelectionChanged();
-    void onContextMenuRequested(const QPoint& aPos);
-    void onSlimActionTriggered(bool aIsTriggered);
-    void onRenameActionTriggered(bool aIsTriggered);
-    void onPasteActionTriggered(bool aIsTriggered) const;
-    void onObjectActionTriggered(bool aIsTriggered);
-    void onObjectMirrorTriggered();
-    void onAddDefaultsTriggered() const;
-    void onFolderActionTriggered(bool aIsTriggered);
-    void onDeleteActionTriggered(bool aIsTriggered);
-    void onAddTreeTriggered(bool);
-    void addItems(QStringList targets);
-    void onObjectReconstructionTriggered(bool aIsTriggered);
-    void onThemeUpdated(theme::Theme&);
+    // ---- the widgets an action needs -------------------------------------
+    void showMenu(int aRow, const QPoint& aScenePos);
+    void pasteKeys(core::ObjectNode& aNode);
+    void createLayerDialog(core::ObjectNode* aParent, int aIndex);
 
     ViaPoint& mViaPoint;
     GUIResources& mGUIResources;
     util::LinkPointer<core::Project> mProject;
-    util::SlotId mTimeLineSlot;
-
-    bool mStoreInsert;
-    QVector<util::TreePos> mRemovedPositions;
-    QVector<util::TreePos> mInsertedPositions;
-    util::PlacePointer<cmnd::ScopedMacro> mMacroScope;
-    QScopedPointer<ctrl::TimeLineEditor> mEditor;
-    core::ObjectTreeNotifier* mObjTreeNotifier;
-    QModelIndex mDragIndex;
-    QAbstractItemView::DropIndicatorPosition mDropIndicatorPos;
-
-    QTreeWidgetItem* mActionItem;
-    QAction* mSlimAction;
-    QAction* mReconstructAction;
-    QAction* mAddTreeAction;
-    QAction* mRenameAction;
-    QAction* mPasteAction;
-    QAction* mObjectAction;
-    QAction* mObjectMirror;
-    QAction* mAddDefaults;
-    QAction* mFolderAction;
-    QAction* mDeleteAction;
-
-    void addLayer(
-        QTreeWidgetItem* curActionItem,
-        core::ObjectNode* itemNode,
-        bool moveToFolder = false,
-        int folderIndex = -1,
-        img::ResourceNode* resNode = nullptr,
-        QVector<QString>* parsedRes = nullptr,
-        const QVector<resource>* res = nullptr
-    );
-    void addFolder(
-        QTreeWidgetItem* curActionItem,
-        core::ObjectNode* itemNode,
-        bool moveToFolder = false,
-        int folderIndex = -1,
-        img::ResourceNode* resNode = nullptr,
-        QVector<QString>* parsedRes = nullptr,
-        QVector<resource>* res = nullptr
-    );
+    ObjectTreeModel* mModel;
+    QmlTheme* mTheme;
+    KeyForwardingQuickWidget* mQuick;
+    // the withheld name of the last scroll this host pushed, so a scene-side report that
+    // repeats it does not echo back into the timeline
+    int mScrollOffset;
 };
 
 } // namespace gui

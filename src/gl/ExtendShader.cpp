@@ -15,13 +15,49 @@ ExtendShader::ExtendShader():
 bool ExtendShader::openFromFile(const QString& aFilePath, QString& originalCode) {
     mVariation.clear();
     QFile file(aFilePath);
-    if (file.open(QIODevice::ReadOnly)) {
-        QTextStream in(&file);
-        originalCode = in.readAll();
-        return true;
+    if (!file.open(QIODevice::ReadOnly)) {
+        mLog = file.errorString() + "\n" + aFilePath;
+        return false;
     }
-    mLog = file.errorString() + "\n" + aFilePath;
-    return false;
+    QTextStream in(&file);
+    originalCode = in.readAll();
+    return expandIncludes(originalCode, 0);
+}
+
+bool ExtendShader::expandIncludes(QString& aCode, int aDepth) {
+    // One nested level is all the shipped shaders use; the cap turns an accidental cycle into
+    // an error instead of a hang during shader resolution.
+    enum { kMaxDepth = 8 };
+    if (aDepth > kMaxDepth) {
+        mLog = QStringLiteral("shader include nested deeper than %1").arg(kMaxDepth);
+        return false;
+    }
+    static const QRegularExpression includeReg(QStringLiteral("^\\s*#include\\s+\"([^\"]+)\"\\s*$"));
+    QString expanded;
+    expanded.reserve(aCode.size());
+    const QStringList lines = aCode.split(QLatin1Char('\n'));
+    for (const QString& line : lines) {
+        const QRegularExpressionMatch match = includeReg.match(line);
+        if (!match.hasMatch()) {
+            expanded += line;
+            expanded += QLatin1Char('\n');
+            continue;
+        }
+        QFile include(match.captured(1));
+        if (!include.open(QIODevice::ReadOnly)) {
+            mLog = include.errorString() + "\n" + match.captured(1);
+            return false;
+        }
+        QTextStream includeStream(&include);
+        QString included = includeStream.readAll();
+        if (!expandIncludes(included, aDepth + 1))
+            return false;
+        expanded += included;
+        if (!included.endsWith(QLatin1Char('\n')))
+            expanded += QLatin1Char('\n');
+    }
+    aCode = expanded;
+    return true;
 }
 
 bool ExtendShader::openFromFileVert(const QString& aFilePath) { return openFromFile(aFilePath, mOriginalCodeVert); }

@@ -5,6 +5,18 @@ on:
     - cron: "0 0 * * *"
 permissions:
   contents: read
+env:
+  # Qt 6.12 is the floor CMakeLists.txt enforces: Canvas Painter (the timeline
+  # and graph hosts) ships in 6.12, and the tree refuses to configure below it.
+  # The old pin here was 6.9.3, so this job could not build this tree at all.
+  QT_VERSION: "6.12.0"
+  QT_ARCH: "win64_msvc2022_64"
+  # The application links libav* directly AND Qt's multimedia backend loads its
+  # own FFmpeg; both must be the same major or two sets of avcodec state end up in
+  # one process (see build_linux.yaml). The Qt 6.12 Windows package carries
+  # FFmpeg 9.0 (avcodec-63.dll), so this pinned GPL shared build matches it and
+  # provides libx264/libx265 for the H.264/H.265 export presets.
+  FFMPEG_ARCHIVE: "ffmpeg-n9.0-latest-win64-gpl-shared-9.0.zip"
 jobs:
   buildWin64:
     runs-on: windows-latest
@@ -12,40 +24,127 @@ jobs:
       - name: checkout sources
         uses: actions/checkout@v4
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          aqtversion: "==3.3.*"
-          version: "6.9.3"
-          host: "windows"
-          target: "desktop"
-          arch: "win64_msvc2022_64"
-          modules: "qtimageformats qtmultimedia qt5compat"
-          tools: "tools_cmake tools_ninja"
-      - name: Install Vulkan SDK
-        uses: humbletim/setup-vulkan-sdk@523828e49cd4afabce369c39c7ee6543a2b7a735
-        with:
-          vulkan-query-version: 1.3.204.0
-          vulkan-components: Vulkan-Headers, Vulkan-Loader
-          vulkan-use-cache: true
-      - uses: TheMrMilchmann/setup-msvc-dev@v3
+        shell: pwsh
+        run: |
+          # jurplel/install-qt-action is not used: aqtinstall 3.3.0 (the newest
+          # PyPI release) cannot install 6.12.0 for Windows, whose repository moved
+          # Updates.xml into a per-architecture folder. The script reads the
+          # repository's own metadata instead.
+          ./scripts/install-qt-windows.ps1 -Version $env:QT_VERSION -Arch $env:QT_ARCH -Prefix C:\Qt
+          "QT_ROOT_DIR=C:\Qt\$env:QT_VERSION\msvc2022_64" |
+            Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Fetch FFmpeg SDK
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP $env:FFMPEG_ARCHIVE
+          Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$env:FFMPEG_ARCHIVE" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath C:\ffmpeg -Force
+          $root = Join-Path C:\ffmpeg ([System.IO.Path]::GetFileNameWithoutExtension($env:FFMPEG_ARCHIVE))
+          if (-not (Test-Path "$root\include\libavcodec\avcodec.h")) {
+            throw "$root does not look like an FFmpeg SDK (no include/libavcodec/avcodec.h)"
+          }
+          "FFMPEG_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Setup MSVC
+        uses: TheMrMilchmann/setup-msvc-dev@v3
         with:
           arch: x64
-      - name: Setup PATH
-        run: |
-          echo $env:Qt6_Dir\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo $env:IQTA_TOOLS\win64_msvc2019_64\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build AnimeEffects
-        shell: powershell
+        shell: pwsh
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config"
-          cmake --build build --config Release
-          cd build/src/gui/Release
-          mkdir .\AnimeEffects-Windows-x64
-          windeployqt --dir .\AnimeEffects-Windows-x64 .\AnimeEffects.exe
-          Copy-Item -Path ".\data" -Destination ".\AnimeEffects-Windows-x64\" -recurse -Force
-          Copy-Item ".\AnimeEffects.exe" ".\AnimeEffects-Windows-x64\"
+          # AE_ALLOW_FREE_CODECS_ONLY skips the configure-time PROOF that libavcodec
+          # is GPL. The SDK above IS a GPL build; the flag only says "do not make me
+          # point AE_FFMPEG_GPL_AVCODEC at it as well".
+          cmake -S . -B build -G "Ninja Multi-Config" `
+            "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR" `
+            "-DAE_FFMPEG_ROOT=$env:FFMPEG_ROOT" `
+            -DAE_ALLOW_FREE_CODECS_ONLY=ON
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The application plus the three media gates this job runs. Building every
+          # target here would spend most of the job on the ~90 unit gates the Linux
+          # suite already runs (and would gate Windows on MSVC compiling them all);
+          # what only Windows can answer is whether the app and the FFmpeg runtime
+          # path work, and that is what is built and exercised below.
+          cmake --build build --config Release --target `
+            AnimeEffects media_link_probe media_video_encoder media_audio_mixer
+      - name: Locate the build output
+        shell: pwsh
+        run: |
+          # qt_standard_project_setup() sets CMAKE_RUNTIME_OUTPUT_DIRECTORY to the
+          # TOP-LEVEL build dir on Windows (so DLLs sit next to the exes), which
+          # puts every executable under build\<config>\ - not under the target's
+          # own directory as on Linux. Probe both rather than hard-code one.
+          $candidates = @("build/Release", "build/src/gui/Release")
+          $bin = $candidates | Where-Object { Test-Path "$_/AnimeEffects.exe" } | Select-Object -First 1
+          if (-not $bin) { throw "AnimeEffects.exe was not produced under build\ (looked in $($candidates -join ', '))" }
+          "AE_BIN=$bin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "build output: $bin"
+      - name: Media gates
+        shell: pwsh
+        run: |
+          # The build only proves that libav* LINKS. These three run the in-process
+          # encoder/mixer on Windows, so a wrong FFmpeg build fails here instead of
+          # in a user's export. The executables share one directory on Windows, so
+          # Qt's and FFmpeg's DLLs need only this one PATH entry.
+          $env:PATH = "$env:FFMPEG_ROOT\bin;$env:QT_ROOT_DIR\bin;$env:PATH"
+          foreach ($t in 'media_link_probe', 'media_video_encoder', 'media_audio_mixer') {
+            Write-Output "== $t"
+            & "$env:AE_BIN/$t.exe"
+            if ($LASTEXITCODE -ne 0) { throw "$t failed (exit code $LASTEXITCODE)" }
+          }
+      - name: Package
+        shell: pwsh
+        run: |
+          $out = "$env:AE_BIN/AnimeEffects-Windows-x64"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          # --qmldir: the scenes are compiled into the binary, but `import QtQuick`
+          # still resolves from the deployed QML modules; without the scan the app
+          # starts and then cannot load its window.
+          # --compiler-runtime: the MSVC redistributable is not part of Windows.
+          & "$env:QT_ROOT_DIR\bin\windeployqt.exe" --qmldir src/gui/qml --compiler-runtime `
+            --dir $out "$env:AE_BIN/AnimeEffects.exe"
+          if ($LASTEXITCODE -ne 0) { throw "windeployqt failed (exit code $LASTEXITCODE)" }
+          Copy-Item "$env:AE_BIN/AnimeEffects.exe" -Destination $out
+          # FFmpeg is not a Qt plugin: windeployqt copies Qt's own DLLs only, and
+          # the exe imports avcodec/avformat/avutil/swscale/swresample when it is
+          # loaded. (The old artifact shipped without them and could not start.)
+          # These run after windeployqt, so the SDK build the app linked - the same
+          # FFmpeg major as Qt's, plus libx264/libx265 - is the one that loads.
+          Copy-Item "$env:FFMPEG_ROOT\bin\*.dll" -Destination $out
+          Get-ChildItem $out | Select-Object -ExpandProperty Name
+      - name: Smoke test the packaged app
+        shell: pwsh
+        env:
+          # NOT offscreen: the application opens a GL viewport, and the offscreen
+          # platform cannot provide one, so the process exits instead of running.
+          # The deployed qwindows plugin is what a user gets; the runner's service
+          # session can create windows (that is why the check is "still up", not
+          # "a window is visible").
+          QT_FORCE_STDERR_LOGGING: "1"
+        run: |
+          # A packaged build that cannot start is worse than a red job: this is how
+          # the missing FFmpeg DLLs went unnoticed. The app is expected to keep
+          # running; any exit inside 20 s is a startup failure.
+          $out = "$env:AE_BIN/AnimeEffects-Windows-x64"
+          $err = Join-Path $env:RUNNER_TEMP "ae-stderr.txt"
+          $log = Join-Path $env:RUNNER_TEMP "ae-stdout.txt"
+          $p = Start-Process -FilePath "$out/AnimeEffects.exe" -WorkingDirectory $out -PassThru `
+            -RedirectStandardError $err -RedirectStandardOutput $log
+          if ($p.WaitForExit(20000)) {
+            Get-Content $err, $log -ErrorAction SilentlyContinue
+            throw "AnimeEffects exited during startup (exit code $($p.ExitCode))"
+          }
+          $p.Kill()
+          # Staying up is not proof: a QML module that is not deployed leaves the
+          # event loop running with a blank window, and a missing platform plugin
+          # raises a modal box that also keeps the process alive. Qt's own load
+          # error on stderr is the discriminator.
+          if (Select-String -Path $err -Pattern 'failed to load|is not installed|Cannot load library|Could not find the Qt platform plugin|no Qt platform plugin' -Quiet) {
+            Get-Content $err
+            throw "the packaged app reported a load failure (see stderr above)"
+          }
+          Write-Output "AnimeEffects stayed up with no load errors; artifact is launchable."
       - name: Github Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: AnimeEffects-Windows-x64
-          path: D:/a/AnimeEffects/AnimeEffects/build/src/gui/Release/AnimeEffects-Windows-x64/
+          path: build/Release/AnimeEffects-Windows-x64/

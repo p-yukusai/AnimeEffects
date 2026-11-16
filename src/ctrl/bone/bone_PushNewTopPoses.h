@@ -50,12 +50,13 @@ namespace bone {
         }
 
         virtual void undo() {
-            int index = 0;
+            // No pose counter here: undo removes the top bone by its stored
+            // index (mTopIndex), so it does not walk mPoses. The counter lives
+            // in redo(), which pairs mPoses with the pose keys in child order.
             for (auto child : mTarget->children()) {
                 if (child->type() == core::TimeKeyType_Pose) {
                     auto posekey = (core::PoseKey*)child;
                     posekey->data().topBones().removeAt(mTopIndex);
-                    ++index;
                 }
             }
             mDone = false;

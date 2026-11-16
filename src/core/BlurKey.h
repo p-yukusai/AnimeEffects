@@ -2,25 +2,37 @@
 #define CORE_BLURKEY_H
 
 #include <algorithm>
+#include <array>
+#include "XC.h"
 #include "util/Easing.h"
+#include "core/KeyEasing.h"
 #include "core/TimeKey.h"
 
 namespace core {
 
 class BlurKey: public TimeKey {
 public:
+    // One easing per graph channel: 0 blurX, 1 blurY, 2 angleDeg.
+    static constexpr int kComponents = easingComponentCount(TimeKeyType_Blur);
+
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         float mBlurX;      // content-space radius on the blur's own X axis
         float mBlurY;      // content-space radius on the blur's own Y axis
         float mAngleDeg;   // content-space rotation of the blur's X axis (degrees)
         bool mDirectional; // UI mode flag; false = single Amount (blurX == blurY, angle 0)
 
     public:
-        Data(): mEasing(), mBlurX(0.0f), mBlurY(0.0f), mAngleDeg(0.0f), mDirectional(false) {}
+        Data(): mEasings(), mBlurX(0.0f), mBlurY(0.0f), mAngleDeg(0.0f), mDirectional(false) {}
 
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
 
         // isotropic convenience: sets both radii and clears the angle
         void setAmount(float aAmount) { mBlurX = mBlurY = aAmount; mAngleDeg = 0.0f; }
@@ -62,7 +74,7 @@ public:
         return newKey;
     }
     virtual bool serialize(Serializer& aOut) const {
-        aOut.write(mData.easing());
+        aOut.writeEasings(&mData.easing(0), kComponents);
         aOut.write(mData.blurX());
         aOut.write(mData.blurY());
         aOut.write(mData.angleDeg());
@@ -71,7 +83,7 @@ public:
     }
     virtual bool deserialize(Deserializer& aIn) {
         aIn.pushLogScope("BlurKey");
-        if (!aIn.read(mData.easing(), false)) {
+        if (!aIn.readEasings(&mData.easing(0), kComponents, false)) {
             return aIn.errored("invalid easing param");
         }
         // Blur is a single feature shipped with one AE_PROJECT_FORMAT_MINOR_VERSION bump

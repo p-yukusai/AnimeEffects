@@ -39,10 +39,8 @@ namespace ffd {
             key = new FFDKey();
             ownsKey = true;
             key->data().allocAndWrite(aLine.current().ffd().positions(), vtxCount);
-            util::Easing::Param aParam;
-            aParam.range = util::Easing::rangeToEnum(QString());
-            aParam.type = util::Easing::easingToEnum(QString());
-            key->data().easing() = aParam;
+            const util::Easing::Param aParam = util::Easing::defaultParam();
+            key->data().easing(0) = aParam;
             parentKey = aAreaKey;
         }
     }
@@ -86,7 +84,7 @@ namespace ffd {
         }
         if (aNode && aNode->timeLine())
         {
-            auto imageKey = static_cast<ImageKey *>(aNode->timeLine()->defaultKey(TimeKeyType_Image));
+            auto imageKey = static_cast<ImageKey *>(aNode->timeLine()->baseValue(TimeKeyType_Image));
             if (imageKey) return &imageKey->data().gridMesh();
         }
 #endif

@@ -1,0 +1,55 @@
+/*
+ *  Playback widget stylesheet (breeze_dark).
+ *
+ *  Shared by the transport group (PlayBackWidget) and the dock header bar it
+ *  sits in (TimeLineHeader, which loads the same file for the bar's own frame
+ *  readout): one 28px button box, feedback via background. Same tokens as the
+ *  tool dock.
+ */
+
+QPushButton {
+    color: @text@;
+    background-color: transparent;
+    border: none;
+    border-radius: 0.25em;
+    /* width/height pin the box: these buttons are positioned with setGeometry()
+       on the header's 28px grid (20px icons), but theme restyles resize
+       absolute children to the style's sizeFromContents (icon + button margins
+       = 29px), so without an explicit size they come out 28x29 */
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+QPushButton:hover {
+    background-color: @hairline@;
+}
+
+/* Press reflects state: active-state (checkable) buttons read as their
+   hover while pressed; non-checkable buttons press with the active fill. */
+QPushButton:pressed {
+    background-color: @active@;
+}
+
+QPushButton[activeButton="true"]:pressed {
+    background-color: @hairline@;
+}
+
+QPushButton:checked:pressed {
+    background-color: @activeHover@;
+}
+
+QPushButton:checked {
+    background-color: @active@;
+}
+
+QPushButton:checked:hover {
+    background-color: @activeHover@;
+}
+
+QPushButton:disabled {
+    color: @textDisabled@;
+    background-color: transparent;
+}

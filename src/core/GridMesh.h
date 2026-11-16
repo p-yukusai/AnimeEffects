@@ -12,6 +12,7 @@
 #include "gl/Vector3.h"
 #include "gl/BufferObject.h"
 #include "img/GridMeshCreator.h"
+#include "img/MeshContentLevel.h"
 #include "core/LayerMesh.h"
 #include "core/Serializer.h"
 #include "core/Deserializer.h"
@@ -53,7 +54,11 @@ public:
 
     void swap(GridMesh& aRhs);
     void setOriginOffset(const QVector2D& aOffset) { mOriginOffset = aOffset; }
-    void createFromImage(const void* aImagePtr, const QSize& aSize, int aCellPx);
+    // aContentAlphaThreshold: the alpha level above which a pixel counts as content; a cell exists
+    // only where at least one pixel is above it. The default derives it from the image
+    // (img::MeshContentLevel); pass an explicit level to force one.
+    void createFromImage(const void* aImagePtr, const QSize& aSize, int aCellPx,
+                         int aContentAlphaThreshold = img::MeshContentLevel::kDerive);
     void writeHeightMap(const HeightMap& aMap, const QVector2D& aMinPos);
     util::ArrayBlock<gl::Vector3>
     createFFD(util::ArrayBlock<const gl::Vector3> aPrevFFD, const Transitions& aTrans) const;
@@ -103,6 +108,7 @@ private:
     QSize mSize;
     QVector2D mOriginOffset;
     int mCellPx;
+    int mContentAlphaThreshold;
     int mIndexCount;
     int mVertexCount;
     QRect mVertexRect;

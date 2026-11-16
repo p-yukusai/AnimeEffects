@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cstddef>
 #include <QQuaternion>
 #include "core/PosePalette.h"
 #include "util/MathUtil.h"
@@ -19,7 +21,7 @@ int PosePalette::getBoneIndex(const BoneKey::Data& aData, const Bone2& aBone) {
     return -1;
 }
 
-PosePalette::PosePalette(): mData(), mIsUnit(true) { clearDualQuaternions(); }
+PosePalette::PosePalette(): mData(), mDualQuats(), mUsedCount(0), mIsUnit(true) { resetIdentity(); }
 
 int PosePalette::makeBoneOrigins(const KeyPairs& aSrc, BonePairs& aDst) {
     int count = 0;
@@ -69,6 +71,16 @@ void PosePalette::build(const KeyPairs& aKeyPairs) {
     XC_MSG_ASSERT(count == index, "%d, %d", count, index);
     (void)index;
 
+    // The arrays follow the skeleton, not the cap: a two-bone key allocates (and
+    // the draw uploads) two dual quaternions, not 256. Entry 0 is the identity
+    // fallback for a vertex with no influence when the key has no bones at all.
+    mUsedCount = count;
+    const size_t arraySize = size_t(std::max(1, count));
+    mData.resize(arraySize);
+    mDualQuats.resize(arraySize);
+    if (count == 0)
+        resetIdentity();
+
     for (int i = 0; i < count; ++i) {
         auto orgn = bonePairs[i].origin;
         auto pose = bonePairs[i].pose;
@@ -96,11 +108,6 @@ void PosePalette::build(const KeyPairs& aKeyPairs) {
             mDualQuats[i] = makeDualQuaternion(quat, trans);
         }
     }
-    for (int i = count; i < kMaxCount; ++i) {
-        mData[i] = QMatrix4x4();
-        mDualQuats[i].real.set(1.0f, 0.0f, 0.0f, 0.0f);
-        mDualQuats[i].dual.set(0.0f, 0.0f, 0.0f, 0.0f);
-    }
 }
 
 void PosePalette::clear() {
@@ -108,26 +115,30 @@ void PosePalette::clear() {
         return;
     mIsUnit = true;
 
-    for (int i = 0; i < kMaxCount; ++i) {
-        mData[i] = QMatrix4x4();
-    }
-
-    clearDualQuaternions();
+    resetIdentity();
 }
 
-void PosePalette::clearDualQuaternions() {
-    for (int i = 0; i < kMaxCount; ++i) {
-        mDualQuats[i].real.set(1.0f, 0.0f, 0.0f, 0.0f);
-        mDualQuats[i].dual.set(0.0f, 0.0f, 0.0f, 0.0f);
-    }
+void PosePalette::resetIdentity() {
+    mUsedCount = 0;
+    mData.resize(1);
+    mDualQuats.resize(1);
+    mData[0] = QMatrix4x4();
+    mDualQuats[0] = identityDualQuaternion();
+}
+
+PosePalette::DualQuaternion PosePalette::identityDualQuaternion() {
+    DualQuaternion dq;
+    dq.real.set(1.0f, 0.0f, 0.0f, 0.0f);
+    dq.dual.set(0.0f, 0.0f, 0.0f, 0.0f);
+    return dq;
 }
 
 util::ArrayBlock<const QMatrix4x4> PosePalette::matrices() const {
-    return util::ArrayBlock<const QMatrix4x4>(mData.data(), kMaxCount);
+    return util::ArrayBlock<const QMatrix4x4>(mData.data(), int(mData.size()));
 }
 
 util::ArrayBlock<const PosePalette::DualQuaternion> PosePalette::dualQuaternions() const {
-    return util::ArrayBlock<const DualQuaternion>(mDualQuats.data(), kMaxCount);
+    return util::ArrayBlock<const DualQuaternion>(mDualQuats.data(), int(mDualQuats.size()));
 }
 
 PosePalette::DualQuaternion PosePalette::makeDualQuaternion(const QQuaternion& aUnitQuat, const QVector3D& aTrans) {

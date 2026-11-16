@@ -7,8 +7,10 @@
 #include "core/MoveKey.h"
 #include "core/RotateKey.h"
 #include "core/ScaleKey.h"
-#include "core/OpaKey.h"
+#include "core/OpacityKey.h"
 #include "core/HsvKey.h"
+#include "core/WaveKey.h"
+#include "core/MaskKey.h"
 #include "core/BoneKey.h"
 #include "core/PoseKey.h"
 #include "core/MeshKey.h"
@@ -19,6 +21,8 @@
 #include "core/BoneExpans.h"
 
 namespace core {
+
+class VirtualTexture;
 
 class TimeKeyExpans {
 public:
@@ -34,14 +38,32 @@ public:
 
     void clearCaches();
 
+    // How many times THIS cache has been rebuilt by the blender. The blender writes
+    // in place - the storage pointers a consumer reads are stable while the values
+    // behind them change - so a consumer that caches a derived result (LayerNode's
+    // skinned positions) tells the new contents from the old ones by this stamp. It
+    // belongs to ONE cache: rebuilding `working` must not invalidate a result derived
+    // from `current`. Monotonic; never reset.
+    quint64 revision() const { return mRevision; }
+    void bumpRevision() { ++mRevision; }
+
     SRTExpans& srt() { return mSRT; }
     const SRTExpans& srt() const { return mSRT; }
 
-    OpaKey::Data& opa() { return mOpa; }
-    const OpaKey::Data& opa() const { return mOpa; }
+    OpacityKey::Data& opacity() { return mOpacity; }
+    const OpacityKey::Data& opacity() const { return mOpacity; }
 
     HSVKey::Data& hsv() { return mHSV; }
     const HSVKey::Data& hsv() const { return mHSV; }
+
+    WaveKey::Data& wave() { return mWave; }
+    const WaveKey::Data& wave() const { return mWave; }
+
+    // The blended mask FIELD for this frame. An invalid field means "no mask",
+    // which the renderer treats as fully visible - so a node without a mask pays
+    // one null test and nothing else.
+    MaskKey::Data& mask() { return mMask; }
+    const MaskKey::Data& mask() const { return mMask; }
 
     void setBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg) {
         mBlurX = aBlurX;
@@ -82,21 +104,40 @@ public:
     LayerMesh* ffdMesh() { return mFFDMesh; }
     void setFFDMeshParent(TimeKey* aKey) { mFFDMeshParent = aKey; }
     TimeKey* ffdMeshParent() { return mFFDMeshParent; }
+    const TimeKey* ffdMeshParent() const { return mFFDMeshParent; }
 
     void setAreaImageKey(ImageKey* aKey) { mAreaImageKey = aKey; }
     ImageKey* areaImageKey() { return mAreaImageKey; }
     const ImageKey* areaImageKey() const { return mAreaImageKey; }
+    /// The full-resolution texture, or nullptr when the key is paged (its sharp levels live
+    /// in the pool and there is no single texture to name). Consumers that need the CONTENT
+    /// SIZE, rather than a sampler, must use areaTextureSize().
     const gl::Texture* areaTexture() const;
+    /// The paged resource for this key, or nullptr when it uses a plain texture.
+    VirtualTexture* areaVirtualTexture() const;
+    /// The content's pixel size, whichever sampling shape the key has. Empty when there is no
+    /// image key or no image.
+    QSize areaTextureSize() const;
     img::BlendMode blendMode() const;
     void setImageOffset(const QVector2D& aOffset) { mImageOffset = aOffset; }
     QVector2D imageOffset() const { return mImageOffset; }
 
 private:
+    // Frame the caches were blended for, plus explicit validity flags: the
+    // frame value alone cannot mark validity because frame -1 is a legitimate
+    // frame (negative project ranges) yet was the historical "no cache"
+    // sentinel. Negative frames are cached like any other.
     Frame mMasterCache;
+    bool mMasterCached;
+    // see revision(); bumped only by TimeKeyBlender::updateCurrents
+    quint64 mRevision;
     std::array<Frame, TimeKeyType_TERM> mKeyCaches;
+    std::array<bool, TimeKeyType_TERM> mKeyCached;
     SRTExpans mSRT;
-    OpaKey::Data mOpa;
+    OpacityKey::Data mOpacity;
     HSVKey::Data mHSV;
+    WaveKey::Data mWave;
+    MaskKey::Data mMask;
     float mBlurX;
     float mBlurY;
     float mBlurAngle;

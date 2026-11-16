@@ -12,7 +12,10 @@ void KeyCommandInvoker::onKeyPressed(const QKeyEvent* aEvent) {
     // release the previous command
     releaseLastCommand();
 
-    const ctrl::KeyBinding keyBind(aEvent->key(), aEvent->modifiers());
+    // Shift's symbol folded back onto its key (see ctrl::unshiftedKeyForShift)
+    const int eventKey = (aEvent->modifiers() & Qt::ShiftModifier) ? ctrl::unshiftedKeyForShift(aEvent->key())
+                                                                   : aEvent->key();
+    const ctrl::KeyBinding keyBind(eventKey, aEvent->modifiers());
     if (!keyBind.isValidBinding())
         return;
 
@@ -23,12 +26,13 @@ void KeyCommandInvoker::onKeyPressed(const QKeyEvent* aEvent) {
             keyBindWithSub.setSubKeyCode(aEvent->key());
 
             for (auto command : mMap.subKeyCommands()) {
-                if (command->invoker && command->binding.isValidBinding() &&
+                if (!command->invokers.isEmpty() && command->binding.isValidBinding() &&
                     command->binding.matchesExactlyWith(keyBindWithSub)) {
                     // invoke
                     mLastCommand = command;
                     mLastKey = ctrl::KeyBinding();
-                    command->invoker();
+                    for (const auto& invoker : command->invokers)
+                        invoker();
                     return;
                 }
             }
@@ -38,10 +42,12 @@ void KeyCommandInvoker::onKeyPressed(const QKeyEvent* aEvent) {
 
     // each key commands
     for (auto command : mMap.commands()) {
-        if (command->invoker && command->binding.isValidBinding() && command->binding.matchesExactlyWith(keyBind)) {
-            // invoke
+        if (!command->invokers.isEmpty() && command->binding.isValidBinding() &&
+            command->binding.matchesExactlyWith(keyBind)) {
+            // invoke every listener (several widgets may react to one key)
             mLastCommand = command;
-            command->invoker();
+            for (const auto& invoker : command->invokers)
+                invoker();
             break;
         }
     }
@@ -56,9 +62,8 @@ void KeyCommandInvoker::onKeyReleased(const QKeyEvent* aEvent) {
 
 void KeyCommandInvoker::releaseLastCommand() {
     if (mLastCommand) {
-        if (mLastCommand->releaser) {
-            mLastCommand->releaser();
-        }
+        for (const auto& releaser : mLastCommand->releasers)
+            releaser();
         mLastCommand = nullptr;
     }
 }

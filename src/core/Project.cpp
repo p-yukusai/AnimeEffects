@@ -2,22 +2,62 @@
 #include <QUndoCommand>
 #include "XC.h"
 #include "core/Project.h"
+#include "core/BoneKeyUpdater.h"
 
 namespace {
 const int kParaThreadCount = 4;
 const int kStandardFps = 24;
-const int kDefaultMaxFrame = 60 * 10;
+const int kDefaultFrameCount = 60 * 10;
 } // namespace
 
 namespace core {
 //-------------------------------------------------------------------------------------------------
-Project::Attribute::Attribute(): mImageSize(), mMaxFrame(kDefaultMaxFrame), mFps(kStandardFps), mLoop(false) {}
+Project::Attribute::Attribute(): mImageSize(), mFrameRange(1, kDefaultFrameCount), mFps(kStandardFps), mLoop(false), mHasViewportBackground(false), mViewportBackground() {}
+
+// Observable setters: emit the owning project's onProjectAttributeModified only
+// when a value actually changes, so re-sync (bone caches, timeline, display,
+// driver) is driven by the value being set rather than by each call site.
+void Project::Attribute::setImageSize(const QSize& aSize) {
+    if (mImageSize == aSize) return;
+    mImageSize = aSize;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeImageSize);
+}
+void Project::Attribute::setFrameRange(const util::Range& aRange) {
+    if (mFrameRange == aRange) return;
+    mFrameRange = aRange;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeFrameRange);
+}
+void Project::Attribute::setFps(int aFps) {
+    if (mFps == aFps) return;
+    mFps = aFps;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeFps);
+}
+void Project::Attribute::setLoop(bool aLoop) {
+    if (mLoop == aLoop) return;
+    mLoop = aLoop;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeLoop);
+}
+void Project::Attribute::setViewportBackground(const QColor& aColor) {
+    // turning the override on from unset is itself the change; an equal colour
+    // against an already-set override is not.
+    if (mHasViewportBackground && mViewportBackground == aColor) return;
+    mHasViewportBackground = true;
+    mViewportBackground = aColor;
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeViewportBackground);
+}
+void Project::Attribute::clearViewportBackground() {
+    if (!mHasViewportBackground) return;
+    mHasViewportBackground = false;
+    mViewportBackground = QColor();
+    if (mChangeNotifier) mChangeNotifier(ProjectEvent::Type_ChangeViewportBackground);
+}
 
 //-------------------------------------------------------------------------------------------------
 Project::Project(QString aFileName, Animator& aAnimator, Hook* aHookGrabbed):
     mLifeLink(),
     mFileName(aFileName),
     mAttribute(),
+    mId(QUuid::createUuid()),
     mParalleler(new thr::Paralleler(kParaThreadCount)),
     mResourceHolder(),
     mCommandStack(),
@@ -47,6 +87,17 @@ Project::Project(QString aFileName, Animator& aAnimator, Hook* aHookGrabbed):
     onTreeRestructured.connect(&mObjectTree, &ObjectTree::onTreeRestructured);
     onResourceModified.connect(&mObjectTree, &ObjectTree::onResourceModified);
     onProjectAttributeModified.connect(&mObjectTree, &ObjectTree::onProjectAttributeModified);
+    // One authored field is shared by every BoneKey of its owner, so this is a
+    // whole-owner cache reset, not a single-key refresh.
+    onSkinWeightsModified.connect([this](ObjectNode& aOwner, bool aIsUndo) {
+        BoneKeyUpdater::onSkinWeightsModified(*this, aOwner, aIsUndo);
+    });
+    // Attribute setters drive onProjectAttributeModified; the bool (undo) is not
+    // consumed by any listener, so a forward re-sync is all that's needed here.
+    mAttribute.setChangeNotifier([this](ProjectEvent::Type aType) {
+        ProjectEvent event(*this, aType);
+        onProjectAttributeModified(event, false);
+    });
 
 #ifdef UNUSE_PARALLEL
 #else
@@ -72,7 +123,7 @@ void Project::setFileName(const QString& aFileName) {
 
 TimeInfo Project::currentTimeInfo() const {
     TimeInfo time;
-    time.frameMax = mAttribute.maxFrame();
+    time.frameRange = mAttribute.frameRange();
     time.fps = mAttribute.fps();
     time.loop = mAttribute.loop();
     time.frame = mAnimator.currentFrame();

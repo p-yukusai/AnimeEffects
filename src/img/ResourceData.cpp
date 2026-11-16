@@ -5,12 +5,14 @@
 
 namespace img {
 
-ResourceData::ResourceData(const QString& aIdentifier, const ResourceNode* aSerialAddress):
+ResourceData::ResourceData(const QString& aIdentifier, const QString& aIdentityId, const ResourceNode* aSerialAddress):
     mBuffer(),
     mPos(),
-    mUserData(),
     mIsLayer(),
     mIdentifier(aIdentifier),
+    // Explicit fallback: a source that carries no stable layer id offers only its
+    // name, so the name is the identity. Callers never have to special case it.
+    mIdentityId(aIdentityId.isEmpty() ? aIdentifier : aIdentityId),
     mBlendMode(BlendMode_Normal),
     mImageLoader(),
     mSerialAddress(aSerialAddress) {}
@@ -35,12 +37,27 @@ void ResourceData::setBlendMode(BlendMode aMode) {
 
 void ResourceData::copyFrom(const ResourceData& aData) {
     mBuffer = aData.mBuffer;
-    mUserData = aData.mUserData;
     mIdentifier = aData.mIdentifier;
+    mIdentityId = aData.mIdentityId;
     mPos = aData.mPos;
     mIsLayer = aData.mIsLayer;
     mBlendMode = aData.mBlendMode;
     mImageLoader = aData.mImageLoader;
+}
+
+bool ResourceData::loadImage() {
+    if (!mImageLoader) {
+        return false;
+    }
+    if (!mImageLoader(*this)) {
+        return false;
+    }
+    // One-shot. The loader owns the pixels of exactly one parse of its source, so
+    // running it a second time would either re-read the same bytes or -- for a
+    // closure left over from a source that has since been destroyed -- walk
+    // through whatever occupies that memory now.
+    mImageLoader = nullptr;
+    return true;
 }
 
 QRect ResourceData::rect() const { return QRect(mPos, mBuffer.pixelSize()); }

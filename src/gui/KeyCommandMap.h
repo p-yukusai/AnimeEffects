@@ -20,8 +20,21 @@ public:
         QString group;
         QString label;
         ctrl::KeyBinding binding;
-        std::function<void()> invoker;
-        std::function<void()> releaser;
+        // The binding the command ships with, before any user override is
+        // loaded. Kept so a "reset to defaults" can restore it live (and
+        // persist it on save) instead of requiring an app restart.
+        ctrl::KeyBinding defaultBinding;
+        // Listeners fire on the binding's press/release, in registration
+        // order. Several widgets legitimately react to one key (MoveCanvas
+        // pans the viewport AND the timeline), so a command holds a list —
+        // a single invoker slot would silently drop the second listener.
+        QList<std::function<void()>> invokers;
+        QList<std::function<void()>> releasers;
+        void addListener(std::function<void()> aInvoker, std::function<void()> aReleaser = {}) {
+            invokers.push_back(aInvoker);
+            if (aReleaser)
+                releasers.push_back(aReleaser);
+        }
     };
 
     typedef QMap<QString, KeyCommand*> MapType;
@@ -31,7 +44,6 @@ public:
     ~KeyCommandMap();
 
     void readFrom(const QSettings& aSrc);
-    void deleteFrom(const QSettings& aSrc);
     void writeTo(QSettings& aDest);
 
     KeyCommand* get(const QString& aIdentifier) { return mSearchMap[aIdentifier]; }
@@ -43,8 +55,6 @@ public:
 private:
     void addNewKey(const QString& aKey, const QString& aGroup, const QString& aName, const ctrl::KeyBinding& aBinding);
     void readValue(const QSettings& aSrc, KeyCommand& aCommand);
-    void eraseValue(const QSettings& aSrc, KeyCommand& aCommand);
-    void writeValue(QSettings& aDest, const KeyCommand& aCommand);
     void resetSubKeyCommands();
 
     ListType mCommands;

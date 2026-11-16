@@ -1,473 +1,126 @@
-#include <QHBoxLayout>
-#include <QVBoxLayout>
-#include <QFormLayout>
-#include <QStackedLayout>
-#include <QPushButton>
-#include <QLabel>
-#include <QGroupBox>
-#include <QFrame>
-#include <QComboBox>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QCheckBox>
-#include <QFileInfo>
-#include <QPlainTextEdit>
-#include <QFontMetrics>
-#include "MainMenuBar.h"
-#include "util/SelectArgs.h"
 #include "gui/ExportDialog.h"
-#include "MainWindow.h"
 
+#include "gui/DestinationPicker.h"
+#include "gui/GUIResources.h"
+#include "gui/qml/QmlTheme.h"
+#include "gui/theme/Colors.h"
 
-namespace {
-
-template<class tEdit>
-void setMinMaxOptionWidth(tEdit* aEdit) {
-    aEdit->setMaximumWidth(200);
-    aEdit->setMinimumWidth(50);
-}
-
-} // namespace
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QQuickWidget>
+#include <QQmlContext>
+#include <QScreen>
+#include <QSettings>
+#include <QUrl>
+#include <QVBoxLayout>
 
 namespace gui {
-//-------------------------------------------------------------------------------------------------
-ExportDialog::ExportDialog(core::Project& aProject, const QString& aPath, QWidget* aParent):
-    EasyDialog(tr("Export Animation"), aParent),
-    mProject(aProject),
-    mCommonParam(),
-    mSize(),
-    mFrameMax(),
-    mFixAspect(true),
-    mSizeUpdating(false) {
-    mCommonParam.path = aPath;
 
-    mCommonParam.size = mProject.attribute().imageSize();
-    XC_ASSERT(mCommonParam.size.width() > 0);
-    XC_ASSERT(mCommonParam.size.height() > 0);
+namespace {
+// The dialog's own size. It opens at a comfortable size and is resizable, with a
+// floor low enough for a small laptop screen.
+constexpr int kDefaultWidth = 620;
+constexpr int kDefaultHeight = 720;
+constexpr int kMinimumWidth = 560;
+constexpr int kMinimumHeight = 640;
+} // namespace
 
-    auto time = mProject.currentTimeInfo();
-    mCommonParam.frame = util::Range(0, time.frameMax);
-    mCommonParam.fps = time.fps;
+ExportDialog::ExportDialog(const ExportViewModel::Init& aInit, GUIResources& aResources,
+                           QWidget* aParent)
+    : QDialog(aParent), mResources(aResources) {
+    setObjectName(QStringLiteral("exportWidget"));
+    setWindowTitle(tr("Export parameters"));
+    // A native framed window, not a frameless popup: normal title bar, movable and
+    // resizable by the window manager, and modal over the main window.
+    setModal(true);
+    setSizeGripEnabled(true);
+    // The floor is "low enough for a small laptop screen" - and on a screen
+    // SHORTER than the floor the minimum itself pushes the action row off the
+    // screen (D25: the row must stay reachable). So the floor yields to the
+    // screen: the scene scrolls its content at any size below natural (D25's
+    // own rule), so a screen-clamped minimum costs the form nothing it does not
+    // already handle. Interpretation flagged in the increment's report: the
+    // line names "small screen" as a cause of content not fitting; this is the
+    // shell's half of that clause.
+    const QRect avail = screen() ? screen()->availableGeometry() : QRect();
+    const int maxW = avail.width() > 0 ? avail.width() : kDefaultWidth;
+    const int maxH = avail.height() > 0 ? avail.height() : kDefaultHeight;
+    // A5 (decided 2026-09-30): the dialog restores its last size across sessions;
+    // the first open uses the designed default. A remembered size clamps to the
+    // available screen exactly like the default does, and Qt clamps it up to the
+    // minimum floor on resize.
+    const QSize remembered = QSettings().value(QStringLiteral("exportdialog/size")).toSize();
+    const QSize wanted = remembered.isValid() && remembered.width() > 0
+                             ? remembered
+                             : QSize(kDefaultWidth, kDefaultHeight);
+    setMinimumSize(qMin(kMinimumWidth, maxW), qMin(kMinimumHeight, maxH));
+    resize(qMin(wanted.width(), maxW), qMin(wanted.height(), maxH));
 
-    mSize = mProject.attribute().imageSize();
-    mFrameMax = mProject.currentTimeInfo().frameMax;
-}
+    mModel = new ExportViewModel(aInit, this);
+    mTheme = new QmlTheme(this);
 
-void ExportDialog::pushSizeBox(QFormLayout& aLayout) {
-    // size
-    {
-        auto x = new QSpinBox();
-        auto y = new QSpinBox();
-        auto fix = new QCheckBox();
-        x->setRange(1, 32767);
-        y->setRange(1, 32767);
-        QSettings settings;
-        auto ignoreWarnings = settings.value("export_ignore_warnings");
-        bool bIgnoreWarnings = ignoreWarnings.isValid()? ignoreWarnings.toBool(): false;
-        if (bIgnoreWarnings == false) {
-            if (mCommonParam.size.width() % 2 != 0 || mCommonParam.size.height() % 2 != 0) {
-                MainWindow::showInfoPopup(
-                    tr("Value is Odd"),
-                    tr("The width or height of the image ends with an odd number. "
-                       "Please change these parameters to an even number as they may cause the export to fail."),
-                    "Warn"
-                );
-                mWarningShown = true;
-            }
-        }
-        x->setValue(mCommonParam.size.width());
-        y->setValue(mCommonParam.size.height());
-        setMinMaxOptionWidth(x);
-        setMinMaxOptionWidth(y);
-        fix->setChecked(mFixAspect);
+    mQuick = new QQuickWidget(this);
+    mQuick->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    // The theme and the model are context properties, exactly as the animation
+    // settings dialog does it: the scene reads `theme.text` and `model.destinationId`
+    // with no C++ type registration.
+    // NOT "model": every Repeater and ListView has a `model` property of its own, so a
+    // scene binding `Repeater { model: model.facts }` resolves the right-hand side to
+    // the Repeater's own (still unset) property and silently creates ZERO delegates.
+    // That is exactly how the key-facts summary and the frame-range rows rendered as
+    // empty space while `model.facts.count` read 7.
+    mQuick->rootContext()->setContextProperty(QStringLiteral("exportModel"), mModel);
+    mQuick->rootContext()->setContextProperty(QStringLiteral("theme"), mTheme);
+    // The scene's backdrop: the theme's own window colour, so a resize does not
+    // flash white.
+    mQuick->setClearColor(theme::Colors::current().base);
+    mQuick->setSource(QUrl(QStringLiteral("qrc:/AnimeEffects/Dialogs/qml/ExportDialog.qml")));
 
-        this->connect(x, util::SelectArgs<int>::from(&QSpinBox::valueChanged), [=](int aValue) {
-            if (mSizeUpdating)
-                return;
-            if (!(aValue % 2 == 0) && !mWarningShown) {
-                MainWindow::showInfoPopup(
-                    tr("Value is Odd"),
-                    tr("A width or height ending in an odd number"
-                       " may make the exporting process fail, please try another value."),
-                    "Warn"
-                );
-                mWarningShown = true;
-                return;
-            }
-            mSizeUpdating = true;
-            QSize& size = this->mCommonParam.size;
-            size.setWidth(aValue);
-            if (mFixAspect) {
-                size.setHeight(static_cast<int>(mSize.height() * aValue / static_cast<double>(mSize.width())));
-                y->setValue(size.height());
-            }
-            mSizeUpdating = false;
-        });
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(mQuick);
 
-        this->connect(y, util::SelectArgs<int>::from(&QSpinBox::valueChanged), [=](int aValue) {
-            if (mSizeUpdating)
-                return;
-
-            if (!(aValue % 2 == 0) && !mWarningShown) {
-                MainWindow::showInfoPopup(
-                    tr("Value is Odd"),
-                    tr("A height or width ending in an odd number"
-                       " may make the exporting process fail, please try another value."),
-                    "Warn"
-                );
-                mWarningShown = true;
-                return;
-            }
-
-            mSizeUpdating = true;
-            QSize& size = this->mCommonParam.size;
-            size.setHeight(aValue);
-            if (mFixAspect) {
-                size.setWidth((int)(mSize.width() * aValue / (double)mSize.height()));
-                x->setValue(size.width());
-            }
-            mSizeUpdating = false;
-        });
-
-        this->connect(fix, &QCheckBox::clicked, [=](bool aCheck) { this->mFixAspect = aCheck; });
-
-        aLayout.addRow(tr("Image width"), x);
-        aLayout.addRow(tr("Image height"), y);
-        aLayout.addRow(tr("Fix aspect ratio"), fix);
-    }
-}
-
-void ExportDialog::pushFrameBox(QFormLayout& aLayout) {
-    // start frame
-    auto start = new QSpinBox();
-    start->setRange(0, mFrameMax);
-    start->setValue(mCommonParam.frame.min());
-    setMinMaxOptionWidth(start);
-
-    // end frame
-    auto end = new QSpinBox();
-    end->setRange(0, mFrameMax);
-    end->setValue(mCommonParam.frame.max());
-    setMinMaxOptionWidth(end);
-
-    this->connect(start, &QSpinBox::editingFinished, [=]() {
-        const int v = start->value();
-        this->mCommonParam.frame.setMin(v);
-        if (this->mCommonParam.frame.max() < v) {
-            end->setValue(v);
-            this->mCommonParam.frame.setMax(v);
-        }
+    // The scene's buttons do not know about QDialog, and they should not: the model
+    // carries the outcome, and the shell turns the request into the dialog result.
+    connect(mModel, &ExportViewModel::acceptRequested, this, &QDialog::accept);
+    connect(mModel, &ExportViewModel::cancelRequested, this, &QDialog::reject);
+    connect(mModel, &ExportViewModel::changeDestinationRequested, this, [this]() {
+        // The picker is a WIDGET dialog (gui/DestinationPicker) and stays one: it is
+        // a searchable list with its own accessibility names that the GUI probes
+        // already address. The scene asks for it; the shell answers with its id.
+        DestinationPicker picker(mResources, mModel->destinationId(), this);
+        if (picker.exec() != QDialog::Accepted)
+            return;
+        mModel->setDestinationId(picker.chosenId());
     });
-
-    this->connect(end, &QSpinBox::editingFinished, [=]() {
-        const int v = end->value();
-        this->mCommonParam.frame.setMax(v);
-        if (v < this->mCommonParam.frame.min()) {
-            start->setValue(v);
-            this->mCommonParam.frame.setMin(v);
-        }
-    });
-
-    aLayout.addRow(tr("Initial frame"), start);
-    aLayout.addRow(tr("Last frame"), end);
+    connect(mModel, &ExportViewModel::paletteRequested, this, &ExportDialog::choosePalette);
 }
 
-void ExportDialog::pushFpsBox(QFormLayout& aLayout) {
-    auto fps = new QSpinBox();
-    fps->setRange(1, 60);
-    fps->setValue(mCommonParam.fps);
-    setMinMaxOptionWidth(fps);
-
-    this->connect(fps, &QSpinBox::editingFinished, [=]() { this->mCommonParam.fps = fps->value(); });
-
-    aLayout.addRow(tr("FPS"), fps);
+ExportDialog::~ExportDialog() {
+    // Tear the scene down before the model/theme context objects die, so the scene's
+    // binding teardown never re-reads a destroyed context property (the same rule the
+    // animation settings shell follows).
+    delete mQuick;
+    mQuick = nullptr;
 }
 
-//-------------------------------------------------------------------------------------------------
-ImageExportDialog::ImageExportDialog(
-    core::Project& aProject, const QString& aDirPath, const QString& aSuffix, QWidget* aParent
-):
-    ExportDialog(aProject, aDirPath, aParent), mImageParam() {
-    {
-        QString baseName = QFileInfo(aProject.fileName()).baseName();
-        if (baseName.isEmpty())
-            baseName = "nameless";
-        mImageParam.name = baseName + "_export";
-        mImageParam.suffix = aSuffix;
-    }
-
-    // option
-    this->setMainLayout(createImageOption());
-
-    // button box
-    this->setOkCancel();
-    this->fixSize();
+void ExportDialog::done(int aResult) {
+    // A5: the size the dialog is closed at is the size it returns at. Saved on
+    // every close route (accept, reject, Esc, the window button) rather than on
+    // resize-end: the user's final size is what "remembers its size" means, and a
+    // half-resized transient state is never the choice.
+    QSettings().setValue(QStringLiteral("exportdialog/size"), size());
+    QDialog::done(aResult);
 }
 
-QLayout* ImageExportDialog::createImageOption() {
-    auto form = new QFormLayout();
-    // form->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
-    form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
-    form->setLabelAlignment(Qt::AlignRight);
-
-    // prefix name
-    {
-        auto name = new QLineEdit();
-        setMinMaxOptionWidth(name);
-        name->setText(mImageParam.name);
-
-        this->connect(name, &QLineEdit::editingFinished, [=]() { this->mImageParam.name = name->text(); });
-
-        form->addRow(tr("Prefix name"), name);
-    }
-
-    // quality
-    if (mImageParam.suffix == "jpg") {
-        auto quality = new QSpinBox();
-        setMinMaxOptionWidth(quality);
-        quality->setMinimum(-1);
-        quality->setMaximum(100);
-        quality->setValue(mImageParam.quality);
-
-        this->connect(quality, &QSpinBox::editingFinished, [=]() { this->mImageParam.quality = quality->value(); });
-
-        form->addRow(tr("Quality"), quality);
-    }
-
-    this->pushSizeBox(*form);
-    this->pushFrameBox(*form);
-    this->pushFpsBox(*form);
-
-    return form;
-}
-
-//-------------------------------------------------------------------------------------------------
-GifExportDialog::GifExportDialog(core::Project& aProject, const QString& aFilePath, QWidget* aParent):
-    ExportDialog(aProject, aFilePath, aParent), mGifParam() {
-    {
-        int fpsCheck = this->commonParam().fps != 0 && this->commonParam().fps <= 500 ? this->commonParam().fps : 30;
-        this->commonParam().fps = fpsCheck;
-        mGifParam.optimizePalette = true;
-        mGifParam.intermediateBps = 5 * 1000 * 1000;
-    }
-
-    // option
-    this->setMainLayout(createGifOption());
-
-    // button box
-    this->setOkCancel();
-    this->fixSize();
-}
-
-QLayout* GifExportDialog::createGifOption() {
-    auto form = new QFormLayout();
-    form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
-    form->setLabelAlignment(Qt::AlignRight);
-
-    this->pushSizeBox(*form);
-    this->pushFrameBox(*form);
-    this->pushFpsBox(*form);
-
-    // bit rate
-    auto kbps = new QSpinBox();
-    {
-        setMinMaxOptionWidth(kbps);
-        kbps->setRange(0, 100 * 1000);
-        kbps->setValue(mGifParam.intermediateBps / 1000);
-
-        this->connect(kbps, &QSpinBox::editingFinished, [=]() { this->mGifParam.intermediateBps = kbps->value(); });
-    }
-
-    // optimize palette
-    {
-        auto opti = new QCheckBox();
-        opti->setChecked(mGifParam.optimizePalette);
-        kbps->setEnabled(mGifParam.optimizePalette);
-
-        this->connect(opti, &QCheckBox::clicked, [=](bool aCheck) {
-            this->mGifParam.optimizePalette = aCheck;
-            kbps->setEnabled(aCheck);
-        });
-
-        form->addRow(tr("Optimize palette"), opti);
-        form->addRow(tr("Relay bit rate (Kbps)"), kbps);
-    }
-
-    return form;
-}
-
-//-------------------------------------------------------------------------------------------------
-VideoExportDialog::VideoExportDialog(
-    core::Project& aProject, const QString& aFilePath, const ctrl::VideoFormat& aFormat, QWidget* aParent
-):
-    ExportDialog(aProject, aFilePath, aParent), mVideoParam() {
-    {
-        mVideoParam.format = aFormat;
-        mVideoParam.bps = 5 * 1000 * 1000;
-    }
-
-    // option
-    this->setMainLayout(createVideoOption());
-
-    // button box
-    this->setOkCancel();
-    this->fixSize();
-}
-
-void VideoExportDialog::setColorspaceValidity(QComboBox* aBox, bool aIsValid) {
-    if (!aBox)
+void ExportDialog::choosePalette() {
+    const QString start = mModel->palettePath();
+    const QString path = QFileDialog::getOpenFileName(
+        this, tr("Open Palette"), start.isEmpty() ? QString() : QFileInfo(start).absolutePath(),
+        tr("FFmpeg palette file (*.png)"));
+    if (path.isEmpty())
         return;
-
-    aBox->setEnabled(aIsValid);
-    if (aIsValid) {
-        aBox->setItemText(0, "BT.709");
-        aBox->setItemText(1, "BT.601");
-    } else {
-        aBox->setItemText(0, "");
-        aBox->setItemText(1, "");
-    }
-}
-
-void VideoExportDialog::updatePixelFormat(QComboBox* aBox, const QStringList& aPixfmts) {
-    mVideoParam.pixfmt.clear();
-
-    if (!aBox)
-        return;
-
-    auto valid = !aPixfmts.isEmpty();
-    aBox->clear();
-
-    if (valid) {
-        aBox->addItems(aPixfmts);
-        mVideoParam.pixfmt = aPixfmts.at(0);
-    }
-
-    aBox->setEnabled(valid);
-}
-
-void VideoExportDialog::updateCommentLabel(QLabel* aLabel, bool aGPUEnc) {
-    if (!aLabel)
-        return;
-
-    if (aGPUEnc) {
-        aLabel->setText(tr("This codec requires a dedicated GPU."));
-    } else {
-        aLabel->clear();
-    }
-}
-
-QLayout* VideoExportDialog::createVideoOption() {
-    auto form = new QFormLayout();
-    form->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
-    form->setLabelAlignment(Qt::AlignRight);
-
-    // comment
-    QLabel* comment = new QLabel();
-    updateCommentLabel(comment, mVideoParam.format.codecs.at(0).gpuenc);
-
-    // colorspace
-    QComboBox* colorBox = nullptr;
-    for (auto codec : mVideoParam.format.codecs) {
-        if (codec.colorspace) {
-            colorBox = new QComboBox();
-            break;
-        }
-    }
-    if (colorBox) {
-        colorBox->addItems(
-            QStringList() << ""
-                          << ""
-        );
-
-        this->connect(colorBox, util::SelectArgs<int>::from(&QComboBox::currentIndexChanged), [=]() {
-            this->mVideoParam.colorIndex = colorBox->currentIndex();
-        });
-
-        // initialize enabled
-        if (!mVideoParam.format.codecs.isEmpty()) {
-            auto valid = mVideoParam.format.codecs.at(0).colorspace;
-            setColorspaceValidity(colorBox, valid);
-        }
-    }
-
-    // pixel format
-    QComboBox* pixfmtBox = new QComboBox();
-    // connect
-    this->connect(pixfmtBox, util::SelectArgs<int>::from(&QComboBox::currentIndexChanged), [=]() {
-        this->mVideoParam.pixfmt = pixfmtBox->currentText();
-    });
-    // initialize enabled
-    if (!mVideoParam.format.codecs.isEmpty()) {
-        updatePixelFormat(pixfmtBox, mVideoParam.format.codecs.at(0).pixfmts);
-    }
-
-    // codec
-    if (!mVideoParam.format.codecs.isEmpty()) {
-        mVideoParam.codecIndex = 0;
-
-        auto codecBox = new QComboBox();
-
-        for (auto codec : mVideoParam.format.codecs) {
-            QString hints;
-            if (codec.lossless || codec.transparent) {
-                if (codec.lossless) {
-                    hints += tr("Lossless");
-                }
-                if (codec.transparent) {
-                    if (!hints.isEmpty())
-                        hints += QString(", ");
-                    hints += tr("Transparent");
-                }
-                hints = QString(" (") + hints + ")";
-            }
-            codecBox->addItem(codec.label + hints);
-        }
-
-        this->connect(codecBox, util::SelectArgs<int>::from(&QComboBox::currentIndexChanged), [=]() {
-            auto index = codecBox->currentIndex();
-            this->mVideoParam.codecIndex = index;
-            this->setColorspaceValidity(colorBox, mVideoParam.format.codecs.at(index).colorspace);
-            this->updatePixelFormat(pixfmtBox, mVideoParam.format.codecs.at(index).pixfmts);
-            this->updateCommentLabel(comment, mVideoParam.format.codecs.at(index).gpuenc);
-        });
-
-        form->addRow(tr("Codec"), codecBox);
-    }
-
-    // push colorspace
-    form->addRow(tr("Color standard"), colorBox);
-    // push pixel format
-    form->addRow(tr("Pixel format"), pixfmtBox);
-
-    this->pushSizeBox(*form);
-    this->pushFrameBox(*form);
-    this->pushFpsBox(*form);
-
-    // bit rate
-    {
-        auto kbps = new QSpinBox();
-        setMinMaxOptionWidth(kbps);
-        kbps->setRange(0, 100 * 1000);
-        kbps->setValue(mVideoParam.bps / 1000);
-
-        this->connect(kbps, &QSpinBox::editingFinished, [=]() { this->mVideoParam.bps = kbps->value(); });
-
-        form->addRow(tr("Bit rate (Kbps)"), kbps);
-    }
-
-    // push comment
-    {
-        auto noteGroup = new QGroupBox("");
-        noteGroup->setObjectName("note");
-
-        auto subform = new QVBoxLayout();
-        noteGroup->setLayout(subform);
-        subform->addWidget(comment);
-
-        form->addRow(noteGroup);
-    }
-
-    return form;
+    mModel->setPalettePath(path);
 }
 
 } // namespace gui

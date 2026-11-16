@@ -55,7 +55,10 @@ namespace bone {
         }
 
         virtual void undo() {
-            int index = 0;
+            // No pose counter here: undo removes the shadow bone by its stored
+            // tree position (mPos), so it does not walk mPoses. The counter
+            // lives in redo(), which pairs mPoses with the pose keys in child
+            // order.
             for (auto child : mTarget->children()) {
                 if (child->type() == core::TimeKeyType_Pose) {
                     core::Bone2* root = ((core::PoseKey*)child)->data().topBones().at(mTopIndex);
@@ -63,7 +66,6 @@ namespace bone {
 
                     util::TreeUtil::eraseFrom(*root, mPos);
                     root->updateWorldTransform();
-                    ++index;
                 }
             }
             mDone = false;

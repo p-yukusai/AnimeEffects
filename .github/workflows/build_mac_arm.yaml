@@ -32,26 +32,51 @@ jobs:
         shell: bash
         run: |
           brew install ninja vulkan-headers
+          # The exporter links FFmpeg (libav*) directly.
+          brew install ffmpeg
       - name: Build AnimeEffects
         shell: bash
         run: |
           echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-          cmake -S . -B build -G "Ninja Multi-Config"
+          # Explicit codec mode (see build_mac_intel.yaml for rationale).
+          cmake -S . -B build -G "Ninja Multi-Config" -DAE_ALLOW_FREE_CODECS_ONLY=ON
           cmake --build build --config Release
           cd build/src/gui/Release
           mkdir -p appdir/usr/lib
           cp -R AnimeEffects.app appdir/AnimeEffects.app
-          cp -R ../../../../data appdir/data
           cp -R ../../../../dist appdir/dist
           find appdir/
           cd appdir
           macdeployqt AnimeEffects.app
           cp ../../../../../scripts/RemoveQuarantine.command AnimeEffects.command
-          cp -R ../../../../../data AnimeEffects.app/Contents/MacOS/data
           chmod +x AnimeEffects.command
           zip -r AnimeEffects.zip AnimeEffects.app AnimeEffects.command 
           echo "artifactPath=$(realpath AnimeEffects.zip)`"
           echo "artifactPath=$(realpath AnimeEffects.zip)`" >> $GITHUB_ENV
+      - name: Run test suite (macOS)
+        # Validates the refactor compiles and the core logic runs on macOS.
+        shell: bash
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -e
+          for t in bonekey_regression rightclick_transient_selection creation_select_keys                    easing_regression easing_picker_layout picker_probe picker_pos_probe                    attribute_observable anim_settings_undo anim_setting_i18n; do
+            ./build/tests/Release/$t
+          done
+      - name: Launch the app (smoke)
+        # Best-effort runtime check: the app must start and stay up (timeout 124
+        # means it ran to the deadline; 0 is a clean exit). continue-on-error so
+        # a headless-runner GUI quirk does not block the packaged artifact.
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          timeout 25 ./build/src/gui/Release/AnimeEffects.app/Contents/MacOS/AnimeEffects
+          rc=$?
+          echo "app launch rc=$rc"
+          if [ "$rc" != "124" ] && [ "$rc" != "0" ]; then
+            echo "APP EXITED UNEXPECTEDLY (rc=$rc)"; exit 1
+          fi
       - name: Github Artifacts
         uses: actions/upload-artifact@v4
         with:

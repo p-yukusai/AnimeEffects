@@ -31,6 +31,10 @@
 # Qt
 *.*.user
 
+# Qt Linguist .qm are build artifacts (compiled from the committed .ts by
+# release_translations); they belong in build dirs, never in source.
+assets/locale/*.qm
+
 # Build Directory
 build*/
 /src/AnimeEffects-Windows/
@@ -42,12 +46,23 @@ compile_commands.json
 
 # golden-suite scratch (failed-case dumps)
 tests/golden/.scratch/
+# test-run output written to the repo root for inspection (easing_picker_layout
+# writes a rendered widget PNG; the committed gate is the geometry JSON)
+easing_picker_layout.png
 # one-time real-file analysis (symlinked external PSDs, per-file evidence dumps)
 tests/golden/.scratch_real/
 
 # PSD verification harness against a private real-file corpus (local-only tooling)
 tools/verify_blend/
 
+# Windows cross-build (mingw-w64) output
+xwin-dist/
+AnimeEffects-windows-*.zip
+
 # local working notes (not part of any PR)
 SCRATCHPAD_ARCHIVED.md
 SCRATCHPAD.md
+
+# Python bytecode from the probe/i18n helpers: generated, never reviewed.
+__pycache__/
+*.pyc

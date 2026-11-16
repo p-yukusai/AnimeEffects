@@ -31,6 +31,14 @@ public:
         void deleteAll();
         bool isBinding(const ObjectNode& aNode) const;
         Bone2* findBinderBone(const ObjectNode& aNode);
+        /// The bone's index in the influence map's pre-order bone list, or -1
+        /// when it is not in this skeleton. Clamp against the built map's
+        /// boneCount() before using it as an index attribute.
+        int boneIndex(const Bone2& aBone) const;
+        /// The bone whose envelope is nearest to a target-space point, skipping
+        /// parentless roots (they carry no envelope). This is how a paint stroke
+        /// that starts on the mesh chooses the bone it edits.
+        Bone2* nearestBone(const QVector2D& aPos);
     };
 
     class Cache {
@@ -77,6 +85,12 @@ public:
     // rewrite influences of unique roots specified
     void updateCaches(Project& aProject, ObjectNode& aOwner, const QVector<ObjectNode*>& aUniqueRoots);
 
+    // The nodes this key actually skins at aTime: the same subtree, cache-owner
+    // and rigid-binding rules resetCaches uses, without building a cache list.
+    // The bake evaluates exactly this set, so the state a bake writes is the
+    // state the build reads.
+    void collectInfluenceTargets(const TimeInfo& aTime, ObjectNode& aOwner, QVector<ObjectNode*>& aTargets);
+
     virtual TimeKeyType type() const { return TimeKeyType_Bone; }
     virtual bool canHoldChild() const { return true; }
     virtual TimeKey* createClone(); ///@note a new key have to reset caches.
@@ -84,12 +98,15 @@ public:
     virtual bool deserialize(Deserializer& aIn);
 
 private:
-    void resetCacheListRecursive(const TimeInfo& aTime, ObjectNode& aNode, CacheList& aNewList);
+    void collectInfluenceTargetsRecursive(const TimeInfo& aTime, ObjectNode& aNode, QVector<ObjectNode*>& aTargets);
     void updateCaches(Project& aProject, const QList<Cache*>& aTargets);
     Cache* popCache(ObjectNode& aNode);
     void destroyCaches();
     bool serializeBone(Serializer& aOut, const Bone2* aBone) const;
     bool deserializeBone(Deserializer& aIn, Bone2* aBone);
+    // Format <= 0.20 appended the derived influence cache to this block. Read
+    // it only to stay in sync, and discard it: ProjectLoader rebuilds it.
+    bool deserializeLegacyCaches(Deserializer& aIn);
     Data mData;
     CacheList mCaches;
     util::LinkPointer<ObjectNode> mCacheOwner;

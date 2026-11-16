@@ -33,6 +33,21 @@ const QHash<QString, IconRole>& roleTable() {
         {QStringLiteral("close"), IconRole::Muted},
         {QStringLiteral("close_hover"), IconRole::Muted},
         {QStringLiteral("close_pressed"), IconRole::Accent},
+        {QStringLiteral("x"), IconRole::Muted}, // phosphor x (popover close)
+        {QStringLiteral("x_hover"), IconRole::Text},
+        // Layout toggles (the header's right corner): one quiet group, dimmer
+        // than the viewport settings beside it. A slot that is showing uses the
+        // FILLED phosphor sidebar and an empty one the outline; the state is the
+        // glyph's form, so both variants take the same dim tint and the checked
+        // state is not a second, brighter signal.
+        {QStringLiteral("sidebar-left"), IconRole::MutedDim},
+        {QStringLiteral("sidebar-right"), IconRole::MutedDim},
+        {QStringLiteral("sidebar-top"), IconRole::MutedDim},
+        {QStringLiteral("sidebar-bottom"), IconRole::MutedDim},
+        {QStringLiteral("sidebar-left-fill"), IconRole::MutedDim},
+        {QStringLiteral("sidebar-right-fill"), IconRole::MutedDim},
+        {QStringLiteral("sidebar-top-fill"), IconRole::MutedDim},
+        {QStringLiteral("sidebar-bottom-fill"), IconRole::MutedDim},
         {QStringLiteral("hand"), IconRole::Text},
         {QStringLiteral("dialog_cancel"), IconRole::Text},
         {QStringLiteral("dialog_close"), IconRole::Text},
@@ -43,11 +58,18 @@ const QHash<QString, IconRole>& roleTable() {
         {QStringLiteral("dialog_open"), IconRole::Text},
         {QStringLiteral("dialog_reset"), IconRole::Text},
         {QStringLiteral("dialog_save"), IconRole::Text},
+        {QStringLiteral("arrows-horizontal"), IconRole::MutedDim},
+        {QStringLiteral("arrows-vertical"), IconRole::MutedDim},
+        {QStringLiteral("stack"), IconRole::MutedDim},
+        {QStringLiteral("circle-half"), IconRole::MutedDim},
+        {QStringLiteral("grid-four"), IconRole::MutedDim},
+        {QStringLiteral("angle"), IconRole::MutedDim},
         {QStringLiteral("arrows-out-line-horizontal"), IconRole::Text},
         {QStringLiteral("down_arrow"), IconRole::Muted},
         {QStringLiteral("down_arrow_disabled"), IconRole::Disabled},
         {QStringLiteral("down_arrow_hover"), IconRole::Accent},
         {QStringLiteral("ease"), IconRole::Text},
+        {QStringLiteral("envelope"), IconRole::Text},
         {QStringLiteral("eraser"), IconRole::Text},
         {QStringLiteral("eye-close"), IconRole::Muted},
         {QStringLiteral("eye-open"), IconRole::Muted},
@@ -76,6 +98,7 @@ const QHash<QString, IconRole>& roleTable() {
         {QStringLiteral("navigation-arrow"), IconRole::Text},
         {QStringLiteral("crosshair"), IconRole::Text},
         {QStringLiteral("paint-brush"), IconRole::Text},
+        {QStringLiteral("paint-envelope"), IconRole::Text},
         {QStringLiteral("pause"), IconRole::Text},
         {QStringLiteral("pencil-simple"), IconRole::Text},
         {QStringLiteral("play"), IconRole::Text},
@@ -93,6 +116,15 @@ const QHash<QString, IconRole>& roleTable() {
         {QStringLiteral("arrow-counter-clockwise"), IconRole::Text},
         {QStringLiteral("arrow-clockwise"), IconRole::Text},
         {QStringLiteral("cube"), IconRole::Text},
+        // The header's view settings are window controls, not dock content: one
+        // step below the dock's Text glyphs and one above the slot toggles'
+        // MutedDim. The -quiet names resolve to the same source files.
+        {QStringLiteral("cube-quiet"), IconRole::Muted},
+        {QStringLiteral("image-quiet"), IconRole::Muted},
+        {QStringLiteral("arrow-counter-clockwise-quiet"), IconRole::Muted},
+        {QStringLiteral("arrow-clockwise-quiet"), IconRole::Muted},
+        {QStringLiteral("dot-outline-quiet"), IconRole::Muted},
+        {QStringLiteral("flip-horizontal-quiet"), IconRole::Muted},
         {QStringLiteral("arrows-out-cardinal"), IconRole::Text},
         {QStringLiteral("skip-forward"), IconRole::Text},
         {QStringLiteral("skip-back"), IconRole::Text},
@@ -112,6 +144,7 @@ QColor roleColor(IconRole aRole, const Colors& aColors) {
     switch (aRole) {
     case IconRole::Text: return aColors.icon;
     case IconRole::Muted: return aColors.textMuted;
+    case IconRole::MutedDim: return aColors.textMutedDim;
     case IconRole::Hairline: return aColors.hairline;
     case IconRole::Accent: return aColors.focus;
     case IconRole::Outline: return aColors.outline;
@@ -141,8 +174,10 @@ const QSet<QString>& activeVariantNames() {
         "dot-outline", "flip-horizontal",
         // tool mode groups (checkable SingleOutItem buttons)
         "plus-bold", "minus-bold", "navigation-arrow", "link", "broadcast",
-        "paint-brush", "eraser", "pencil-simple", "hardness-1", "hardness-2",
+        "paint-brush", "paint-envelope", "envelope", "eraser", "pencil-simple", "hardness-1", "hardness-2",
         "hardness-3", "crosshair",
+        // (the header's sidebar toggles are deliberately absent: their checked
+        // state is the filled glyph, not an -active tint)
     };
     return s;
 }
@@ -161,7 +196,7 @@ void setIconDir(const QString& aDir) { gIconDir = aDir; }
 // correct.
 //
 // The name set is the source files plus every roleTable entry. State
-// variants (-hover/-disabled/-pressed, root underscore and ph/ hyphen
+// variants (-hover/-disabled/-pressed/-quiet, root underscore and ph/ hyphen
 // conventions) share the base glyph's source file — the role table tints
 // each name with its own state color, so the byte-identical duplicate
 // sources are not shipped. Each name still gets its own output (the QSS
@@ -177,7 +212,9 @@ void tintIcons(const QString& aSrcDir, const QString& aDstDir, const Colors& aCo
     // a name that merely ends like a suffix still resolves to itself).
     const auto sourceStem = [&](const QString& aName) {
         if (exists(aName)) return aName;
-        const QStringList suffixes = {"-hover", "-disabled", "-pressed",
+        // -quiet is not a source file: the header's view-setting variants share
+        // the dock glyph and differ only in the tint role above.
+        const QStringList suffixes = {"-hover", "-disabled", "-pressed", "-quiet",
                                       "_hover", "_disabled", "_pressed"};
         for (const QString& s : suffixes) {
             if (aName.endsWith(s)) {

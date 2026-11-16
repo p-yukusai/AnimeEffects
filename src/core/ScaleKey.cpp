@@ -3,7 +3,7 @@
 
 namespace core {
 //-------------------------------------------------------------------------------------------------
-ScaleKey::Data::Data(): mEasing(), mScale(1.0f, 1.0f) {}
+ScaleKey::Data::Data(): mEasings(), mScale(1.0f, 1.0f) {}
 
 void ScaleKey::Data::clamp() {
     mScale.setX(xc_clamp(mScale.x(), Constant::scaleMin(), Constant::scaleMax()));
@@ -20,7 +20,7 @@ TimeKey* ScaleKey::createClone() {
 }
 
 bool ScaleKey::serialize(Serializer& aOut) const {
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
     aOut.write(mData.scale());
     return aOut.checkStream();
 }
@@ -29,7 +29,7 @@ bool ScaleKey::deserialize(Deserializer& aIn) {
     aIn.pushLogScope("ScaleKey");
 
     // easing
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
 

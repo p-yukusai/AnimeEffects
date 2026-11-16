@@ -1,4 +1,5 @@
 project(AnimeEffects)
+ae_enable_warnings()
 
 set(MACOSX_BUNDLE_ICON_FILE AnimeEffects.icns)	
 
@@ -24,16 +25,23 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     ../XCReport.h
     ../XCType.h
     CanvasMover.cpp CanvasMover.h
+    DestinationPicker.cpp DestinationPicker.h
+    DockDropOverlay.cpp DockDropOverlay.h
+    DockMetrics.h
+    DockPanel.cpp DockPanel.h
     DockSash.cpp DockSash.h
+    DockSlots.cpp DockSlots.h
+    DockTabBar.cpp DockTabBar.h
     DriverHolder.cpp DriverHolder.h
     EasyDialog.cpp EasyDialog.h
-    ExportDialog.cpp ExportDialog.h
     GUIResources.cpp GUIResources.h
     GeneralSettingDialog.cpp GeneralSettingDialog.h
     KeyBindingDialog.cpp KeyBindingDialog.h
     KeyCommandInvoker.cpp KeyCommandInvoker.h
     KeyCommandMap.cpp KeyCommandMap.h
     LocaleDecider.cpp LocaleDecider.h
+    LocaleFonts.cpp LocaleFonts.h
+    UiScale.cpp UiScale.h
     LocaleParam.h
     LeakSuppressions.cpp
     MSVCBackTracer.cpp MSVCBackTracer.h
@@ -46,15 +54,24 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     MainViewSetting.h
     MainWindow.cpp MainWindow.h
     MouseSetting.cpp MouseSetting.h
-    MouseSettingDialog.cpp MouseSettingDialog.h
     AnimationSettingDialog.cpp AnimationSettingDialog.h
     NewProjectDialog.cpp NewProjectDialog.h
     AppStyle.cpp AppStyle.h
     ObjectTreeWidget.cpp ObjectTreeWidget.h
+    ThumbnailCache.cpp ThumbnailCache.h
+    # The dock header's channel list: the panel's ONE control is a view action, so the
+    # design hosts it in the header and the list is its own widget (not a QMenu: the
+    # design's 22px rows and its swatch gaps are not reachable through AppStyle's menu
+    # metrics). Part of the always-built set: it needs no window, only the model's plain
+    # row struct and the theme tokens.
+    GraphChannelPopup.cpp GraphChannelPopup.h
+    TimeLineHeader.cpp TimeLineHeader.h
     PlayBackWidget.cpp PlayBackWidget.h
     ProjectHook.cpp ProjectHook.h
     ProjectTabBar.cpp ProjectTabBar.h
     PropertyWidget.cpp PropertyWidget.h
+    ViewportInput.cpp ViewportInput.h
+    PointerSmoothing.cpp PointerSmoothing.h
     ResourceDialog.cpp ResourceDialog.h
     ResourceTreeWidget.cpp ResourceTreeWidget.h
     TabCloseButton.cpp TabCloseButton.h
@@ -62,58 +79,154 @@ add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE
     ThinSplitter.cpp ThinSplitter.h
     TimeLineEditorWidget.cpp TimeLineEditorWidget.h
     TimeLineWidget.cpp TimeLineWidget.h
+    TimeRuler.cpp TimeRuler.h
+    FrameRuler.cpp FrameRuler.h
     ToolWidget.cpp ToolWidget.h
     ViaPoint.cpp ViaPoint.h
-    exportdiag.cpp exportdiag.h
+    # The Properties panel's command log: one text document whose runs carry each
+    # line's kind ink (a badge, not markup), so a selection can still cross
+    # entries. LogEntry is the widget-free description ViaPoint hands it.
+    LogEntry.h
+    CommandLogView.cpp CommandLogView.h
+    # The export form: a Qt Quick scene (qml/ExportDialog.qml) in a QDialog shell,
+    # with everything it decides in the widget-free view model beside it.
+    ExportDialog.cpp ExportDialog.h
+    qml/ExportViewModel.cpp qml/ExportViewModel.h
+    # The new-project form: the same Qt Quick scene-in-a-QDialog shell, with its
+    # own widget-free view model beside it.
+    qml/NewProjectViewModel.cpp qml/NewProjectViewModel.h
+    # The three remaining forms ported to the same shell: project settings, key
+    # bindings and general settings, each with its own widget-free view model.
+    ProjectSettingDialog.cpp ProjectSettingDialog.h
+    qml/ProjectSettingViewModel.cpp qml/ProjectSettingViewModel.h
+    qml/KeyBindingViewModel.cpp qml/KeyBindingViewModel.h
+    qml/GeneralSettingViewModel.cpp qml/GeneralSettingViewModel.h
+    # Extracted into the catalogs from here (see the i18n block below): the file is
+    # GENERATED from assets/export/ExportTargets.txt by
+    # scripts/i18n/gen_export_targets_i18n.py, and lupdate cannot read a data file.
+    ../ctrl/ExportTargetStrings.h
+    ExportFacts.cpp ExportFacts.h
     menu/menu_ProgressReporter.cpp menu/menu_ProgressReporter.h
-    obj/obj_InsertItem.cpp obj/obj_InsertItem.h
-    obj/obj_Item.cpp obj/obj_Item.h
-    obj/obj_MoveItem.cpp obj/obj_MoveItem.h
-    obj/obj_Notifiers.cpp obj/obj_Notifiers.h
-    obj/obj_RemoveItem.cpp obj/obj_RemoveItem.h
-    obj/obj_Util.cpp obj/obj_Util.h
-    prop/prop_AttrGroup.cpp prop/prop_AttrGroup.h
-    prop/prop_Backboard.cpp prop/prop_Backboard.h
-    prop/prop_ConstantPanel.cpp prop/prop_ConstantPanel.h
-    prop/prop_CurrentKeyPanel.cpp prop/prop_CurrentKeyPanel.h
-    prop/prop_DefaultKeyPanel.cpp prop/prop_DefaultKeyPanel.h
-    prop/prop_HeaderButton.cpp prop/prop_HeaderButton.h
     prop/prop_ItemBase.h
     prop/prop_Items.cpp prop/prop_Items.h
     prop/prop_KeyAccessor.cpp prop/prop_KeyAccessor.h
-    prop/prop_KeyGroup.cpp prop/prop_KeyGroup.h
-    prop/prop_KeyKnocker.cpp prop/prop_KeyKnocker.h
-    prop/prop_Panel.cpp prop/prop_Panel.h
-    prop/prop_ProjectPanel.cpp prop/prop_ProjectPanel.h
     res/res_ImageSetter.h
     res/res_Item.cpp res/res_Item.h
     res/res_Notifier.cpp res/res_Notifier.h
     res/res_ResourceUpdater.cpp res/res_ResourceUpdater.h
     theme/Theme.cpp theme/Theme.h
     theme/Colors.h
+    theme/Graph.cpp theme/Graph.h
     theme/Icons.cpp theme/Icons.h
     theme/TimeLine.cpp theme/TimeLine.h
-    tool/tool_BonePanel.cpp tool/tool_BonePanel.h
-    tool/tool_FFDPanel.cpp tool/tool_FFDPanel.h
-    tool/tool_FlowLayout.cpp tool/tool_FlowLayout.h
-    tool/tool_ItemTable.cpp tool/tool_ItemTable.h
-    tool/tool_Items.cpp tool/tool_Items.h
+    # The audio row's slider. It is the ONE survivor of the widget tools dock: the
+    # dock's own panels are the QML scene below now, but this control's reason for
+    # existing (a QSS QSlider cannot round a handle) is unchanged where it is used.
     tool/ToolSlider.cpp tool/ToolSlider.h
-    tool/tool_MeshPanel.cpp tool/tool_MeshPanel.h
-    tool/tool_ModePanel.cpp tool/tool_ModePanel.h
-    tool/tool_PosePanel.cpp tool/tool_PosePanel.h
-    tool/tool_SRTPanel.cpp tool/tool_SRTPanel.h
-    tool/tool_ViewPanel.cpp tool/tool_ViewPanel.h
     ${app_icon}
     AudioPlaybackWidget.cpp
     AudioPlaybackWidget.h
-    prop/splineWidget.cpp
-    prop/splineWidget.h
+    prop/EasingPickWidget.cpp
+    prop/EasingPickWidget.h
         prop/bezierCurveEditor.h
         prop/bezierCurveEditor.cpp
+    qml/QmlTheme.cpp qml/QmlTheme.h
+    qml/AnimationSettingViewModel.cpp qml/AnimationSettingViewModel.h
+    qml/DestinationPickerModel.cpp qml/DestinationPickerModel.h
+    qml/QmlFormAccessibility.cpp qml/QmlFormAccessibility.h
+    qml/InspectorViewModel.cpp qml/InspectorViewModel.h
+    qml/ObjectTreeModel.cpp qml/ObjectTreeModel.h
+    qml/InspectorRowModel.cpp qml/InspectorRowModel.h
+    qml/FilterStackModel.cpp qml/FilterStackModel.h
+    qml/ToolViewModel.cpp qml/ToolViewModel.h
+    qml/FilterNames.h
+    qml/MenuCommand.cpp qml/MenuCommand.h
+    qml/ViewSettingsModel.cpp qml/ViewSettingsModel.h
+    qml/DockSlotsModel.cpp qml/DockSlotsModel.h
+    HeaderBar.cpp HeaderBar.h
+    QmlHost.h
+    ${CMAKE_SOURCE_DIR}/assets/assets.qrc
+    # The 32 MB CJK collection is app-only: assets.qrc is embedded into every
+    # test target, and the font there generated a 162 MB C++ file per target.
+    ${CMAKE_SOURCE_DIR}/assets/fonts/NotoSansCJK.qrc
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     ..
+)
+
+# Compile the Qt Quick scenes used by migrated dialogs into the binary
+# resource (so they ship in the packaged build) and validate them at build
+# time via qmlcachegen.
+qt_add_qml_module(${PROJECT_NAME}
+    URI AnimeEffects.Dialogs
+    VERSION 1.0
+    QML_FILES
+        qml/ScrubSpinBox.qml
+        qml/AnimationSettingDialog.qml
+        qml/DestinationPicker.qml
+        # The export form and the dialog-local controls it is built from. Sibling
+        # files in this directory are implicitly importable as types, so the
+        # dialog's own components live here beside the shared set rather than
+        # behind a second import.
+        qml/ExportDialog.qml
+        qml/NewProjectDialog.qml
+        qml/ProjectSettingDialog.qml
+        qml/KeyBindingDialog.qml
+        qml/GeneralSettingDialog.qml
+        qml/AeSectionHeader.qml
+        qml/AeFieldLabel.qml
+        qml/AeDisclosure.qml
+        qml/AeCheckBox.qml
+        qml/AeComboBox.qml
+        qml/AeNumberField.qml
+        qml/AeFrameRangeRow.qml
+        qml/AeFactRow.qml
+        # Shared controls for migrated dialogs. One visual language across the
+        # export flow: borderless buttons, raised fields, the theme's own icon
+        # set. A dialog that needs something else adds it here rather than
+        # hand-rolling a second look in its own file.
+        qml/AeButton.qml
+        qml/AeIconButton.qml
+        qml/AeTextField.qml
+        qml/AeToolTip.qml
+        qml/AeScrollBar.qml
+        # The Properties dock. The scene owns layout/ink; InspectorViewModel
+        # owns every document decision.
+        qml/PropertiesPanel.qml
+        qml/InspectorRow.qml
+        qml/InspectorKeyDot.qml
+        qml/InspectorNumberField.qml
+        qml/InspectorAssetField.qml
+        qml/InspectorFilterCard.qml
+        qml/InspectorFilterStack.qml
+        qml/InspectorMaskCard.qml
+        # The Tools dock. Same split as the Properties dock: the scene owns layout and
+        # ink, gui::ToolViewModel owns every tool decision.
+        qml/ToolsPanel.qml
+        qml/ToolHeading.qml
+        qml/ToolRow.qml
+        qml/ToolIconButton.qml
+        qml/ToolSliderRow.qml
+        qml/ToolCheckRow.qml
+        qml/ToolModeRow.qml
+        qml/ToolBrushSection.qml
+        qml/ToolTextAction.qml
+        qml/ToolMenu.qml
+        # The window header: a Qt Quick Controls MenuBar with this project's menu
+        # delegates, the view settings and the slot toggles.
+        qml/HeaderBar.qml
+        qml/HeaderMenu.qml
+        qml/HeaderMenuBarItem.qml
+        qml/HeaderMenuItem.qml
+        qml/HeaderMenuSeparator.qml
+        qml/HeaderAction.qml
+        qml/HeaderCheckableAction.qml
+        qml/HeaderTextButton.qml
+        qml/HeaderSlotButton.qml
+        # The Animation dock's tree column. The scene owns the rows' ink and the pointer;
+        # gui::ObjectTreeModel owns what a row means (its rows are the timeline's lanes too).
+        qml/ObjectTreePanel.qml
+        qml/TreeRow.qml
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -122,60 +235,164 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         AE_MICRO_VERSION=1
     USE_GL_CORE_PROFILE
     $<$<CONFIG:Debug>:QT_DEBUG>
+    # Path to the bundled sample project (a debug/dev fixture auto-opened under
+    # QT_DEBUG); it is not shipped in any runtime data directory.
+    AE_SAMPLE_PSD="${CMAKE_SOURCE_DIR}/assets/sample.psd"
 )
-
-#[[if (WIN32)
-    include("${CMAKE_SOURCE_DIR}/src/cmake/FindWindowsSDK.cmake")
-    get_windowssdk_library_dirs(${WINDOWSSDK_LATEST_DIR} WINLIB_DIR_LIST)
-    set(n 0)
-    set(found 0)
-    foreach(item IN LISTS WINLIB_DIR_LIST)
-        if(item MATCHES "um")
-            break()
-        endif()
-        math(EXPR n "${n}+1")
-    endforeach()
-    LIST(GET WINLIB_DIR_LIST ${n} WINLIB_DIR)
-    message("Lib dir: ${WINLIB_DIR}")
-endif ()]]
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core Qt6::Core5Compat Qt6::Widgets
         Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
         Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
-        cmnd core ctrl gl img thr util
+        Qt6::Quick Qt6::Qml Qt6::QuickWidgets Qt6::QuickControls2
+        cmnd core ctrl gl img thr util media
 )
 
+# The header's popup windows need to know whether X11 is actually compositing
+# alpha before choosing between an alpha window and the 1-bit region fallback.
+# The check is one xcb selection query; keep the dependency optional so a
+# Wayland-only packaging host still builds (AE_HAVE_XCB=0 then always masks).
+set(AE_HAVE_XCB 0)
+if(UNIX AND NOT APPLE)
+    find_package(X11 QUIET)
+    if(TARGET X11::xcb)
+        set(AE_HAVE_XCB 1)
+        target_link_libraries(${PROJECT_NAME} PRIVATE X11::xcb)
+    endif()
+endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE AE_HAVE_XCB=${AE_HAVE_XCB})
+
+# Win32 libraries the platform code calls directly: DwmSetWindowAttribute (the
+# popup rounding in gui/PopupWindow.h) and the user32 entry points around it.
+# Upstream's gui target links these too; this branch's rewrite of this file had
+# dropped the block, which only shows up when linking for Windows.
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE user32 dwmapi)
 endif()
 
-install(TARGETS ${PROJECT_NAME}
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+# FFmpeg's runtime DLLs, next to the build-tree binary.
+#
+# The exe imports avcodec/avformat/avutil/swscale/swresample when it is LOADED,
+# so a build-tree launch failed with "The code execution cannot proceed because
+# avcodec-*.dll was not found" even though linking had succeeded: windeployqt
+# only knows Qt, and nothing else copies an SDK's DLLs. src/media resolves the
+# exact set from AE_FFMPEG_ROOT (see its CMakeLists) and exports it here; the
+# packaging paths assemble their deployment from the same idea.
+if(WIN32 AND AE_FFMPEG_RUNTIME_DLLS)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${AE_FFMPEG_RUNTIME_DLLS} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMENT "Copying the FFmpeg runtime DLLs next to AnimeEffects.exe")
+endif()
+
+# THE CANVAS PAINTER HOST: the ruler's and the body's Canvas ink, and the panel's
+# backend. The surface (TimeLineEditorWidget) compiles its Canvas branch from the same
+# definition.
+target_sources(${PROJECT_NAME} PRIVATE
+    FrameRulerCanvas.cpp FrameRulerCanvas.h
+    InkCanvas.cpp InkCanvas.h
+    TimeBodyCanvas.cpp TimeBodyCanvas.h
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::CanvasPainter)
+target_compile_definitions(${PROJECT_NAME} PRIVATE AE_CANVAS_PAINTER=1)
+
+# ---------------------------------------------------------------------------
+# THE ANIMATION GRAPH PANEL (the timeline dock's Graph tab).
+#
+# GraphPanelFrame is the panel's drawing decisions (gui::drawPanel over gui/Ink.h) and
+# the one frame composition both hosts share; GraphPanelWidget is the page, the panel's
+# only host (a QCanvasPainterWidget, fed by gui/InkCanvas); GraphPanelModel is what the
+# frame draws, as engine-neutral geometry (so the panel's content is testable without a
+# window); PanelA11y publishes the panel to the screen-reader tree, which a
+# framebuffer-drawn page cannot do on its own.
+# ---------------------------------------------------------------------------
+# InkQPainter is deliberately NOT in the application: InkCanvas is the shipping backend,
+# and the QPainter one is the reference the pixel gate compiles for its parity block.
+target_sources(${PROJECT_NAME} PRIVATE
+    GraphPanelFrame.cpp GraphPanelFrame.h
+    Ink.h
+    GraphPanelWidget.cpp GraphPanelWidget.h
+    GraphPanelModel.cpp GraphPanelModel.h
+    PanelA11y.cpp PanelA11y.h
 )
 
-message("Copying data")
-# the app chdirs to its executable directory (Main.cpp: QDir::setCurrent(appDir))
-# and opens ./data from there, so data must sit next to the exe. Multi-config
-# generators put the exe in a per-config subdir, hence $<CONFIG>. Wipe the
-# destination first so deleted source files do not linger (copy_directory only
-# ever adds/updates).
-if (APPLE)
-    set(AE_DATA_SUBDIR AnimeEffects.app/Contents/MacOS/data)
-else ()
-    set(AE_DATA_SUBDIR data)
-endif ()
-if (CMAKE_CONFIGURATION_TYPES)
-    set(AE_DATA_DEST ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${AE_DATA_SUBDIR})
-else ()
-    set(AE_DATA_DEST ${CMAKE_CURRENT_BINARY_DIR}/${AE_DATA_SUBDIR})
-endif ()
-add_custom_target(copy_data
-        COMMAND ${CMAKE_COMMAND} -E rm -rf ${AE_DATA_DEST}
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${AE_DATA_DEST}
+# i18n (Qt LinguistTools, loaded in the root CMakeLists): regenerates the
+# translation sources under assets/locale/translation_<locale>.ts (via the
+# update_translations target) and builds the .qm (via release_translations).
+# The .qm are embedded into the binary under :/i18n below, so the translator
+# resolves them regardless of where the executable lives; translators only
+# ever edit the committed .ts.
+# WHICH SOURCES lupdate READS. qt_add_translations scans the sources of the target it
+# is given, and that target is the executable in this directory: everything in
+# src/util, src/ctrl, src/core, src/img and src/media was invisible to it. The effect
+# is not a warning or a failure, it is silence: strings written there never reach a
+# catalog, so they cannot be translated, and a translator has no way to notice a
+# sentence that was never offered. 48 of the strings in src/ctrl/ExportTarget.cpp
+# (every note and every error the export dialog states) were in that state, and the
+# measured cost is that the user reads "This destination cannot be exported: no frames
+# left" half in English.
+#
+# The library targets are declared before this one, so their source lists are known
+# here; collecting them explicitly keeps ONE translation scan for the whole
+# application instead of one per library (each of which would need its own .ts).
+# The paths have to be ABSOLUTE. A target's SOURCES property holds them as they were
+# written in that target's own CMakeLists (src/ctrl says "CmndName.cpp"), and a
+# relative path handed to a project generated in src/gui is read there: lupdate was
+# told to scan "src/gui/CmndName.cpp", found nothing, and reported no error, because a
+# missing file in a file list is not a failure. That is how this fix first did nothing.
+set(AE_I18N_LIBRARIES util thr cmnd gl img core media ctrl)
+set(AE_I18N_SOURCES "")
+foreach(lib ${AE_I18N_LIBRARIES})
+    if(TARGET ${lib})
+        get_target_property(lib_sources ${lib} SOURCES)
+        foreach(src ${lib_sources})
+            # Generator expressions (the QML/autogen entries) cannot be resolved at
+            # configure time and carry no translatable strings anyway.
+            if(src MATCHES "^\\$<")
+                continue()
+            endif()
+            if(NOT IS_ABSOLUTE "${src}")
+                get_filename_component(src "${src}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}/src/${lib}")
+            endif()
+            list(APPEND AE_I18N_SOURCES "${src}")
+        endforeach()
+    endif()
+endforeach()
+# lupdate follows #include, so the headers carry their inline tr() calls with them,
+# but a header no .cpp includes is only found if it is listed: the generated table
+# strings are exactly that case (nothing includes them; the generator's output is
+# compiled into ctrl by name).
+list(APPEND AE_I18N_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../ctrl/ExportTargetStrings.h
+    # The tools host derives the mask chooser's empty-state explanations with
+    # QCoreApplication::translate("gui::ToolViewModel", ...); lupdate only sees files
+    # in this list, and the GUI target is not one of AE_I18N_LIBRARIES.
+    ${CMAKE_CURRENT_SOURCE_DIR}/ToolWidget.cpp
+    # The menu bar, the window's panel strings and the header's view-setting
+    # tooltips are already in the executable target's own sources, which
+    # qt_add_translations scans: listing them here as well scans each file a SECOND
+    # time without its include path, producing both `gui::MainMenuBar` AND
+    # `MainMenuBar` contexts for the same source line. Leave them to the target scan.
 )
-message("Data copied")
-add_dependencies(${PROJECT_NAME} copy_data)
-qt_finalize_executable(AnimeEffects)
+list(REMOVE_DUPLICATES AE_I18N_SOURCES)
+
+qt_add_translations(${PROJECT_NAME}
+    TS_FILE_BASE translation
+    TS_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/assets/locale
+    SOURCES ${AE_I18N_SOURCES}
+    QM_FILES_OUTPUT_VARIABLE qm_files
+)
+# Embed the build-produced .qm (they are build artifacts, not source) under
+# :/i18n so the app stays self-contained for its translations.
+qt_add_resources(${PROJECT_NAME} "translations"
+    PREFIX "/i18n"
+    BASE "${CMAKE_CURRENT_BINARY_DIR}"
+    FILES ${qm_files}
+)
+# rcc needs the .qm present when it runs; they are produced by lrelease.
+add_dependencies(${PROJECT_NAME} release_translations)
+
+install(TARGETS ${PROJECT_NAME}
+    BUNDLE DESTINATION .
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)

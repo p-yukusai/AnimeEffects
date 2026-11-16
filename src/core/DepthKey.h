@@ -1,22 +1,33 @@
 #ifndef CORE_DEPTHKEY_H
 #define CORE_DEPTHKEY_H
 
+#include <array>
+#include "XC.h"
 #include "util/Easing.h"
+#include "core/KeyEasing.h"
 #include "core/TimeKey.h"
 
 namespace core {
 
 class DepthKey: public TimeKey {
 public:
+    static constexpr int kComponents = easingComponentCount(TimeKeyType_Depth);
+
     class Data {
-        util::Easing::Param mEasing;
+        std::array<util::Easing::Param, kComponents> mEasings;
         float mDepth;
         void clamp();
 
     public:
         Data();
-        util::Easing::Param& easing() { return mEasing; }
-        const util::Easing::Param& easing() const { return mEasing; }
+        util::Easing::Param& easing(int aComponent) {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
+        const util::Easing::Param& easing(int aComponent) const {
+            XC_ASSERT(0 <= aComponent && aComponent < kComponents);
+            return mEasings[aComponent];
+        }
         void setDepth(float aDepth) {
             mDepth = aDepth;
             clamp();

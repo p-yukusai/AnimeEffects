@@ -1,19 +1,62 @@
-#include <QApplication>
-#include <qstandardpaths.h>
-#include "MainWindow.h"
 #include "gui/GeneralSettingDialog.h"
-#include "util/NetworkUtil.h"
-#include <QComboBox>
-#include <QHBoxLayout>
-#include "gui/theme/Colors.h"
+
+#include "MainWindow.h"
+#include "XCAssert.h"
+#include "core/TimeFormat.h"
+#include "gui/GUIResources.h"
+#include "gui/MouseSetting.h"
+#include "gui/ViaPoint.h"
+#include "gui/qml/GeneralSettingViewModel.h"
+#include "gui/qml/QmlTheme.h"
+#include "util/Easing.h"
+
+#include <QQuickItem>
+#include <QQuickWidget>
+#include <QQmlContext>
+#include <QScreen>
+#include <QSettings>
+#include <QFontDatabase>
+#include <QUrl>
+#include <QVBoxLayout>
+#include <QVariantMap>
+#include <algorithm>
 
 namespace {
 
-constexpr int kLanguageTypeCount = 7;
-constexpr int kTimeFormatTypeCount = 6;
-constexpr int kEasingTypeCount = 13;
-constexpr int kRangeTypeCount = 3;
+// Timeline format picker order. Frames_From1 is dropped from the UI (with frames
+// natively 1-indexed it is identical to Frames_From0), but the enum value is kept so
+// previously saved settings still load - they map to the "Frame number" entry. The
+// scene's option list (gui::GeneralSettingViewModel::timeFormatOptions) is written in
+// this order and with this many entries.
+const core::TimeFormatType kTimeFormatOrder[] = {
+    core::TimeFormatType_Frames_From0,       // Frame number
+    core::TimeFormatType_Relative_FPS,       // Seconds (frame/fps)
+    core::TimeFormatType_Seconds_Frames,     // Seconds : Frame
+    core::TimeFormatType_Timecode_SMPTE,     // HH:MM:SS+FF
+    core::TimeFormatType_Timecode_HHMMSSmmm, // HH:MM:SS:mmm
+};
+const int kTimeFormatOrderCount = int(sizeof(kTimeFormatOrder) / sizeof(kTimeFormatOrder[0]));
 
+core::TimeFormatType timeFormatTypeAt(int aComboIndex) {
+    if (0 <= aComboIndex && aComboIndex < kTimeFormatOrderCount)
+        return kTimeFormatOrder[aComboIndex];
+    return core::TimeFormatType_Frames_From0;
+}
+
+int timeFormatComboIndexOf(core::TimeFormatType aType) {
+    if (aType == core::TimeFormatType_Frames_From1) // alias of Frames_From0
+        return timeFormatComboIndexOf(core::TimeFormatType_Frames_From0);
+    for (int i = 0; i < kTimeFormatOrderCount; ++i) {
+        if (kTimeFormatOrder[i] == aType)
+            return i;
+    }
+    return 0;
+}
+
+// The canonical (untranslated) names the settings file stores, indexed the way the
+// scene's language/range option lists are: same order, same count. These are the
+// load/save halves only - the LABELS the user reads come from the view model, which
+// carries the widget's existing translation entries.
 int languageToIndex(const QString& aLanguage) {
     if (aLanguage == "Auto")
         return 0;
@@ -32,35 +75,17 @@ int languageToIndex(const QString& aLanguage) {
     return 0;
 }
 
-int easingToIndex(const QString& aEasing) {
-    if (aEasing == "None")
-        return 0;
-    if (aEasing == "Linear")
-        return 1;
-    if (aEasing == "Sine")
-        return 2;
-    if (aEasing == "Quad")
-        return 3;
-    if (aEasing == "Cubic")
-        return 4;
-    if (aEasing == "Quart")
-        return 5;
-    if (aEasing == "Quint")
-        return 6;
-    if (aEasing == "Expo")
-        return 7;
-    if (aEasing == "Circ")
-        return 8;
-    if (aEasing == "Back")
-        return 9;
-    if (aEasing == "Elastic")
-        return 10;
-    if (aEasing == "Bounce")
-        return 11;
-    if (aEasing == "Custom")
-        return 12;
-    return 1;
-    // Default easing is Linear
+QString indexToLanguage(int aIndex) {
+    switch (aIndex) {
+    case 0: return {"Auto"};
+    case 1: return {"English"};
+    case 2: return {"Japanese"};
+    case 3: return {"Chinese"};
+    case 4: return {"Spanish"};
+    case 5: return {"Russian"};
+    case 6: return {"Korean"};
+    default: return {"Auto"};
+    }
 }
 
 int rangeToIndex(const QString& aRange) {
@@ -68,943 +93,374 @@ int rangeToIndex(const QString& aRange) {
         return 0;
     if (aRange == "Out")
         return 1;
-    if (aRange == "All")
-        return 2;
     return 2;
-    // Default range is InOut, it is referenced as "All" by Hidefuku
+    // "All" IS InOut - the widget stored the third entry under that name.
 }
 
-QString indexToEasing(int aIndex, bool translated = true) {
-    if (translated) {
-        switch (aIndex) {
-        case 0:
-            return QCoreApplication::translate("GeneralSettingsDialog", "None");
-        case 1:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Linear");
-        case 2:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Sine");
-        case 3:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Quad");
-        case 4:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Cubic");
-        case 5:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Quart");
-        case 6:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Quint");
-        case 7:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Expo");
-        case 8:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Circ");
-        case 9:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Back");
-        case 10:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Elastic");
-        case 11:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Bounce");
-        case 12:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Custom");
-        default:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Linear");
-        }
-    }
+QString indexToRange(int aIndex) {
     switch (aIndex) {
-    case 0:
-        return QString("None");
-    case 1:
-        return QString("Linear");
-    case 2:
-        return QString("Sine");
-    case 3:
-        return QString("Quad");
-    case 4:
-        return QString("Cubic");
-    case 5:
-        return QString("Quart");
-    case 6:
-        return QString("Quint");
-    case 7:
-        return QString("Expo");
-    case 8:
-        return QString("Circ");
-    case 9:
-        return QString("Back");
-    case 10:
-        return QString("Elastic");
-    case 11:
-        return QString("Bounce");
-    case 12:
-        return QString("Custom");
-    default:
-        return QString("Linear");
+    case 0: return {"In"};
+    case 1: return {"Out"};
+    default: return {"All"};
     }
 }
 
-QString indexToRange(int aRange, bool translated = true) {
-    if (translated) {
-        switch (aRange) {
-        case 0:
-            return QCoreApplication::translate("GeneralSettingsDialog", "In");
-        case 1:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Out");
-        case 3:
-            return QCoreApplication::translate("GeneralSettingsDialog", "All");
-        default:
-            return QCoreApplication::translate("GeneralSettingsDialog", "All");
-        }
-    }
-    switch (aRange) {
-    case 0:
-        return QString("In");
-    case 1:
-        return QString("Out");
-    case 3:
-        return QString("All");
-    default:
-        return QString("All");
-    }
-}
-
-QString indexToLanguage(int aIndex, bool translated = true) {
-    if (translated) {
-        switch (aIndex) {
-        case 0:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Auto");
-        case 1:
-            return QCoreApplication::translate("GeneralSettingsDialog", "English");
-        case 2:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Japanese");
-        case 3:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Chinese");
-        case 4:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Spanish");
-        case 5:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Russian");
-        case 6:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Korean");
-        default:
-            return QCoreApplication::translate("GeneralSettingsDialog", "Auto");
-        }
-    }
-    switch (aIndex) {
-    case 0:
-        return {"Auto"};
-    case 1:
-        return {"English"};
-    case 2:
-        return {"Japanese"};
-    case 3:
-        return {"Chinese"};
-    case 4:
-        return {"Spanish"};
-    case 5:
-        return {"Russian"};
-    case 6:
-        return {"Korean"};
-    default:
-        return {"Auto"};
-    }
-}
 } // namespace
-
-static QString indexToTimeFormat(const int aIndex) {
-    switch (aIndex) {
-    case core::TimeFormatType::TimeFormatType_Frames_From0:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Frame number (from 0)");
-    case core::TimeFormatType::TimeFormatType_Frames_From1:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Frame number (from 1)");
-    case core::TimeFormatType::TimeFormatType_Relative_FPS:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Relative to FPS (1.0 = 60.0)");
-    case core::TimeFormatType::TimeFormatType_Seconds_Frames:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Seconds : Frame");
-    case core::TimeFormatType::TimeFormatType_Timecode_SMPTE:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Timecode (SMPTE) (HH:MM:SS:FF)");
-    case core::TimeFormatType::TimeFormatType_Timecode_HHMMSSmmm:
-        return QCoreApplication::translate("GeneralSettingsDialog", "Timecode (HH:MM:SS:mmm)");
-    default:
-        return "";
-    }
-}
-
 
 namespace gui {
 
-GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, QWidget* aParent):
-    EasyDialog(tr("General Settings"), aParent),
-    mTabs(new QTabWidget(this)),
-    mInitialLanguageIndex(),
-    mLanguageBox(),
-    mInitialTimeFormatIndex(),
-    mTimeFormatBox(),
-    mInitialAccent(theme::kDefaultAccent),
-    mAccentGroup(),
-    mInitialThemeKey("dark"),
-    mThemeGroup(),
-    mGUIResources(aGUIResources) {
-    // read current settings
+GeneralSettingDialog::GeneralSettingDialog(GUIResources& aGUIResources, ViaPoint& aViaPoint, QWidget* aParent)
+    : QDialog(aParent),
+      mGUIResources(aGUIResources),
+      mViaPoint(aViaPoint) {
+    setObjectName(QStringLiteral("generalSettingsWidget"));
+    setWindowTitle(tr("Settings"));
+    // A native framed window, not a frameless popup: normal title bar, movable and
+    // resizable by the window manager, and modal over the main window.
+    setModal(true);
+    setSizeGripEnabled(true);
+
+    mModel = new GeneralSettingViewModel(this);
+
+    // Read the saved settings, the way the widget form did, and hand the resulting
+    // values over in one piece: the model's "before" and "now" sides both start here,
+    // so nothing reads as changed until the user moves something.
     {
+        GeneralSettingViewModel::Init init;
         QSettings settings;
+
         auto language = settings.value("generalsettings/language");
+        if (language.isValid())
+            init.languageIndex = languageToIndex(language.toString());
 
-        if (language.isValid()) {
-            mInitialLanguageIndex = languageToIndex(language.toString());
-        }
+        auto uiScale = settings.value("generalsettings/ui/uiScale");
+        if (uiScale.isValid())
+            init.uiScalePercent = uiScale.toInt();
 
-        auto easing = settings.value("generalsettings/easing");
-        mInitialEasingIndex = easing.isValid() ? easingToIndex(easing.toString()) : easingToIndex("Linear");
+        auto fontFamily = settings.value("generalsettings/ui/fontFamily");
+        if (fontFamily.isValid())
+            init.fontFamily = fontFamily.toString();
+
+        // ONE resolver for both stored forms (the enum ordinal of the shared-table
+        // refactor and the older canonical NAME): a stored "Auto" or the retired
+        // ordinal 14 meant the automatic (CLAMPED) handle pair, which the option
+        // list carries as its own entry (GeneralSettingViewModel::optionForSetting).
+        init.easingIndex =
+            GeneralSettingViewModel::optionForSetting(settings.value("generalsettings/easing"));
 
         auto range = settings.value("generalsettings/range");
-        mInitialRangeIndex = range.isValid() ? rangeToIndex(range.toString()) : rangeToIndex("All");
+        if (range.isValid())
+            init.rangeIndex = rangeToIndex(range.toString());
 
         auto timeScale = settings.value("generalsettings/ui/timeformat");
         if (timeScale.isValid()) {
-            mInitialTimeFormatIndex = timeScale.toInt();
+            // Stored as the enum value; map it (the legacy Frames_From1 included) to a
+            // picker index.
+            init.timeFormatIndex =
+                timeFormatComboIndexOf(static_cast<core::TimeFormatType>(timeScale.toInt()));
         }
 
-        auto uiScale = settings.value("generalsettings/ui/uiScale", 1.0);
-        mUiScale = uiScale.toDouble();
-
-        auto font = settings.value("generalsettings/ui/font", qApp->font().family());
-        if (font.isValid()) {
-            mFont = font.toString();
-        }
-
-        auto theme = settings.value("generalsettings/ui/theme");
-        if (theme.isValid()) {
-            mInitialThemeKey = theme.toString();
-        }
+        auto savedTheme = settings.value("generalsettings/ui/theme");
+        if (savedTheme.isValid())
+            init.themeKey = savedTheme.toString();
 
         const QString accentName = settings.value("generalsettings/ui/accent", QString()).toString();
-        mInitialAccent = theme::accentFromName(accentName);
+        init.accentIndex = int(theme::accentFromName(accentName));
 
         auto donationAllowed = settings.value("generalsettings/ui/donationAllowed");
-        bDonationAllowed = donationAllowed.isValid()? donationAllowed.toBool() : true;
+        init.donationAllowed = donationAllowed.isValid() ? donationAllowed.toBool() : true;
 
         auto forceSolverLoad = settings.value("forceSolverLoad", false);
-        bForceSolverLoad = forceSolverLoad.toBool();
+        init.forceSolverLoad = forceSolverLoad.toBool();
 
         auto ignoreWarnings = settings.value("export_ignore_warnings");
-        bIgnoreWarnings = ignoreWarnings.isValid()? ignoreWarnings.toBool(): false;
+        init.ignoreWarnings = ignoreWarnings.isValid() ? ignoreWarnings.toBool() : false;
 
         auto isAutoSave = settings.value("generalsettings/projects/enableAutosave");
-        bAutoSave = isAutoSave.isValid()? isAutoSave.toBool() : true;
+        init.autoSave = isAutoSave.isValid() ? isAutoSave.toBool() : true;
 
         auto isAutoSaveDelay = settings.value("generalsettings/projects/autosaveDelay");
-        mAutoSaveDelay = isAutoSaveDelay.isValid() ? isAutoSaveDelay.toInt() : 5;
+        init.autoSaveDelayMinutes = isAutoSaveDelay.isValid() ? std::max(1, isAutoSaveDelay.toInt()) : 5;
 
+        // Kept byte-for-byte as the widget had it: the box opened UNTICKED whatever
+        // the file said (`!isAutoCbCopy.isValid() ? isAutoCbCopy.toBool() : false`
+        // evaluates to false on both branches). Faithfully ported rather than
+        // silently fixed; flagged in the port's report.
         auto isAutoCbCopy = settings.value("generalsettings/keys/autocb");
-        bAutoCbCopy = !isAutoCbCopy.isValid()? isAutoCbCopy.toBool() : false;
-
-        auto isAutoFFmpegCheck = settings.value("ffmpeg_check");
-
-        mAutoFFmpegCheck = isAutoFFmpegCheck.isValid()? isAutoFFmpegCheck.toBool() : true;
-
-        auto isResIDCheck = settings.value("res_id_check");
-        bResIDCheck = isResIDCheck.isValid()?  isResIDCheck.toBool() : true;
-
-        auto isKeyDelay = settings.value("generalsettings/keybindings/keyDelay");
-        mKeyDelay = isKeyDelay.isValid() ? isKeyDelay.toInt() : 125;
+        init.autoCbCopy = !isAutoCbCopy.isValid() ? isAutoCbCopy.toBool() : false;
 
         auto isAutoShowMesh = settings.value("generalsettings/tools/autoshowmesh");
-        bAutoShowMesh = isAutoShowMesh.isValid()? isAutoShowMesh.toBool() : false;
+        init.autoShowMesh = isAutoShowMesh.isValid() ? isAutoShowMesh.toBool() : false;
+
+        auto isResIDCheck = settings.value("res_id_check");
+        init.resIDCheck = isResIDCheck.isValid() ? isResIDCheck.toBool() : true;
+
+        auto isKeyDelay = settings.value("generalsettings/keybindings/keyDelay");
+        init.keyDelayMs = isKeyDelay.isValid() ? isKeyDelay.toInt() : 125;
+
+        MouseSetting mouse;
+        mouse.load();
+        init.invertZoom = mouse.invertZoom;
+        init.middleMouseMoveCanvas = mouse.middleMouseMoveCanvas;
+
+        mModel->seed(init);
     }
 
-    auto form = new QFormLayout();
-
-    // create inner widgets
+    // The two option lists the model cannot build itself: the theme ids come from
+    // gui::GUIResources::themeList() (the widget built its buttons from the same
+    // list) and the accent previews are the theme's own hues. The easing names are
+    // the model's own now - it reads them from util::Easing's display table, so the
+    // combo, the timeline's menu and the picker's tiles cannot disagree - and the
+    // assert below is the count that ordering implies: the table's non-Custom
+    // entries plus the Auto Clamped MODE option appended after them.
+    // Everything else is model-built.
+    XC_ASSERT(mModel->easingOptions().size() == GeneralSettingViewModel::autoClampedOptionIndex() + 1);
     {
-        mLanguageBox = new QComboBox();
-        for (int i = 0; i < kLanguageTypeCount; ++i) {
-            mLanguageBox->addItem(indexToLanguage(i));
-        }
-        mLanguageBox->setCurrentIndex(mInitialLanguageIndex);
-        form->addRow(tr("Language (needs restart)"), mLanguageBox);
-
-        mFontFamilyBox = new QLineEdit();
-        mFontFamilyBox->setText(mFont);
-        form->addRow(tr("Font"), mFontFamilyBox);
-
-        auto resetFontButton = new QPushButton(tr("Reset font"));
-        connect(resetFontButton, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.remove("generalsettings/ui/font");
-            settings.setValue("generalsettings/ui/customFont", false);
-            QMessageBox::information(this, tr("Font reset"), tr("The font has been reset."));
-        });
-        form->addRow(resetFontButton);
-
-        mUiScaleBox = new QDoubleSpinBox();
-        mUiScaleBox->setValue(mUiScale);
-        mUiScaleBox->setSingleStep(0.1);
-        mUiScaleBox->setMinimum(0.5);
-        mUiScaleBox->setMaximum(3.0);
-        form->addRow(tr("UI scale"), mUiScaleBox);
-
-        auto resetUIScaleButton = new QPushButton(tr("Reset UI scale"));
-        connect(resetUIScaleButton, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.setValue("generalsettings/ui/uiScale", 1.0);
-            settings.setValue("temp/scaleReset", true);
-            QMessageBox::information(this, tr("UI Scale reset"), tr("The UI scaling has been reset."));
-        });
-        form->addRow(resetUIScaleButton);
-
-        mThemeGroup = new QButtonGroup(this);
-        mThemeGroup->setExclusive(true);
-        {
-            const theme::Colors c = theme::Colors::current();
-            auto* themeRow = new QWidget();
-            themeRow->setAttribute(Qt::WA_StyledBackground, true);
-            auto* themeLayout = new QHBoxLayout(themeRow);
-            themeLayout->setContentsMargins(2, 2, 2, 2);
-            themeLayout->setSpacing(0);
-            const QStringList themeList = gui::GUIResources::themeList();
-            const QStringList themeLabels{tr("System"), tr("Light"), tr("Dark")};
-            for (int i = 0; i < themeList.size(); ++i) {
-                auto* b = new QPushButton(themeLabels.at(i));
-                b->setCheckable(true);
-                b->setProperty("themeId", themeList.at(i));
-                if (themeList.at(i) == mInitialThemeKey) b->setChecked(true);
-                mThemeGroup->addButton(b);
-                themeLayout->addWidget(b, 1);
-            }
-            themeRow->setStyleSheet(
-                QString("QWidget { background-color: %1; border-radius: 0.5em; }"
-                        "QPushButton { background-color: transparent; color: %2; border: none; border-radius: 0.375em; padding: 0.25em 0.875em; }"
-                        "QPushButton:hover { background-color: %3; }"
-                        "QPushButton:checked { background-color: %4; color: %5; }")
-                    .arg(c.recessed.name(), c.icon.name(), c.raised.name(), c.accent.name(), c.accentText.name()));
-            form->addRow(tr("Theme"), themeRow);
-        }
-
-        mAccentGroup = new QButtonGroup(this);
-        mAccentGroup->setExclusive(true);
-        {
-            const theme::Colors c = theme::Colors::current();
-            auto* accentRow = new QWidget();
-            auto* accentLayout = new QHBoxLayout(accentRow);
-            accentLayout->setContentsMargins(0, 0, 0, 0);
-            accentLayout->setSpacing(6);
-            for (int i = 0; i < theme::kAccentCount; ++i) {
-                const auto acc = static_cast<theme::AccentColor>(i);
-                auto* b = new QPushButton();
-                b->setCheckable(true);
-                b->setProperty("accent", i);
-                const QColor accent = (c.isDark ? theme::Colors::dark(acc) : theme::Colors::light(acc)).accentSwatch;
-                b->setStyleSheet(
-                    QString("QPushButton { width: 20px; height: 20px; background-color: %1; border: 2px solid transparent; padding: 0; min-height: 0; min-width: 0; }"
-                            "QPushButton:hover { border-color: %2; }"
-                            "QPushButton:checked { border-color: %3; }")
-                        .arg(accent.name(), c.outline.name(), c.text.name()));
-                if (acc == mInitialAccent) b->setChecked(true);
-                mAccentGroup->addButton(b);
-                accentLayout->addWidget(b);
-            }
-            accentLayout->addStretch();
-            form->addRow(tr("Accent color"), accentRow);
-        }
-    }
-
-    auto project = new QFormLayout();
-    {
-        mAutoSave = new QCheckBox();
-        mAutoSave->setChecked(bAutoSave);
-        project->addRow(tr("Automatically save your project"), mAutoSave);
-
-        mAutoSaveDelayBox = new QSpinBox();
-        mAutoSaveDelayBox->setValue(mAutoSaveDelay);
-        project->addRow(tr("Time (in minutes) between autosaves"), mAutoSaveDelayBox);
-
-        mForceSolverLoad = new QCheckBox();
-        mForceSolverLoad->setChecked(bForceSolverLoad);
-        project->addRow(tr("Force project to load"), mForceSolverLoad);
-
-        mAutoFFmpegBox = new QCheckBox();
-        mAutoFFmpegBox->setChecked(mAutoFFmpegCheck);
-        project->addRow(tr("Always check for FFmpeg on export"), mAutoFFmpegBox);
-
-        mIgnoreWarnings = new QCheckBox();
-        mIgnoreWarnings->setChecked(bIgnoreWarnings);
-        project->addRow(tr("Ignore export warnings"), mIgnoreWarnings);
-    }
-
-    auto qualityOfLife = new QFormLayout();
-    {
-        mEasingBox = new QComboBox();
-        for (int i = 0; i < kEasingTypeCount; ++i) {
-            mEasingBox->addItem(indexToEasing(i));
-        }
-        mEasingBox->setCurrentIndex(mInitialEasingIndex);
-        qualityOfLife->addRow(tr("Default keyframe easing"), mEasingBox);
-
-        mRangeBox = new QComboBox();
-        for (int i = 0; i < kRangeTypeCount; ++i) {
-            mRangeBox->addItem(indexToRange(i));
-        }
-        mRangeBox->setCurrentIndex(mInitialRangeIndex);
-        qualityOfLife->addRow(tr("Default keyframe range"), mRangeBox);
-
-        mTimeFormatBox = new QComboBox();
-        for (int i = 0; i < kTimeFormatTypeCount; ++i) {
-            mTimeFormatBox->addItem(indexToTimeFormat(i));
-        }
-        mTimeFormatBox->setCurrentIndex(mInitialTimeFormatIndex);
-        qualityOfLife->addRow(tr("Timeline format (needs restart)"), mTimeFormatBox);
-
-        mAutoShowMesh = new QCheckBox();
-        mAutoShowMesh->setChecked(bAutoShowMesh);
-        connect(mAutoShowMesh, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.setValue("generalsettings/tools/autoshowmesh", mAutoShowMesh->isChecked());
-        });
-        qualityOfLife->addRow(tr("Show mesh when selecting FFD"), mAutoShowMesh);
-
-        mAutoCbCopy = new QCheckBox();
-        mAutoCbCopy->setChecked(bAutoCbCopy);
-        qualityOfLife->addRow(tr("On copy send keys to the clipboard"), mAutoCbCopy);
-
-        bResIDBox = new QCheckBox();
-        bResIDBox->setChecked(bResIDCheck);
-        qualityOfLife->addRow(tr("Enforce ID check on asset download"), bResIDBox);
-
-        mDonationAllowed = new QCheckBox();
-        mDonationAllowed->setChecked(bDonationAllowed);
-        qualityOfLife->addRow(tr("Allow donation menu"), mDonationAllowed);
-
-        mResetButton = new QPushButton(tr("Reset recent files list"));
-        mResetButton->setToolTip(tr("Deletes all project entries from your recents"));
-        connect(mResetButton, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.remove("projectloader/recents");
-            MainWindow::showInfoPopup(tr("Success"), tr("All entries have been successfully removed"), "Info");
-            auto mmb = qobject_cast<MainMenuBar*>(this->parent());
-            mmb->onRecentsUpdate();
-        });
-        qualityOfLife->addRow(mResetButton);
-
-
-    }
-
-    auto keybindingSettings = new QFormLayout();
-    {
-        mKeyDelayBox = new QSpinBox();
-        mKeyDelayBox->setRange(0, 10000);
-        mKeyDelayBox->setValue(mKeyDelay);
-        keybindingSettings->addRow(tr("Global keybind delay (ms)"), mKeyDelayBox);
-
-        mResetKeybindsButton = new QPushButton(tr("Reset keybinds"));
-        mResetKeybindsButton->setToolTip(tr("Reset all keybinds, a restart is required."));
-        connect(mResetKeybindsButton, &QPushButton::clicked, [=]() {
-            QSettings settings;
-            settings.setValue("keybindReset",
-                !settings.value("keybindReset").isValid() || !settings.value("keybindReset").toBool()
+        const QStringList themeIds = mGUIResources.themeList();
+        const QStringList themeLabels{tr("System"), tr("Light"), tr("Dark")};
+        QVariantList themes;
+        for (int i = 0; i < themeIds.size(); ++i) {
+            QVariantMap map;
+            map.insert(QStringLiteral("value"), themeIds.at(i));
+            // The widget indexed a fixed 3-label list and would have thrown on a
+            // fourth theme; the id is the fallback here instead.
+            map.insert(
+                QStringLiteral("label"), i < themeLabels.size() ? themeLabels.at(i) : themeIds.at(i)
             );
-            MainWindow::showInfoPopup(
-                tr("Keybinds reset status"),
-                settings.value("keybindReset").toBool() ? tr("The keybinds will be reset when you restart.")
-                                                        : tr("The keybinds will not be reset when you restart."),
-                "Info"
-            );
-        });
-        keybindingSettings->addRow(mResetKeybindsButton);
-    }
-
-    auto ffmpegSettings = new QFormLayout();
-    {
-        ffmpegTroubleshoot = new QPushButton(tr("Troubleshoot FFmpeg"));
-        connect(ffmpegTroubleshoot, &QPushButton::clicked, [=]() {
-            QMessageBox ffmpegNotif;
-
-            QString ffmpeg = getFFmpeg();
-            bool ffmpegWorks = ffmpegCheck(ffmpeg, this);
-            if (!ffmpegWorks) {
-                ffmpegCheckFailed(this);
-                return;
-            }
-            ffmpegNotif.setWindowTitle(tr("FFmpeg test success"));
-            ffmpegNotif.setText(tr("All tests have passed, FFmpeg is working correctly."));
-            ffmpegNotif.setDetailedText(
-                tr("FFmpeg at: ") + ffmpeg + "\n" +
-                tr("Check FFmpeg response ✓\n"
-                "Check FFmpeg exporting ✓\n"
-                "Check FFmpeg palette generation ✓")
-            );
-            ffmpegNotif.addButton(QMessageBox::Ok);
-            ffmpegNotif.exec();
-        });
-
-        selectFromExe = new QPushButton(tr("Select executable and automatically set up"));
-        selectFromExe->setToolTip(
-            tr("This will remove previous instances of FFmpeg from your tools directory"
-               " and replace them with your custom executable, please make sure this is a valid FFmpeg executable.")
-        );
-        connect(selectFromExe, &QPushButton::clicked, [=]() {
-            #ifdef Q_OS_LINUX
-            auto dir = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-            dir = QDir(dir.absolutePath() + "/AnimeEffects");
-            #else
-            QDir dir = QDir("./tools");
-            #endif
-            if (!dir.exists()) {}
-            QString file = util::NetworkUtil::os() == "win" ? "/ffmpeg.exe" : "/ffmpeg";
-
-            if (QFileInfo::exists(dir.absolutePath() + file)) {
-                QFile(dir.absolutePath() + file).moveToTrash();
-            }
-
-            QFileInfo ffmpeg = QFileInfo(QFileDialog::getOpenFileName(nullptr, "Select FFmpeg executable"));
-            qDebug() << "Selected exe: " << ffmpeg.fileName() << " | " << ffmpeg.absoluteFilePath();
-            QFile(ffmpeg.absoluteFilePath()).copy(dir.absolutePath() + file);
-
-            QMessageBox success;
-            success.setText(tr("Operation successful"));
-            success.setWindowTitle(tr("Success"));
-            success.addButton(QMessageBox::Ok);
-            success.exec();
-        });
-
-
-        autoSetup = new QPushButton(tr("Download and automatically set up"));
-        connect(autoSetup, &QPushButton::clicked, [=]() {
-            #ifdef Q_OS_LINUX
-            auto dir = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-            dir = QDir(dir.absolutePath() + "/AnimeEffects/");
-            #else
-            QDir dir = QDir("./tools");
-            #endif
-            if (!dir.exists()) {
-                if (dir.mkpath(dir.absolutePath())) {
-                    qDebug() << "Directory created : " << dir.absolutePath();
-                } else {
-                    qDebug() << "Directory creation failed, assumed protected : " << dir.absolutePath();
-                    QMessageBox error;
-                    error.setWindowTitle(tr("Unable to create directory"));
-                    error.setText(
-                        tr("An error has occurred while creating the tools directory in ") + dir.absolutePath() +
-                        tr(" the application will use a fallback but if this doesn't work please run the app as "
-                           "administrator or use a folder that isn't write protected.")
-                    );
-                    error.addButton(QMessageBox::Ok);
-                    error.exec();
-                }
-            }
-            const QString file = util::NetworkUtil::os() == "win" ? "/ffmpeg.exe" : "/ffmpeg";
-            if (QFileInfo::exists(dir.absolutePath() + file)) {
-                QFile(dir.absolutePath() + file).moveToTrash();
-            }
-            const QString os = util::NetworkUtil::os();
-            QString gitFile;
-            // ID checking is probably overkill, but security is important!
-            int id;
-            if (os == "win") {
-                gitFile = "ffmpeg-win64.exe";
-                id = 222521524;
-            } else if (os == "linux") {
-                gitFile = "ffmpeg-linux64";
-                id = 222521700;
-            } else {
-                gitFile = "ffmpeg-macos";
-                id = 222521413;
-            }
-
-            const QFileInfo ffmpeg = util::NetworkUtil::downloadGithubFile(
-                "https://api.github.com/repos/AnimeEffectsDevs/ffmpeg-bin/releases/latest", gitFile, id, this
-                );
-            qDebug() << "Download name : " << ffmpeg.fileName() << "\nDownload is executable : " << ffmpeg.isExecutable();
-            bool pathSetAttempted = false;
-            bool ffmpegMoveAttempted = false;
-            if (ffmpeg.isExecutable()) {
-                if(!dir.exists() || !dir.isReadable() || !QFileInfo(dir.absolutePath()).isWritable()){
-                    // We'll attempt a global installation as a fallback in cases where the folder is write protected
-                    auto appdata = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-                    auto anieFolder = QDir(appdata.absolutePath() + "/AnimeEffects");
-                    if (!anieFolder.exists() || !QFileInfo(anieFolder.absolutePath()).isWritable()) {
-                        if (!appdata.mkdir(appdata.absolutePath() + "/AnimeEffects")) {
-                            qDebug(
-                                "AnimeEffects folder creation failed in AppData, attempting to locate in Documents..."
-                            );
-                            appdata = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-                            anieFolder = QDir(appdata.absolutePath() + "/AnimeEffects");
-                            if (!anieFolder.exists() || !QFileInfo(anieFolder.absolutePath()).isWritable()) {
-                                if (!appdata.mkdir(appdata.absolutePath() + "/AnimeEffects")) {
-                                    qDebug("AnimeEffects folder creation failed, skipping...");
-                                }
-                            } else {
-                                appdata = anieFolder;
-                            }
-                        } else {
-                            appdata = anieFolder;
-                        }
-                    }
-                    else {
-                        appdata = anieFolder;
-                    }
-                    const QString fileInAppDataLoc = appdata.absolutePath() + file;
-                    QFile(ffmpeg.absoluteFilePath()).rename(fileInAppDataLoc);
-                    qDebug() << "FFmpeg moved : " << QFile(fileInAppDataLoc).exists();
-                    if (QFile(fileInAppDataLoc).exists()) {
-                        QProcess pathSet;
-                        QString console;
-                        QStringList instruct;
-                        if(os == "linux" || os == "mac"){
-                            console = "sh";
-                            instruct.append("export");
-                            instruct.append("PATH=$PATH:" + fileInAppDataLoc);
-                        }
-                        else{
-                            console = "cmd";
-                            instruct.append("set");
-                            instruct.append("PATH=%PATH%;" + fileInAppDataLoc);
-                        }
-                        pathSet.start(console, instruct);
-                        pathSet.waitForFinished(2*1000);
-                        if (pathSet.exitCode() == 0) {
-                            QMessageBox success;
-                            success.setWindowTitle(tr("Success"));
-                            success.setText(tr("FFmpeg was successfully set up. Please restart AnimeEffects"));
-                            success.exec();
-                            return;
-                        }
-                        pathSetAttempted = true;
-                        qDebug("FFmpeg path setup errored, continuing...");
-                    }
-                    else {
-                        ffmpegMoveAttempted = true;
-                        qDebug("FFmpeg move errored, continuing...");
-                    }
-                }
-                QFile(ffmpeg.absoluteFilePath()).rename(dir.absolutePath() + file);
-                qDebug() << "FFmpeg moved : " << QFile(dir.absolutePath() + file).exists();
-                #ifdef Q_OS_LINUX
-                QMessageBox info;
-                info.setWindowTitle(tr("FFmpeg installed"));
-                info.setText(tr("FFmpeg was installed but it requires to be set as executable, please right click "
-                                "\"ffmpeg\" go to properties and allow it to be executable as a program."));
-                info.exec();
-                QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
-                #endif
-                if (QFile(dir.absolutePath() + file).exists()) {
-                    QMessageBox success;
-                    success.setWindowTitle(tr("Success"));
-                    success.setText(tr("FFmpeg was successfully set up."));
-                    success.exec();
-                    return;
-                }
-            }
-            QMessageBox error;
-            error.setWindowTitle(tr("Error"));
-            error.setText(tr("While setting up FFmpeg an unexpected error has occurred, please send the below information to our devs."));
-            QString platform = QSysInfo::productType(); platform[0] = platform[0].toUpper();
-            error.setDetailedText(
-                QString("Operating system: ") + platform + " " + QSysInfo::productVersion() +
-                "\nCPU: " + QSysInfo::currentCpuArchitecture() +
-                "\nFile requested: " + gitFile + " - Hardcoded file ID: " + QString::number(id) +
-                "\nFile received: " + ffmpeg.absoluteFilePath() +
-                "\nFile is executable: " + (ffmpeg.isExecutable()? "True" : "False") +
-                "\nFile is readable: " + (ffmpeg.isReadable()? "True": "False") +
-                "\nFile is writable: " + (ffmpeg.isWritable()? "True": "False") +
-                "\nRequested base folders : " + dir.absolutePath() + " | " + QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + " | " + QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-                "\nFallback path set errored: " + (pathSetAttempted? "True" : "False") +
-                "\nFallback FFmpeg move errored: " + (ffmpegMoveAttempted? "True" : "False")
-            );
-            error.exec();
-        });
-
-        ffmpegSettings->addRow(ffmpegTroubleshoot);
-        ffmpegSettings->addRow(selectFromExe);
-        ffmpegSettings->addRow(autoSetup);
-    }
-
-    createTab(tr("General"), form);
-    createTab(tr("Project"), project);
-    createTab(tr("QoL"), qualityOfLife);
-    createTab(tr("FFmpeg"), ffmpegSettings);
-    createTab(tr("Keybindings"), keybindingSettings);
-
-
-    this->setMainWidget(mTabs, false);
-
-    this->setOkCancel([=](const int aResult) -> bool {
-        if (aResult == 0) {
-            this->saveSettings();
+            themes.append(map);
         }
-        return true;
+        mModel->setThemeOptions(themes);
+    }
+    {
+        const theme::Colors c = theme::Colors::current();
+        QVariantList accents;
+        for (int i = 0; i < theme::kAccentCount; ++i) {
+            const theme::AccentColor acc = (theme::AccentColor)i;
+            QVariantMap map;
+            map.insert(QStringLiteral("value"), i);
+            // Preview the accent hue at a mid lightness (accentSwatch): the fill token
+            // itself is theme-tuned (pale in light, deep in dark) and reads poorly as a
+            // bare swatch on the dialog background.
+            map.insert(
+                QStringLiteral("swatch"),
+                (c.isDark ? theme::Colors::dark(acc) : theme::Colors::light(acc)).accentSwatch.name()
+            );
+            accents.append(map);
+        }
+        mModel->setAccentOptions(accents);
+    }
+    {
+        // The interface font list is the font database's own families, after the
+        // bundled Geist weights and the CJK collection were registered at startup.
+        // "Default" (empty) means the locale's family; a saved family that is no
+        // longer installed is kept in the list so the user can see what is selected
+        // instead of silently landing on Default.
+        QVariantList fonts;
+        QVariantMap defaultItem;
+        defaultItem.insert(QStringLiteral("label"), tr("Default"));
+        defaultItem.insert(QStringLiteral("value"), QString());
+        fonts.append(defaultItem);
+
+        QStringList families = QFontDatabase::families();
+        families.sort(Qt::CaseInsensitive);
+        const QString saved = mModel->fontFamily();
+        if (!saved.isEmpty() && !families.contains(saved))
+            families.push_front(saved);
+        for (const QString& family : families) {
+            QVariantMap map;
+            map.insert(QStringLiteral("label"), family);
+            map.insert(QStringLiteral("value"), family);
+            fonts.append(map);
+        }
+        mModel->setFontFamilyOptions(fonts);
+    }
+
+    mTheme = new QmlTheme(this);
+
+    mQuick = new QQuickWidget(this);
+    mQuick->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    // The theme and the model are context properties, exactly as the export shell
+    // does it: the scene reads `theme.base` and `generalSettingModel.languageIndex`
+    // with no C++ type registration. NOT "model": every Repeater and ListView has a
+    // `model` property of its own, so a scene binding would resolve the right-hand
+    // side to that shadowing property.
+    mQuick->rootContext()->setContextProperty(QStringLiteral("generalSettingModel"), mModel);
+    mQuick->rootContext()->setContextProperty(QStringLiteral("theme"), mTheme);
+    // The scene's backdrop: the theme's own window colour, so a resize does not flash
+    // white.
+    mQuick->setClearColor(theme::Colors::current().base);
+    mQuick->setSource(QUrl(QStringLiteral("qrc:/AnimeEffects/Dialogs/qml/GeneralSettingDialog.qml")));
+
+    // Size to the scene, now that it exists (see resizeToScene).
+    resizeToScene();
+
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(mQuick);
+
+    // The scene's buttons do not know about QDialog, and they should not: the model
+    // carries the outcome, and the shell turns the request into the dialog result and
+    // writes the settings. Saving happens BEFORE accept() so the call site's
+    // post-exec() read of the *HasChanged() predicates sees the same model state the
+    // settings were written from.
+    connect(mModel, &GeneralSettingViewModel::acceptRequested, this, [this]() {
+        saveSettings();
+        accept();
+    });
+    connect(mModel, &GeneralSettingViewModel::cancelRequested, this, &QDialog::reject);
+    // Each tab is a different set of rows, so the window re-hugs the scene when the
+    // user switches (the same size-to-scene rule as on open).
+    connect(mModel, &GeneralSettingViewModel::currentTabChanged, this, &GeneralSettingDialog::resizeToScene);
+    // The reset also raises the app's info popup, which is a WIDGET surface: the scene
+    // asks, the shell answers.
+    ViaPoint* via = &aViaPoint;
+    connect(mModel, &GeneralSettingViewModel::resetRecentFilesRequested, this, [via]() {
+        QSettings().remove(QStringLiteral("projectloader/recents"));
+        // The open "Recent projects" submenu reads the list live; without this it
+        // would keep the entries the reset just deleted until the next restart.
+        if (auto* menu = via->mainMenuBar())
+            menu->refreshRecentFiles();
+        MainWindow::showInfoPopup(tr("Success"), tr("All entries have been successfully removed"), "Info");
+    });
+    // "Show mesh when selecting FFD" is not part of the accepted batch: the widget
+    // wrote its key the moment the box was clicked, and the port keeps that.
+    connect(mModel, &GeneralSettingViewModel::autoShowMeshChanged, this, [this]() {
+        QSettings().setValue(QStringLiteral("generalsettings/tools/autoshowmesh"), mModel->autoShowMesh());
     });
 }
 
-QFormLayout* GeneralSettingDialog::createTab(const QString& aTitle, QFormLayout* aForm) {
-    auto scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-
-    auto frame = new QFrame();
-    scroll->setWidget(frame);
-
-    auto form = new QFormLayout();
-    form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-    form->setLabelAlignment(Qt::AlignRight);
-    frame->setLayout(aForm);
-    frame->adjustSize();
-    mTabs->addTab(scroll, aTitle);
-
-    return form;
+GeneralSettingDialog::~GeneralSettingDialog() {
+    // Tear the scene down before the model/theme context objects die, so the scene's
+    // binding teardown never re-reads a destroyed context property (the same rule the
+    // export and new-project shells follow).
+    delete mQuick;
+    mQuick = nullptr;
 }
 
-bool GeneralSettingDialog::languageHasChanged() { return mInitialLanguageIndex != mLanguageBox->currentIndex(); }
-
-bool GeneralSettingDialog::easingHasChanged() { return mInitialEasingIndex != mEasingBox->currentIndex(); }
-
-bool GeneralSettingDialog::rangeHasChanged() { return mInitialRangeIndex != mRangeBox->currentIndex(); }
-
-bool GeneralSettingDialog::timeFormatHasChanged() { return mInitialTimeFormatIndex != mTimeFormatBox->currentIndex(); }
-
-bool GeneralSettingDialog::fontHasChanged() { return mFont != mFontFamilyBox->text(); }
-
-bool GeneralSettingDialog::uiScaleHasChanged() {
-    QSettings settings;
-    if (settings.value("temp/scaleReset", false).toBool()) {
-        settings.remove("temp/scaleReset");
-        forceThemeReload = true;
-        return false;
+void GeneralSettingDialog::resizeToScene() {
+    // The window HUGS the scene: the QML root's implicitHeight is the natural height
+    // of the current tab's rows plus the tab strip and the footer band, and the shell
+    // sizes the dialog to it. Both dimensions yield to the screen, and the scene's own
+    // scroll host covers a screen shorter than the rows.
+    constexpr int kDefaultWidth = 520;
+    constexpr int kMinimumWidth = 420;
+    constexpr int kMinimumHeight = 260;
+    const QRect avail = screen() ? screen()->availableGeometry() : QRect();
+    const int maxW = avail.width() > 0 ? avail.width() : kDefaultWidth;
+    const int maxH = avail.height() > 0 ? avail.height() : kMinimumHeight;
+    int wantedH = kMinimumHeight;
+    if (auto* scene = mQuick->rootObject()) {
+        const int natural = qRound(scene->implicitHeight());
+        if (natural > 0)
+            wantedH = natural;
     }
-    return mUiScale != mUiScaleBox->value();
+    setMinimumSize(qMin(kMinimumWidth, maxW), qMin(kMinimumHeight, maxH));
+    resize(qMin(kDefaultWidth, maxW), qMin(wantedH, maxH));
 }
 
-bool GeneralSettingDialog::themeHasChanged() { return mInitialThemeKey != theme(); }
+void GeneralSettingDialog::selectTab(int aIndex) { mModel->setCurrentTab(aIndex); }
 
-bool GeneralSettingDialog::donationHasChanged() {return bDonationAllowed != mDonationAllowed->isChecked(); }
+bool GeneralSettingDialog::easingHasChanged() { return mModel->easingHasChanged(); }
 
-bool GeneralSettingDialog::forceSolverLoadHasChanged() {return bForceSolverLoad != mForceSolverLoad->isChecked(); }
+bool GeneralSettingDialog::rangeHasChanged() { return mModel->rangeHasChanged(); }
 
-bool GeneralSettingDialog::ignoreWarningsHasChanged() {return bIgnoreWarnings != mIgnoreWarnings->isChecked(); }
+bool GeneralSettingDialog::languageHasChanged() { return mModel->languageHasChanged(); }
 
-bool GeneralSettingDialog::autoSaveHasChanged() { return bAutoSave != mAutoSave->isChecked(); }
+bool GeneralSettingDialog::timeFormatHasChanged() { return mModel->timeFormatHasChanged(); }
 
-bool GeneralSettingDialog::autoSaveDelayHasChanged() { return mAutoSaveDelay != mAutoSaveDelayBox->value(); }
+bool GeneralSettingDialog::autoSaveHasChanged() { return mModel->autoSaveHasChanged(); }
 
-bool GeneralSettingDialog::autoFFmpegHasChanged() { return mAutoFFmpegCheck != mAutoFFmpegBox->isChecked(); }
+bool GeneralSettingDialog::autoSaveDelayHasChanged() { return mModel->autoSaveDelayHasChanged(); }
 
-bool GeneralSettingDialog::resIDCheckHasChanged() { return bResIDCheck != bResIDBox->isChecked(); }
+bool GeneralSettingDialog::resIDCheckHasChanged() { return mModel->resIDCheckHasChanged(); }
 
-bool GeneralSettingDialog::cbCopyHasChanged() { return bAutoCbCopy != mAutoCbCopy->isChecked(); }
+bool GeneralSettingDialog::themeHasChanged() { return mModel->themeHasChanged(); }
 
-bool GeneralSettingDialog::keyDelayHasChanged() { return mKeyDelay != mKeyDelayBox->value(); }
+bool GeneralSettingDialog::donationHasChanged() { return mModel->donationHasChanged(); }
 
-QString GeneralSettingDialog::theme() {
-    return mThemeGroup->checkedButton() ? mThemeGroup->checkedButton()->property("themeId").toString() : mInitialThemeKey;
-}
+bool GeneralSettingDialog::forceSolverLoadHasChanged() { return mModel->forceSolverLoadHasChanged(); }
 
-theme::AccentColor GeneralSettingDialog::accent() {
-    return mAccentGroup->checkedButton()
-        ? (theme::AccentColor)mAccentGroup->checkedButton()->property("accent").toInt()
-        : mInitialAccent;
-}
+bool GeneralSettingDialog::ignoreWarningsHasChanged() { return mModel->ignoreWarningsHasChanged(); }
 
-bool GeneralSettingDialog::accentHasChanged() {
-    return mInitialAccent != accent();
-}
+bool GeneralSettingDialog::cbCopyHasChanged() { return mModel->cbCopyHasChanged(); }
 
+bool GeneralSettingDialog::keyDelayHasChanged() { return mModel->keyDelayHasChanged(); }
 
-QString GeneralSettingDialog::getFFmpeg() {
-    QFileInfo ffmpeg_file;
-    QString ffmpeg;
-    if (util::NetworkUtil::os() == "win") { ffmpeg_file = QFileInfo("./tools/ffmpeg.exe"); }
-    else { ffmpeg_file = QFileInfo("./tools/ffmpeg"); }
-    const auto file = util::NetworkUtil::os() == "win" ? "ffmpeg.exe" : "ffmpeg";
-    auto appdata = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-    auto anieFolder = QDir(appdata.absolutePath() + "/AnimeEffects");
-    if (!ffmpeg_file.exists() || !ffmpeg_file.isExecutable()) {
-        qDebug() << "FFmpeg not found, attempting backup...";
-        ffmpeg_file = QFileInfo(anieFolder.absolutePath() + "/" + file);
-        ffmpeg = ffmpeg_file.absoluteFilePath();
-        if (!anieFolder.exists() || !QFileInfo(anieFolder.absolutePath()).isReadable()) {
-            qDebug() << "AnimeEffects not found in appdata, attempting backup...";
-            appdata = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-            anieFolder = QDir(appdata.absolutePath() + "/AnimeEffects");
-            ffmpeg_file = QFileInfo(anieFolder.absolutePath() + "/" + file);
-            ffmpeg = ffmpeg_file.absoluteFilePath();
-            if (!anieFolder.exists() || !QFileInfo(anieFolder.absolutePath()).isReadable()) {
-                qDebug() << "AnimeEffects not found in documents, attempting back up...";
-                appdata = QApplication::applicationDirPath();
-                ffmpeg_file = QFileInfo(appdata.absolutePath() + "/" + file);
-                ffmpeg = ffmpeg_file.absoluteFilePath();
-                if (!appdata.exists() || !ffmpeg_file.isReadable()) {
-                    qDebug() << "AnimeEffects not found in appdir, stopping...";
-                    ffmpeg = "ffmpeg";
-                }
-                else { qDebug("FFmpeg found in appdir, initializing..."); }
-            }
-            else{ qDebug("FFmpeg found in documents, initializing..."); }
-        } else { qDebug("FFmpeg found in appdata, initializing..."); }
-    }
-    else {
-        qDebug() << "FFmpeg found in tools, initializing...";
-        ffmpeg = ffmpeg_file.absoluteFilePath();
-    }
-    qDebug() << "FFmpeg at: " << ffmpeg;
-    return ffmpeg;
-}
-void GeneralSettingDialog::ffmpegCheckFailed(GeneralSettingDialog* aDialog) {
-    QMessageBox message;
-    message.setIcon(QMessageBox::Warning);
-    message.setText(tr("FFmpeg was not found."));
-    auto infoText =
-        tr("Exporting video requires FFmpeg to be installed on your computer, "
-           "FFmpeg is a free tool that AnimeEffects uses to create video files.\n"
-           "In the following screen you can instruct AnimeEffects to download and install it automatically for "
-           "you, "
-           "or you can download it by yourself and tell AnimeEffects where it is.");
-    message.setInformativeText(infoText);
-    message.setStandardButtons(QMessageBox::Ok);
-    message.setDefaultButton(QMessageBox::Ok);
-    message.exec();
-    aDialog->selectTab(2);
-    aDialog->exec();
-}
+bool GeneralSettingDialog::mouseHasChanged() { return mModel->mouseHasChanged(); }
 
-bool GeneralSettingDialog::ffmpegCheck(const QString& ffmpeg, GeneralSettingDialog* generalSettingsDialog) {
-    QSettings settings;
-    auto ffCheck = settings.value("ffmpeg_check");
-    if (ffCheck.isValid() && !ffCheck.toBool()) {
-        return true;
-    }
-    const bool libExists = util::NetworkUtil::libExists(ffmpeg, "-version");
-    const bool pathExists = util::NetworkUtil::libExists("ffmpeg");
+QString GeneralSettingDialog::theme() { return mModel->themeKey(); }
 
-    if (!libExists && !pathExists) {
-        return false;
-    }
-    // Test FFmpeg functionality
-    QMessageBox ffmpegNotif;
-    ffmpegNotif.setIcon(QMessageBox::Critical);
+theme::AccentColor GeneralSettingDialog::accent() { return (theme::AccentColor)mModel->accentIndex(); }
 
-    QTemporaryDir tempDir;
-    QDir ffmpegOutputDir = tempDir.isValid() ? tempDir.path() : QDir::temp();
-
-    // Noise to GIF conversion test
-    QProcess gif;
-    QString gifLoc = ffmpegOutputDir.absoluteFilePath("gif.gif");
-    qDebug() << "Gif loc: " << gifLoc;
-    gif.start(ffmpeg, {"-f", "bin", "-i", "pipe:", "-y", gifLoc}, QProcess::ReadWrite);
-    std::string testData = "Test";
-    for (auto x = 0; x < 2; x++) {
-        gif.write(testData.c_str(), testData.size());
-        gif.waitForBytesWritten();
-    }
-    gif.closeWriteChannel();
-    gif.waitForFinished();
-    qDebug() << gif.readAllStandardOutput();
-    bool exportSuccess = gif.exitStatus() == 0 && QFileInfo::exists(gifLoc);
-    qDebug() << "Gif exists: " << QFileInfo::exists(gifLoc) << "| Gif remove: " << QFile(gifLoc).remove();
-    gif.deleteLater();
-    if (!exportSuccess) {
-        ffmpegNotif.setWindowTitle(tr("FFmpeg doesn't export"));
-        ffmpegNotif.setText(tr("FFmpeg was unable to export, please troubleshoot."));
-        ffmpegNotif.setDetailedText(
-            "File exists: " + QString(QFileInfo::exists("./data/icons/file.png")? "True" : "False") +
-            "\nFile readable: " + QString(QFileInfo("./data/icons/file.png").isReadable()? "True" : "False") +
-            "\nFile writeable: " + QString(QFileInfo("./data/icons/file.png").isWritable()? "True" : "False") +
-            "\nFolder writeable: " + QString(QDir("./data/icons/").exists() ? "True" : "False") +
-            "\nFolder readable: " + QString(QDir("./data/icons/").isReadable() ? "True" : "False")
-            );
-        ffmpegNotif.addButton(QMessageBox::Ok);
-        ffmpegNotif.exec();
-        generalSettingsDialog->selectTab(2);
-        generalSettingsDialog->exec();
-        ffCheck.setValue(true);
-        return false;
-    }
-    // Palettegen test
-    QProcess palettegen;
-    QString palettegenLoc = ffmpegOutputDir.absoluteFilePath("palette.gif");
-    qDebug() << "Palette loc: " << palettegenLoc;
-    palettegen.start(ffmpeg, {"-f", "bin", "-i", "pipe:", "-y", "-vf", "palettegen", palettegenLoc}, QProcess::ReadWrite);
-    for (auto x = 0; x < 2; x++) {
-        palettegen.write(testData.c_str(), testData.size());
-        palettegen.waitForBytesWritten();
-    }
-    palettegen.closeWriteChannel();
-    palettegen.waitForFinished();
-    qDebug() << palettegen.readAllStandardOutput();
-    bool pGenSuccess = palettegen.exitStatus() == 0 && QFileInfo::exists(palettegenLoc);
-    if (!pGenSuccess) {
-        ffmpegNotif.setWindowTitle(tr("FFmpeg doesn't generate palettes"));
-        ffmpegNotif.setText(tr("FFmpeg was unable to generate palettes, please troubleshoot."));
-        ffmpegNotif.addButton(QMessageBox::Ok);
-        ffmpegNotif.exec();
-        generalSettingsDialog->selectTab(2);
-        generalSettingsDialog->exec();
-        ffCheck.setValue(true);
-        return false;
-    }
-    qDebug() << "Palette exists: " << QFileInfo::exists(palettegenLoc)
-             << "| Palette remove: " << QFile(palettegenLoc).remove();
-    palettegen.deleteLater();
-    return true;
-}
+bool GeneralSettingDialog::accentHasChanged() { return mModel->accentHasChanged(); }
 
 void GeneralSettingDialog::saveSettings() {
     QSettings settings;
     if (languageHasChanged())
-        settings.setValue("generalsettings/language", indexToLanguage(mLanguageBox->currentIndex(), false));
+        settings.setValue("generalsettings/language", indexToLanguage(mModel->languageIndex()));
 
     if (easingHasChanged()) {
-        settings.setValue("generalsettings/easing", indexToEasing(mEasingBox->currentIndex(), false));
+        // The option's stored value: an easing type's enum ordinal, or the retired
+        // 14 when the option is the automatic pair (util::Easing::defaultParam maps
+        // that back to Custom + kDefaultAutomaticHandleMode).
+        settings.setValue(
+            "generalsettings/easing", GeneralSettingViewModel::storedValueForOption(mModel->easingIndex())
+        );
     }
     if (rangeHasChanged()) {
-        settings.setValue("generalsettings/range", indexToRange(mRangeBox->currentIndex(), false));
+        settings.setValue("generalsettings/range", indexToRange(mModel->rangeIndex()));
     }
     if (timeFormatHasChanged()) {
-        settings.setValue("generalsettings/ui/timeformat", mTimeFormatBox->currentIndex());
-    }
-    if (fontHasChanged()) {
-        settings.setValue("generalsettings/ui/customFont", true);
-        if (mFontFamilyBox->text().contains("Comic Sans")) {
-
-            QMessageBox message;
-            message.setIcon(QMessageBox::Critical);
-            message.setWindowTitle("SIGILL");
-            message.setText(tr("I'm sorry Dave, I'm afraid I can't do that..."));
-            message.setInformativeText("I think you know what the problem is just as well as I do.");
-            message.setStandardButtons(QMessageBox::Ok);
-            message.setDefaultButton(QMessageBox::Ok);
-            message.setWindowModality(Qt::ApplicationModal);
-            message.exec();
-            bHal = true;
-        }
-        settings.setValue("generalsettings/ui/font", mFontFamilyBox->text());
-    }
-    if (uiScaleHasChanged()) {
-        settings.setValue("generalsettings/ui/uiScale", mUiScaleBox->value());
+        // Store the enum value (not the picker index) so a saved format is stable even
+        // if the picker order changes; load maps it back.
+        settings.setValue(
+            "generalsettings/ui/timeformat", int(timeFormatTypeAt(mModel->timeFormatIndex()))
+        );
     }
     if (themeHasChanged()) {
-        settings.setValue("generalsettings/ui/theme", theme());
+        settings.setValue("generalsettings/ui/theme", mModel->themeKey());
     }
-    if (donationHasChanged()){
-        settings.setValue("generalsettings/ui/donationAllowed", mDonationAllowed->isChecked());
+    if (mModel->uiScaleHasChanged()) {
+        // Applied at the next start: QT_SCALE_FACTOR is read when QApplication is
+        // constructed, which is why the row says "needs restart".
+        settings.setValue("generalsettings/ui/uiScale", mModel->uiScalePercent());
     }
-    // TODO: Bandaid fix, maybe solved, requires investigation
+    if (mModel->fontFamilyHasChanged()) {
+        // Read by LocaleDecider at the next start; the row says so too.
+        settings.setValue("generalsettings/ui/fontFamily", mModel->fontFamily());
+    }
+    if (donationHasChanged()) {
+        settings.setValue("generalsettings/ui/donationAllowed", mModel->donationAllowed());
+    }
+    // TODO: Bandaid fix, needs solving
     if (forceSolverLoadHasChanged()) {
-        settings.setValue("forceSolverLoad", mForceSolverLoad->isChecked());
+        settings.setValue("forceSolverLoad", mModel->forceSolverLoad());
     }
     if (ignoreWarningsHasChanged()) {
-        settings.setValue("export_ignore_warnings", mIgnoreWarnings->isChecked());
+        settings.setValue("export_ignore_warnings", mModel->ignoreWarnings());
     }
     if (autoSaveHasChanged()) {
-        settings.setValue("generalsettings/projects/enableAutosave", mAutoSave->isChecked());
+        settings.setValue("generalsettings/projects/enableAutosave", mModel->autoSave());
     }
     if (autoSaveDelayHasChanged()) {
-        settings.setValue("generalsettings/projects/autosaveDelay", mAutoSaveDelayBox->value());
-    }
-    if (autoFFmpegHasChanged()){
-        settings.setValue("ffmpeg_check", mAutoFFmpegBox->isChecked());
+        settings.setValue("generalsettings/projects/autosaveDelay", mModel->autoSaveDelayMinutes());
     }
     if (resIDCheckHasChanged()) {
-        settings.setValue("res_id_check", bResIDBox->isChecked());
+        settings.setValue("res_id_check", mModel->resIDCheck());
     }
     if (cbCopyHasChanged()) {
-        settings.setValue("generalsettings/keys/autocb", mAutoCbCopy->isChecked());
+        settings.setValue("generalsettings/keys/autocb", mModel->autoCbCopy());
     }
     if (keyDelayHasChanged()) {
-        settings.setValue("generalsettings/keybindings/keyDelay", mKeyDelayBox->value());
+        settings.setValue("generalsettings/keybindings/keyDelay", mModel->keyDelayMs());
+    }
+    if (mouseHasChanged()) {
+        MouseSetting newValues;
+        newValues.invertZoom = mModel->invertZoom();
+        newValues.middleMouseMoveCanvas = mModel->middleMouseMoveCanvas();
+        newValues.save();
+        mViaPoint.mouseSetting() = newValues;
     }
 }
+
 } // namespace gui

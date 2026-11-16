@@ -5,12 +5,12 @@
 namespace gui {
 
 //-------------------------------------------------------------------------------------------------
-KeyCommandMap::KeyCommand::KeyCommand(): key(), group(), label(), binding(), invoker(), releaser() {}
+KeyCommandMap::KeyCommand::KeyCommand(): key(), group(), label(), binding(), defaultBinding(), invokers(), releasers() {}
 
 KeyCommandMap::KeyCommand::KeyCommand(
     const QString& aKey, const QString& aGroup, const QString& aLabel, const ctrl::KeyBinding& aBinding
 ):
-    key(aKey), group(aGroup), label(aLabel), binding(aBinding), invoker(), releaser() {}
+    key(aKey), group(aGroup), label(aLabel), binding(aBinding), defaultBinding(aBinding), invokers(), releasers() {}
 
 //-------------------------------------------------------------------------------------------------
 KeyCommandMap::KeyCommandMap(QWidget& aParent):
@@ -87,6 +87,43 @@ KeyCommandMap::KeyCommandMap(QWidget& aParent):
 
     addNewKey("SelectFFD", tools, tr("Select FFD editor"), ctrl::KeyBinding(Qt::Key_6));
 
+    // The painter's brush keys (Photoshop and Clip Studio Paint agree on [ and ]):
+    // one notch per press, Shift for the hardness. The same adjustments are on the
+    // Alt + right-drag gesture in the viewport.
+    addNewKey(
+        "BrushSizeIncrease", tools, tr("Increase the brush size"), ctrl::KeyBinding(Qt::Key_BracketRight)
+    );
+    addNewKey(
+        "BrushSizeDecrease", tools, tr("Decrease the brush size"), ctrl::KeyBinding(Qt::Key_BracketLeft)
+    );
+    addNewKey(
+        "BrushHardnessIncrease",
+        tools,
+        tr("Increase the brush hardness"),
+        ctrl::KeyBinding(Qt::Key_BracketRight, Qt::ShiftModifier)
+    );
+    addNewKey(
+        "BrushHardnessDecrease",
+        tools,
+        tr("Decrease the brush hardness"),
+        ctrl::KeyBinding(Qt::Key_BracketLeft, Qt::ShiftModifier)
+    );
+
+    // The painter's value swap. Photoshop, Clip Studio Paint, Krita and GIMP all paint a
+    // mask with two inks - black hides, white reveals - and swap them with X; this brush
+    // has one value it paints toward, so X swaps that value between its two ends (0 % and
+    // 100 %), which is the same gesture with one fewer concept. Only the Mask tool listens.
+    addNewKey("SwapMaskValue", tools, tr("Swap the mask paint value"), ctrl::KeyBinding(Qt::Key_X));
+
+    // INVERT THE MATTE IS A COMMAND, NOT A BUTTON. Photoshop inverts a mask with Ctrl+I and no
+    // control anywhere on its panel; here it was a row in the matte's card, which (a) is not a
+    // property (it rewrites the frame's field pixels), and (b) put an image operation in the
+    // painting section. As a rebindable command it sits where this application keeps every verb a
+    // user might want on a key, and the Mask tool is the only listener.
+    addNewKey(
+        "InvertMask", tools, tr("Invert the layer mask"), ctrl::KeyBinding(Qt::Key_I, Qt::ControlModifier)
+    );
+
     addNewKey("MoveFrameLeft", timeline, tr("Move one frame to the left"), ctrl::KeyBinding(Qt::Key_1, Qt::AltModifier));
 
     addNewKey("MoveFrameRight", timeline, tr("Move one frame to the right"), ctrl::KeyBinding(Qt::Key_3, Qt::AltModifier));
@@ -105,34 +142,26 @@ void KeyCommandMap::addNewKey(
 }
 
 void KeyCommandMap::readFrom(const QSettings& aSrc) {
-    QSettings settings;
-    if (settings.value("keybindReset").isValid() && settings.value("keybindReset").toBool()) {
-        // this->deleteFrom(aSrc);
-        for (auto command : mCommands) {
-            if (aSrc.value(command->key).isValid()) {
-                aSrc.value(command->key).clear();
-            }
-        }
-        settings.value("keybindReset").clear();
-        settings.sync();
-        return;
-    }
-
+    // Reset every binding to its shipped default first, so a repeated read is
+    // idempotent and a removed/absent override cannot leave a stale binding
+    // behind. Only user differences are then re-applied.
     for (auto command : mCommands) {
+        command->binding = command->defaultBinding;
         readValue(aSrc, *command);
     }
     resetSubKeyCommands();
 }
 
-void KeyCommandMap::deleteFrom(const QSettings& aSrc) {
-    for (auto command : mCommands) {
-        eraseValue(aSrc, *command);
-    }
-}
-
 void KeyCommandMap::writeTo(QSettings& aDest) {
+    // The store holds only overrides — differences from the shipped default.
+    // Resetting to defaults therefore simply drops every entry, which is the
+    // correct end state and needs no restart.
     for (auto command : mCommands) {
-        writeValue(aDest, *command);
+        if (command->binding.matchesExactlyWith(command->defaultBinding)) {
+            aDest.remove(command->key);
+        } else {
+            aDest.setValue(command->key, command->binding.serialValue());
+        }
     }
     resetSubKeyCommands();
 }
@@ -140,16 +169,6 @@ void KeyCommandMap::writeTo(QSettings& aDest) {
 void KeyCommandMap::readValue(const QSettings& aSrc, KeyCommand& aCommand) {
     auto v = aSrc.value(aCommand.key);
     aCommand.binding.setSerialValue(v.isValid() ? v.toString() : QString());
-}
-
-void KeyCommandMap::eraseValue(const QSettings& aSrc, KeyCommand& aCommand) {
-    if (aSrc.value(aCommand.key).isValid()) {
-        aSrc.value(aCommand.key).clear();
-    };
-}
-
-void KeyCommandMap::writeValue(QSettings& aDest, const KeyCommand& aCommand) {
-    aDest.setValue(aCommand.key, aCommand.binding.serialValue());
 }
 
 void KeyCommandMap::resetSubKeyCommands() {

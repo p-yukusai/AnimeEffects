@@ -8,6 +8,7 @@
 #include "img/PSDUtil.h"
 #include "gui/ResourceDialog.h"
 #include "gui/MainMenuBar.h"
+#include "MainWindow.h"
 #include "img/Util.h"
 
 namespace gui {
@@ -21,9 +22,12 @@ ResourceDialog::ResourceDialog(ViaPoint& aViaPoint, bool aModal, QWidget* aParen
         // auto fileMenu = new QMenu(tr("File"), menuBar);
         auto addResource = new QAction(tr("Add Assets"));
         connect(addResource, &QAction::triggered, this, &ResourceDialog::onAddResourceTriggered);
+        auto deleteUnused = new QAction(tr("Delete unused"), menuBar);
+        connect(deleteUnused, &QAction::triggered, this, &ResourceDialog::onDeleteUnusedTriggered);
         // fileMenu->addAction(addResource);
         menuBar->setNativeMenuBar(false);
         menuBar->addAction(addResource);
+        menuBar->addAction(deleteUnused);
         // menuBar->addMenu(fileMenu);
         menuBar->show();
         this->setMenuBar(menuBar);
@@ -64,6 +68,8 @@ void ResourceDialog::setProject(core::Project* aProject) {
     mTree->setProject(aProject);
 }
 
+void ResourceDialog::watchAllAssets() { mTree->watchAllTopItems(); }
+
 void ResourceDialog::updateResourcePath() {
     if (mProject) {
         mTree->updateTreeRootName(mProject->resourceHolder());
@@ -84,6 +90,18 @@ void ResourceDialog::onAddResourceTriggered(bool) {
 
     for (int i = 0; i < fileName.count(); i++) {
         mTree->load(fileName[i]);
+    }
+}
+
+void ResourceDialog::onDeleteUnusedTriggered(bool) {
+    if (!mProject)
+        return;
+
+    // The tree owns the removal so the panel's context-menu Delete and this bulk
+    // action share one definition of "unused" (and one removal path).
+    const int count = mTree->removeUnusedAssets();
+    if (count == 0) {
+        MainWindow::showInfoPopup(tr("Delete unused"), tr("No unused assets to delete"), "Info");
     }
 }
 

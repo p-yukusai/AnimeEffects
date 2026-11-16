@@ -2,6 +2,7 @@
 #include "core/TimeLine.h"
 #include "ctrl/CmndName.h"
 #include "ctrl/mesh/mesh_CreateMode.h"
+#include "ctrl/bone/bone_MeshWeightRemap.h"
 #include "ctrl/mesh/mesh_Renderer.h"
 #include "ctrl/mesh/mesh_Notifier.h"
 
@@ -97,8 +98,20 @@ namespace mesh {
                 mKeyOwner.key->data().getMeshBuffer();
             }
 
+            // The authored weights address vertex INDICES, so the structural
+            // edit remaps them in the same undo step (after the geometry runs).
+            cmnd::Base* remap = nullptr;
+            if (!mKeyOwner.owns()) {
+                remap = bone::createMeshWeightsRemap(
+                    mProject, mTarget, *mKeyOwner.key, mKeyOwner.key->data().vertices()
+                );
+            }
+
             // push command
             stack.push(mMeshAccessor.createTrianglePusher(aPos, aRef, &faceCreated));
+            if (remap) {
+                stack.push(remap);
+            }
         }
         ///@attention "faceCreated" was assigned when the command executed.
 

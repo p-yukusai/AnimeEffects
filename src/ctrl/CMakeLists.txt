@@ -1,4 +1,5 @@
 project(ctrl)
+ae_enable_warnings()
 
 add_library(${PROJECT_NAME}
     ../XC.h
@@ -8,10 +9,18 @@ add_library(${PROJECT_NAME}
     BoneEditMode.h
     BoneEditor.cpp BoneEditor.h
     BoneParam.h
+    AssignPixels.h
+    Brush.cpp Brush.h
+    MaskEditor.cpp MaskEditor.h
+    MaskParam.h
     CmndName.cpp CmndName.h
     Driver.cpp Driver.h
     DriverResources.cpp DriverResources.h
     Exporter.cpp Exporter.h
+    ExportTarget.cpp ExportTarget.h
+    # GENERATED (scripts/i18n/gen_export_targets_i18n.py): the table's user-visible
+    # strings as QT_TRANSLATE_NOOP, because lupdate cannot read a data file.
+    ExportTargetStrings.h
     FFDEditor.cpp FFDEditor.h
     FFDParam.h
     GraphicStyle.h
@@ -33,31 +42,36 @@ add_library(${PROJECT_NAME}
     TimeLineEditor.cpp TimeLineEditor.h
     TimeLineRow.cpp TimeLineRow.h
     TimeLineUtil.cpp TimeLineUtil.h
+    TreeActions.cpp TreeActions.h
     ToolType.h
     UILog.h
     UILogType.h
     UILogger.h
-    VideoFormat.cpp VideoFormat.h
     bone/bone_AssignInfluence.h
+    bone/bone_BakeWeights.cpp bone/bone_BakeWeights.h
     bone/bone_BindNodesMode.cpp bone/bone_BindNodesMode.h
     bone/bone_CreateMode.cpp bone/bone_CreateMode.h
     bone/bone_DeleteBone.cpp bone/bone_DeleteBone.h
     bone/bone_DeleteMode.cpp bone/bone_DeleteMode.h
-    bone/bone_EraseInflMode.cpp bone/bone_EraseInflMode.h
     bone/bone_Focuser.cpp bone/bone_Focuser.h
     bone/bone_GeoBuilder.cpp bone/bone_GeoBuilder.h
     bone/bone_IMode.h
     bone/bone_InfluenceMode.cpp bone/bone_InfluenceMode.h
     bone/bone_KeyOwner.cpp bone/bone_KeyOwner.h
     bone/bone_MoveBone.h
+    bone/bone_MeshWeightRemap.cpp bone/bone_MeshWeightRemap.h
     bone/bone_MoveJointMode.cpp bone/bone_MoveJointMode.h
     bone/bone_NodeSelector.cpp bone/bone_NodeSelector.h
     bone/bone_Notifier.cpp bone/bone_Notifier.h
     bone/bone_PaintInflMode.cpp bone/bone_PaintInflMode.h
+    bone/bone_PaintWeightsMode.cpp bone/bone_PaintWeightsMode.h
     bone/bone_PushNewPoses.h
     bone/bone_PushNewTopPoses.h
     bone/bone_Renderer.cpp bone/bone_Renderer.h
     bone/bone_Target.h
+    bone/bone_WeightCommands.cpp bone/bone_WeightCommands.h
+    bone/bone_WeightHeatmap.cpp bone/bone_WeightHeatmap.h
+    bone/bone_WeightState.cpp bone/bone_WeightState.h
     ffd/ffd_BrushMode.cpp ffd/ffd_BrushMode.h
     ffd/ffd_DragMode.cpp ffd/ffd_DragMode.h
     ffd/ffd_IMode.h
@@ -92,13 +106,25 @@ add_library(${PROJECT_NAME}
     srt/srt_FocusType.h
     srt/srt_IMode.h
     srt/srt_KeyOwner.cpp srt/srt_KeyOwner.h
+    srt/srt_AssignKeyCommand.h
     srt/srt_MoveMode.cpp srt/srt_MoveMode.h
     srt/srt_Symbol.cpp srt/srt_Symbol.h
     time/time_Current.cpp time/time_Current.h
     time/time_Marquee.cpp time/time_Marquee.h
     time/time_Selection.cpp time/time_Selection.h
-    time/time_Renderer.cpp time/time_Renderer.h
+    time/time_Renderer.cpp
+    time/time_BodyModel.cpp time/time_BodyModel.h
     time/time_Scaler.cpp time/time_Scaler.h
+    # The animation graph overlay: a widget-free geometry/sampling model
+    # (ctrl/graph) with the editor object the Driver draws and drives.
+    graph/graph_Channel.cpp graph/graph_Channel.h
+    graph/graph_Scaler.cpp graph/graph_Scaler.h
+    graph/graph_Geometry.h
+    graph/graph_Curve.cpp graph/graph_Curve.h
+    # Proportional keys: the authoring-only fractional positions between
+    # absolute keys (a widget-free solver over core::TimeLine).
+    proportional/prop_Keys.cpp proportional/prop_Keys.h
+    GraphEditor.cpp GraphEditor.h
         ExportParams.h
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -124,5 +150,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     img
     thr
     util
+    media
         pugixml
 )

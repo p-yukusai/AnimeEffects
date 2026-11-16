@@ -12,8 +12,10 @@ public:
 
     void load();
     void save();
-    bool invertMainViewScaling;
-    bool invertTimeLineScaling;
+    // ONE switch for every wheel-zoom surface (viewport, timeline, graph page): a wheel is one
+    // habit, and having the three disagree is a trap, not an option. false = the convention (wheel
+    // up zooms IN, as in Photoshop, Krita and a browser); true reverses it.
+    bool invertZoom;
     bool middleMouseMoveCanvas;
 };
 

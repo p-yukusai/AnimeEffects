@@ -46,7 +46,7 @@ void BoneKeyUpdater::onTimeLineModified(TimeLineEvent& aEvent) {
             targets.push_back(t.node);
         }
     }
-    for (auto t : aEvent.defaultTargets()) {
+    for (auto t : aEvent.baseValueTargets()) {
         if (keyAffectsToInfluenceMap(t.pos.type())) {
             targets.push_back(t.node);
         }
@@ -141,9 +141,24 @@ void BoneKeyUpdater::onResourceModified(ResourceEvent& aEvent) {
 void BoneKeyUpdater::onProjectAttributeModified(ProjectEvent& aEvent) {
     auto topNode = aEvent.project().objectTree().topNode();
     if (topNode) {
-        if (aEvent.type() == ProjectEvent::Type_ChangeMaxFrame || aEvent.type() == ProjectEvent::Type_ChangeLoop) {
+        if (aEvent.type() == ProjectEvent::Type_ChangeFrameRange || aEvent.type() == ProjectEvent::Type_ChangeLoop) {
             resetInfluenceCachesOfChildren(aEvent.project(), *topNode);
         }
+    }
+}
+
+void BoneKeyUpdater::onSkinWeightsModified(Project& aProject, ObjectNode& aOwner, bool) {
+    if (!aOwner.timeLine()) {
+        return;
+    }
+
+    auto& map = aOwner.timeLine()->map(TimeKeyType_Bone);
+    for (auto itr = map.begin(); itr != map.end(); ++itr) {
+        TimeKey* key = itr.value();
+        TIMEKEY_PTR_TYPE_ASSERT(key, Bone);
+        // resetCaches takes the new field for this node; every key of the owner
+        // shares it, so all frames are refreshed in one event.
+        static_cast<BoneKey*>(key)->resetCaches(aProject, aOwner);
     }
 }
 
@@ -294,15 +309,14 @@ cmnd::Base* BoneKeyUpdater::createNodeUnbinderForMove(
 }
 #endif
 
-cmnd::Base* BoneKeyUpdater::createNodesUnbinderForMove(ObjectTree& aTree, const BoneUnbindWorkspacePtr& aWorkspace) {
+cmnd::Base* BoneKeyUpdater::createNodesUnbinderForMove(const BoneUnbindWorkspacePtr& aWorkspace) {
     class NodesUnbinderForMove: public cmnd::Stable {
-        ObjectTree& mTree;
         BoneUnbindWorkspacePtr mWorkspace;
         QList<Unbinder*> mUnbinders;
 
     public:
-        NodesUnbinderForMove(ObjectTree& aTree, const BoneUnbindWorkspacePtr& aWorkspace):
-            mTree(aTree), mWorkspace(aWorkspace), mUnbinders() {}
+        NodesUnbinderForMove(const BoneUnbindWorkspacePtr& aWorkspace):
+            mWorkspace(aWorkspace), mUnbinders() {}
 
         ~NodesUnbinderForMove() { qDeleteAll(mUnbinders); }
 
@@ -358,7 +372,7 @@ cmnd::Base* BoneKeyUpdater::createNodesUnbinderForMove(ObjectTree& aTree, const 
         }
     };
 
-    return new NodesUnbinderForMove(aTree, aWorkspace);
+    return new NodesUnbinderForMove(aWorkspace);
 }
 
 } // namespace core

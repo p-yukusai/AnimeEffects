@@ -5,9 +5,14 @@
 namespace gl {
 
 //-------------------------------------------------------------------------------------------------
-EasyTextureDrawer::EasyTextureDrawer(): mShader(), mIndices() {}
+EasyTextureDrawer::EasyTextureDrawer(): mShader(), mIndices(), mInitialized(false) {}
 
 bool EasyTextureDrawer::init() {
+    // Idempotent: a caller may (re)init a drawer that already owns a built shader
+    // (a fresh Exporter per export is the norm, but reuse should not abort).
+    if (mInitialized)
+        return true;
+
     static const char* kVertexShaderText =
         "#version 330 \n"
         "in vec2 inPosition;"
@@ -45,6 +50,7 @@ bool EasyTextureDrawer::init() {
         mIndices->resetData(4, GL_STATIC_DRAW, kIndices);
     }
 
+    mInitialized = true;
     return true;
 }
 void EasyTextureDrawer::draw(

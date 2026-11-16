@@ -1,16 +1,35 @@
 #include "qjsonarray.h"
 #include "qjsonobject.h"
+#include <limits>
 #include "util/MathUtil.h"
 #include "core/Bone2.h"
 
 #include "BoneKey.h"
 #include "ObjectNode.h"
 
+namespace {
+
+// Same shape as TimeKey's identity counter: ids start at 1 so 0 can mean
+// "no id" in a stored stream, and the counter saturates instead of overflowing.
+int sNextBoneId = 1;
+
+int takeNextBoneId() {
+    const int id = sNextBoneId;
+    if (sNextBoneId < std::numeric_limits<int>::max()) {
+        ++sNextBoneId;
+    }
+    return id;
+}
+
+
+} // namespace
+
 namespace core {
 
 Bone2::Bone2():
     TreeNodeBase(this),
     mOrigin(),
+    mBoneId(takeNextBoneId()),
     mLocalPos(),
     mLocalAngle(),
     mRange(),
@@ -25,6 +44,7 @@ Bone2::Bone2():
 Bone2::Bone2(const Bone2& aRhs):
     TreeNodeBase(this),
     mOrigin(aRhs.mOrigin),
+    mBoneId(aRhs.mBoneId),
     mLocalPos(aRhs.mLocalPos),
     mLocalAngle(aRhs.mLocalAngle),
     mRange(aRhs.mRange),
@@ -37,6 +57,35 @@ Bone2::Bone2(const Bone2& aRhs):
     mSelect() {}
 
 Bone2::~Bone2() { qDeleteAll(children().begin(), children().end()); }
+
+void Bone2::reserveBoneId(int aValue) {
+    if (aValue <= 0 || aValue < sNextBoneId) {
+        return;
+    }
+    if (aValue == std::numeric_limits<int>::max()) {
+        sNextBoneId = aValue;
+    } else {
+        sNextBoneId = aValue + 1;
+    }
+}
+
+bool Bone2::hasSameAuthoredGeometry(const Bone2& aRhs) const {
+    // Parent presence is part of the field: the build skips a parentless bone
+    // entirely, so a same-id bone that gained or lost its parent is a
+    // different envelope even when the rest matches.
+    if (bool(parent()) != bool(aRhs.parent())) {
+        return false;
+    }
+    if (localPos() != aRhs.localPos() || localAngle() != aRhs.localAngle()) {
+        return false;
+    }
+    for (int i = 0; i < 2; ++i) {
+        if (range(i) != aRhs.range(i)) {
+            return false;
+        }
+    }
+    return shape().hasSameAuthoredGeometry(aRhs.shape());
+}
 
 void Bone2::setWorldPos(const QVector2D& aWorldPos, const Bone2* aParent) {
     XC_ASSERT(!mOrigin);
@@ -193,6 +242,11 @@ bool Bone2::serialize(Serializer& aOut) const {
     aOut.write(mWorldAngle);
     aOut.write(mRotate);
 
+    // Format 0.22: the stable identity the authored weights address. Written
+    // after the historical fields so a 0.21 reader's layout is untouched; the
+    // reader gates on the version.
+    aOut.write(boneId());
+
     return aOut.checkStream();
 }
 
@@ -231,6 +285,13 @@ void Bone2::deserializeFromJson(QJsonObject json, Project* aProject, const Bone2
     json = json["Bone"].toObject();
    [[maybe_unused]]const sint32 originId = json["OriginID"].toInt();
     mOrigin = origin;
+    // A key pasted within the project keeps the ids its baked weights address;
+    // an older clipboard has none and keeps the fresh constructor id.
+    const int storedBoneId = json["StableBoneId"].toInt();
+    if (storedBoneId > 0) {
+        reserveBoneId(storedBoneId);
+        mBoneId = storedBoneId;
+    }
     mLocalPos = objToVec(json, "LocalPos");
     mLocalAngle = static_cast<float>(json["LocalAngle"].toDouble());
     mRange[0] = objToVec(json, "Range0");
@@ -262,6 +323,7 @@ QJsonObject Bone2::serializeToJson() {
     QJsonObject bone;
     const auto id = boneIDAssigner.getId(this);
     bone["BoneID"] = id;
+    bone["StableBoneId"] = boneId();
     bone["OriginID"] = boneIDAssigner.getId(mOrigin);
     addVecToJson(mLocalPos, &bone, "LocalPos");
     bone["LocalAngle"] = mLocalAngle;
@@ -335,6 +397,19 @@ bool Bone2::deserialize(Deserializer& aIn) {
     aIn.read(mWorldPos);
     aIn.read(mWorldAngle);
     aIn.read(mRotate);
+
+    // Format 0.22: the stable identity (see boneId()). A 0.21 file has no id
+    // and keeps the fresh one the constructor assigned; every later save writes
+    // it, so an old rig gains stable identity without a migration pass.
+    if (aIn.version().majorVersion() == 0 && aIn.version().minorVersion() >= 22) {
+        int id = 0;
+        aIn.read(id);
+        if (id <= 0) {
+            return aIn.errored("invalid bone id");
+        }
+        reserveBoneId(id);
+        mBoneId = id;
+    }
 
     return aIn.checkStream();
 }

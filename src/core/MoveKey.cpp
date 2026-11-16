@@ -6,7 +6,7 @@ namespace core {
 const MoveKey::SplineType MoveKey::kDefaultSplineType = MoveKey::SplineType_Linear;
 
 //-------------------------------------------------------------------------------------------------
-MoveKey::Data::Data(): mEasing(), mSpline(kDefaultSplineType), mPos(), mCentroid() {}
+MoveKey::Data::Data(): mEasings(), mSpline(kDefaultSplineType), mPos(), mCentroid() {}
 
 void MoveKey::Data::clampPos() {
     mPos.setX(xc_clamp(mPos.x(), Constant::transMin(), Constant::transMax()));
@@ -22,35 +22,46 @@ void MoveKey::Data::clampCentroid() {
 std::array<QVector2D, 2>
 MoveKey::getCatmullRomVels(const MoveKey* aKey0, const MoveKey* aKey1, const MoveKey* aKey2, const MoveKey* aKey3) {
     XC_ASSERT(aKey1 && aKey2);
+    return getCatmullRomVels(
+        aKey1->pos(), aKey2->pos(), aKey0 ? &aKey0->pos() : nullptr,
+        aKey3 ? &aKey3->pos() : nullptr,
+        aKey1->data().spline() == SplineType_Linear,
+        aKey2->data().spline() == SplineType_Linear
+    );
+}
 
+std::array<QVector2D, 2> MoveKey::getCatmullRomVels(
+    const QVector2D& aP1, const QVector2D& aP2, const QVector2D* aP0, const QVector2D* aP3,
+    bool aFromLinear, bool aToLinear
+) {
     std::array<QVector2D, 2> result;
 
-    if (aKey1->data().spline() == SplineType_Linear) {
-        aKey0 = nullptr;
+    if (aFromLinear) {
+        aP0 = nullptr;
     }
-    if (aKey2->data().spline() == SplineType_Linear) {
-        aKey3 = nullptr;
+    if (aToLinear) {
+        aP3 = nullptr;
     }
 
-    if (!aKey0) {
-        const QVector2D linear = aKey2->pos() - aKey1->pos();
+    if (!aP0) {
+        const QVector2D linear = aP2 - aP1;
 
-        if (!aKey3) {
+        if (!aP3) {
             result[1] = linear;
             result[0] = linear;
         } else {
-            result[1] = 0.5f * (aKey3->pos() - aKey1->pos());
+            result[1] = 0.5f * (*aP3 - aP1);
             result[0] = util::MathUtil::getAxisInversed(linear.normalized(), result[1]);
         }
     } else {
-        if (!aKey3) {
-            const QVector2D linear = aKey2->pos() - aKey1->pos();
+        if (!aP3) {
+            const QVector2D linear = aP2 - aP1;
 
-            result[0] = 0.5f * (aKey2->pos() - aKey0->pos());
+            result[0] = 0.5f * (aP2 - *aP0);
             result[1] = util::MathUtil::getAxisInversed(linear.normalized(), result[0]);
         } else {
-            result[0] = 0.5f * (aKey2->pos() - aKey0->pos());
-            result[1] = 0.5f * (aKey3->pos() - aKey1->pos());
+            result[0] = 0.5f * (aP2 - *aP0);
+            result[1] = 0.5f * (*aP3 - aP1);
         }
     }
     return result;
@@ -66,7 +77,7 @@ TimeKey* MoveKey::createClone() {
 }
 
 bool MoveKey::serialize(Serializer& aOut) const {
-    aOut.write(mData.easing());
+    aOut.writeEasings(&mData.easing(0), kComponents);
     aOut.write((int)mData.spline());
     aOut.write(mData.pos());
     aOut.write(mData.centroid());
@@ -77,7 +88,7 @@ bool MoveKey::deserialize(Deserializer& aIn) {
     aIn.pushLogScope("MoveKey");
 
     // easing
-    if (!aIn.read(mData.easing())) {
+    if (!aIn.readEasings(&mData.easing(0), kComponents)) {
         return aIn.errored("invalid easing param");
     }
 

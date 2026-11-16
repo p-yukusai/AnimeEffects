@@ -7,8 +7,8 @@ namespace gui {
 namespace res {
 
     //-------------------------------------------------------------------------------------------------
-    ChangeFilePathNotifier::ChangeFilePathNotifier(ViaPoint& aViaPoint, const img::ResourceNode& aNode):
-        mViaPoint(aViaPoint), mNode(aNode) {}
+    ChangeFilePathNotifier::ChangeFilePathNotifier(ViaPoint& aViaPoint):
+        mViaPoint(aViaPoint) {}
 
     void ChangeFilePathNotifier::notify(bool) {
         if (mViaPoint.resourceDialog()) {
@@ -31,24 +31,24 @@ namespace res {
     }
 
     //-------------------------------------------------------------------------------------------------
-    AddNewOneNotifier::AddNewOneNotifier(ViaPoint& aViaPoint, core::Project& aProject):
-        mViaPoint(aViaPoint), mProject(aProject), mEvent(aProject) {
+    AddNewOneNotifier::AddNewOneNotifier(core::Project& aProject):
+        mProject(aProject), mEvent(aProject) {
         mEvent.setType(core::ResourceEvent::Type_AddTree);
     }
 
     void AddNewOneNotifier::notify(bool aIsUndo) { mProject.onResourceModified(mEvent, aIsUndo); }
 
     //-------------------------------------------------------------------------------------------------
-    DeleteNotifier::DeleteNotifier(ViaPoint& aViaPoint, core::Project& aProject):
-        mViaPoint(aViaPoint), mProject(aProject), mEvent(aProject) {
+    DeleteNotifier::DeleteNotifier(core::Project& aProject):
+        mProject(aProject), mEvent(aProject) {
         mEvent.setType(core::ResourceEvent::Type_Delete);
     }
 
     void DeleteNotifier::notify(bool aIsUndo) { mProject.onResourceModified(mEvent, aIsUndo); }
 
     //-------------------------------------------------------------------------------------------------
-    RenameNotifier::RenameNotifier(ViaPoint& aViaPoint, core::Project& aProject, const util::TreePos& aRootPos):
-        mViaPoint(aViaPoint), mProject(aProject), mEvent(aProject), mRootPos(aRootPos) {
+    RenameNotifier::RenameNotifier(core::Project& aProject, const util::TreePos& aRootPos):
+        mProject(aProject), mEvent(aProject), mRootPos(aRootPos) {
         mEvent.setType(core::ResourceEvent::Type_Rename);
     }
 

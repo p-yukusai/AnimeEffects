@@ -7,7 +7,7 @@
 #include <QStringRef>
 #include <QMessageBox>
 
-static void checkConnection(const bool connection){
+void checkConnection(const bool connection){
     if(!connection){
         QMessageBox::warning(nullptr, "Qt connection error", "Unable to connect UI component");
     }
@@ -27,9 +27,9 @@ QPixmap speakerPixmap(const QLabel& aLabel) {
 }
 
 // Target playback position of a track (in ms) while the playhead is at curFrame.
-qint64 trackPositionMs(const audioConfig& config, const int curFrame, const int fps) {
+qint64 trackPositionMs(const audioConfig& config, int curFrame, int fps) {
     constexpr float toMillis = 1000.0f;
-    return static_cast<float>(config.startFrame + curFrame) / static_cast<float>(fps) * toMillis;
+    return static_cast<qint64>(static_cast<float>(config.startFrame + curFrame) / static_cast<float>(fps) * toMillis);
 }
 
 } // namespace
@@ -78,6 +78,7 @@ bool AudioPlaybackWidget::serialize(std::vector<audioConfig>* pConf, const QStri
         track["Name"] = audioConfig.audioName;
         track["Path"] = audioConfig.audioPath.absoluteFilePath();
         track["Playback"] = audioConfig.playbackEnable;
+        track["Export"] = audioConfig.exportEnable;
         track["Volume"] = audioConfig.volume;
         track["StartFrame"] = audioConfig.startFrame;
         track["EndFrame"] = audioConfig.endFrame;
@@ -102,6 +103,10 @@ bool AudioPlaybackWidget::deserialize(const QJsonObject& pConf, std::vector<audi
             deserialized.at(x).audioName = pConf[QString::number(x)].toObject()["Name"].toString();
             deserialized.at(x).audioPath = QFileInfo(pConf[QString::number(x)].toObject()["Path"].toString());
             deserialized.at(x).playbackEnable = pConf[QString::number(x)].toObject()["Playback"].toBool();
+            // Older projects predate per-track export control; default to on so
+            // behaviour is unchanged for them.
+            const QJsonValue exp = pConf[QString::number(x)].toObject()["Export"];
+            deserialized.at(x).exportEnable = exp.isBool() ? exp.toBool() : true;
             deserialized.at(x).volume = pConf[QString::number(x)].toObject()["Volume"].toInt();
             deserialized.at(x).startFrame = pConf[QString::number(x)].toObject()["StartFrame"].toInt();
             deserialized.at(x).endFrame = pConf[QString::number(x)].toObject()["EndFrame"].toInt();
@@ -136,7 +141,11 @@ void AudioPlaybackWidget::aPlayer(std::vector<audioConfig>* pConf, bool play, me
         }
         if(output->volume() != getVol(config.volume)){ output->setVolume(getVol(config.volume)); }
         correctTrackPos(player, curFrame, fps, const_cast<audioConfig&>(config));
-        if (state->playing || play && player->playbackState() == QMediaPlayer::PlayingState) {
+        // Parenthesised to state the intended grouping explicitly: "already
+        // playing, or asked to play and the player agrees". `&&` binding tighter
+        // than `||` already produced this, but the precedence is the whole point
+        // of the expression and a reader should not have to apply it.
+        if (state->playing || (play && player->playbackState() == QMediaPlayer::PlayingState)) {
             if (!state->playing) {state->playing = true;}
             // Do nothing
         }
@@ -274,6 +283,12 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
     // Playback
     curUIState.playAudio->setObjectName(QString::fromUtf8("playAudio"));
     gridLayout_2->addWidget(curUIState.playAudio, idxRow1, 0, 1, 1);
+    // Its own column, not a spare cell: every cell in the four columns is taken
+    // (row 0 holds the labels, row 1 the controls, row 2 the volume, row 3 the
+    // separator), and putting it at row 0 column 2 landed it on top of the
+    // "Playback end frame" label. The separator is widened to match.
+    curUIState.exportAudio->setObjectName(QString::fromUtf8("exportAudio"));
+    gridLayout_2->addWidget(curUIState.exportAudio, idxRow1, 4, 1, 1);
     // Frame end
     curUIState.endSpinBox->setObjectName(QString::fromUtf8("endSpinBox"));
     curUIState.endSpinBox->setMaximum(INT32_MAX);
@@ -323,7 +338,7 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
     curUIState.line->setObjectName(QString::fromUtf8("line"));
     curUIState.line->setFrameShape(QFrame::HLine);
     curUIState.line->setFrameShadow(QFrame::Sunken);
-    gridLayout_2->addWidget(curUIState.line, idxRow3, 0, 1, 4);
+    gridLayout_2->addWidget(curUIState.line, idxRow3, 0, 1, 5);
     // Frame text
     curUIState.musDurationLabel->setObjectName(QString::fromUtf8("musDurationLabel"));
     gridLayout_2->addWidget(curUIState.musDurationLabel, idxRow0, 3, 1, 1);
@@ -333,6 +348,16 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
     gridLayout_2->addWidget(curUIState.selectMusButton, idxRow1, 3, 1, 1);
     // Translate
     curUIState.playAudio->setText(QCoreApplication::translate("audioWidget", "Enable playback", nullptr));
+    // "Export" rather than "Include in export": the row is wide already and a fifth
+    // column clipped the longer label. The tooltip carries the distinction that
+    // matters, which is why this is NOT the checkbox next to it.
+    curUIState.exportAudio->setText(QCoreApplication::translate("audioWidget", "Export", nullptr));
+    curUIState.exportAudio->setToolTip(QCoreApplication::translate(
+        "audioWidget",
+        "Mix this track into exported files. Untick it for a track you only need as timing "
+        "reference (a voice pass, a temp music bed): it still plays while you animate, and it "
+        "stays out of the file.",
+        nullptr));
     curUIState.addNewTrack->setText(QCoreApplication::translate("audioWidget", "Add new audio track", nullptr));
     curUIState.startLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Playback start frame</p></body></html>", nullptr));
     curUIState.endLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Playback end frame</p></body></html>", nullptr));
@@ -341,6 +366,7 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
     curUIState.volumeLabel->setText(QString::number(config->at(index).volume) + QStringLiteral("%"));
     // Init
     curUIState.playAudio->setChecked(config->at(index).playbackEnable);
+    curUIState.exportAudio->setChecked(config->at(index).exportEnable);
     curUIState.startSpinBox->setValue(config->at(index).startFrame);
     curUIState.endSpinBox->setValue(config->at(index).endFrame);
     curUIState.volumeSlider->setValue(config->at(index).volume);
@@ -370,14 +396,26 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
                 x++;
             }
         }
-        if (index > 0 && index + 1 != config->size() || ((index == 0 || index == 1 && index + 1 != config->size()) && config->size() == 2)) {
-            if (index < config->size() - 1){
-                curUIState.addNewTrack->setText(QCoreApplication::translate("audioWidget", "Remove next audio track", nullptr));
-            }
-            else {
-                // It shouldn't trigger but just in case...
-                curUIState.addNewTrack->setText(QCoreApplication::translate("audioWidget", "Remove current audio track", nullptr));
-            }
+        // Invariant: the LAST row's button adds a track, and every earlier row
+        // removes the track after it. That is exactly what the click handler
+        // maintains — adding flips the clicked row to "remove" and the new last
+        // row to "add"; removing ends with vecUIState.last().addTrack = true —
+        // so stating the invariant directly is both simpler and correct.
+        //
+        // The previous condition excluded row 0 outright, then bolted on a
+        // special case for config->size() == 2. That special case is the
+        // fingerprint of the bug rather than a fix for it: with three or more
+        // tracks row 0 was classified as an "add" row, so it read "Add new audio
+        // track" while sitting mid-list, and clicking it appended a track at the
+        // end and inserted a UI row for index 1 — a different row from the one
+        // that was clicked.
+        //
+        // The inner "remove current" branch was unreachable in both versions
+        // (not the last row implies index < size - 1), so it is gone rather than
+        // kept as an "in case" that cannot happen.
+        const int trackCount = static_cast<int>(config->size());
+        if (index + 1 != trackCount) {
+            curUIState.addNewTrack->setText(QCoreApplication::translate("audioWidget", "Remove next audio track", nullptr));
             curUIState.addTrack = false;
         }
         else{ curUIState.addTrack = true; }
@@ -405,7 +443,7 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
         }
     }));
     checkConnection(QToolButton::connect(curUIState.addNewTrack, &QToolButton::clicked, [=] {
-        if (vecUIState.size() != config->size()) { rectifyUI(config, mediaPlayer, true); return; }
+        if (vecUIState.size() != static_cast<qsizetype>(config->size())) { rectifyUI(config, mediaPlayer, true); return; }
 
         if (curUIState.addTrack) {
             qDebug() << "addTrack at " << index + 1 << " | player size is " << mediaPlayer->players.size();
@@ -441,6 +479,12 @@ void AudioPlaybackWidget::addUIState(std::vector<audioConfig>* config, int index
         config->at(index).endFrame = val;
         curUIState.musDurationLabel->setText(QCoreApplication::translate("audioWidget", "<html><head/><body><p align=\"center\">Duration (in frames): </p></body></html>", nullptr) +
                                        "<html><head/><body><p align=\"center\">" + QString::number(val - config->at(index).startFrame) + "</p></body></html>");
+    }));
+    checkConnection(QCheckBox::connect(curUIState.exportAudio, &QCheckBox::checkStateChanged, [=](const Qt::CheckState val){
+        // Playback and export are separate switches, and the playback one next to
+        // this does NOT persist itself -- the project's audio config is written on
+        // save, so nothing else has to happen here.
+        config->at(index).exportEnable = (val == Qt::Checked);
     }));
     checkConnection(QCheckBox::connect(curUIState.playAudio, &QCheckBox::checkStateChanged, [=](const Qt::CheckState val){
         config->at(index).playbackEnable = (val == Qt::Checked);

@@ -17,6 +17,7 @@ namespace bone {
     public:
         InfluenceMode(core::Project& aProject, const Target& aTarget, KeyOwner& aKey);
 
+        virtual void updateParam(const BoneParam&);
         virtual bool updateCursor(const core::CameraInfo&, const core::AbstractCursor&);
         virtual void renderQt(const core::RenderInfo& aInfo, QPainter& aPainter);
 
@@ -29,6 +30,8 @@ namespace bone {
         QMatrix4x4 mTargetMtx;
         QMatrix4x4 mTargetInvMtx;
         Focuser mFocuser;
+        core::Bone2* mHoverBone;
+        BoneParam mParam;
 
         QVector2D mFocusHAxis;
         QVector2D mFocusVAxis;

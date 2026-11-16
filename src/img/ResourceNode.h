@@ -15,7 +15,11 @@ public:
     typedef util::TreeIterator<ResourceNode, ChildrenType::Iterator> Iterator;
     typedef util::TreeIterator<const ResourceNode, ChildrenType::ConstIterator> ConstIterator;
 
-    ResourceNode(const QString& aIdentifier);
+    /// @param aIdentityId the stable layer id this node is matched by when its
+    ///        source file is reimported (see ResourceData::identityId). Empty for
+    ///        sources that carry no stable id -- ORA, older PSDs, non-Photoshop
+    ///        writers -- where the identifier is the only identity available.
+    ResourceNode(const QString& aIdentifier, const QString& aIdentityId = QString());
     virtual ~ResourceNode();
 
     ResourceData& data() { return *mHandle; }

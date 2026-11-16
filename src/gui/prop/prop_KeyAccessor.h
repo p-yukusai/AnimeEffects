@@ -6,6 +6,8 @@
 #include "core/Project.h"
 #include "core/ObjectNode.h"
 #include "core/BlurKey.h"
+#include "core/WaveKey.h"
+#include "core/TimeLineEvent.h"
 
 namespace gui {
 namespace prop {
@@ -27,8 +29,8 @@ namespace prop {
         // move
         void assignMoveEasing(util::Easing::Param);
         void assignMoveSpline(int);
-        void assignMovePosition(const QVector2D&);
-        void assignMoveCentroid(const QVector2D&);
+        void assignMovePosition(const QVector2D&, int aComponent = -1);
+        void assignMoveCentroid(const QVector2D&, int aComponent = -1);
 
         // rotate
         void assignRotateEasing(util::Easing::Param);
@@ -36,14 +38,14 @@ namespace prop {
 
         // scale
         void assignScaleEasing(util::Easing::Param);
-        void assignScaleRate(const QVector2D&);
+        void assignScaleRate(const QVector2D&, int aComponent = -1);
 
         // depth
         void assignDepthEasing(util::Easing::Param);
         void assignDepthPosition(float);
 
         // opa
-        void assignOpaEasing(util::Easing::Param);
+        void assignOpacityEasing(util::Easing::Param);
         void assignOpacity(float);
 
         // hsv
@@ -53,9 +55,15 @@ namespace prop {
         // blur
         void assignBlurEasing(util::Easing::Param);
         void assignBlur(float aAmount);
-        void assignBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg);
+        void assignBlurEllipse(float aBlurX, float aBlurY, float aAngleDeg, int aComponent = -1);
         void assignBlurDirectional(bool aIsDirectional);
         core::BlurKey::Data blurData() const;
+
+        // wave deform: the whole Data is written at once because nine fields
+        // (five graph channels and four shape decisions) share one key, and a
+        // per-field setter would have to be kept in step with the key's layout
+        void assignWave(const core::WaveKey::Data& aData, int aComponent = -1);
+        core::WaveKey::Data waveData() const;
 
         // pose
         void assignPoseEasing(util::Easing::Param);
@@ -65,7 +73,7 @@ namespace prop {
 
         // image
         void assignImageResource(img::ResourceNode&);
-        void assignImageOffset(const QVector2D&);
+        void assignImageOffset(const QVector2D&, int aComponent = -1);
         void assignImageCellSize(int);
 
         // new keys
@@ -76,9 +84,16 @@ namespace prop {
         void knockNewOpacity();
         void knockNewHSV();
         void knockNewBlur();
+        void knockNewWave();
         void knockNewPose();
         void knockNewFFD();
         void knockNewImage(const img::ResourceHandle& aHandle);
+
+        // The key dot is a TOGGLE, not an add-only button: a filled dot removes
+        // the explicit key at the current frame (one undo step). The default
+        // key is untouched, so a property that loses its last explicit key
+        // becomes static again rather than losing its value.
+        void removeKey(core::TimeKeyType aType);
 
     private:
         bool isValid() const { return mProject && mTarget && mTarget->timeLine(); }
@@ -88,6 +103,24 @@ namespace prop {
         core::Project* mProject;
         core::ObjectNode* mTarget;
     };
+
+    // The Auto context of one component of a KEY - not of the frame the playhead
+    // happens to be on, which is the frame KeyAccessor itself is bound to: the
+    // picker and the header's chip edit the keys the caller SELECTED, and a
+    // selection is not at the playhead. aComponent is the component being edited
+    // (an Auto Move x segment is shaped by x values, its y segment by y values).
+    // The derivation is the blender's and the graph panel's (see
+    // core::autoEasingContext): the key's successor in its own lane ends the
+    // segment it shapes, and the keys either side of that pair shape its handles.
+    // Empty when the lane has no such pair, which leaves an Auto curve the neutral
+    // straight line.
+    //
+    // A key's Auto context is a DOCUMENT fact, so it is here rather than inside
+    // the widget that happens to open the picker: this is the one walk every reader of it
+    // (the header's chip and the picker) is given, so a second copy cannot drift from
+    // the shape the blender plays.
+    util::Easing::AutoContext autoContextOf(
+        const core::TimeLineEvent::Target& aTarget, const core::TimeKey& aKey, int aComponent);
 
 } // namespace prop
 } // namespace gui

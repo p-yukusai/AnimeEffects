@@ -7,18 +7,29 @@
 #include <QStyleFactory>
 #include <QStyleHints>
 
-#include "AudioPlaybackWidget.h"
 #include "gui/AppStyle.h"
+#include "gui/qml/QmlFormAccessibility.h"
 #include "theme/Icons.h"
 
 namespace gui {
 
 GUIResources::GUIResources(const QString& aResourceDir):
+    // mTheme is declared before the private members below, so it is initialised
+    // first no matter where it is written in this list. Written in declaration
+    // order so the list stops claiming an order the compiler does not follow.
+    mTheme(aResourceDir, "light"),
     mResourceDir(aResourceDir),
     mIconDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/icons"),
-    mAccent(theme::kDefaultAccent),
-    mTheme(aResourceDir, "light") {
+    mAccent(theme::kDefaultAccent) {
     setAppStyle();
+
+    // The Qt Quick export form's numeric fields get a real AT-SPI Value interface
+    // (see gui/qml/NumberFieldAccessibility). Installed here because this is the
+    // one constructor every GUI entry point runs after QApplication exists, and the
+    // call is idempotent. It must be a QAccessible FACTORY rather than a per-item
+    // setting: Qt Quick's Accessible attached type has no way to describe a value,
+    // and a factory is the documented answer for a non-widget accessible object.
+    installQmlFormAccessibility();
 
     QSettings settings;
     QString themeId = settings.value("generalsettings/ui/theme", "dark").toString();
@@ -67,7 +78,7 @@ QIcon GUIResources::iconActive(const QString& aName) const {
     return mIconMap.value(aName + "-active");
 }
 
-QColor GUIResources::viewportBackground() {
+QColor GUIResources::viewportBackground() const {
     // the canvas sinks below the base floor (the recessed token)
     return theme::Colors::current().recessed;
 }
@@ -83,7 +94,7 @@ void GUIResources::setTheme(const QString& aThemeId) {
     onThemeChanged(mTheme);
 }
 
-void GUIResources::setAccent(const theme::AccentColor aAccent) {
+void GUIResources::setAccent(theme::AccentColor aAccent) {
     if (mAccent == aAccent) return;
     mAccent = aAccent;
     QSettings().setValue("generalsettings/ui/accent", QLatin1String(theme::accentName(aAccent)));

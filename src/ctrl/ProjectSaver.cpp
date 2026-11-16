@@ -68,13 +68,20 @@ bool ProjectSaver::writeHeader(util::StreamWriter& aOut) {
 bool ProjectSaver::writeGlobalBlock(util::StreamWriter& aOut, const core::Project& aProject) {
     static const std::array<sint8, 4> kSignature{'G', 'L', 'B', 'L'};
     static const uint32 kBlockLength = 64;
+    // The reserve's first 4 bytes carry the frame range start (0 in every
+    // format <= 0.10, where the whole region was zero-filled), then the
+    // viewport background override (a presence byte and an ARGB word, zero for
+    // an unset override in any format <= 0.11); the rest stays reserved. The
+    // frame range end sits in the historical "max frame" slot.
     static const int kReserveSize = 47;
 
     const QSize imageSize = aProject.attribute().imageSize();
-    const int maxFrame = aProject.attribute().maxFrame();
+    const util::Range frameRange = aProject.attribute().frameRange();
     const int fps = aProject.attribute().fps();
     const bool loop = aProject.attribute().loop();
-    XC_ASSERT(maxFrame > 0);
+    const bool hasViewportBackground = aProject.attribute().hasViewportBackground();
+    const QColor viewportBackground = aProject.attribute().viewportBackground();
+    XC_ASSERT(frameRange.min() <= frameRange.max()); // negative ranges are valid
     XC_ASSERT(fps > 0);
 
     // block signature
@@ -86,15 +93,19 @@ bool ProjectSaver::writeGlobalBlock(util::StreamWriter& aOut, const core::Projec
     aOut.write((uint32)imageSize.width());
     // height
     aOut.write((uint32)imageSize.height());
-    // max frame
-    aOut.write((uint32)maxFrame);
+    // frame range end (the historical "max frame" slot)
+    aOut.write((uint32)frameRange.max());
     // fps
     aOut.write((uint32)fps);
     // loop
     aOut.write((uint8)loop);
 
-    // reserved
-    aOut.writeZero(kReserveSize);
+    // reserved: frame range start, then the viewport background override
+    // (presence byte + ARGB word), the rest zero
+    aOut.write((uint32)frameRange.min());
+    aOut.write((uint8)hasViewportBackground);
+    aOut.write((uint32)(hasViewportBackground ? viewportBackground.rgba() : 0u));
+    aOut.writeZero(kReserveSize - 4 - 1 - 4);
 
     return !aOut.isFailed();
 }

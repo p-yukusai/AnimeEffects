@@ -13,7 +13,7 @@ namespace res {
         static Item* cast(QTreeWidgetItem* aItem);
         static const Item* cast(const QTreeWidgetItem* aItem);
 
-        Item(const QTreeWidget& aTree, img::ResourceNode& aNode, const QString& aIdentifier);
+        Item(img::ResourceNode& aNode, const QString& aIdentifier);
         img::ResourceNode& node() { return mNode; }
         const img::ResourceNode& node() const { return mNode; }
         bool isTopNode() const { return !mNode.parent(); }
@@ -21,7 +21,6 @@ namespace res {
         util::TreePos treePos();
 
     private:
-        const QTreeWidget& mTree;
         img::ResourceNode& mNode;
     };
 

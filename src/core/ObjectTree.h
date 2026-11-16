@@ -43,10 +43,24 @@ public:
 
     void render(const RenderInfo& aRenderInfo, bool aUseWorkingCache);
 
+    /// THE RAM EVERY MATTE IN THE DOCUMENT HOLDS, for AE_FRAME_STATS's mask_bytes line: each
+    /// node's blended MaskKey field plus the CPU pyramid a paged matte keeps, and every filter
+    /// lane's painted field. It BUILDS nothing (a matte that has never been drawn reports its
+    /// field only) and counts no GPU bytes - a texture upload is FrameStats's texture accounting,
+    /// and the pool reports itself. The walk is why the frame line calls it only when the counter
+    /// is on.
+    qint64 maskRamBytes() const;
+
     cmnd::Vector createNodeDeleter(ObjectNode& aNode);
     // cmnd::Vector createNodeMover(const util::TreePos& aFrom, const util::TreePos& aTo);
     cmnd::Vector createNodesMover(const QVector<util::TreePos>& aRemoved, const QVector<util::TreePos>& aInserted);
     cmnd::Vector createResourceUpdater(const ResourceEvent& aEvent);
+
+    // Every object node (a layer) whose image keys reference any layer of the
+    // given resource subtree -- an imported asset's whole tree. The caller uses
+    // this to tell which layers must be deleted along with the asset, and to
+    // decide whether to ask the user at all. Pure read: it changes nothing.
+    QVector<ObjectNode*> findNodesUsingResource(const img::ResourceNode& aResourceTop) const;
 
     void onTimeLineModified(TimeLineEvent& aEvent, bool aIsUndo);
     void onTreeRestructured(ObjectTreeEvent& aEvent, bool aIsUndo);
@@ -56,12 +70,23 @@ public:
     bool serialize(Serializer& aOut) const;
     bool deserialize(Deserializer& aIn);
 
-private:
+    // The node a tree path names, or null when the path is stale. Public because a path is
+    // the ONE thing a command can store (a pointer is not stable across a replay), so any
+    // caller that records positions - a drop, a reorder, a notifier - needs this query; the
+    // mover and the deleters are its own users.
     ObjectNode* findNode(const util::TreePos& aPos);
+
+private:
     ObjectNode* eraseNode(const util::TreePos& aPos);
     void insertNode(const util::TreePos& aPos, ObjectNode* aNode);
     bool serializeNode(Serializer& aOut, const ObjectNode& aNode) const;
     bool deserializeNode(Deserializer& aIn, ObjectNode* aParent);
+    // Format 0.22: the authored skin-weight block carried inside every
+    // ObjNode block. Its node references are resolved by the tree's deferred
+    // ID solver, because a record names descendants that are serialized after
+    // its owner.
+    bool serializeSkinWeights(Serializer& aOut, const ObjectNode& aNode) const;
+    bool deserializeSkinWeights(Deserializer& aIn, ObjectNode& aNode);
     ObjectNode* createSerialNode(int aType);
 
     util::LifeLink mLifeLink;

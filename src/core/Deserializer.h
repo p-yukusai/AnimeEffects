@@ -59,6 +59,12 @@ public:
     void read(QMatrix4x4& aValue);
     void read(Frame& aValue);
     bool read(util::Easing::Param& aValue, bool errorCorrection=false);
+    // One key's whole easing array. Files from before per-component easing
+    // (minor < 14) wrote exactly ONE param for every key, so that one is read
+    // and BROADCAST to all aCount components - lossless for what such a file
+    // described, where every component shared that param. Files at 14 onward
+    // write aCount.
+    bool readEasings(util::Easing::Param* aValue, int aCount, bool errorCorrection = false);
     void read(QPolygonF& aValue);
     void read(QString& aValue, int aMax = 0);
     bool read(const XCMemBlock& aValue);
@@ -74,6 +80,12 @@ public:
     bool bindIDData(void* aData);
     bool orderIDData(const IDSolverType::Solver& aSolver);
 
+    // Consume a run of derived bytes without reading or allocating them.
+    // `aBytes` is checked against the remaining stream first, so a corrupt
+    // count fails here instead of silently desynchronising the next field.
+    // (The only current caller is BoneKey's legacy influence-cache discard.)
+    bool skipBytes(size_t aBytes);
+
     bool readImage(XCMemBlock& aEmptyValue);
     void readFixedString(QString& aValue, int aSize);
 
@@ -85,7 +97,16 @@ public:
     }
 
     bool beginBlock(const std::string& aSignature);
+    // True when the next bytes are a block with this signature. The stream is
+    // left untouched, so an OPTIONAL trailing block can be tested without
+    // committing the reader to it.
+    bool hasBlock(const std::string& aSignature);
     bool endBlock();
+
+    // Bytes left in the file from the current position. Used to bound a count
+    // read from the stream before it allocates or loops; a count cannot exceed
+    // the smallest record it could describe.
+    size_t remainingBytes() const { return getRestSize(); }
 
     bool failure() const;
 

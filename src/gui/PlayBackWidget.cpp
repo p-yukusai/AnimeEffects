@@ -1,47 +1,30 @@
 #include "gui/PlayBackWidget.h"
+#include "gui/IconButton.h"
 #include <QFile>
-#include <QPainter>
 #include <QTimer>
 #include <QTextStream>
 #include <functional>
-#include "gui/theme/Colors.h"
 
 namespace {
-constexpr double kButtonSize = 24.0 * 1.2;
-constexpr double kIconSize = 18.0 * 1.2;
-constexpr int kGap = 4;
-constexpr int kButtonCount = 8;
-constexpr int kLeftMargin = 4;
-
-// A playback button whose glyph brightens to the active (max-contrast) color
-// on hover — the icon participates in the hover feedback, not just the
-// background. setRestIcon() records the resting icon, so the play/pause glyph
-// swap keeps working; the hover icon is set explicitly via setHoverIcon and
-// re-set on theme changes. (QAbstractButton::setIcon is not virtual, so the
-// rest icon is tracked through the explicit setter only.)
-class IconButton : public QPushButton {
-public:
-    using QPushButton::QPushButton;
-    void setRestIcon(const QIcon& aIcon) { mRest = aIcon; QPushButton::setIcon(aIcon); }
-    void setHoverIcon(const QIcon& aIcon) { mHover = aIcon; }
-protected:
-    void enterEvent(QEnterEvent*) override {
-        if (isEnabled() && !mHover.isNull()) QPushButton::setIcon(mHover);
-    }
-    void leaveEvent(QEvent*) override { QPushButton::setIcon(mRest); }
-private:
-    QIcon mRest;
-    QIcon mHover;
-};
+// The transport's button grid, in the header's own numbers: 28px buttons (the
+// design's transport size; the column this replaced used 24px, which read small
+// in a bar) with 20px icons and a 1px gap between them. The grid is
+// absolute-geometry, and the QSS pins the same 28px box (playbackwidget.ssa),
+// because a theme restyle resizes absolute children to the style's
+// sizeFromContents unless the box is pinned in both places.
+const int kButtonSize = 28;
+const int kIconSize = 20;
+const int kGap = 1;
+const int kButtonCount = 8;
 } // namespace
 
 namespace gui {
 
 PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent, core::Project& mProject):
     QWidget(aParent), mGUIResources(aResources), mButtons(), mDoesLoop(true) {
-    // Fixed width (the layout must never stretch the toolbar), full height
-    // (the column fills the dock; the buttons stay top-anchored).
-    this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+    // Fixed in both axes: the header lays the group out at its own sizeHint and
+    // never stretches it, so the 28px grid below is the geometry the user sees.
+    this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     aProject = &mProject;
 
     mButtons.push_back(createButton("skip-back", false, 0, tr("Return to initial frame")));
@@ -49,9 +32,9 @@ PlayBackWidget::PlayBackWidget(GUIResources& aResources, QWidget* aParent, core:
     mButtons.push_back(createButton("play", true, 2, tr("Play")));
     mButtons.push_back(createButton("step-forward", false, 3, tr("One frame forward")));
     mButtons.push_back(createButton("skip-forward", false, 4, tr("Advance to final frame")));
-    mButtons.push_back(createButton("arrows-clockwise", true, 5, tr("Loop animation")));
+    mButtons.push_back(createButton("arrows-clockwise", true, 5, tr("Loop playback")));
     mButtons.back()->setChecked(mDoesLoop);
-    mButtons.push_back(createButton("faders-horizontal", false, 6, tr("Animation settings")));
+    mButtons.push_back(createButton("faders-horizontal", false, 6, tr("Playback settings")));
     mButtons.push_back(createButton("speaker-high", false, 7, tr("Audio track")));
     // Frame nudge buttons repeat on hold: fire once on press, then every
     // 50ms after a 400ms hold (QAbstractButton re-emits pressed()).
@@ -85,8 +68,10 @@ void PlayBackWidget::setPushDelegate(const PushDelegate& aDelegate) {
     connect(mButtons.at(6), &QPushButton::clicked, [=]() { owner->mPushDelegate(PushType_Options); });
 
     // Loop toggle: checked state IS the live playback loop; the timeline
-    // mirrors it via setPlayBackLoop and the loop shortcut via checkLoop()
-    // (the Project menu's "Loop animation" is a separate persisted attribute).
+    // mirrors it via setPlayBackLoop and the loop shortcut via checkLoop().
+    // It is called "Loop playback" so it cannot be read as the Project menu's
+    // "Loop animation", which is a persisted attribute of the document (the
+    // interpolation from the last key back to the first).
     connect(mButtons.at(5), &QPushButton::clicked, [=]() {
         owner->mDoesLoop = owner->mButtons.at(5)->isChecked();
         owner->mPushDelegate(PushType_Loop);
@@ -153,21 +138,13 @@ void PlayBackWidget::PlayPause() {
 }
 
 QSize PlayBackWidget::sizeHint() const {
-    // Symmetric side padding: left and right margins are the same.
-    return QSize(kButtonSize + kLeftMargin * 2, (kButtonSize + kGap) * kButtonCount);
+    // The transport is one horizontal row: kButtonCount buttons with a gap between
+    // them (its outer inset is the header's own padding, not the group's).
+    return QSize(kButtonSize * kButtonCount + kGap * (kButtonCount - 1), kButtonSize);
 }
 
 QSize PlayBackWidget::minimumSizeHint() const {
     return sizeHint();
-}
-
-void PlayBackWidget::paintEvent(QPaintEvent* aEvent) {
-    // The playback bar is a fixed toolbar beside the timeline; the 1px
-    // hairline (the design system's section-separator token) marks its left
-    // edge. Painted here, like the ThinSplitter/DockSash hairlines, because
-    // QSS box rules do not render on plain widget surfaces.
-    QPainter painter(this);
-    painter.fillRect(0, 0, 1, height(), theme::Colors::current().hairline);
 }
 
 void PlayBackWidget::pushPauseButton() {
@@ -202,8 +179,9 @@ PlayBackWidget::createButton(const QString& aName, bool aIsCheckable, int aColum
     button->setFocusPolicy(Qt::NoFocus);
     // The QSS width/height rule pins the box; geometry alone is not enough
     // because theme restyles resize absolute children to the style's
-    // sizeFromContents (icon + button margins -> 29px tall).
-    button->setGeometry(kLeftMargin, 2 + (kButtonSize + kGap) * aColumn, kButtonSize, kButtonSize);
+    // sizeFromContents (icon + button margins -> 29px tall). The column index is
+    // the button's place in the row.
+    button->setGeometry((kButtonSize + kGap) * aColumn, 0, kButtonSize, kButtonSize);
     return button;
 }
 
@@ -213,11 +191,11 @@ void PlayBackWidget::onThemeUpdated(theme::Theme& aTheme) {
     // Theme restyles (the cascade through MainWindow) resize these
     // absolute-positioned children to the style's sizeFromContents (icon +
     // button margins), which sticks at 29px tall even after the QSS pins
-    // the sizeHint to 24x24. Re-assert the fixed grid once the restyle
+    // the sizeHint to 28x28. Re-assert the fixed grid once the restyle
     // cascade has settled.
     QTimer::singleShot(0, [this]() {
         for (int i = 0; i < (int)mButtons.size(); ++i) {
-            mButtons[i]->setGeometry(kLeftMargin, 2 + (kButtonSize + kGap) * i, kButtonSize, kButtonSize);
+            mButtons[i]->setGeometry((kButtonSize + kGap) * i, 0, kButtonSize, kButtonSize);
         }
     });
 

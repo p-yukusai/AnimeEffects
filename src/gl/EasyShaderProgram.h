@@ -69,6 +69,11 @@ public:
     void setAttributeArray(const char* aName, const gl::Vector3* aArray, int aCount);
     void setAttributeArray(const char* aName, const gl::Vector4* aArray, int aCount);
     void setAttributeArray(const char* aName, const GLubyte* aArray, int aCount);
+    // Packed integer tuple: aTuple unsigned bytes per vertex, bound so the
+    // shader sees an ivecN (4 bone indices as ivec4).
+    void setAttributeArray(const char* aName, const GLubyte* aArray, int aCount, int aTuple);
+    // Float tuple: aTuple floats per vertex (4 bone weights as vec4).
+    void setAttributeArray(const char* aName, const GLfloat* aArray, int aCount, int aTuple);
     void setAttributeArray(const char* aName, const gl::Vector2I* aArray, int aCount);
     void setAttributeArray(const char* aName, const gl::Vector4I* aArray, int aCount);
     void setAttributeArray(int aLocation, const GLfloat* aArray, int aCount);

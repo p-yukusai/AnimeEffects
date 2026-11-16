@@ -12,8 +12,8 @@ namespace ctrl {
 
 class ProjectLoader {
 public:
-    ProjectLoader(gui::MainMenuBar* aMMB);
-    gui::MainMenuBar* mMMB;
+    ProjectLoader();
+
     bool load(
         const QString& aPath,
         core::Project& aProject,
@@ -23,10 +23,17 @@ public:
 
     const QStringList& log() const { return mLog; }
 
+    // Limitations the project carries INTO the session: conditions that did
+    // not fail the load but change what the user will see. An .anie is
+    // reproduced exactly; the one runtime limit is the skeleton bone cap.
+    // Empty means nothing to say.
+    const QStringList& warnings() const { return mWarnings; }
+
 private:
     bool readHeader(util::LEStreamReader& aReader);
     bool readGlobalBlock(util::LEStreamReader& aReader, core::Project& aProject);
     QStringList mLog;
+    QStringList mWarnings;
     QVersionNumber mVersion;
 };
 

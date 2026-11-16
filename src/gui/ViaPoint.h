@@ -2,7 +2,6 @@
 #define GUI_VIAPOINT_H
 
 #include <QWidget>
-#include <QPlainTextEdit>
 #include <QScopedPointer>
 #include "util/NonCopyable.h"
 #include "gl/DeviceInfo.h"
@@ -13,6 +12,8 @@ class ResourceNode;
 }
 namespace gui {
 class ResourceDialog;
+}
+namespace gui {
 }
 namespace gui {
 class MainMenuBar;
@@ -29,6 +30,9 @@ class MainViewSetting;
 namespace gui {
 class MouseSetting;
 }
+namespace gui {
+class CommandLogView;
+}
 
 namespace gui {
 
@@ -37,6 +41,9 @@ public:
     ViaPoint(QWidget* aParent);
 
     void setProject(core::Project* aProject);
+    // The current project, for hosts that need to derive UI state from the document
+    // (the Tools panel's mask targets) without owning a second project reference.
+    core::Project* project() const { return mProject; }
 
     void setMainMenuBar(MainMenuBar* aMainMenuBar);
     MainMenuBar* mainMenuBar() const { return mMainMenuBar; }
@@ -44,12 +51,28 @@ public:
     void setResourceDialog(ResourceDialog* aResDialog);
     ResourceDialog* resourceDialog() const { return mResDialog; }
 
+    // The object tree's view. The asset removal path needs it to delete the
+    // layers that reference a removed asset in the same undo step; it is the one
+    // place a res-namespace action can reach the object tree widget from.
+
     img::ResourceNode* requireOneResource();
 
-    void setLogView(QPlainTextEdit* aLogView);
-    virtual void pushLog(const QString& aText, ctrl::UILogType aType);
-    void pushUndoneLog(const QString& aText);
-    void pushRedoneLog(const QString& aText);
+    // The Properties panel's command log. It is the concrete view rather than a
+    // plain QPlainTextEdit because the log must be TOLD the kind of a line (a
+    // warning and an undo are not the same ink) and must re-ink itself on a theme
+    // switch - neither of which the old plain-text/HTML appends could do.
+    void setLogView(CommandLogView* aLogView);
+    CommandLogView* logView() const { return mLogView; }
+
+    // Editor messages (ctrl::UILogger). The type is no longer discarded: a
+    // UILogType_Warn line renders with the warning ink and a badge, which is the
+    // difference the old appendPlainText() could not show.
+    void pushLog(const QString& aText, ctrl::UILogType aType) override;
+
+    // One undo/redo step. aName is cmnd::Base::name(), which plain commands leave
+    // empty - the view renders the badge alone in that case instead of the old
+    // dangling "Undone : ".
+    void pushCommandLog(bool aRedo, const QString& aName);
 
     void setGLDeviceInfo(const gl::DeviceInfo&);
     const gl::DeviceInfo& glDeviceInfo() const;
@@ -71,13 +94,16 @@ public:
     const MouseSetting& mouseSetting() const;
 
     util::Signaler<void()> onVisualUpdated;
+    // Fired after the General Settings dialog is accepted, so owners can
+    // re-read settings that are applied live (e.g. the autosave timer).
+    util::Signaler<void()> onGeneralSettingsChanged;
 
 private:
     QWidget* mParent;
     core::Project* mProject;
     MainMenuBar* mMainMenuBar;
     ResourceDialog* mResDialog;
-    QPlainTextEdit* mLogView;
+    CommandLogView* mLogView;
     gl::DeviceInfo mGLDeviceInfo;
     KeyCommandMap* mKeyCommandMap;
     KeyCommandInvoker* mKeyCommandInvoker;

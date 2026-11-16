@@ -3,8 +3,15 @@
 #include <QStyle>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QStyleOptionSlider>
+#include <QSettings>
+#include <QDateTime>
+#include <cmath>
 #include "gui/TimeLineWidget.h"
+
+#include "ctrl/AutoScroll.h"
 #include "gui/theme/Colors.h"
+#include "ctrl/graph/graph_ScrollBarGeometry.h"
 
 namespace gui {
 
@@ -74,14 +81,16 @@ protected:
         // sub-control here; the style's own hover tracking is not active
         // for a fully custom-painted bar).
         const bool hot = mDragging || underMouse();
-        constexpr int kPillThickness = 4;
-        constexpr int kPillRadius = 2;
-        const int y = (height() - kPillThickness) / 2;
-        const QRect pill(handle.x(), y, handle.width(), kPillThickness);
+        // The pill is the application's scroll bar's, from the one definition both
+        // gui::AppStyle's CC_ScrollBar and the graph panel's lanes paint: 4px centred
+        // in this bar's lane (the widget's own rect), radius-2, across the model's
+        // handle. Nothing about it is restated here.
+        const ctrl::graph::scrollBar::Pill pill =
+            ctrl::graph::scrollBar::pill(rect(), handle, Qt::Horizontal);
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setPen(Qt::NoPen);
         painter.setBrush(hot ? theme::Colors::current().hover : theme::Colors::current().outline);
-        painter.drawRoundedRect(pill, kPillRadius, kPillRadius);
+        painter.drawRoundedRect(pill.rect, pill.radius, pill.radius);
     }
 
 private:
@@ -98,6 +107,7 @@ TimeLineWidget::TimeLineWidget(
 ):
     QWidget(aParent),
     mGUIResources(aResources),
+    mViaPoint(aViaPoint),
     mProject(),
     mAnimator(aAnimator),
     mInner(),
@@ -106,15 +116,24 @@ TimeLineWidget::TimeLineWidget(
     mAbstractCursor(),
     mVerticalScrollValue(0),
     mHorizontalOffset(0),
+    mPendingScrollPixels(0.0),
+    mPendingZoomPixels(0.0),
     mPendingScrollbarAdopt(false),
+    mReportedWindowLo(0.0),
+    mReportedWindowHi(0.0),
     mScrollbarDragActive(false),
     mScrollbarDragAnchorValue(0),
     mScrollbarDragAnchorX(0),
     mScrollbarDragRatio(0),
+    mFitPending(false),
     mIsPanning(false),
+    mPanButton(Qt::NoButton),
+    mPanByKey(false),
     mPanGrabPos(),
     mPanStartTransform(),
     mTimer(),
+    mMarqueeScrollTimer(),
+    mMarqueePointer(),
     mElapsed(),
     mBeginFrame(),
     mLastFrame(),
@@ -125,9 +144,19 @@ TimeLineWidget::TimeLineWidget(
     mInner = new TimeLineEditorWidget(aViaPoint, this);
     mHorizontalScrollBar = new TimelineScrollBar(this);
 
+    // Link/Separate is a VIEW edit (ctrl::TimeLine's transient grouping flag):
+    // announce it so the dock can rebuild the row heights it owns.
+    this->connect(
+        mInner, &TimeLineEditorWidget::channelGroupingChanged, this,
+        [this]() { onChannelGroupingChanged(); }
+    );
+
     this->setMouseTracking(true);
     this->setFocusPolicy(Qt::StrongFocus);
     this->connect(&mTimer, &QTimer::timeout, this, &TimeLineWidget::onPlayBackUpdated);
+    mMarqueeScrollTimer.setInterval(ctrl::autoscroll::kIntervalMs);
+    mMarqueeScrollTimer.setTimerType(Qt::PreciseTimer);
+    this->connect(&mMarqueeScrollTimer, &QTimer::timeout, this, &TimeLineWidget::autoScrollMarquee);
 
     // The horizontal scrollbar is a one-way projection of the free offset:
     // user interactions (track click, wheel, keyboard) emit a slider action,
@@ -151,6 +180,31 @@ TimeLineWidget::TimeLineWidget(
     });
     mHorizontalScrollBar->installEventFilter(this);
 
+    // The ruler drives the same cursor machinery as the track surface; its
+    // frame changes (header seek / playhead drag) must notify the playback
+    // chain like the surface's do.
+    this->connect(mInner, &TimeLineEditorWidget::rulerFrameChanged, this, [this]() { onFrameUpdated(); });
+
+    // Pan by key: the same configurable MoveCanvas binding the viewport pans
+    // with (space by default). Holding it and left-dragging pans the timeline
+    // like middle-drag does; the ruler is told too, so a space+left press on
+    // the strip pans instead of seeking.
+    {
+        auto key = mViaPoint.keyCommandMap()->get("MoveCanvas");
+        if (key) {
+            key->addListener(
+                [this]() {
+                    mPanByKey = true;
+                    mInner->setPanKeyHeld(true);
+                },
+                [this]() {
+                    mPanByKey = false;
+                    mInner->setPanKeyHeld(false);
+                }
+            );
+        }
+    }
+
     mGUIResources.onThemeChanged.connect(this, &TimeLineWidget::onThemeUpdated);
 
     // Audio follows the playhead on the playback clock
@@ -160,12 +214,26 @@ TimeLineWidget::TimeLineWidget(
 }
 
 void TimeLineWidget::setProject(core::Project* aProject) {
+    // BEFORE the reset: whether this widget was showing a project a moment ago.
+    const bool hadProject = static_cast<bool>(mProject);
+
     mProject.reset();
     if (aProject) {
         mProject = aProject->pointee();
     }
     mInner->setProject(aProject);
     projectHorizontalScrollBar();
+
+    // THE NEW-PROJECT FIT. A project that arrives from NO project is newly
+    // opened or newly created (MainWindow's open/new paths both clear the
+    // timeline first), so this widget has no view of it and it opens FITTED to
+    // its frame range instead of at whatever zoom the previous document left.
+    // A tab switch hands over a project this widget is already showing - that
+    // live zoom/pan IS the saved view, so it is kept (the rule is
+    // ctrl::TimeLineEditor::fitsOnProjectAttach). When the surface has no
+    // width yet, fitFrameRange() remembers the request for updateCamera.
+    if (ctrl::TimeLineEditor::fitsOnProjectAttach(hadProject, aProject != nullptr))
+        this->fitFrameRange();
 }
 
 void TimeLineWidget::setPlayBackActivity(bool aIsActive, std::vector<audioConfig>* pConf, mediaState* mediaPlayer) {
@@ -197,6 +265,14 @@ void TimeLineWidget::setPlayBackActivity(bool aIsActive, std::vector<audioConfig
 void TimeLineWidget::setPlayBackLoop(bool aDoesLoop) { mDoesLoop = aDoesLoop; }
 
 void TimeLineWidget::setFrame(core::Frame aFrame) {
+    // A frame that did not move changes nothing: the playhead, the ruler's pill and
+    // the document's blended state are all already at it. Returning here is what keeps
+    // a playback tick that lands inside the CURRENT frame from pushing a whole-tree
+    // re-blend and a full viewport repaint (measured: 78 ticks/s ran for a 60 fps
+    // project, i.e. ~20% of the frames painted were the same frame twice).
+    if (mInner->currentFrame() == aFrame) {
+        return;
+    }
     mInner->setFrame(aFrame);
     onFrameUpdated();
 }
@@ -225,13 +301,14 @@ void TimeLineWidget::setViewTransform(const QPoint& aViewportTransform) {
 }
 
 void TimeLineWidget::projectHorizontalScrollBar() {
-    // One axis everywhere: content pixels, 1 unit = 1 px. Frame 0's tick sits
-    // at the left margin gutter (kTimeLineMargin); the last frame's tick and
-    // range marker sit at margin + its scale position (frameEndPixel, the
-    // renderer's range-marker x1 convention). The view's scroll position
-    // v = -offset is the content position at the view's left edge.
+    // One axis everywhere: content pixels, 1 unit = 1 px. The range's first
+    // frame's tick sits at the left margin gutter (kTimeLineMargin); the last
+    // frame's tick and range marker sit at margin + its scale position
+    // (frameEndPixel, the renderer's range-marker x1 convention). The view's
+    // scroll position v = -offset is the content position at the view's left
+    // edge.
     //
-    //   frameRange = [frameStart, frameEnd]     = [0, frameEndPixel]
+    //   frameRange = [frameStartPixel, frameEndPixel]
     //   viewport   = [viewportStart, viewportEnd] = [v, v + W]
     //   track = [min(frameStart, viewportStart), max(frameEnd, viewportEnd)]
     //   value = viewportStart;  pageStep = viewportEnd - viewportStart
@@ -242,10 +319,11 @@ void TimeLineWidget::projectHorizontalScrollBar() {
     // TimelineScrollBar), so it is flush left when viewportStart <=
     // frameStart and flush right when viewportEnd >= frameEnd — symmetric.
     // frameEnd is the last frame's position PLUS the trailing margin: a
-    // fixed 24px, the same token as the left gutter before frame 0's tick,
-    // so flush-right leaves a full margin of empty track after the last
-    // frame (the centered number overhangs it slightly; that is accepted).
-    const int frameStart = 0;
+    // fixed 24px, the same token as the leading gutter before the first
+    // frame's tick, so flush-right leaves a full margin of empty track after
+    // the last frame (the centered number overhangs it slightly; that is
+    // accepted).
+    const int frameStart = mInner->frameStartPixel();
     const int frameEnd = mInner->frameEndPixel() + ctrl::TimeLineEditor::kTimeLineMargin;
     const int windowWidth = mInner->width();
 
@@ -263,6 +341,12 @@ void TimeLineWidget::projectHorizontalScrollBar() {
     mHorizontalScrollBar->setVisible(true);
     // The viewport is always within the union, so the value never clamps.
     mHorizontalScrollBar->setValue(viewportStart);
+
+    // Every path that can move the visible frame window lands here (a scroll, a
+    // zoom, a slider adoption, a resize, a new frame range, a project switch), so
+    // this is the one place the change is reported from - and only when it really
+    // changed.
+    notifyViewRange();
 }
 
 QSize TimeLineWidget::minimumSizeHint() const {
@@ -270,7 +354,12 @@ QSize TimeLineWidget::minimumSizeHint() const {
     // invalid hint as (1,1) — the object tree would swallow the split at
     // startup. Claim a usable default so both panes start reasonable.
     const int hbarHeight = mHorizontalScrollBar ? mHorizontalScrollBar->sizeHint().height() : 0;
-    return QSize(280, ctrl::TimeLineEditor::kHeaderHeight + 2 * ctrl::TimeLineRow::kHeight + hbarHeight);
+    // The width is a floor, not a comfort: the object tree beside it has to fit
+    // inside dockMetrics::kMinWidth with it, so the animation panel can actually
+    // be dragged to its area's 200px minimum (and past it, which collapses it).
+    // The old 280 made the panel refuse to go below 380 wide, which no sidebar
+    // could ever give it.
+    return QSize(100, ctrl::TimeLineEditor::kHeaderHeight + 2 * ctrl::TimeLineRow::kHeight + hbarHeight);
 }
 
 QSize TimeLineWidget::sizeHint() const {
@@ -406,6 +495,27 @@ void TimeLineWidget::scrollViewBy(int aValueDelta) {
 }
 
 void TimeLineWidget::updateCamera() {
+    // A fit requested while the surface had no width (a project opened on a hidden
+    // timeline) is applied on the first pass that knows one. fitFrameRange clears the
+    // flag before it re-enters here through setViewTransform, so this cannot loop.
+    if (mFitPending && mInner->width() > 0 && editor()) {
+        mFitPending = false;
+        fitFrameRange();
+    }
+
+    // KEEP THE CONTENT IN REACH. The track never clamps the view (see the scrollbar note), so a pan
+    // may float past the content - but a view that has left the content entirely is a view of
+    // nothing. The bound is an OVERLAP, not a centring: the view is free to move and only stops at
+    // the ends, so panning works at every zoom.
+    if (const ctrl::TimeLineEditor* controller = editor()) {
+        const int contentSpan = controller->frameEndPixel() + ctrl::TimeLineEditor::kTimeLineMargin;
+        const int viewport = mInner->width();
+        // The view's start v = -offset and its span is [v, v + viewport]; overlap with the
+        // content [0, contentSpan] means v <= contentSpan and v + viewport >= 0.
+        if (viewport > 0)
+            mHorizontalOffset = std::max(-contentSpan, std::min(viewport, mHorizontalOffset));
+    }
+
     mCameraInfo.setScreenWidth(mInner->width());
     mCameraInfo.setScreenHeight(mInner->height());
     mCameraInfo.setLeftTopPos(QVector2D(viewportTransform()));
@@ -421,7 +531,9 @@ void TimeLineWidget::updateCursor(const core::AbstractCursor& aCursor, Qt::Keybo
 }
 
 //-------------------------------------------------------------------------------------------------
-void TimeLineWidget::onTreeViewUpdated(QTreeWidgetItem* aTopNode) { mInner->updateLines(aTopNode); }
+void TimeLineWidget::setRows(const gui::AnimationRows& aRows) { mInner->setRows(aRows); }
+
+void TimeLineWidget::onTreeViewUpdated() {}
 
 void TimeLineWidget::onScrollUpdated(int aValue) {
     mVerticalScrollValue = aValue;
@@ -434,16 +546,32 @@ void TimeLineWidget::onPlayBackUpdated() {
     if (!mAnimator.isSuspended()) {
         const double oneFrameTime = getOneFrameTime();
         const core::Frame curFrame = currentFrame();
+
+        // The effective playback range (the temporary window overrides the
+        // project frame range while active): the playback clock stays inside
+        // [playStart, playEnd]. Navigation is free (the playhead never
+        // clamps), so the tick clamps its own result.
+        const util::Range range = mInner->playbackRange();
+        const int playStart = range.min();
+        const int playEnd = range.max();
+
         double nextFrame = static_cast<double>(curFrame.getDecimal()) + 1.0;
 
-        if (mDoesLoop && nextFrame > mInner->maxFrame()) {
-            nextFrame = 0.0;
-            mBeginFrame.set(0);
+        if (nextFrame < playStart) {
+            // Playback may start outside the window (or with the window set
+            // mid-flight): jump to the window start.
+            nextFrame = playStart;
+            mBeginFrame.set(playStart);
             mElapsed.restart();
             mTimer.setInterval(static_cast<int>(oneFrameTime));
-            mLastFrame = core::Frame(INT32_MAX);
+        } else if (mDoesLoop && nextFrame > playEnd) {
+            nextFrame = playStart;
+            mBeginFrame.set(playStart);
+            mElapsed.restart();
+            mTimer.setInterval(static_cast<int>(oneFrameTime));
         } else {
-            if (curFrame.get() == mInner->maxFrame()) {
+            // >= (not ==) so a playhead scrubbed past the end still stops.
+            if (curFrame.get() >= playEnd) {
                 mProject->animator().stop();
             }
             if (mLastFrame == curFrame) {
@@ -451,9 +579,16 @@ void TimeLineWidget::onPlayBackUpdated() {
                 const double elapsedFrame = elapsedTime / oneFrameTime;
                 nextFrame = static_cast<double>(mBeginFrame.getDecimal()) + elapsedFrame;
 
+                // ARM FOR THE NEXT FRAME BOUNDARY, ROUNDED UP. Truncating the interval
+                // woke the timer up to a millisecond BEFORE the boundary, which could not
+                // advance the frame: that tick re-armed for the remaining fraction (1 ms)
+                // and fired again at the boundary, so a 60 fps project got ~78 ticks/s
+                // - 30 % of them painting a frame that had not changed. Rounding up means
+                // one tick per frame, and `nextFrame` above still catches up from the
+                // wall clock if a tick is late.
                 const double nextUpdateTime = oneFrameTime * (static_cast<int>(elapsedFrame) + 1);
                 const double intervalTime = nextUpdateTime - elapsedTime;
-                mTimer.setInterval(std::max(static_cast<int>(intervalTime), 1));
+                mTimer.setInterval(std::max(static_cast<int>(std::ceil(intervalTime)), 1));
             } else {
                 mBeginFrame = curFrame;
                 mElapsed.restart();
@@ -461,8 +596,12 @@ void TimeLineWidget::onPlayBackUpdated() {
             }
         }
 
-        setFrame(core::Frame(static_cast<int>(nextFrame)));
-        mLastFrame = core::Frame(static_cast<int>(nextFrame));
+        // The clock is the one path bound by the effective range: clamp the
+        // result (a timer that ran late may compute past playEnd) so the
+        // playhead never visibly overshoots the window.
+        const int clamped = qBound(playStart, static_cast<int>(nextFrame), playEnd);
+        setFrame(core::Frame(clamped));
+        mLastFrame = core::Frame(clamped);
     }
 }
 
@@ -473,12 +612,24 @@ void TimeLineWidget::onThemeUpdated(theme::Theme& aTheme) {
 
 void TimeLineWidget::onProjectAttributeUpdated() {
     mInner->updateProjectAttribute();
-    // maxFrame may have changed: the union track and page step follow the
-    // frame range's extent, so re-project (updateSize is repaint-only now).
+    // The frame range may have changed: the union track and page step follow
+    // its extent, so re-project (updateSize is repaint-only now).
     projectHorizontalScrollBar();
 }
 
 void TimeLineWidget::triggerOnTimeFormatChanged() {
+    // The setting is applied live rather than on the next launch: re-read it
+    // into the editor so the ruler, playhead pill and window pills all
+    // re-render with the new representation.
+    if (mInner) {
+        if (auto* editor = mInner->editor()) {
+            QSettings settings;
+            const auto format = static_cast<core::TimeFormatType>(
+                settings.value("generalsettings/ui/timeformat", int(core::TimeFormatType_Frames_From0)).toInt()
+            );
+            editor->setTimeFormatType(format);
+        }
+    }
     onTimeFormatChanged();
     updateCamera();
 }
@@ -489,6 +640,75 @@ void TimeLineWidget::syncAudioTracks() {
     AudioPlaybackWidget::syncTracks(mProject.get(), currentFrame().get(), mLastFrame.get(), getFps());
 }
 
+QRect TimeLineWidget::marqueeScrollViewport() const {
+    if (!mInner)
+        return QRect();
+    const int top = ctrl::TimeLineEditor::kHeaderHeight;
+    return QRect(0, top, mInner->width(), std::max(0, mInner->height() - top));
+}
+
+//-------------------------------------------------------------------------------------------------
+void TimeLineWidget::updateMarqueeAutoScroll() {
+    ctrl::TimeLineEditor* ed = editor();
+    if (!ed || !ed->isMarqueeActive() || !mAbstractCursor.isPressedLeft() || !mInner) {
+        mMarqueeScrollTimer.stop();
+        mMarqueeDwell.reset();
+        return;
+    }
+    // Direction is part of the gate: a drag along the top edge must not scroll up.
+    // `observe` arms only an axis the pointer is moving TOWARD (or is already outside
+    // the viewport on), so no timer is needed for a horizontal pass at the top.
+    mMarqueeDwell.observe(
+        mMarqueePointer, marqueeScrollViewport(), QDateTime::currentMSecsSinceEpoch()
+    );
+    if (!mMarqueeDwell.inEdge()) {
+        mMarqueeScrollTimer.stop();
+    } else if (!mMarqueeScrollTimer.isActive()) {
+        mMarqueeScrollTimer.start();
+    }
+}
+
+void TimeLineWidget::autoScrollMarquee() {
+    ctrl::TimeLineEditor* ed = editor();
+    if (!ed || !ed->isMarqueeActive() || !mAbstractCursor.isPressedLeft() || !mInner) {
+        mMarqueeScrollTimer.stop();
+        mMarqueeDwell.reset();
+        return;
+    }
+
+    const ctrl::autoscroll::Step step = mMarqueeDwell.update(
+        mMarqueePointer, marqueeScrollViewport(), QDateTime::currentMSecsSinceEpoch()
+    );
+    if (step.isNull()) {
+        // A dwell tick is not a reason to stop; a pointer that left the band resets
+        // the dwell in update() and updateMarqueeAutoScroll stops the timer.
+        if (!mMarqueeDwell.inEdge())
+            mMarqueeScrollTimer.stop();
+        return;
+    }
+
+    const int oldX = mHorizontalOffset;
+    const int oldY = mVerticalScrollValue;
+    if (step.x != 0)
+        scrollViewBy(step.x); // positive reveals later frames
+    if (step.y != 0)
+        onVerticalScrollRequested(mVerticalScrollValue + step.y); // positive scrolls down
+
+    // At a content bound the request changes nothing; stop until the pointer moves
+    // so a held edge does not keep a 60 Hz timer alive for a no-op.
+    if (oldX == mHorizontalOffset && oldY == mVerticalScrollValue) {
+        mMarqueeScrollTimer.stop();
+        mMarqueeDwell.reset();
+        return;
+    }
+
+    // The pointer did not move; the WORLD point under it did. Extend the box to the
+    // new world position through the editor's own gesture (it applies the new box).
+    const QPoint world = mCameraInfo.toWorldPos(QPointF(mMarqueePointer)).toPoint();
+    if (ed->extendMarquee(world))
+        mInner->update();
+}
+
 //-------------------------------------------------------------------------------------------------
 void TimeLineWidget::mouseMoveEvent(QMouseEvent* aEvent) {
     if (mIsPanning) {
@@ -496,28 +716,54 @@ void TimeLineWidget::mouseMoveEvent(QMouseEvent* aEvent) {
         aEvent->accept();
         return;
     }
+    mMarqueePointer = aEvent->position().toPoint();
     if (mAbstractCursor.setMouseMove(aEvent, mCameraInfo)) {
         updateCursor(mAbstractCursor, aEvent->modifiers());
     }
+    updateMarqueeAutoScroll();
 }
 
 void TimeLineWidget::mousePressEvent(QMouseEvent* aEvent) {
-    if (aEvent->button() == Qt::MiddleButton) {
+    // Middle-drag always pans; holding the MoveCanvas key (space by default,
+    // configurable) makes left-drag pan too — the same keybind the viewport
+    // uses, so the timeline follows the user's pan preference.
+    const bool panPress =
+        aEvent->button() == Qt::MiddleButton || (mPanByKey && aEvent->button() == Qt::LeftButton);
+    if (panPress) {
+        mMarqueeScrollTimer.stop();
+        mMarqueeDwell.reset();
         mPanGrabPos = aEvent->position().toPoint();
         mPanStartTransform = viewportTransform();
         mIsPanning = true;
+        mPanButton = aEvent->button();
         setCursor(Qt::ClosedHandCursor);
         aEvent->accept();
         return;
     }
+    mMarqueePointer = aEvent->position().toPoint();
+    mMarqueeDwell.reset();
+    if (mInner) {
+        // Seed the direction baseline. A press on an edge is NOT a move toward it.
+        mMarqueeDwell.observe(
+            mMarqueePointer, marqueeScrollViewport(), QDateTime::currentMSecsSinceEpoch()
+        );
+    }
     if (mAbstractCursor.setMousePress(aEvent, mCameraInfo)) {
         updateCursor(mAbstractCursor, aEvent->modifiers());
     }
+    // A press only arms the marquee. Autoscroll starts on the first move: a
+    // press-and-hold on an edge must not scroll before a box exists.
 }
 
 void TimeLineWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
-    if (mIsPanning && aEvent->button() == Qt::MiddleButton) {
+    mMarqueeScrollTimer.stop();
+    mMarqueeDwell.reset();
+    // Only the button that STARTED the pan ends it. The old test accepted
+    // either button, so a middle-drag pan in flight ate the release of a left
+    // button the editor had already turned into a marquee (see mPanButton).
+    if (mIsPanning && aEvent->button() == mPanButton) {
         mIsPanning = false;
+        mPanButton = Qt::NoButton;
         unsetCursor();
         aEvent->accept();
         return;
@@ -574,6 +820,14 @@ void TimeLineWidget::wheelEvent(QWheelEvent* aEvent) {
 
     setViewTransform(viewTrans);
     aEvent->accept();
+}
+
+void TimeLineWidget::hideEvent(QHideEvent* aEvent) {
+    // Switching the dock to the Graph page hides this surface mid-gesture: the
+    // release may never reach it, so the marquee's autoscroll must not keep ticking.
+    mMarqueeScrollTimer.stop();
+    mMarqueeDwell.reset();
+    QWidget::hideEvent(aEvent);
 }
 
 void TimeLineWidget::resizeEvent(QResizeEvent* aEvent) {
@@ -640,6 +894,185 @@ void TimeLineWidget::keyPressEvent(QKeyEvent* aEvent) {
         return;
     }
     QWidget::keyPressEvent(aEvent);
+}
+
+//-------------------------------------------------------------------------------------------------
+// THE ANIMATION GRAPH PANEL'S SIDE OF THIS WIDGET.
+//
+// The panel is a second view of the SAME keys on the SAME frames, so the two
+// views must not each keep their own idea of which frames are on screen or which
+// keys are selected. The selection is shared outright - the panel is pointed at
+// ctrl::TimeLineEditor::selection(), the live set this widget's gestures write
+// (see MainDisplayWidget::setTimeLineWidget) - and the frame window is shared by
+// VALUE: the panel shows visibleFrameRange() below, and the horizontal gestures
+// made over the panel come back here as frames (a pan) or as a wheel notch about
+// a frame (a zoom), so the panel scrolls and zooms THIS widget rather than
+// drifting beside it.
+
+ctrl::TimeLineEditor* TimeLineWidget::editor() const { return mInner ? mInner->editor() : nullptr; }
+
+bool TimeLineWidget::openKeyMenu(const core::TimeLineEvent::Target& aPressedKey, const QPoint& aGlobalPos) {
+    // The key menu's route for a caller that is not the timeline's own context-menu
+    // handler (see TimeLineEditorWidget::openKeyMenu, which owns the menu, the
+    // selection rule and the loan). Forwarded whole: the caller passes a key, not a
+    // selection, so nothing is filtered out on the way.
+    return mInner->openKeyMenu(aPressedKey, aGlobalPos);
+}
+
+util::Range TimeLineWidget::visibleFrameRange() const {
+    const ctrl::TimeLineEditor* controller = editor();
+    if (!controller || !mInner || mInner->width() <= 0)
+        return util::Range();
+
+    const ctrl::time::Scaler& scale = controller->timeScale();
+    const int left = -mHorizontalOffset;
+    const int right = left + mInner->width();
+    const int first = scale.frame(left - ctrl::TimeLineEditor::kTimeLineMargin);
+    const int last = scale.frame(right - ctrl::TimeLineEditor::kTimeLineMargin);
+    return util::Range(qMin(first, last), qMax(first, last));
+}
+
+void TimeLineWidget::visibleFrameWindow(double& aLo, double& aHi) const {
+    aLo = aHi = 0.0;
+
+    const ctrl::TimeLineEditor* controller = editor();
+    if (!controller || !mInner || mInner->width() <= 0)
+        return; // no surface (or no project) yet: no window
+
+    // The same edges as visibleFrameRange, in content pixels and therefore in
+    // fractions of a frame: the viewport's left edge is -mHorizontalOffset, a content
+    // pixel x is frame (x - kTimeLineMargin) / pixelsPerFrame. Dividing last keeps the
+    // edges exact; the rounded form rounds them into whole frames.
+    const double ppf = controller->pixelsPerFrame();
+    const int left = -mHorizontalOffset;
+    const int right = left + mInner->width();
+    const double first = (left - ctrl::TimeLineEditor::kTimeLineMargin) / ppf;
+    const double last = (right - ctrl::TimeLineEditor::kTimeLineMargin) / ppf;
+    aLo = std::min(first, last);
+    aHi = std::max(first, last);
+}
+
+void TimeLineWidget::notifyViewRange() {
+    // The window is reported in FRACTIONAL frames, and only a change of it is a change: rounding to
+    // whole frames here would emit only when a frame boundary crosses the viewport, which at a high
+    // zoom is many pixels and quantizes every consumer of the signal - the graph panel's whole X.
+    double lo = 0.0;
+    double hi = 0.0;
+    visibleFrameWindow(lo, hi);
+    if (lo == mReportedWindowLo && hi == mReportedWindowHi)
+        return;
+
+    mReportedWindowLo = lo;
+    mReportedWindowHi = hi;
+    onViewRangeChanged();
+}
+
+void TimeLineWidget::scrollFramesBy(double aFrameDelta) {
+    ctrl::TimeLineEditor* controller = editor();
+    if (!controller)
+        return;
+
+    // Frames to the content pixels this widget's view transform is expressed in:
+    // the editor's own pixels-per-frame, so a pan of N frames moves the view
+    // exactly N frames whatever the zoom. scrollViewBy takes the delta of the
+    // viewport's START (v = -mHorizontalOffset) and updates the camera and the
+    // scrollbar, which is where the new window is reported from (notifyViewRange).
+    //
+    // The content axis is whole pixels, so this conversion rounds - and a drag arrives as MANY small
+    // deltas, so rounding each one away would lose a fraction per event and the view would fall
+    // behind the pointer. The remainder is carried between calls instead, so the total is exact.
+    //
+    // THE CARRY IS IN CONTENT PIXELS, NOT IN FRAMES, and that is load-bearing: a remainder measured in
+    // frames is re-priced by any scale change, so a pan, a zoom (one notch is x1.1, twenty is x7.4)
+    // and a pan again made the second pan absorb the first's residue - measured 2026-10-19 through
+    // probe_graph_anchor.sh as 37.78px of a 40px drag at 7px/frame (a 0.42px residue became ~3.1px).
+    // Pixels are the unit the view transform rounds to, so they survive a zoom unchanged.
+    const double rate = controller->pixelsPerFrame();
+    mPendingScrollPixels += aFrameDelta * rate;
+    const int delta = static_cast<int>(std::lround(mPendingScrollPixels));
+    if (delta == 0)
+        return; // sub-pixel: a frame delta too small to move this view is no move
+    mPendingScrollPixels -= static_cast<double>(delta);
+    scrollViewBy(delta);
+}
+
+void TimeLineWidget::zoomFramesAbout(int aWheelDelta, double aAnchorFrame) {
+    ctrl::TimeLineEditor* controller = editor();
+    if (!controller)
+        return;
+
+    // The editor's own zoom. The invert flag is false because aWheelDelta arrives in
+    // the CALLER's sense (the panel applied its own user setting to the notch, and to
+    // its value half beside it) - this widget's setting belongs to its own wheel, and
+    // applying it here would invert the caller's notch twice.
+    const double oldSpacing = controller->pixelsPerFrame();
+    if (!controller->updateWheel(aWheelDelta, false))
+        return; // clamped: the scale did not move, so the view has nothing to re-anchor
+
+    // aAnchorFrame is the frame under the caller's cursor, FRACTIONAL (the panel
+    // derives it with frameAtPixel, never frameAt), so the anchored point is known
+    // exactly. Go straight from it to the view translation: the content position is
+    // margin + rate*frame, and the margin cancels. Do NOT re-derive the anchor through
+    // frameStartPixel()/the integer content axis and round it - that (plus rounding the
+    // scaled pixel) is the pair that lost a fraction per notch and walked the anchored
+    // frame 0.86 of a frame over 20 notches at 7 px/frame.
+    const int delta = ctrl::TimeLineEditor::zoomAnchorDelta(
+        aAnchorFrame, oldSpacing, controller->pixelsPerFrame(), mPendingZoomPixels
+    );
+
+    // Applied even when delta is 0: the SCALE changed, so the visible frame window did
+    // too, and setViewTransform is what reports it (projectHorizontalScrollBar ->
+    // notifyViewRange). Returning early would leave the panel on the old window.
+    QPoint viewTrans = viewportTransform();
+    viewTrans.setX(viewTrans.x() + delta);
+    setViewTransform(viewTrans);
+}
+
+void TimeLineWidget::fitFrameRange() {
+    ctrl::TimeLineEditor* controller = editor();
+    // A surface with no width cannot fit anything: remember the request and let
+    // updateCamera apply it once the widget is laid out (a project opened while
+    // the timeline is hidden). With no controller there is no axis to fit at all.
+    if (!controller || mInner->width() <= 0) {
+        mFitPending = (controller != nullptr);
+        return;
+    }
+    mFitPending = false;
+
+    // The fit's two numbers are the controller's (the ladder and the margin token
+    // are its own), and it returns a whole-pixel view position so the two gutters
+    // can differ by at most that pixel.
+    const ctrl::TimeLineEditor::FrameFit fit = controller->fitFrameRange(mInner->width());
+
+    // MOVE THE LADDER TO THE FIT'S RUNG. One notch is 120 raw delta (the scaler's
+    // kWheelValue) and updateWheel SUBTRACTS it, so the sign is current - target.
+    // The fit computed its view pixel at the target rung, so the scale is set
+    // BEFORE the translation is applied.
+    const int delta = controller->timeScale().index() - fit.scaleIndex;
+    if (delta != 0)
+        controller->updateWheel(delta * 120, false);
+
+    // CENTRE THE RANGE. The old composition zoomed for the span ALONE and then
+    // scrolled until the range's first frame sat on the viewport's left edge: that
+    // scroll is the step that threw the leading margin away (the content axis' own
+    // kTimeLineMargin gutter), and the span-only rung left only the ladder's
+    // remainder at the other end. The fit now centres instead: the view transform's
+    // horizontal component is the content origin in surface coordinates, so putting
+    // the fit's left content pixel under the viewport's left edge is
+    // -viewLeftPixel. setViewTransform re-projects the scrollbar and reports the new
+    // window (notifyViewRange), which is what the docked panel follows; updateCamera
+    // clamps the offset it just allowed.
+    QPoint viewTrans = viewportTransform();
+    viewTrans.setX(-fit.viewLeftPixel);
+    setViewTransform(viewTrans);
+}
+
+bool TimeLineWidget::updatePlayWindow(ctrl::TimeLineEditor::PlayWindowStep aStep, core::Frame aFrame) {
+    // The surface is the timeline's own home of this gesture (it emits
+    // playWindowChanged and repaints both rulers, exactly as the ruler path does),
+    // so the graph's band lands on the SAME notification the timeline's Shift-drag
+    // produces - which is what pushes the new window back into the panel's editor.
+    return mInner ? mInner->updatePlayWindow(aStep, aFrame) : false;
 }
 
 } // namespace gui

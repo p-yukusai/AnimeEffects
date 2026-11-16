@@ -11,6 +11,10 @@
 
 namespace gui {
 
+// The transport: the eight playback buttons, as one fixed-size horizontal group.
+// It lives in the timeline dock's header (gui::TimeLineHeader), which lays it out
+// at its own sizeHint - the group never grows, and the button grid is
+// absolute-geometry on purpose (see PlayBackWidget.cpp's kButtonSize note).
 class PlayBackWidget: public QWidget {
     Q_OBJECT
 public:
@@ -29,6 +33,9 @@ public:
     PlayBackWidget(GUIResources& aResources, QWidget* aParent, core::Project& aProject);
 
     void setPushDelegate(const PushDelegate& aDelegate);
+
+    // The options button (index 6); used to anchor the animation-settings popup.
+    QPushButton* optionsButton() const { return mButtons.at(6); }
     bool isLoopChecked();
     void checkLoop(bool checkStatus);
     void PlayPause();
@@ -36,7 +43,6 @@ public:
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
     void pushPauseButton();
-    void paintEvent(QPaintEvent* aEvent) override;
     core::Project* aProject;
     QWidget* audioUI = new QWidget(this, Qt::Window);
     std::vector<audioConfig>* aConf = new std::vector<audioConfig>;

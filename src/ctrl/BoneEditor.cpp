@@ -6,7 +6,7 @@
 #include "ctrl/bone/bone_BindNodesMode.h"
 #include "ctrl/bone/bone_InfluenceMode.h"
 #include "ctrl/bone/bone_PaintInflMode.h"
-#include "ctrl/bone/bone_EraseInflMode.h"
+#include "ctrl/bone/bone_PaintWeightsMode.h"
 #include "ctrl/bone/bone_GeoBuilder.h"
 
 using namespace core;
@@ -55,7 +55,31 @@ bool BoneEditor::updateCursor(const core::CameraInfo& aCamera, const core::Abstr
     return false;
 }
 
-void BoneEditor::updateEvent(EventType) { resetCurrentTarget(); }
+void BoneEditor::updateEvent(EventType) {
+    // resetCurrentTarget rebuilds the mode and notifies once; a second notify
+    // here only made the host re-read the same state.
+    resetCurrentTarget();
+}
+
+void BoneEditor::flushPendingWork() {
+    if (mCurrent) {
+        mCurrent->flushPendingWork();
+    }
+}
+
+bone::WeightState BoneEditor::weightsState() const {
+    return mCurrent ? mCurrent->weightState() : bone::WeightState();
+}
+
+bool BoneEditor::bakeWeights(bool aReplace, QString* aError) {
+    return mCurrent && mCurrent->bakeWeights(aReplace, aError);
+}
+
+bool BoneEditor::revertWeights(QString* aError) { return mCurrent && mCurrent->revertWeights(aError); }
+
+bool BoneEditor::clearWeights(QString* aError) { return mCurrent && mCurrent->clearWeights(aError); }
+
+void BoneEditor::notifyWeightsState() { onWeightsStateChanged(); }
 
 void BoneEditor::renderQt(const core::RenderInfo& aInfo, QPainter& aPainter) {
 #if 0
@@ -124,6 +148,10 @@ void BoneEditor::resetCurrentTarget(QString* aMessage) {
         initializeKey(*mTarget->timeLine());
         createMode();
     }
+
+    // A recreated mode starts with no selected bone; the panel must not keep
+    // showing the previous one's state.
+    notifyWeightsState();
 }
 
 void BoneEditor::createMode() {
@@ -154,11 +182,16 @@ void BoneEditor::createMode() {
         break;
 
     case BoneEditMode_PaintInfl:
+    case BoneEditMode_EraseInfl:
+        // One envelope brush. The old EraseInfl enum value is kept only because
+        // the mode index is persisted; Ctrl (or the +/- row) is the direction.
         mCurrent.reset(new bone::PaintInflMode(mProject, mTarget, mKeyOwner));
         break;
 
-    case BoneEditMode_EraseInfl:
-        mCurrent.reset(new bone::EraseInflMode(mProject, mTarget, mKeyOwner));
+    case BoneEditMode_PaintWeights:
+        mCurrent.reset(new bone::PaintWeightsMode(
+            mProject, mTarget, mKeyOwner, mUILogger, [this]() { notifyWeightsState(); }
+        ));
         break;
 
     default:
