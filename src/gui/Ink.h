@@ -13,25 +13,26 @@ namespace ink {
 
 // THE PANEL'S DRAWING VOCABULARY, and the reason the graph editor can be re-hosted at all.
 //
-// The graph panel's ink used to be expressed AS ImGui calls: `AddRectFilled`, `AddLine`,
+// The graph panel's ink used to be expressed AS rasteriser calls: `AddRectFilled`, `AddLine`,
 // `AddCircleFilled`, `PushClipRect`, `AddText` - inside a single 800-line function that also
 // makes every SHAPE decision (which rect, which radius, which colour, which clip, which
 // alignment). Swapping the rasteriser therefore meant either rewriting that function (two
-// copies to keep in step, for ever) or keeping ImGui forever.
+// copies to keep in step, for ever) or keeping that rasteriser forever.
 //
 // This interface splits the two halves. The caller keeps every decision and calls ONE
 // vocabulary; a BACKEND decides how a fill, a stroke, a circle, a run of text or a clip is
-// rasterised. There is exactly one implementation of the decisions, so three backends cannot
+// rasterised. There is exactly one implementation of the decisions, so two rasterisers cannot
 // disagree about geometry, colour, order or clipping - they can only disagree about
 // RASTERISATION, which is measurable and is what the parity gate measures.
 //
 // The vocabulary is deliberately the smallest set the panel actually uses. It is NOT a
 // general 2D API: adding a primitive is a decision that every backend must answer.
 //
-// COLOURS ARE QColor, never a packed integer. `ImU32` and `QRgb` are both `unsigned int` and
-// pack in OPPOSITE channel orders (ImGui A<<24|B<<16|G<<8|R, QRgb A<<24|R<<16|G<<8|B), so a
-// packed value handed to a QColor compiles and swaps red with blue - a defect this tree has
-// already paid for once (the ghost handle stem). A backend converts at its own boundary.
+// COLOURS ARE QColor, never a packed integer. Two rasterisers' packed types are both
+// `unsigned int` and can pack in OPPOSITE channel orders (A<<24|B<<16|G<<8|R against
+// A<<24|R<<16|G<<8|B), so a packed value handed to a QColor compiles and swaps red with blue
+// - a defect this tree has already paid for once (the ghost handle stem). A backend converts
+// at its own boundary.
 
 // Horizontal alignment of a run inside the box the caller measured.
 enum class HAlign { Left, Centre, Right };
@@ -82,14 +83,12 @@ public:
 
     // A straight line. This is the CHROME primitive: the caller has already decided the line
     // is one pixel or more and whether it is antialiased, and the endpoints are the positions
-    // the model asked for (a backend owns the half-pixel conventions of its own rasteriser,
-    // because they differ: ImGui's non-AA 1px path is half-open, Canvas2D centres the stroke).
+    // the model asked for (a backend owns the half-pixel conventions of its own rasteriser).
     virtual void line(const QPointF& aFrom, const QPointF& aTo, const QColor& aColor, double aWidth) = 0;
 
     // A path stroke through the points, with round joins and caps: the curve ink. `halfWidth`
-    // is half the stroke's full width, in logical px. The panel's is a per-fragment coverage
-    // pass (gui::stroke in GraphPanelFrame.cpp) where the backend can run it; a backend that
-    // cannot MUST stroke the same polyline with the same width, never approximate the path.
+    // is half the stroke's full width, in logical px. A backend MUST stroke the same polyline
+    // with the same width, never approximate the path.
     virtual void stroke(const QVector<QPointF>& aPoints, const QColor& aColor, double aHalfWidth) = 0;
 
     // A filled circle, and a circle's 1px-class edge stroke. `aRadius` is the circle the ink
@@ -107,9 +106,8 @@ public:
     // `aRightGap` is taken from the box's own SPARE width, so a run that fills its box is left
     // exactly where right-alignment puts it and the gap can never push it out of the column.
     // `aHalo` is the ring a label may be drawn over (the panel's own theme tone); an INVALID
-    // colour means "no halo", which is the shipped state (gui::kDrawTextHalo is false and the
-    // panel's contrast-outline pass does the ringing). A backend that cannot ring text must
-    // still draw the run.
+    // colour means "no halo", which is the shipped state (gui::kDrawTextHalo is false). A
+    // backend that cannot ring text must still draw the run.
     virtual void text(
         const QRect& aBox, const QString& aText, HAlign aAlign, VAlign aVAlign, const QColor& aColor,
         const QColor& aHalo = QColor(), int aRightGap = 0
@@ -121,11 +119,10 @@ public:
 // `aRect` is the gesture's RAW rect (graph: GraphEditor::marqueeRect; timeline:
 // SelectionBox::rect) - and it is passed to the backend unchanged, because THE HALF PIXEL
 // IS THE RASTERISER'S CONVENTION, not a design decision: a centred 1px stroke on an
-// integer edge straddles two device rows, so a backend whose stroke is centred must
-// inset by half its width itself, while ImGui's antialiased 1px line already lands on the
-// row its coordinate names. Measured on this gate: with the half pixel applied HERE the
-// ImGui host split the edge over two rows (`#d543fd` / `#d346fd`, 55 away from the edge
-// token) instead of painting it; with the raw rect it lands on one row, distance 1.
+// integer edge straddles two device rows, so a backend whose stroke is centred insets by
+// half its width itself. Measured on this gate: with the half pixel applied HERE the
+// stroke split over two rows instead of painting the edge; with the raw rect it lands on
+// one row.
 inline void paintMarquee(
     Ink& aInk, const QRectF& aRect, const QColor& aFill, const QColor& aEdge, double aRadius
 ) {

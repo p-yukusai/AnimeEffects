@@ -24,9 +24,7 @@ class Selection;
 namespace gui {
 
 class AnimationSettingDialog;
-#ifdef AE_ENABLE_IMGUI
 class GraphPanelWidget;
-#endif
 
 class TargetWidget: public QWidget, public core::Animator {
 public:
@@ -52,15 +50,11 @@ public:
     TimeLineWidget& timeLineWidget() { return *mTimeLine; }
     const TimeLineWidget& timeLineWidget() const { return *mTimeLine; }
 
-#ifdef AE_ENABLE_IMGUI
-    // The Graph tab: the animation graph panel, docked (design section 5). The SAME
-    // component as the viewport's overlay, drawn on the dock's floor at the dock's
-    // size, with no scrim - the tree beside it stays, because the tree is what names
-    // the layers and picks whose channels the panel draws. Not declared in a build
-    // without the panel (AE_ENABLE_IMGUI off): there is no graph surface to ask for.
+    // The Graph tab: the animation graph panel, docked (design section 5), drawn on the
+    // dock's floor at the dock's size, with no scrim - the tree beside it stays, because
+    // the tree is what names the layers and picks whose channels the panel draws.
     GraphPanelWidget& graphPanelWidget() { return *mGraphPanel; }
     const GraphPanelWidget& graphPanelWidget() const { return *mGraphPanel; }
-#endif
 
     PlayBackWidget& playBackWidget() { return *mPlayBack; }
     const PlayBackWidget& playBackWidget() const { return *mPlayBack; }
@@ -84,13 +78,11 @@ private:
     QSize sizeHint() const override { return mSizeHint; }
 
     void onPlayBackButtonPushed(PlayBackWidget::PushType aType);
-#ifdef AE_ENABLE_IMGUI
     // The header's tab: the dock's body shows that view of the ONE dock. The tree
     // is not switched - it is the splitter's first widget and neither tab touches it
     // - and the ruler and the playhead stay the timeline's own either way. A lean
     // build has one surface and no tab bar, so there is nothing to switch.
     void onSurfaceChanged(TimeLineHeader::Surface aSurface);
-#endif
     void openAnimationSettings();
     // Live, non-undoable re-sync: apply the current dialog state to the project
     // attribute (which drives onProjectAttributeModified) and let the timeline
@@ -112,7 +104,6 @@ private:
     // under it. Without the panel the stack holds the one (timeline) page.
     QStackedWidget* mSurfaceStack;
     TimeLineWidget* mTimeLine;
-#ifdef AE_ENABLE_IMGUI
     GraphPanelWidget* mGraphPanel;
     // The dock's SECOND VIEW OF THE CURRENT FRAME: the timeline's own frame-move
     // notification, connected to the panel's refresh() in the constructor (see the
@@ -135,7 +126,6 @@ private:
     // replaced, and disconnected in the destructor and when no project is open.
     util::SlotId mSelectionChangedSlot;
     ctrl::time::Selection* mSelectionSource;
-#endif
     TimeLineHeader* mHeader;
     PlayBackWidget* mPlayBack;
     AnimationSettingDialog* mAnimSettings = nullptr;

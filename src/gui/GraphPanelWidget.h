@@ -1,21 +1,10 @@
 #ifndef GUI_GRAPHPANELWIDGET_H
 #define GUI_GRAPHPANELWIDGET_H
 
-// THE HOST IS SWAPPABLE, EXACTLY AS THE TIMELINE'S SURFACE IS (TimeLineEditorWidget): the panel's
-// ink is backend-neutral (gui/Ink.h), so this class is a DRAWING SURFACE plus the panel's input
-// arbitration, and which base class it has decides who rasterises. Canvas Painter needs a
-// QCanvasPainterWidget (an RHI widget); a Qt without the module keeps the Dear ImGui host, which
-// needs a QOpenGLWidget.
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
 #include <QtCanvasPainter/QCanvasPainterWidget>
-class QCanvasPainter;
-#else
-#include <QtOpenGLWidgets/QOpenGLWidget>
-#endif
+
 #include <QPoint>
-#include <QScopedPointer>
 #include <QTimer>
-#include <QVariant>
 
 #include "core/AbstractCursor.h"
 #include "core/CameraInfo.h"
@@ -23,12 +12,11 @@ class QCanvasPainter;
 #include "gui/GraphPanelFrame.h"
 #include "util/SlotId.h"
 
+class QCanvasPainter;
 class QHideEvent;
-class QInputMethodEvent;
 class QKeyEvent;
 class QMouseEvent;
 class QTabletEvent;
-class QTouchEvent;
 class QWheelEvent;
 
 namespace ctrl {
@@ -41,56 +29,46 @@ class Theme;
 namespace gui {
 
 class GUIResources;
-class ImGuiInputBridge;
 class MainDisplayWidget;
 
 // THE PANEL'S HOST: the animation graph panel drawn in the TIMELINE DOCK, as the
-// Graph tab's page (design section 5). It is a QOpenGLWidget because the panel is
-// drawn with Dear ImGui into a GL framebuffer, and it is a HOST and not a renderer:
-// the frame it runs is gui::runPanelFrame (the io setup, the backend's NewFrame,
-// gui::buildGraphPanelModel, gui::drawPanel) plus gui::publishPanelAccessibility, and
-// the ImGui context, GL3 backend and font atlas are that file's (see the frame driver
-// in gui/GraphPanelFrame.h). Nothing about the panel is re-implemented here. It is the
-// ONLY host - the viewport overlay that used to draw the panel over the artwork is
+// Graph tab's page (design section 5). It is a QCanvasPainterWidget, and it is a HOST and
+// not a renderer: the frame it paints is gui::composePanelFrame (the model, the focus and
+// the palette) inked by gui::drawPanel through gui::ink::InkCanvas, plus
+// gui::publishPanelAccessibility. Nothing about the panel is re-implemented here, and there
+// is no other host - the viewport overlay that used to draw the panel over the artwork is
 // gone.
 //
 // WHAT IT DRAWS, AND WHAT ELSE IS ON ITS FLOOR. The panel draws no background of its
 // own ("the panel must leave the artwork showing through") - and here there is no
 // artwork to show through: this widget's floor is the DOCK's, opaque, and it is
-// painted by this widget because a QOpenGLWidget is composited over the window and the
+// painted by this widget because an RHI widget is composited over the window and the
 // widgets beside it do not show through it. The colour is the theme's panel/dock floor
 // (theme::Colors::base, the reference's own _floor: cssVar('--base')), read per frame
 // so a theme change needs no signal. NOTHING ELSE is drawn: no title (the tab names
 // the page), no control of its own - the panel's ONE control (the channel list) is a
 // VIEW action and the design puts it in the DOCK HEADER, beside the zoom group, so
-// this page draws no button and HIT-TESTS none. And no scrim (an
-// opaque floor has nothing to sit on, so the contrast-outline composite gui::outline
-// offers - the pass the removed overlay host ran - is NOT run here).
+// this page draws no button and HIT-TESTS none. And no scrim (an opaque floor has
+// nothing to sit on).
 //
 // ONE FRAME AXIS, ONE CURRENT FRAME, TWO VIEWS. The editor this host draws from is the
 // ONE ctrl::GraphEditor the driver owns, and it already carries the timeline's shared
-// state (MainDisplayWidget::
-// syncGraphPanelSharedState wired the frame window, the selection source and the two
-// horizontal delegates). What a HOST must still do is pin the mapping to its own
-// geometry: the frame window is mapped in pixels, computed from the plot's width, so
-// paintGL() calls ctrl::GraphEditor::syncFrameWindowFor() with THIS widget's size
-// before the model is built - the same call MainDisplayWidget::paintEvent makes for the
-// same reason. Nothing here sets the frame window or the selection.
+// state (MainDisplayWidget::syncGraphPanelSharedState wired the frame window, the selection
+// source and the two horizontal delegates). What a HOST must still do is pin the mapping to
+// its own geometry: the frame window is mapped in pixels, computed from the plot's width, so
+// paint() calls ctrl::GraphEditor::syncFrameWindowFor() with THIS widget's size before the
+// model is composed - the same call MainDisplayWidget::paintEvent makes for the same reason.
+// Nothing here sets the frame window or the selection.
 //
-// INTERACTION. Every Qt event goes to the panel's own gui::ImGuiInputBridge first
-// (ImGuiIO), and the bridge's answer is the panel's key routing rule: a rebindable
-// command must not fire while gui::ImGuiInputBridge::keyboardCaptured() is true, and that
-// flag is read off the ONE ImGui context, so a text field anywhere in the application
-// holds the keyboard for this page too. The panel's own gestures then go to the EDITOR -
-// ctrl::GraphEditor::ownsCursor/updateCursor/updateWheel, reached through the driver's
-// graphEditor() - and not through the viewport at all: ctrl::Driver no longer routes a
-// panel event (the viewport's cursor, wheel and keys are the tools' alone), and the
-// editor has no shown/hidden flag left to gate on, because THIS PAGE is the panel
-// whenever its tab is current. The two controls the panel's views open - the channel
-// list (now the dock header's button, which hands this page's rows to
-// gui::MainDisplayWidget) and the timeline's own key menu (a right-click on a key) -
-// are opened from gui::MainDisplayWidget, which is the object that has the timeline
-// and its menus; see appDisplay() below.
+// INTERACTION. The panel's gestures go to the EDITOR - ctrl::GraphEditor::ownsCursor/
+// updateCursor/updateWheel, reached through the driver's graphEditor() - and not through the
+// viewport at all: ctrl::Driver no longer routes a panel event (the viewport's cursor, wheel
+// and keys are the tools' alone), and the editor has no shown/hidden flag left to gate on,
+// because THIS PAGE is the panel whenever its tab is current. The two controls the panel's
+// views open - the channel list (the dock header's button, which hands this page's rows to
+// gui::MainDisplayWidget) and the timeline's own key menu (a right-click on a key) - are
+// opened from gui::MainDisplayWidget, which is the object that has the timeline and its
+// menus; see appDisplay() below.
 //
 // THE PANEL'S TWO KEYS. Ctrl+A selects every marker of the shown channels and Escape
 // clears the selection - ctrl::GraphEditor::selectAllMarkers / clearSelection, the
@@ -114,13 +92,7 @@ class MainDisplayWidget;
 // application's GUIResources and its parent, is handed the live ctrl::Driver when a
 // project is set, and is asked to refresh() when the document changed. That is the
 // whole of what the dock calls.
-// ONE NAME FOR THE BASE, so every explicit base-class call in the .cpp (`PanelHostBase::hideEvent`,
-// `::keyPressEvent`, ...) is spelled once and cannot drift per host.
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
 using PanelHostBase = QCanvasPainterWidget;
-#else
-using PanelHostBase = QOpenGLWidget;
-#endif
 
 class GraphPanelWidget: public PanelHostBase {
     Q_OBJECT
@@ -189,15 +161,9 @@ public:
     QVector<PanelChannelRow> channelRows() const;
 
 protected:
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
     // THE CANVAS PAINT: compose the frame (gui::composePanelFrame) and ink it with
-    // gui/InkCanvas. No ImGui anywhere in this path - an RHI widget has no raw GL context for
-    // the ImGui backend, and this host needs none: the panel's ink is a vocabulary now.
+    // gui/InkCanvas.
     void paint(QCanvasPainter* aPainter) override;
-#else
-    void initializeGL() override;
-    void paintGL() override;
-#endif
     void hideEvent(QHideEvent* aEvent) override;
     // The pointer left the page: the hover it was drawing goes with it (see
     // updateHoverRepaint).
@@ -208,15 +174,6 @@ protected:
     void wheelEvent(QWheelEvent* aEvent) override;
     void tabletEvent(QTabletEvent* aEvent) override;
     void keyPressEvent(QKeyEvent* aEvent) override;
-    void keyReleaseEvent(QKeyEvent* aEvent) override;
-    void inputMethodEvent(QInputMethodEvent* aEvent) override;
-    QVariant inputMethodQuery(Qt::InputMethodQuery aQuery) const override;
-    void focusInEvent(QFocusEvent* aEvent) override;
-    void focusOutEvent(QFocusEvent* aEvent) override;
-    // DevicePixelRatioChange (the frame rasterizes at the widget's ratio) and the touch
-    // events the input bridge translates. QWidget has no touchEvent() virtual in Qt 6,
-    // so those arrive here.
-    bool event(QEvent* aEvent) override;
 
 private:
     // The panel's editor: the driver owns it and a new driver is a new panel, so it is
@@ -241,8 +198,8 @@ private:
     // (ctrl::GraphEditor::clearSelection). Returns whether the panel ACTED, and the
     // caller consumes the event exactly then - a press that changed nothing is left to
     // propagate to the application's own key routing, as every unconsumed key here
-    // always was. The conditions (this widget is the focus widget; Dear ImGui has not
-    // taken the keyboard) are stated at the definition.
+    // always was. The one condition (this widget is the focus widget) is stated at the
+    // definition.
     bool panelKeyAction(const QKeyEvent& aEvent);
 
     // The panel's right-click, at aPos in this widget's pixels. ONE PICK decides
@@ -300,35 +257,23 @@ private:
     // editor: the frame; none: "not on screen").
     void publishAccessibility();
 
-    // Drops this host's GL objects and its hold on the shared context (the context, the
-    // backend and the atlas go only when no host holds them). Called from the destructor
-    // and from initializeGL when this widget is given a NEW GL context.
-    void shutdownHost();
-
     void onThemeUpdated(theme::Theme& aTheme);
 
     GUIResources& mResources;
     // The theme change that repaints the floor and the panel's palette.
     util::SlotId mThemeSlot;
     ctrl::Driver* mDriver;
-    QScopedPointer<ImGuiInputBridge> mBridge;
     // The frame this host drew last: its model (which the hits below are tested
-    // against), the editor, the palette and this host's own clock. Its topInset stays 0:
-    // nothing floats over the dock's page.
+    // against), the editor, the palette and this host's own top inset. Its topInset
+    // stays 0: nothing floats over the dock's page.
     PanelFrameState mFrame;
     // The Qt mouse stream in the editor's own currency (ctrl::GraphEditor reads
     // screenPoint()), fed from this page's events and pinned to panelCamera().
     core::AbstractCursor mCursor;
-    // THE POINTER, as this host last received it in an event: this widget's logical
-    // pixels, which is the space the model's rects and the draw list are in. The frame
-    // driver is handed this rather than reading io.MousePos, because this page paints
-    // when it is asked to and Dear ImGui trickles its input queue across frames, so its
-    // position can lag the pointer (see runPanelFrame - the measured readout defect).
-    // Starts outside the panel so no hover is painted before the pointer arrives.
-    // The pointer as the INK wants it (gui/Ink.h's ink::Pointer): the position, the press's own
-    // position and whether the left button is still down. A backend never reads a pointer, so
-    // the host is the only place these three facts exist - and they are tracked for EVERY host,
-    // because the ImGui one feeds them from the same events.
+    // The pointer as the INK wants it (gui/Ink.h's ink::Pointer): the position, the press's
+    // own position and whether the left button is still down. A backend never reads a
+    // pointer, so the host is the only place these three facts exist. Starts outside the
+    // panel so no hover is painted before the pointer arrives.
     QPoint mPointer;
     QPoint mPressPointer;
     bool mLeftDown = false;
@@ -368,7 +313,6 @@ private:
     // emission is gated on the ROW SET actually changing (a playback tick repaints 60
     // times a second and must not rewrite the bar's label each time).
     QVector<PanelChannelRow> mPublishedChannels;
-    bool mReady;
 };
 
 } // namespace gui

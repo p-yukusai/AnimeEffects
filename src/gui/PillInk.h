@@ -11,8 +11,8 @@ namespace gui {
 // THE ROUNDED PILL, ONE WAY. The playhead's frame pill (gui::TimeCursor), the
 // temporary playback window's label arms (gui::TimeRuler::renderPlayWindow) and the
 // same arms in the graph panel all end on a kPillRadius rounded corner. The panel
-// draws through ImGui (whose filled path is antialiased by construction); the two
-// Qt widgets draw through QPainter, whose default hint is OFF - a QWidget's painter
+// draws through gui::ink::Ink (Canvas Painter, antialiased by construction); the Qt
+// widgets draw through QPainter, whose default hint is OFF - a QWidget's painter
 // inherits no antialiasing at all - so a bare drawRoundedRect there produced a hard,
 // stair-stepped corner on the playhead pill while the window pills, which set the
 // hint themselves, were smooth. Neither radius nor ink differed; only the hint did.

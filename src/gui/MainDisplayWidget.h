@@ -8,7 +8,6 @@
 #include <QReadWriteLock>
 #include <QColor>
 #include <QImage>
-#include <QVariant>
 #include <QtMath>
 #include "util/LinkPointer.h"
 #include "util/SlotId.h"
@@ -222,12 +221,6 @@ private:
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
     void tabletEvent(QTabletEvent* event) override;
-    void keyPressEvent(QKeyEvent* event) override;
-    void keyReleaseEvent(QKeyEvent* event) override;
-    void inputMethodEvent(QInputMethodEvent* event) override;
-    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
-    void focusInEvent(QFocusEvent* event) override;
-    void focusOutEvent(QFocusEvent* event) override;
     bool updateCursor();
     // Sets ctrl::CanvasMover's drag mode from the state that decides it, so "which
     // gesture is in flight" is applied in one place (see the definition). The

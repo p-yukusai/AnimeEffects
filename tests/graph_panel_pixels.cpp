@@ -1,21 +1,26 @@
 // The animation graph panel's PIXEL CONTRACT.
-
 //
-// This is the pixel gate of the ImGui panel (gui::drawPanel, src/gui/GraphPanelFrame.cpp)
-// and the successor of tests/graph_render_pixels.cpp, which pinned the RASTER
-// painter renderer (ctrl::graph::Renderer into a QImage). That renderer is deleted
-// in the cutover, and the panel must not lose its pixel gate with it: this file
-// drives the SHIPPING drawing path - a real ImGui frame, the real GL3 backend,
-// the real framebuffer - and reads the pixels back with glReadPixels.
+// The panel's drawing decisions live once, in gui::drawPanel (src/gui/GraphPanelFrame.cpp),
+// expressed over gui::ink::Ink. On a Qt 6.12 tree the SHIPPING host is QCanvasPainterWidget
+// (gui::GraphPanelWidget) fed by gui::ink::InkCanvas: this file builds that same widget with
+// a SYNTHETIC gui::GraphPanelModel, pulls one frame back with grabFramebuffer() and samples
+// it. drawPanel is a pure function of (model, palette, focus, pointer), so the pixels it
+// leaves are the panel's pixels; no application window, document or editor is involved in
+// the pixel passes.
 //
-// WHAT IS DRIVEN. Not the application: no widget paint event. A SYNTHETIC
-// gui::GraphPanelModel is built by hand from the model's own coordinates, and
-// gui::drawPanel is handed it inside one ImGui frame. drawPanel is a pure function of
-// (model, palette, focus), so the pixels it leaves in the framebuffer are the panel's
-// pixels. THE ONE EXCEPTION is the hover-vs-press assertion (checkHoverMatchesPress):
-// it builds a REAL ctrl::GraphEditor over a real TimeLine, presses it, and asks
-// gui::panelPickAt about the model that editor publishes - no GL needed, so it runs
-// before the context is taken and pins the ink and the press to one answer.
+// WHAT IS DRIVEN. The real widget class, the real backend and the real drawing decisions.
+// The model is built by hand from the model's own coordinates; the pointer is handed to the
+// drawing layer exactly as the host hands its cursor. THE ONE EXCEPTION is the
+// hover-vs-press assertion (checkHoverMatchesPress): it builds a REAL ctrl::GraphEditor over
+// a real TimeLine, presses it, and asks gui::panelPickAt about the model that editor
+// publishes - no widget involved, so it runs before the first frame and pins the ink and
+// the press to one answer.
+//
+// A SECOND, STRUCTURAL GATE runs the same models through InkQPainter (Qt's own rasteriser)
+// and InkCanvas and compares them: geometry and fills exact, translucent ink allowed one
+// unit per channel, text compared for presence per published label box. The shipping host
+// is Canvas, and the parity block is what keeps a shape decision from being one
+// rasteriser's accident.
 //
 // WHAT IT PINS, and why each assertion is a regression gate:
 //   1 no grid, no background. A rect inside the plot that holds none of the
@@ -63,11 +68,20 @@
 //  10 the Custom tangent handles: each handle's stem carries ink at its own
 //     midpoint (the channel hue mixed 0.2 toward the panel's halo, so it reads on its
 //     own curve) and each stored dot is theme::Graph::handleFill() at its own
-//     coordinates; with io.MousePos on one dot (a second pass that differs ONLY in
+//     coordinates; with the pointer on one dot (a second pass that differs ONLY in
 //     the pointer) that dot takes the HUE-DERIVED highlight (the same reduced hue
 //     lifted 0.45 toward axisText, not the structural accent) while every other dot
 //     is unchanged - the highlight at the same distance the editor's own hit-test
 //     grabs through.
+//  16 the frame numbers' reserved band: it is a SECTION ABOVE THE PLOT (band.bottom()
+//     + 1 == plot.top(), the two rects disjoint), every frame label's box is inside it
+//     and clear of the tick rows, and the glyph box the panel actually used
+//     (drawLabel's own clamped placement) is inside it - so a number that left the
+//     ruler section fails here instead. ROW FOR ROW WITH THE TIMELINE, on the pixels
+//     of a pair of passes: a frame number's first inked row is the one the backend's
+//     TOP-ALIGNED placement produces (box.top + the font's ascent + the glyph's tight
+//     top), read at a pixel size where a CENTRED glyph would start two rows lower -
+//     and a frame tick inks the band's last row AND the kTickLength rows above it.
 //  17 the playhead's own extent: the document's frame is ONE pixel column that
 //     runs from the ruler band's pill column (above the plot) through the plot's
 //     whole vertical span in theme::Graph::selected() and puts nothing in the
@@ -78,10 +92,12 @@
 //     gui::GraphPanelModel::marquee, whose body must be
 //     theme::Graph::marqueeFill() composited on what is under it and whose 1px edge
 //     the edge token - and nothing at all where no drag is live.
-//  20 the handles' COST rule: with a focus, only the focused channel draws its tangent
-//     handles (the panel's vertex budget - the application-level diagnosis measured
-//     ~68 vertices per key with them against ~16 without) - the same model with and
-//     without the focus, whose vertex delta and cleared positions are both asserted.
+//  20 the handles' FOCUS rule: with a focus, only the focused channel draws its
+//     tangent handles. The pair is the same model with and without a focus on the
+//     curve that has none, and the assertion is the INK: the unfocused curve's dots
+//     and stem pixels are inked in one pass and clean in the other. (An earlier form
+//     counted submitted vertices; the Canvas host has no such counter, and the ink is
+//     the stronger statement anyway.)
 //  21 THE VALUE COLUMN'S TWO OBLIGATIONS, measured as a pair of models: a right-aligned
 //     value label keeps kValueLabelGap (8px) from its box's right edge when the box can
 //     spare it - the gutter that stops the top value label and the plot's first frame
@@ -90,176 +106,78 @@
 //     painting outside the panel. The first is measured against the glyph box the
 //     drawing layer used, the second against a model whose panel starts inside the
 //     framebuffer.
-//  16 the frame numbers' reserved band: it is a SECTION ABOVE THE PLOT (band.bottom()
-//     + 1 == plot.top(), the two rects disjoint), every frame label's box is inside it
-//     and clear of the tick rows, and the glyph box the panel actually used
-//     (drawLabel's own clamped placement) is inside it - so a number that left the
-//     ruler section fails here instead. ROW FOR ROW WITH THE TIMELINE, on the pixels
-//     of a pair of passes: a frame number's first inked row is the box's top row plus
-//     gui::kRulerNumberInkTop (3) - the row TimeRuler's top-aligned drawText inks,
-//     read at a font size where a CENTRED glyph would start two rows lower - and a
-//     frame tick inks the band's last row AND the kTickLength rows above it (six
-//     rows, where ImGui's half-open 1px path used to drop the top one).
-//  11-15 THE CONTRAST OUTLINE AND COMPOSITE PASS (gui::outline), driven directly
-//     with hand-authored textures: a low-contrast stroke over a bright patch is
-//     ringed in black and the ring's strength follows the stroke's coverage; the
-//     same stroke over a contrasting patch is left alone BYTE FOR BYTE; an empty
-//     overlay leaves a patterned backdrop byte-identical through the pass's own
-//     blit (the inverse "always draws" assertion); a 50%-covered pixel blends with
-//     the backdrop instead of replacing it; and the optional +/-2px second ring
-//     reaches a pixel the shipped 1px ring leaves alone. See the block above those
-//     checks for what each one is a regression gate on.
-//  11 ALSO PINS THE THRESHOLD'S OWN VALUE, which is the knob the ring's eagerness
-//     lives in: a stroke at 2.30:1 is left alone at the shipped
-//     gui::outline::kMinContrast (2.0) and ringed at 3.0 - the pair that says the
-//     constant is 2.0 rather than merely "some value the two sample inks straddle".
-//  22-26 THE CURVE STROKE (gui::stroke), which is the panel's ink for the channel
-//     polylines and the thing the user reported as "jagged and inconsistent line
-//     thickness". ImDrawList::AddPolyline builds the antialiasing into the VERTICES
-//     (a fringe quad per segment), so the width a stroke reads at depends on the
-//     angle of its segments; gui::stroke measures the coverage PER FRAGMENT from the
-//     distance to each segment's centreline, accumulates the segments' capsules with
-//     GL_MAX (so a join cannot be blended twice) and composites that union once. The
-//     assertions measure the SHAPE, and each one is stated with both implementations'
-//     numbers:
-//      22 equal thickness across the angle: the ink's average perpendicular extent
-//         over a run's own interior, at four angles (horizontal, half-pixel off the
-//         grid, 45 degrees, ~72 degrees) AND along a dense wavy polyline sampled the
-//         way the panel samples a curve, asserted to spread by no more than 1px. The
-//         measured spread is 0.053px across the angles and 0.049px along the line -
-//         for the fringe stroke as well, because at this width ImGui takes its
-//         texture path whose ramp is already perpendicular to every segment. The
-//         assertion is a gate on the new pass, not the demonstration; 24 is that.
-//      23 antialiased edges: the coverage profile across the stroke's boundary - on
-//         the run deliberately placed half a pixel off the grid, where an
-//         unantialiased edge has no partial pixel at all - asserted to carry
-//         intermediate coverage on BOTH sides of the body and to ramp monotonically
-//         into it and out of it, with the column's whole ink equal to the nominal
-//         width AT THE STROKE'S OWN BODY LEVEL. BOTH EMPHASIS STATES are read: the
-//         ink model as every other check draws it (an empty selection, i.e. the
-//         design's dimmed strength) and the same model with the measured run put in
-//         play by a selection (full strength, where the original full-coverage bar
-//         is asserted);
-//      24 no double-darkening at a join: every pixel within 5px of a right-angle
-//         vertex is asserted to carry no more coverage than ONE segment's capsule
-//         allows at that pixel's own distance - measured with the curve DIMMED,
-//         because on a dimmed curve a doubled blend is ink darker than the stroke's
-//         own body and on a full-strength one it is invisible - and the same bound is
-//         required to catch the fringe stroke, which is what makes the measurement a
-//         discrimination rather than a tautology;
-//      25 the ink is still where the polyline is: every sample of every run lands on
-//         an inked pixel, the frame's whole ink stays inside the runs' own bounds, the
-//         coverage-weighted centre of the stroke's cross-section is on the centreline,
-//         and the two SAMPLE SETS are held to their own bars - the INTERIOR samples to
-//         the stroke's own body level (measured off the run, since an empty selection
-//         draws every curve at the design's dimmed strength), and the samples at a
-//         PATH's own end to the round cap's profile at the tip pixel's own distance
-//         from the endpoint (0.79 of the body, measured through the pass's own
-//         capsuleCoverage rather than hardcoded) - where the fringe stroke's
-//         square-ended strip carries none (0.00), which is what measuring the distance
-//         to the SEGMENT rather than to its infinite line buys;
-//      26 the pass is a guest in the frame (the same rule as the outline's own
-//         assertion), driven from the very command ImGui recorded for the frame - so
-//         the assertion that the pass is IN the draw list, between the ticks and the
-//         key markers, is the same one that finds it;
-//      27 the panel's OTHER 1px lines (the ticks, the zero rule, the playhead and the
-//         handle stems), MEASURED FIRST and left unchanged: the three that are drawn
-//         with ImGui's line AA explicitly off are only ever asked for an INTEGER
-//         column (frameTickX/valueTickY/zeroY/playheadX are all `int` in the model), and
-//         at an integer column the hard-edged line is exact - one column at full
-//         coverage, its neighbours at zero, the column the model named, its ink centre
-//         on that column's centre. Routing them through the coverage pass would put
-//         0.500 in each of the two columns a boundary divides (the pass's own function,
-//         which assertion 24 verifies against the drawn ink), i.e. it would trade one
-//         crisp column for a two-column grey line - so this assertion pins the
-//         measurement, and fails if someone makes that trade without re-deriving it.
-//         The handle stem - 1px with AA ON and FRACTIONAL coordinates - was measured
-//         first and WAS WRONG (its ink sat +0.68/+0.75/+0.76px off the requested line
-//         at three stations, because ImGui's AddLine shifts geometry by (+0.5,+0.5), up
-//         to 0.71px perpendicular on a diagonal; the pass measures -0.01/-0.00/+0.01px),
-//         so it is now drawn by the same
-//         coverage pass as the curves: same colour, same 1px width, same order, same
-//         clip. The assertion re-measures the result - the ink's centroid within 0.5px
-//         of the line, partial coverage at its edges, and 1px of ink per px of stem,
-//         which is what a 1px stroke must put down and what a stroke that loses ink
-//         cannot pass.
-//     The two implementations are driven out of ONE process: the ink model is rendered
-//     with the pass unbuilt (BEFORE: ImDrawList::AddPolyline) and with it built (AFTER),
-//     and the crops under build/shots/graph_ink/ are those same two frames magnified
-//     with no resampling;
-//      29 THE THREE MARKER STATES, on one key's two components: the SELECTED marker's
-//         fill moves toward the keyframe highlight and its detached 1px ring is drawn
-//         in the timeline's own ink - the channel's raw hue at 0.85; the SIBLING
-//         marker (its key selected on the other component) keeps a FAINT ring at the
-//         same radius, the same hue at 0.35, and a fill that did not brighten; the
-//         HOVERED marker brightens and adds NO ring. Read against an unflagged pass of the same model, so each claim is
-//         about the state and not about the fixture;
-//      30 THE DRAG READOUT: with a key move in flight the model's two numbers are
-//         painted at the pointer (the panel's own label ink), and with no move in
-//         flight the same model, focus and pointer paint nothing at all there. The
-//         numbers themselves are the editor's and are gated where the gesture is
-//         (tests/graph_drag.cpp); what this asserts is that they reach the screen at
-//         the pointer or not at all;
-//      31 THE SCROLL BARS ARE THE APPLICATION'S: the model's lanes and runs are drawn
-//         as src/gui/AppStyle.cpp's CC_ScrollBar - a 4px, radius-2 pill in
-//         theme::Colors::outline, an INVISIBLE trough - with no ink outside the pills,
-//         and the hovered bar's pill in theme::Colors::hover while the other bar's
-//         stays at rest (measured in BOTH directions). A zero-travel lane is still a
-//         full-length pill in EITHER direction: the vertical bar never hides. Read
-//         against the same model's empty-rects pass, so each claim is about the
-//         drawing layer and not the fixture.
+//  28 THE TEMPORARY PLAYBACK WINDOW'S OVERLAY: the ruler-band wash, the 2px bracket
+//     stems and the label arms in the timeline's own tokens and order; the text column
+//     is the timeline's (left + kPillPadding, not a second centring on the drawing
+//     font's advance), the arms' outer corners are cut by the shared pill radius, and a
+//     window narrower than its labels collapses to ONE centred merged pill with no arms.
+//  29 THE THREE MARKER STATES, on one key's two components: the SELECTED marker's
+//     fill moves toward the keyframe highlight and its detached 1px ring is drawn in
+//     the timeline's own ink - the channel's raw hue at 0.85; the SIBLING marker (its
+//     key selected on the other component) keeps a FAINT ring at the same radius, the
+//     same hue at 0.35, and a fill that did not brighten; the HOVERED marker brightens
+//     and adds NO ring. Read against an unflagged pass of the same model, so each claim
+//     is about the state and not about the fixture.
+//  31 THE SCROLL BARS ARE THE APPLICATION'S: the model's lanes and runs are drawn
+//     as src/gui/AppStyle.cpp's CC_ScrollBar - a 4px, radius-2 pill in
+//     theme::Colors::outline, an INVISIBLE trough - with no ink outside the pills,
+//     and the hovered bar's pill in theme::Colors::hover while the other bar's stays
+//     at rest (measured in BOTH directions). A zero-travel lane is still a full-length
+//     pill in EITHER direction: the vertical bar never hides. Read against the same
+//     model's empty-rects pass, so each claim is about the drawing layer and not the
+//     fixture. 31b pins the ruler's hairline row to the opaque Colors::hairline token,
+//     over the band's own surface - the one rule both views draw.
+//  32 THE PROPORTIONAL MARKER IS A RING: on one channel's absolute/proportional
+//     pair, both selected, the proportional marker's CENTRE is the panel floor
+//     (a hole), and its hue is a band at ctrl::time::kProportionalRingOuterInset /
+//     kProportionalHoleInset; the absolute marker beside it is a solid selected
+//     dot. The edge stroke keeps its own ink, strength and coverage, and the
+//     selection ring is byte-identical to the same marker in a control pass whose
+//     only difference is keyProportional[1] = false. A build that still lowers the
+//     fill's alpha leaves the proportional centre filled, which fails here.
+//  33 THE FRAME RANGE'S GUIDES: two 1px columns in theme::Graph::selected(), inside the
+//     plot's whole vertical span and clear of every other mark, with the receded
+//     classification drawn at its own alpha - a pair that isolates the guides from the
+//     rest of the model.
 //
-//      32 THE PROPORTIONAL MARKER IS A RING: on one channel's absolute/proportional
-//         pair, both selected, the proportional marker's CENTRE is the panel floor
-//         (a hole), and its hue is a band at ctrl::time::kProportionalRingOuterInset /
-//         kProportionalHoleInset; the absolute marker beside it is a solid selected
-//         dot. The edge stroke keeps its own ink, strength and coverage, and the
-//         selection ring is byte-identical to the same marker in a control pass whose
-//         only difference is keyProportional[1] = false. A build that still lowers the
-//         fill's alpha leaves the proportional centre filled, which fails here.
-//
-// WHAT THIS FILE CANNOT SEE. The key menu is the APPLICATION'S OWN QMenu now
-// (gui::MainDisplayWidget::showGraphKeyMenu -> the timeline's key menu), a
-// native popup window drawn by Qt outside this framebuffer: there is no ImGui popup
-// left to open, measure or click here, and the pixel gate owns no widget, no
-// timeline and no document to build one from. What it can still say about the menu
-// is what it said before - nothing, in pixels; the route itself (a right-click
-// within ctrl::graph::kKeyHitRadius of a key's centre selects that key and calls the
-// widget) is the code path's business, and the application-level probe's.
+// WHAT THIS FILE CANNOT SEE. The key menu is the APPLICATION'S OWN QMenu
+// (gui::MainDisplayWidget::showGraphKeyMenu -> the timeline's key menu), a native popup
+// window drawn by Qt outside the widget's frame: there is no popup to open, measure or
+// click here, and the pixel gate owns no document to build one from. What it can still
+// say about the menu is nothing, in pixels; the route itself (a right-click within
+// ctrl::graph::kKeyHitRadius of a key's centre selects that key and calls the widget)
+// is the code path's business, and the application-level probe's.
 //
 // Every number is printed as `MEASURED <what> ...` so a failure states the
 // measurement, not only the verdict, and every precondition is asserted so a run
 // that could not observe the behaviour fails loudly instead of passing quietly.
 //
-// HOW IT OWNS ITS PIXELS. The same bootstrap as tests/overlay_engine_primitives.cpp:
-// a real core-profile QOpenGLWidget context (QSurfaceFormat + gl::Global::kVersion),
-// gl::Global::setContext/setFunctions over QOpenGLFunctions_4_0_Core, and this
-// file's OWN framebuffer, read with glReadPixels. Never QOpenGLWidget::grabFramebuffer(),
-// which re-enters Qt's render and invalidates the colour buffer. The widget's
-// paint event is never involved; run it under xvfb-run.
+// HOW IT OWNS ITS PIXELS. QCanvasPainterWidget owns the RHI (GL) target its paint runs
+// on, and grabFramebuffer() hands back the composed frame; renderPass() creates one
+// widget per pass, sizes it to 400x320 and reads it back. The gate needs a window system
+// with a real GL implementation (scripts/gui/gpu_headless.sh is the default; xvfb-run
+// works), and it asserts the readback's size, because every sampled pixel is in the
+// widget's own logical coordinates.
 //
 // The viewport is 400x320 while the panel is 400x300: the 20 rows below the panel
 // are the visible "below the panel" probe of assertion 7.
+
 #include <QApplication>
 #include <QByteArray>
 #include <QColor>
 #include <QtMath>
 #include <QDir>
-#include <QElapsedTimer>
+#include <QFontInfo>
+#include <QFontMetricsF>
 #include <QImage>
 #include <QJsonObject>
-#include <QOpenGLFunctions_4_0_Core>
-#include <QOpenGLVersionFunctionsFactory>
-#include <QOpenGLWidget>
 #include <QPair>
 #include <QPointF>
 #include <QRect>
 #include <QSize>
 #include <QString>
-#include <QSurfaceFormat>
 #include <QVector>
 #include <algorithm>
-#include <cfloat>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -269,34 +187,16 @@
 #include <string>
 #include <vector>
 
-#include "imgui.h"
-#include "imgui_impl_opengl3.h"
-
-// ImDrawListSharedData, i.e. the frame's font and font size that gui::drawPanel
-// reads off the draw list itself (src/gui/GraphPanelFrame.cpp does the same). The
-// label geometry below has to be measured with THE SAME font the glyphs are
-// rasterized with, or "outside the glyph box" would be a statement about a box
-// nobody drew.
-#include "imgui_internal.h"
-
 #include "XCAssert.h"
-#include "gl/BufferObject.h"
-#include "gl/DeviceInfo.h"
-#include "gl/EasyShaderProgram.h"
-#include "gl/Framebuffer.h"
-#include "gl/Global.h"
-#include "gl/Texture.h"
-#include "gl/VertexArrayObject.h"
 
 #include "gui/GraphPanelModel.h"
 #include "gui/GraphPanelFrame.h"
-#include "gui/InkImGui.h"
 #include "gui/InkQPainter.h"
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
+// THE SHIPPING HOST'S TWO PIECES: the Qt 6.12 Canvas Painter module and the backend that
+// implements gui::ink::Ink over it. The gate renders through this pair and nothing else.
 #include <QCanvasPainter>
 #include <QCanvasPainterWidget>
 #include "gui/InkCanvas.h"
-#endif
 #include "gui/theme/Colors.h"
 #include "gui/theme/Graph.h"
 #include "ctrl/graph/graph_Geometry.h"
@@ -486,18 +386,7 @@ enum class Align { Left, Centre, Right };
 // top-aligned drawText does for TimeRuler.
 enum class VAlign { Centre, Top };
 
-gl::Framebuffer* gFbo = nullptr;
-
 //-------------------------------------------------------------------------------------------------
-// Read the whole attachment back as a TOP-DOWN RGBA image, with the FBO bound.
-// GL's origin is bottom-left, so glReadPixels hands back the bottom row first:
-// without the flip every sampled pixel below would come from the mirrored row.
-QImage readFboTopDown() {
-    QImage image(kViewW, kViewH, QImage::Format_RGBA8888);
-    gl::Global::functions().glReadPixels(0, 0, kViewW, kViewH, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
-    return image.flipped(Qt::Vertical);
-}
-
 QColor pixelAt(const QImage& aImage, int aX, int aY) {
     const uchar* line = aImage.constScanLine(aY);
     const uchar* pixel = line + 4 * aX;
@@ -608,18 +497,23 @@ int toneCount(const QImage& aImage, const QRect& aRect, const QColor& aColour, i
     return count;
 }
 
-// The rows (aHorizontal false) or columns (true) of aProbe that carry the token
-// aColour ITSELF: the first and last such one, or (0,-1) when the probe carries none.
+// The rows (aHorizontal false) or columns (true) of aProbe that carry aColour within
+// aTolerance: the first and last such one, or (0,-1) when the probe carries none.
 // Used to pin the DRAWN pill's band to the shared rect's own edges: the probes that
 // call it cross the pill through its middle, where the fill is opaque, so the extent
-// measured is the pill's and not an antialiased fringe's.
-QPair<int, int> tokenSpan(const QImage& aImage, const QRect& aProbe, const QColor& aColour, bool aHorizontal) {
+// measured is the pill's and not an antialiased fringe's. aTolerance is the rounded
+// fill's edge coverage: Canvas2D leaves its straight edges at ~31/32 even when the
+// shape is pixel-aligned, so the bar probes admit kFillTol while still failing a
+// one-pixel shift (the floor is 190 away).
+QPair<int, int> tokenSpan(
+    const QImage& aImage, const QRect& aProbe, const QColor& aColour, bool aHorizontal, int aTolerance = 0
+) {
     int lo = std::numeric_limits<int>::max();
     int hi = std::numeric_limits<int>::min();
     const QRect r = aProbe.intersected(aImage.rect());
     for (int y = r.top(); y <= r.bottom(); ++y) {
         for (int x = r.left(); x <= r.right(); ++x) {
-            if (colourDistance(pixelAt(aImage, x, y), aColour) != 0)
+            if (colourDistance(pixelAt(aImage, x, y), aColour) > aTolerance)
                 continue;
             const int at = aHorizontal ? x : y;
             lo = std::min(lo, at);
@@ -636,62 +530,33 @@ int rectGap(const QRect& a, const QRect& b) {
     return std::max(dx, dy);
 }
 
-// How far below the position ImGui is handed a run's ink starts: the smallest top
-// bearing among its glyphs at the drawing size - drawLabel's inkTopInset, mirror
-// rebuilt here so the glyph box below is the box the panel really paints in.
-float inkTopInsetOf(ImFont* aFont, float aFontSize, const QByteArray& aUtf8) {
-    if (!aFont || aUtf8.isEmpty() || !(aFontSize > 0.0f)) {
-        return 0.0f;
-    }
-    ImFontBaked* baked = aFont->GetFontBaked(aFontSize);
-    if (!baked || !(baked->Size > 0.0f)) {
-        return 0.0f;
-    }
-    const float scale = aFontSize / baked->Size;
-    float inset = FLT_MAX;
-    for (const char c : aUtf8) {
-        const unsigned char byte = (unsigned char)c;
-        if (byte < 0x20 || byte > 0x7e) {
-            continue; // a multi-byte character is not read as its first byte
-        }
-        if (const ImFontGlyph* glyph = baked->FindGlyphNoFallback(ImWchar(byte))) {
-            inset = std::min(inset, glyph->Y0 * scale);
-        }
-    }
-    return inset == FLT_MAX ? 0.0f : inset;
-}
-
-// The glyph box drawLabel's own placement produces: the same font, the same
-// alignment, the same CLAMPED vertical placement and the same right-gap rule as
-// src/gui/GraphPanelFrame.cpp's drawLabel() (a centred glyph is never placed above
-// the box's top edge; a Top-aligned one puts its run's INK on
-// gui::kRulerNumberInkTop rows below it; a right-aligned label is pulled left by up
-// to aRightGapPx, never by more than the box's spare width).
+// The glyph box the SHIPPING BACKEND's own placement produces: the same font, the same
+// alignment, the same vertical rule and the same right-gap rule as gui::ink::InkCanvas::text()
+// (a centred glyph is clamped so it never starts above the box's top edge; a Top-aligned one
+// starts its LINE box on the box's first row, the timeline's own rule; a right-aligned label
+// is pulled left by up to aRightGapPx, never by more than the box's spare width).
 // Rebuilding it here is what lets the halo assertion say "this pixel is OUTSIDE the
 // glyph box" rather than "somewhere near the text".
 QRect glyphBox(
-    const QRect& aBox, const QString& aText, ImFont* aFont, float aFontSize, Align aAlign,
+    const QRect& aBox, const QString& aText, const QFont& aFont, Align aAlign,
     VAlign aVAlign = VAlign::Centre, int aRightGapPx = 0
 ) {
-    if (!aFont || aText.isEmpty() || aBox.isEmpty()) {
+    if (aText.isEmpty() || aBox.isEmpty()) {
         return QRect();
     }
-    const QByteArray utf8 = aText.toUtf8();
-    const ImVec2 size = aFont->CalcTextSizeA(aFontSize, FLT_MAX, 0.0f, utf8.constData());
-    float x = float(aBox.left());
+    const QFontMetricsF metrics(aFont);
+    const double advance = metrics.horizontalAdvance(aText);
+    double x = double(aBox.left());
     if (aAlign == Align::Centre) {
-        x += (float(aBox.width()) - size.x) * 0.5f;
+        x += (double(aBox.width()) - advance) * 0.5;
     } else if (aAlign == Align::Right) {
-        const float spare = std::max(0.0f, float(aBox.width()) - size.x);
-        x = float(aBox.left() + aBox.width()) - size.x - std::min(float(aRightGapPx), spare);
+        const double spare = std::max(0.0, double(aBox.width()) - advance);
+        x = double(aBox.left() + aBox.width()) - advance - std::min(double(aRightGapPx), spare);
     }
-    // The same placement drawLabel applies: Top puts the run's INK on
-    // gui::kRulerNumberInkTop rows below the box's top (the timeline's own row, so the
-    // font's bearing is subtracted), Centre clamps an over-tall font into the box.
-    const float y = aVAlign == VAlign::Top
-        ? float(aBox.top() + gui::kRulerNumberInkTop) - inkTopInsetOf(aFont, aFontSize, utf8)
-        : float(aBox.top()) + std::max((float(aBox.height()) - size.y) * 0.5f, 0.0f);
-    return QRect(int(std::floor(x)), int(std::floor(y)), int(std::ceil(size.x)), int(std::ceil(size.y)));
+    const double y = aVAlign == VAlign::Top
+        ? double(aBox.top())
+        : std::floor(double(aBox.top()) + std::max((double(aBox.height()) - metrics.height()) * 0.5, 0.0));
+    return QRect(int(std::floor(x)), int(y), int(std::ceil(advance)), int(std::ceil(metrics.height())));
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1052,130 +917,86 @@ gui::GraphPanelModel makeProportionalMarkerModel(const theme::Graph& aTheme, cor
 }
 
 //-------------------------------------------------------------------------------------------------
+// THE SHIPPING HOST, DRIVEN WITH A SYNTHETIC MODEL.
+//
+// On a Qt 6.12 tree the panel's only host is QCanvasPainterWidget (gui::GraphPanelWidget): its
+// paint() hands the model to gui::drawPanel over gui::ink::InkCanvas, and the widget clears its
+// texture to the host's floor colour. The gate drives that pair directly - the same widget class,
+// the same backend, the same drawPanel - and reads the frame back with the widget's own
+// grabFramebuffer(), so what is asserted below is the drawing layer the application ships, not a
+// rasteriser the test chose. No paint event of the application is involved: the widget is never
+// shown, and the synthetic model is its only input.
 struct Rendered {
     QImage image;
-    int vtx = 0;
-    int idx = 0;
-    int cmdLists = 0;
-    ImFont* font = nullptr;
-    float fontSize = 0.0f;
+    QFont font;
 };
 
-// One whole frame through the real backend, into this file's own framebuffer.
-// The order is the one gui::runPanelFrame() uses (the dock host's frame) and it is
-// load-bearing in 1.92: ImGui_ImplOpenGL3_NewFrame() (the caller's duty, it creates the
-// backend's device objects) BEFORE ImGui::NewFrame().
+// A pointer that is over nothing: the hover rules (a bar's pill, a handle's dot, a chip) must not
+// fire in a pass that does not name the pointer itself. The old harness used FLT_MAX for the same
+// reason; Canvas takes QPointF, so a coordinate no widget can hold does the job.
+const QPointF kPointerOff(-1.0e9, -1.0e9);
+
+class PanelCanvasWidget: public QCanvasPainterWidget {
+public:
+    PanelCanvasWidget(
+        const gui::GraphPanelModel& aModel, const theme::Graph& aTheme, const gui::PanelFocus& aFocus,
+        const gui::ink::Pointer& aPointer, const QFont& aFont
+    )
+        : mModel(aModel), mTheme(aTheme), mFocus(aFocus), mPointer(aPointer), mFont(aFont) {}
+
+protected:
+    void paint(QCanvasPainter* aPainter) override {
+        gui::ink::InkCanvas ink(*aPainter, mFont);
+        gui::drawPanel(ink, mModel, mTheme, mFocus, mPointer);
+    }
+
+private:
+    const gui::GraphPanelModel& mModel;
+    const theme::Graph& mTheme;
+    const gui::PanelFocus& mFocus;
+    const gui::ink::Pointer& mPointer;
+    QFont mFont;
+};
+
+// One whole frame through the shipping host.
+//
+// THE FLOOR IS THE GATE'S MAGENTA, not the application's base colour: every assertion below reads
+// "this pixel moved away from the clear colour", and a floor that is itself a panel token could be
+// mistaken for ink. The widget clears to it every frame, exactly as the page clears to Colors::base.
+//
+// `aMouse` is the pointer the panel's hover rules read (off-screen by default); `aFont` overrides
+// the drawing face (the over-tall-font case), and the application font is used when it is default.
 Rendered renderPass(
     const gui::GraphPanelModel& aModel, const theme::Graph& aTheme, const gui::PanelFocus& aFocus,
-    const char* aName, const ImVec2& aMouse = ImVec2(-FLT_MAX, -FLT_MAX), float aFontSize = 0.0f,
-    bool aQuiet = false, bool aDrawStemWithAddLine = false
+    const char* aName, const QPointF& aMouse = kPointerOff, const QFont& aFont = QFont(), bool aQuiet = false
 ) {
-    auto& funcs = gl::Global::functions();
+    gui::ink::Pointer pointer;
+    pointer.pos = aMouse;
+    pointer.pressPos = kPointerOff;
+    pointer.leftDown = false;
 
-    gFbo->bind();
-    // What ImGui_ImplOpenGL3_RenderDrawData does NOT restore (its scissor box and
-    // viewport are left as the last draw command set them). A glClear() is itself
-    // scissored, so both are re-established before the clear.
-    funcs.glDisable(GL_SCISSOR_TEST);
-    funcs.glScissor(0, 0, kViewW, kViewH);
-    funcs.glViewport(0, 0, kViewW, kViewH);
-    funcs.glClearColor(kClear.redF(), kClear.greenF(), kClear.blueF(), 1.0f);
-    funcs.glClear(GL_COLOR_BUFFER_BIT);
-
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize = ImVec2(float(kViewW), float(kViewH));
-    io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
-    io.DeltaTime = 1.0f / 60.0f;
-    // drawPanel highlights the tangent handle nearest io.MousePos, so the pointer
-    // is part of the frame this harness drives. Off-screen by default (no
-    // highlight); the handle assertion passes a dot's own coordinates.
-    io.MousePos = aMouse;
-
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui::NewFrame();
-
-    ImDrawList* drawList = ImGui::GetBackgroundDrawList();
-    // A DRAWING FONT TALLER THAN THE MODEL'S BOXES, for the one pass that needs it:
-    // the panel measures its own text with the font the DRAW LIST carries, so this is
-    // exactly the "the layer's font is not the model's font" case, made explicit.
-    // Left alone (0) for every other pass, and reset by the next NewFrame.
-    if (aFontSize > 0.0f) {
-        drawList->_Data->FontSize = aFontSize;
-    }
-    if (aDrawStemWithAddLine) {
-        // THE FRINGE HALF OF THE STEM MEASUREMENT, drawn with the primitive the panel does NOT
-        // use: gui::ink::Ink::stroke is a stroke, and its ImGui fallback is AddPolyline (which
-        // is area-exact). ImGui's own 1px AddLine is what shifts its geometry by (+0.5,+0.5) -
-        // measured at 0.68..0.76px off the requested segment - and keeping that number on
-        // record is why this path exists at all: it is the reason a stem may never be drawn as
-        // `line()`.
-        for (const gui::PanelCurve& curve : aModel.curves) {
-            for (const gui::PanelHandle& handle : curve.handles) {
-                drawList->AddLine(
-                    ImVec2(float(handle.base.x()), float(handle.base.y())),
-                    ImVec2(float(handle.dot.x()), float(handle.dot.y())),
-                    IM_COL32(curve.color.red(), curve.color.green(), curve.color.blue(), 217), 1.0f
-                );
-            }
-        }
-    } else {
-        gui::ink::InkImGui inkBackend(*drawList, &gui::panelStrokeSink);
-        gui::ink::Pointer pointer;
-        pointer.pos = QPointF(io.MousePos.x, io.MousePos.y);
-        pointer.pressPos = QPointF(io.MouseClickedPos[0].x, io.MouseClickedPos[0].y);
-        pointer.leftDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        gui::drawPanel(inkBackend, aModel, aTheme, aFocus, pointer);
-    }
+    PanelCanvasWidget widget(aModel, aTheme, aFocus, pointer, aFont);
+    widget.setFillColor(kClear);
+    widget.resize(kViewW, kViewH);
 
     Rendered out;
-    out.font = drawList->_Data ? drawList->_Data->Font : nullptr;
-    out.fontSize = drawList->_Data ? drawList->_Data->FontSize : 0.0f;
-
-    ImGui::Render();
-    ImDrawData* drawData = ImGui::GetDrawData();
-    out.vtx = drawData->TotalVtxCount;
-    out.idx = drawData->TotalIdxCount;
-    out.cmdLists = drawData->CmdListsCount;
-    ImGui_ImplOpenGL3_RenderDrawData(drawData);
-
-    out.image = readFboTopDown();
-    gFbo->release();
-
+    // THE GATE'S PIXEL ACCESSORS READ RGBA BYTES, so the frame is normalised once here rather than
+    // guessed at behind every sample: grabFramebuffer's format is the widget's, not this file's.
+    out.image = widget.grabFramebuffer().convertToFormat(QImage::Format_RGBA8888);
+    out.font = aFont;
+    if (out.image.size() != QSize(kViewW, kViewH)) {
+        qFatal(
+            "the Canvas host returned a %dx%d frame for a %dx%d widget: every sampled pixel would be off",
+            out.image.width(), out.image.height(), kViewW, kViewH
+        );
+    }
     if (!aQuiet) {
         std::printf(
-            "MEASURED pass=%s vtx=%d idx=%d cmd_lists=%d font_px=%d\n", aName, out.vtx, out.idx, out.cmdLists,
-            int(std::lround(out.fontSize))
+            "MEASURED pass=%s size=%dx%d font_px=%d\n", aName, out.image.width(), out.image.height(),
+            QFontInfo(out.font).pixelSize()
         );
     }
     return out;
-}
-
-//-------------------------------------------------------------------------------------------------
-// WHAT A FRAME OF THIS PANEL COSTS, one number per stroke geometry: whole frames, timed, each
-// ending in the harness's own glReadPixels (which is a GPU sync), so the figure is the full
-// draw-measure-read-back cycle rather than a submission time - and the structural cost is
-// stated beside it (the scratch's size, and the GL calls the pass adds per curve). The first
-// frame is untimed because it is the one that creates the pass's GL objects.
-struct FrameCost {
-    double ms = 0.0;
-    int vtx = 0;
-    int idx = 0;
-};
-
-FrameCost timeFrames(
-    const gui::GraphPanelModel& aModel, const theme::Graph& aTheme, const gui::PanelFocus& aFocus, int aFrames
-) {
-    FrameCost cost;
-    renderPass(aModel, aTheme, aFocus, "cost_warmup", ImVec2(-FLT_MAX, -FLT_MAX), 0.0f, true);
-    QElapsedTimer timer;
-    timer.start();
-    Rendered last;
-    for (int i = 0; i < aFrames; ++i)
-        last = renderPass(aModel, aTheme, aFocus, "cost", ImVec2(-FLT_MAX, -FLT_MAX), 0.0f, true);
-    cost.ms = double(timer.nsecsElapsed()) / 1.0e6 / double(aFrames);
-    cost.vtx = last.vtx;
-    cost.idx = last.idx;
-    return cost;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1275,19 +1096,16 @@ void addCurveSamples(std::vector<Geom>& aOut, const QVector<QPointF>& aPoints) {
             const double t = double(s) / double(steps);
             const double x = a.x() + t * (b.x() - a.x());
             const double y = a.y() + t * (b.y() - a.y());
-            // The stroke's own half extent, PLUS one pixel of slack: kCurveWidth is
-            // 2.0px and ImGui's antialiased stroke reaches
-            // thick/2 + 1 = 2px (ImDrawList::AddPolyline's half_draw_size for the
-            // non-texture thick path) or thick/2 + 1 = 2px on the texture path, so a
-            // 5x5 box around the floored sample grown by 1 is a bound, never a guess.
+            // The stroke's own half extent, PLUS one pixel of slack: the panel strokes its
+            // curves at 2.0px (gui::kCurveWidth), so a 2px band reaches 1px either side of
+            // the centreline and its antialiasing adds at most one more - a 5x5 box around
+            // the floored sample grown by 1 is a bound, never a guess.
             aOut.push_back({"curve", grow(QRect(int(std::floor(x)) - 2, int(std::floor(y)) - 2, 5, 5), 1)});
         }
     }
 }
 
-std::vector<Geom> geometryOf(
-    const gui::GraphPanelModel& aModel, ImFont* aFont, float aFontSize
-) {
+std::vector<Geom> geometryOf(const gui::GraphPanelModel& aModel, const QFont& aFont) {
     std::vector<Geom> out;
     if (!aModel.rulerBand.isEmpty()) {
         // The band's surface and its hairline row, plus the playhead's pill when one
@@ -1315,14 +1133,14 @@ std::vector<Geom> geometryOf(
     }
     for (const gui::PanelLabel& label : aModel.frameLabels) {
         out.push_back(
-            {"frame_label", grow(glyphBox(label.rect, label.text, aFont, aFontSize, Align::Left, VAlign::Top), 2)}
+            {"frame_label", grow(glyphBox(label.rect, label.text, aFont, Align::Left, VAlign::Top), 2)}
         );
     }
     for (const gui::PanelLabel& label : aModel.valueLabels) {
         out.push_back(
             {"value_label",
              grow(glyphBox(
-                      label.rect, label.text, aFont, aFontSize, Align::Right, VAlign::Centre, gui::kValueLabelGap
+                      label.rect, label.text, aFont, Align::Right, VAlign::Centre, gui::kValueLabelGap
                   ),
                   2)}
         );
@@ -1367,12 +1185,12 @@ std::vector<Geom> geometryOf(
             continue;
         }
         out.push_back({"chip", grow(curve.chip, 2)});
-        out.push_back({"chip_text", grow(glyphBox(curve.chip, curve.chipText, aFont, aFontSize, Align::Centre), 2)});
+        out.push_back({"chip_text", grow(glyphBox(curve.chip, curve.chipText, aFont, Align::Centre), 2)});
     }
     if (!aModel.emptyState.isEmpty()) {
         out.push_back(
             {"empty_state",
-             grow(glyphBox(aModel.plot, aModel.emptyState, aFont, aFontSize, Align::Centre), 2)}
+             grow(glyphBox(aModel.plot, aModel.emptyState, aFont, Align::Centre), 2)}
         );
     }
     return out;
@@ -1380,21 +1198,28 @@ std::vector<Geom> geometryOf(
 
 //-------------------------------------------------------------------------------------------------
 // 0: the machinery's own control. drawPanel returns immediately for a model with
-// no panel rect, so a pass that draws nothing must count nothing - otherwise the
-// readback or the counter invents pixels and every number below is worthless.
+// no panel rect, so a pass that draws nothing must leave the widget's floor in every
+// pixel - otherwise the readback or the counter invents pixels and every number below
+// is worthless.
 bool checkControl(const Rendered& aRendered) {
     const int ink = inkCount(aRendered.image, QRect(0, 0, kViewW, kViewH));
-    std::printf("MEASURED control ink_pixels=%d of %d\n", ink, kViewW * kViewH);
-    REQUIRE(
-        aRendered.vtx == 0, "the control pass emitted %d vertices for a model with no panel", aRendered.vtx
-    );
-    REQUIRE(ink == 0, "the control pass painted %d pixels while nothing was drawn", ink);
+    int offFloor = 0;
+    for (int y = 0; y < aRendered.image.height(); ++y) {
+        for (int x = 0; x < aRendered.image.width(); ++x) {
+            if (colourDistance(pixelAt(aRendered.image, x, y), kClear) != 0)
+                ++offFloor;
+        }
+    }
+    std::printf("MEASURED control ink_pixels=%d off_floor_pixels=%d of %d\n", ink, offFloor, kViewW * kViewH);
+    REQUIRE(offFloor == 0, "the control pass painted %d pixels while nothing was drawn", offFloor);
+    REQUIRE(ink == 0, "the control pass's ink counter disagrees with its floor count (%d)", ink);
     return true;
 }
 
 // 1: the inverse no-grid assertion.
 bool checkNoGrid(const Rendered& aRendered, const gui::GraphPanelModel& aModel) {
-    REQUIRE(aRendered.font != nullptr, "the draw list carried no font: the label geometry cannot be described");
+    // The gate's own font is the application font unless a pass overrode it; the canvas backend
+    // has already been handed it, so the glyph arithmetic below and the glyphs share one face.
     REQUIRE(!aModel.panel.isEmpty() && !aModel.plot.isEmpty(), "precondition: the model must have a plot");
 
     // A rect inside the plot, in the top-right quadrant, chosen against the model
@@ -1404,7 +1229,7 @@ bool checkNoGrid(const Rendered& aRendered, const gui::GraphPanelModel& aModel) 
     REQUIRE(kPanel.contains(probe), "precondition: the probe rect must be inside the panel");
     REQUIRE(!probe.intersects(aModel.valueColumn), "precondition: the probe rect must be outside the value column");
 
-    const std::vector<Geom> geoms = geometryOf(aModel, aRendered.font, aRendered.fontSize);
+    const std::vector<Geom> geoms = geometryOf(aModel, aRendered.font);
     std::string nearest = "<none>";
     int minGap = -1;
     for (const Geom& geom : geoms) {
@@ -1458,13 +1283,13 @@ bool checkNoGrid(const Rendered& aRendered, const gui::GraphPanelModel& aModel) 
 // 2: the curve stroke lands where the model says.
 //
 // Each model point is sampled EXACTLY (tolerance 0) where the stroke runs through
-// the pixel, and within 1px where the point is a polyline VERTEX: ImGui's
-// antialiased stroke quad does not fully cover its own terminal vertex pixel
-// (measured: (300,210) at the end of curve A comes back clear while every
-// interior sample, including the ones between two key squares, is 79..120 away
-// from the clear colour). The tolerance is stated per sample and printed with the
-// offset that was actually found, so "within 1px of the model's point" is the
-// claim being made - not "somewhere on the panel".
+// the pixel, and within 1px where the point is a polyline ENDPOINT: a round cap's
+// coverage at its own terminal pixel can be partial, and the 2px stroke's antialiasing
+// lands the strongest ink one pixel in (measured on this gate's Canvas host: (300,210)
+// at the end of curve A reads full ink at (299,209), while every interior sample,
+// including the ones between two key squares, is inked at its own point). The tolerance
+// is stated per sample and printed with the offset that was actually found, so "within
+// 1px of the model's point" is the claim being made - not "somewhere on the panel".
 bool checkCurveInk(const Rendered& aRendered, const gui::GraphPanelModel& aModel) {
     struct Sample {
         QPointF point;
@@ -1608,15 +1433,15 @@ int inkWidthThrough(
 //
 // WHY TWO ROWS AND NOT ONE. The ring is the TIMELINE's token (one expression, both
 // views): its 1px band is CENTRED on dotRadius + kSelectRingOffset = 6.35, i.e.
-// [5.85, 6.85]. ImGui's AddCircle strokes INWARD, so the drawing layer asks for that
-// radius + 0.5 (the marker edge's own convention) and the band lands in the same place a
-// QPainter pen at 6.35 does. The framebuffer samples pixel centres at half-integers while
-// a key's centre is an integer coordinate, so the two rows a nominal radius can land in
-// sample 5.5px and 6.5px out: with the band at [5.85, 6.85] the OUTER row carries the
-// body and the inner one its AA fringe. A single-row probe could read the fringe and call
-// a real ring missing, or too faint to name, so the reading takes the stronger of the
-// two - which is the ring's own ink if the ring is there at all - and the claims built on
-// it are about WHICH TOKEN that ink is, never about one nominal pixel.
+// [5.85, 6.85]. The drawing layer asks gui::ink::InkCanvas::circleStroke for that radius
+// plus half a pixel, and the backend centres its 1px stroke inside the radius, so the
+// band lands where a QPainter pen at 6.35 does. The framebuffer samples pixel centres at
+// half-integers while a key's centre is an integer coordinate, so the two rows a nominal
+// radius can land in sample 5.5px and 6.5px out: with the band at [5.85, 6.85] the OUTER
+// row carries the body and the inner one its AA fringe. A single-row probe could read the
+// fringe and call a real ring missing, or too faint to name, so the reading takes the
+// stronger of the two - which is the ring's own ink if the ring is there at all - and the
+// claims built on it are about WHICH TOKEN that ink is, never about one nominal pixel.
 //
 // The pixel is reported in aPixel so a failure can name it.
 QColor detachedRingInk(const QImage& aImage, const QPoint& aCentre, QPoint& aPixel) {
@@ -1704,21 +1529,18 @@ bool checkKeys(
     );
 
     // The marker's own bounds, from the constant the drawing layer uses: the drawn
-    // radius, the 1px keyEdge stroke CENTRED on it (AddCircle(centre, dotRadius + 0.5)
-    // makes ImGui stroke 1px about (radius - 0.5) = dotRadius, so the band is
-    // [dotRadius - 0.5, dotRadius + 0.5] = [3.25, 4.25] and its AA reaches 4.5), and
-    // the antialiasing of both.
+    // radius, the 1px keyEdge stroke CENTRED on it (circleStroke(dotRadius + 0.5) has its
+    // path pulled in by half the width, so the band is [dotRadius - 0.5, dotRadius + 0.5]
+    // = [3.5, 4.5] and its AA reaches 4.5), and the antialiasing of both.
     const int dotRadius = int(std::lround(double(ctrl::graph::kKeyDotRadius)));   // 4
     // THE EDGE BAND'S OWN SAMPLE, MEASURED. A key's centre is an integer coordinate
     // while the framebuffer samples pixel centres at half-integers, so the pixel
     // `step` away from it samples at step + 0.5 from the centre. With the band at
-    // [3.25, 4.25], step 3 (sample 3.5) is INSIDE it and step 4 (4.5) is the stroke's
-    // outer fringe: on this build the +3 pixel reads rgb=#373239 (channel distance 19
-    // from keyEdge #262626) on the selected marker and rgb=#8a3493 (109) on the
-    // dimmed one, while +4 reads rgb=#e005e0 - 31 from the clear colour in play and
-    // 14 dimmed, i.e. below the ink floor, and on the shallow X curve it is the
-    // CURVE's own stroke that +4 samples. Probing dotRadius (4) therefore measured
-    // the fringe, or the curve, and never the marker's edge.
+    // [3.5, 4.5], step 3 (sample 3.5) sits ON its inner edge and step 4 (4.5) on its
+    // outer one: the +3 pixel reads the band's ink on the shipped marker (MEASURED
+    // #993270 against the keyEdge #171717), while +4 reads the clear frame on a steep
+    // run and, on the shallow X curve, the CURVE's own stroke. Probing dotRadius (4)
+    // therefore measures the fringe, or the curve, and never the marker's edge.
     const int edgeStep = dotRadius - 1;                                          // 3: sample radius 3.5
     const int minWidth = 2 * dotRadius - 1;                                      // 7: the drawn diameter, less AA
     const int maxWidth = 2 * dotRadius + 3;                                      // 11: ... plus the stroke and AA
@@ -1917,9 +1739,9 @@ bool checkKeys(
             // in a state): the pixel at the band the drawing actually paints carries ink,
             // and it is the marker's own dark band rather than the fill - checked below in
             // both states. The stroke is CENTRED on ctrl::graph::kKeyDotRadius
-            // (AddCircle(centre, dotRadius + 0.5) puts ImGui's 1px band at
-            // [dotRadius - 0.5, dotRadius + 0.5] = [3.25, 4.25]), and the sample at
-            // edgeStep (3.5px from the centre) is inside it. The dimmed claim is also
+            // (circleStroke(dotRadius + 0.5) puts the 1px band at
+            // [dotRadius - 0.5, dotRadius + 0.5] = [3.5, 4.5]), and the sample at
+            // edgeStep (3.5px from the centre) sits on its inner edge. The dimmed claim is also
             // relational - the edge pixel is nearer theme::Graph::keyEdge() than the
             // centre is, which a pure fill fails - and it holds in BOTH states: the
             // selected marker's fill is the highlight mix rather than the accent, and the
@@ -2596,7 +2418,7 @@ bool checkLabelHalo(
     REQUIRE(aModel.rulerBand.contains(label.rect), "precondition: the label box must be inside the ruler band");
 
     const QRect glyph =
-        glyphBox(label.rect, label.text, aRendered.font, aRendered.fontSize, Align::Left, VAlign::Top);
+        glyphBox(label.rect, label.text, aRendered.font, Align::Left, VAlign::Top);
     REQUIRE(!glyph.isEmpty(), "precondition: the frame font lays out '%s' with empty metrics", qPrintable(label.text));
     REQUIRE(aModel.rulerBand.contains(glyph), "precondition: the glyph box must be inside the ruler band");
 
@@ -2719,7 +2541,7 @@ bool checkRulerReserve(
     const Rendered& aRendered, const gui::GraphPanelModel& aModel, const Rendered& aTight,
     const gui::GraphPanelModel& aTightModel, const Rendered& aTightBare, const theme::Graph& aTheme
 ) {
-    REQUIRE(aRendered.font != nullptr, "the draw list carried no font: the ruler geometry cannot be described");
+    // The glyph arithmetic below and the glyphs share one face: the pass's own QFont.
     REQUIRE(!aModel.frameLabels.isEmpty(), "precondition: the full model must carry frame labels");
     REQUIRE(!aModel.frameTickX.isEmpty(), "precondition: the full model must carry frame ticks");
     REQUIRE(!aModel.rulerBand.isEmpty(), "precondition: the full model must carry the ruler band");
@@ -2775,7 +2597,7 @@ bool checkRulerReserve(
             qPrintable(label.text), label.rect.bottom(), gui::frameRuler::kTickLength, band.bottom()
         );
         const QRect glyph =
-            glyphBox(label.rect, label.text, aRendered.font, aRendered.fontSize, Align::Left, VAlign::Top);
+            glyphBox(label.rect, label.text, aRendered.font, Align::Left, VAlign::Top);
         REQUIRE(
             !glyph.isEmpty(), "precondition: the frame font lays out '%s' with empty metrics", qPrintable(label.text)
         );
@@ -2816,24 +2638,18 @@ bool checkRulerReserve(
     // the two passes is glyph ink and nothing else.
     int tightChecked = 0;
     for (const gui::PanelLabel& label : aTightModel.frameLabels) {
-        const QByteArray utf8 = label.text.toUtf8();
-        const ImVec2 size = aTight.font->CalcTextSizeA(aTight.fontSize, FLT_MAX, 0.0f, utf8.constData());
+        const QFontMetricsF metrics(aTight.font);
         REQUIRE(
-            size.y > float(label.rect.height()),
+            metrics.height() > double(label.rect.height()),
             "precondition: the tight model's box (%dpx) is not shorter than the font (%.1fpx), so this is not the"
             " over-tall case",
-            label.rect.height(), double(size.y)
+            label.rect.height(), metrics.height()
         );
-        const QRect glyph = glyphBox(label.rect, label.text, aTight.font, aTight.fontSize, Align::Left, VAlign::Top);
-        // THE CLAMP'S OWN STATEMENT, and it is about the INK: a Top-aligned label puts
-        // its run's first inked row on the ruler's row whatever the font's height, so
-        // an over-tall font hangs BELOW the box instead of out of its top edge. The
-        // glyph CELL may start above the box by the font's own bearing; the scan below
-        // is what proves no pixel does.
-        REQUIRE(
-            inkTopInsetOf(aTight.font, aTight.fontSize, utf8) > 0.0f,
-            "precondition: the tight font must report an ink bearing for '%s'", qPrintable(label.text)
-        );
+        const QRect glyph = glyphBox(label.rect, label.text, aTight.font, Align::Left, VAlign::Top);
+        // THE PLACEMENT'S OWN STATEMENT, and it is about the INK: a Top-aligned run starts its
+        // LINE box on the box's first row and lets an over-tall font hang BELOW the box, never
+        // above the number row - the timeline's own rule (TimeRuler draws with TextBaseline::Top
+        // at the band's number row). The scan below is what proves no pixel escapes upward.
         // And the pixels: the rows band.top() .. box.top()-1, over the label's own
         // columns, are IDENTICAL to the same model drawn without this label. The tick
         // columns are excluded: the ticks are the ruler's own ink, not the number's.
@@ -2845,7 +2661,7 @@ bool checkRulerReserve(
                 if (std::abs(x - tickX) <= 1)
                     tickColumn = true;
             }
-            for (int y = band.top(); y < label.rect.top() + gui::kRulerNumberInkTop; ++y) {
+            for (int y = band.top(); y < label.rect.top(); ++y) {
                 if (colourDistance(pixelAt(aTight.image, x, y), pixelAt(aTightBare.image, x, y)) > kInkMin) {
                     if (tickColumn)
                         ++tickPixels;
@@ -2859,8 +2675,8 @@ bool checkRulerReserve(
             "MEASURED ruler_tight label=%s box=(%d,%d %dx%d) font_line_height=%d/100 glyph_top=%d"
             " above_box_band=(%d,%d %dx%d) glyph_ink_pixels=%d tick_ink_pixels=%d\n",
             qPrintable(label.text), label.rect.left(), label.rect.top(), label.rect.width(), label.rect.height(),
-            int(size.y * 100.0f), glyph.top(), above.left(), above.top(), above.width(), above.height(), ink,
-            tickPixels
+            int(metrics.height() * 100.0), glyph.top(), above.left(), above.top(), above.width(), above.height(),
+            ink, tickPixels
         );
         REQUIRE(
             ink == 0,
@@ -2897,13 +2713,15 @@ bool checkRulerRows(
     const QRect& band = aModel.rulerBand;
     const gui::PanelLabel& label = aModel.frameLabels.at(0);
     const QRect glyph =
-        glyphBox(label.rect, label.text, aRendered.font, aRendered.fontSize, Align::Left, VAlign::Top);
+        glyphBox(label.rect, label.text, aRendered.font, Align::Left, VAlign::Top);
 
-    // (a) THE NUMBER'S INK starts on the timeline's row: gui::kRulerNumberInkTop rows
-    // below the top of its box, whatever the drawing font is. That row is what
-    // TimeRuler's top-aligned drawText inks, so a regression to centring - or to
-    // merely starting the LINE BOX on the box's top row, which still left the panel a
-    // row low with the same face - moves it and fails here.
+    // (a) THE NUMBER'S INK starts where the TOP-ALIGNED placement puts it, not where a
+    // centred run would: InkCanvas draws a Top-aligned run with TextBaseline::Top at the
+    // box's first row (the timeline's own rule), so the first inked row is
+    // box.top() + ascent + the glyph's own tight top - and the centred placement of the
+    // SAME font in the SAME box would start it (box.height - line height) / 2 lower.
+    // The pass is rendered at a pixel size whose centring offset is at least two rows, so
+    // the pair below discriminates the two placements rather than accepting either.
     int inkTop = -1;
     for (int y = label.rect.top(); y <= label.rect.bottom() && inkTop < 0; ++y) {
         for (int x = glyph.left(); x <= glyph.right() && inkTop < 0; ++x) {
@@ -2913,21 +2731,30 @@ bool checkRulerRows(
         }
     }
     REQUIRE(inkTop >= 0, "the frame number '%s' painted no ink inside its own glyph box", qPrintable(label.text));
-    const float bearing = inkTopInsetOf(aRendered.font, aRendered.fontSize, label.text.toUtf8());
+    const QFontMetricsF metrics(aRendered.font);
+    const double tightTop = metrics.tightBoundingRect(label.text).top();
+    const double topAnchor = double(label.rect.top()) + metrics.ascent() + tightTop;
+    const int expectedInkTop = int(std::floor(topAnchor));
+    const double centredOffset = std::max((double(label.rect.height()) - metrics.height()) * 0.5, 0.0);
+    const int centredInkTop = int(std::floor(topAnchor + centredOffset));
     std::printf(
         "MEASURED ruler_number_rows label=%s box_top=%d line_box_top=%d ink_top=%d expected_ink_top=%d"
-        " font_bearing=%d/100 font_px=%d\n",
-        qPrintable(label.text), label.rect.top(), glyph.top(), inkTop,
-        label.rect.top() + gui::kRulerNumberInkTop, int(bearing * 100.0f),
-        int(std::lround(aRendered.fontSize))
+        " centred_would_be=%d font_px=%d line_height=%d/100\n",
+        qPrintable(label.text), label.rect.top(), glyph.top(), inkTop, expectedInkTop, centredInkTop,
+        QFontInfo(aRendered.font).pixelSize(), int(metrics.height() * 100.0)
     );
     REQUIRE(
-        inkTop == label.rect.top() + gui::kRulerNumberInkTop,
-        "the frame number '%s' starts its ink on row %d, not on row %d (its box's top row %d plus the ruler's %d):"
-        " the number is not on the timeline's own number row (its font bearing is %.2fpx, so the line box sits at"
-        " row %d)",
-        qPrintable(label.text), inkTop, label.rect.top() + gui::kRulerNumberInkTop, label.rect.top(),
-        gui::kRulerNumberInkTop, double(bearing), glyph.top()
+        std::abs(inkTop - expectedInkTop) <= 1,
+        "the frame number '%s' starts its ink on row %d, not on row %d: a Top-aligned run starts at box.top() +"
+        " ascent + the glyph's tight top (the timeline's own rule), while centring the same font would start it on"
+        " row %d",
+        qPrintable(label.text), inkTop, expectedInkTop, centredInkTop
+    );
+    REQUIRE(
+        centredInkTop - expectedInkTop >= 2,
+        "precondition: this pass's font centres only %d row(s) below its top-aligned placement, so the assertion"
+        " could not tell the two placements apart",
+        centredInkTop - expectedInkTop
     );
 
     // (b) THE TICKS: the band's last row AND the kTickLength rows above it. A tick's
@@ -2963,7 +2790,7 @@ bool checkRulerRows(
     REQUIRE(
         first == tickTop,
         "the frame tick at x=%d starts its ink on row %d, not on row %d (the band's last row minus the %dpx tick"
-        " length): ImGui's half-open 1px path dropped the tick's top row",
+        " length): the ruler's tick lost its top row",
         tickX, first, tickTop, gui::frameRuler::kTickLength
     );
     REQUIRE(
@@ -3108,17 +2935,14 @@ bool checkPlayWindowOverlay(
         }
         return -1;
     };
-    REQUIRE(aSplit.font != nullptr, "the draw list carried no font: the text column cannot be described");
+    // The pass's own QFont is what the backend laid the runs out with.
+    const QFontMetricsF splitMetrics(aSplit.font);
     const int startExpected = aSplitModel.playWindow.startPill.left() + gui::frameRuler::kPillPadding;
     const int endExpected = aSplitModel.playWindow.endPill.left() + gui::frameRuler::kPillPadding;
     // THE ORIGIN THE OLD CENTRING PRODUCED, from the drawing font's own advance, so
     // the failure message states both numbers rather than a rule.
-    const int startDrawnWidth = int(aSplit.font->CalcTextSizeA(
-        aSplit.fontSize, FLT_MAX, 0.0f, aSplitModel.playWindow.startText.toUtf8().constData()
-    ).x);
-    const int endDrawnWidth = int(aSplit.font->CalcTextSizeA(
-        aSplit.fontSize, FLT_MAX, 0.0f, aSplitModel.playWindow.endText.toUtf8().constData()
-    ).x);
+    const int startDrawnWidth = int(std::ceil(splitMetrics.horizontalAdvance(aSplitModel.playWindow.startText)));
+    const int endDrawnWidth = int(std::ceil(splitMetrics.horizontalAdvance(aSplitModel.playWindow.endText)));
     const int startOldCentred = aSplitModel.playWindow.startPill.left()
         + (aSplitModel.playWindow.startPill.width() - startDrawnWidth) / 2;
     const int startFirstInk = firstTextColumn(
@@ -3162,26 +2986,29 @@ bool checkPlayWindowOverlay(
         endLastInk, endExpected, endDrawnWidth, endExpected + endDrawnWidth
     );
 
-    // ---- THE CORNERS ARE AN ANTIALIASED RADIUS, IN THIS VIEW TOO ----
+    // ---- THE CORNERS ARE A ROUNDED CUT, IN THIS RASTERISER'S OWN TERMS ----
     //
-    // The playback window's arms are rounded on their OUTER corners (the faces
-    // against the stems are squared by the overdraw above): the start arm's
-    // top-right and the end arm's top-left. On a rounded, antialiased fill the
-    // corner box carries pixels that are neither the pill's ink nor the washed band
-    // under it - the curve's partial coverage. A hard corner (a plain filled rect)
-    // has none: every pixel in the box is fill or background. The timeline's playhead
-    // pill is gated on the same rule in tests/timeline_visuals.cpp (gui::paintPill).
-    const auto cornerBlends = [](const QImage& aImage, const QRect& aCorner, const QColor& aFill,
-                                 const QColor& aBackground) {
-        int blends = 0;
+    // The playback window's arms are rounded on their OUTER corners (the faces against the
+    // stems are squared by the overdraw above): the start arm's top-right and the end arm's
+    // top-left. Canvas2D antialiases the arc ANALYTICALLY, so at this 3px radius on an
+    // integer-aligned pill the arc's outer pixel is already fully outside the path - there is
+    // no partial-coverage pixel to count, and a "blend pixel" reading would be a statement
+    // about a tessellated arc rather than about the shape. What survives every
+    // rasteriser is the CUT: the corner box carries at least one pixel that is NOT the pill's
+    // fill, while the pill's face beside it does - a hard filled rect paints the whole box.
+    // The timeline's playhead pill is gated on the same rule in tests/timeline_visuals.cpp.
+    const auto cornerCut = [](const QImage& aImage, const QRect& aCorner, const QColor& aFill) {
+        int cut = 0;
+        int fill = 0;
         for (int y = aCorner.top(); y <= aCorner.bottom(); ++y) {
             for (int x = aCorner.left(); x <= aCorner.right(); ++x) {
-                const QColor c = pixelAt(aImage, x, y);
-                if (colourDistance(c, aFill) > kFillTol && colourDistance(c, aBackground) > kFillTol)
-                    ++blends;
+                if (colourDistance(pixelAt(aImage, x, y), aFill) > kFillTol)
+                    ++cut;
+                else
+                    ++fill;
             }
         }
-        return blends;
+        return QPair<int, int>(cut, fill);
     };
     const int radius = gui::frameRuler::kPillRadius;
     const QRect startRoundedCorner(
@@ -3191,23 +3018,29 @@ bool checkPlayWindowOverlay(
     const QRect endRoundedCorner(
         aSplitModel.playWindow.endPill.left(), aSplitModel.playWindow.endPill.top(), radius, radius
     );
-    const int startCornerBlends = cornerBlends(aSplit.image, startRoundedCorner, aColors.windowEdge, washed);
-    const int endCornerBlends = cornerBlends(aSplit.image, endRoundedCorner, aColors.windowEdge, washed);
-    REQUIRE(
-        startCornerBlends > 0, "the first arm's rounded corner painted no blend pixel (%d): the %dpx radius is"
-        " being filled as a hard corner",
-        startCornerBlends, radius
+    const QPair<int, int> startCorner = cornerCut(aSplit.image, startRoundedCorner, aColors.windowEdge);
+    const QPair<int, int> endCorner = cornerCut(aSplit.image, endRoundedCorner, aColors.windowEdge);
+    std::printf(
+        "MEASURED play_window_corners start_box=%d/%d cut end_box=%d/%d cut (radius %d)\n",
+        startCorner.first, startCorner.first + startCorner.second, endCorner.first,
+        endCorner.first + endCorner.second, radius
     );
     REQUIRE(
-        endCornerBlends > 0, "the second arm's rounded corner painted no blend pixel (%d): the %dpx radius is"
-        " being filled as a hard corner",
-        endCornerBlends, radius
+        startCorner.first > 0 && startCorner.second > 0,
+        "the first arm's rounded corner box has %d cut / %d fill pixels: the %dpx radius is being filled as a hard"
+        " corner",
+        startCorner.first, startCorner.second, radius
     );
-
+    REQUIRE(
+        endCorner.first > 0 && endCorner.second > 0,
+        "the second arm's rounded corner box has %d cut / %d fill pixels: the %dpx radius is being filled as a hard"
+        " corner",
+        endCorner.first, endCorner.second, radius
+    );
     std::printf(
         "MEASURED play_window split: band=(%d,%d %dx%d) wash_rows=(%d,%d %dx%d) washed_px=%d"
         " stems=%d/%d of %d/%d pills=%d/%d of %d/%d text_px=%d/%d"
-        " text_cols=%d..%d/%d..%d expected=%d/%d corner_blends=%d/%d\n",
+        " text_cols=%d..%d/%d..%d expected=%d/%d corner_cut=%d/%d\n",
         aSplitModel.playWindow.band.left(), aSplitModel.playWindow.band.top(),
         aSplitModel.playWindow.band.width(), aSplitModel.playWindow.band.height(), washRows.left(),
         washRows.top(), washRows.width(), washRows.height(), wash,
@@ -3216,7 +3049,7 @@ bool checkPlayWindowOverlay(
         endPillInk, aSplitModel.playWindow.startPill.width() * aSplitModel.playWindow.startPill.height(),
         aSplitModel.playWindow.endPill.width() * aSplitModel.playWindow.endPill.height(), startTextInk,
         endTextInk, startFirstInk, startLastInk, endFirstInk, endLastInk, startExpected, endExpected,
-        startCornerBlends, endCornerBlends
+        startCorner.first, endCorner.first
     );
     REQUIRE(surface > 0, "the ruler band's own surface was not painted where the window does not reach");
     REQUIRE(wash > 0, "the translucent window band painted nothing on the ruler's band");
@@ -3277,7 +3110,7 @@ bool checkPlayWindowOverlay(
 // under, on the other ink it decides. A chip is drawn while its curve is in play (it owns
 // a selected key) OR while the POINTER is within kChipHoverDistance (6px) of the curve at
 // the pointer's own column - which is why every pass here is rendered with
-// io.MousePos OFF the plot (the harness's default): the hovered branch is a second,
+// the pointer OFF the plot (the harness's default): the hovered branch is a second,
 // selection-independent way for a chip to appear, and a box read as byte-clean must have
 // neither reason to be drawn. So:
 //   * in the EMPTY-SELECTION pass (pointer off the plot) the box is byte-clean: the gate
@@ -3292,7 +3125,7 @@ bool checkChips(
 ) {
     constexpr float kChipToneAlpha = 0.82f; // GraphPanelFrame.cpp's kChipBackdropAlpha
 
-    REQUIRE(aRendered.font != nullptr, "the draw list carried no font: a chip's text cannot be described");
+    // The pass's own QFont is what the backend laid the chip out with.
     REQUIRE(aModel.curves.size() == 2, "precondition: the chip pair needs the full model's two curves");
     REQUIRE(aModel.channels.size() == 2, "precondition: the full model must carry the two channel rows");
 
@@ -3322,7 +3155,7 @@ bool checkChips(
         const int dimmedInk = inkCount(aRendered.image, curve.chip);
         const int inPlayInk = inkCount(inPlay.image, curve.chip);
         const QRect glyph =
-            glyphBox(curve.chip, curve.chipText, aRendered.font, aRendered.fontSize, Align::Centre);
+            glyphBox(curve.chip, curve.chipText, aRendered.font, Align::Centre);
         REQUIRE(!glyph.isEmpty(), "precondition: the chip '%s' has empty metrics", qPrintable(curve.chipText));
         const int textInk = inkCount(inPlay.image, glyph);
 
@@ -3367,25 +3200,13 @@ bool checkChips(
     return true;
 }
 
-// One capsule's own coverage at a distance, in the pass's OWN arithmetic (src/gui/GraphPanelFrame.h's
-// HOW IT DRAWS: a one-DEVICE-PIXEL box filter about the nominal edge, so the 50% crossing sits
-// exactly on it), with the filter from the pass's own constant and halfWidth the stroke's drawn
-// width / 2. Assertion 27 states the same arithmetic for the panel's other 1px lines, and the
-// BEFORE stroke's distance from this bound IS its defect. aHalfWidth defaults to the panel's own
-// stroke, so a 1px hairline passes 0.5.
-double capsuleCoverage(double aDistancePx, double aStrength, double aHalfWidth = double(gui::stroke::kWidthPx) * 0.5) {
-    const double filter = double(gui::stroke::kFilterPx);
-    const double cov = std::min(1.0, std::max(0.0, (aHalfWidth + 0.5 * filter - aDistancePx) / filter));
-    return cov * aStrength;
-}
-
 // 6: the empty state.
 bool checkEmptyState(const Rendered& aRendered, const gui::GraphPanelModel& aModel) {
     REQUIRE(aModel.curves.isEmpty() && !aModel.emptyState.isEmpty(), "precondition: the model must be the empty one");
-    REQUIRE(aRendered.font != nullptr, "the draw list carried no font: the empty state cannot be located");
+    // The state's own glyph box, from the pass's font and the backend's placement.
 
     // The state text is drawn centred in the PLOT.
-    const QRect text = glyphBox(aModel.plot, aModel.emptyState, aRendered.font, aRendered.fontSize, Align::Centre);
+    const QRect text = glyphBox(aModel.plot, aModel.emptyState, aRendered.font, Align::Centre);
     REQUIRE(!text.isEmpty(), "precondition: the state string '%s' has empty metrics", qPrintable(aModel.emptyState));
     REQUIRE(kPlot.contains(text), "precondition: the centred state text must be inside the plot");
 
@@ -3400,7 +3221,7 @@ bool checkEmptyState(const Rendered& aRendered, const gui::GraphPanelModel& aMod
     // every other geometry item of THIS model (which has no curves at all).
     const QRect probe(350, 200, 25, 25);
     REQUIRE(kPlot.contains(probe), "precondition: the empty-state probe rect must be inside the plot");
-    const std::vector<Geom> geoms = geometryOf(aModel, aRendered.font, aRendered.fontSize);
+    const std::vector<Geom> geoms = geometryOf(aModel, aRendered.font);
     for (const Geom& geom : geoms) {
         REQUIRE(
             !probe.intersects(geom.rect),
@@ -3563,7 +3384,7 @@ bool checkZeroRule(const Rendered& aWithRule, const Rendered& aWithoutRule, cons
 // two pills (grown by 1px for the fill's antialiased cap) every pixel of the two
 // frames must be identical, so a trough - or any other bar ink - is caught wherever
 // it falls, including over the playhead's column, which crosses the panel and
-// therefore the horizontal lane. Two further passes move io.MousePos onto each lane
+// therefore the horizontal lane. Two further passes move the pointer onto each lane
 // in turn: that lane's pill takes theme::Colors::hover while the other stays outline,
 // which is both directions of the hover rule (and both transitions the host repaints
 // on - gui::panelBarAt is asserted here too).
@@ -3638,10 +3459,12 @@ bool checkScrollBars(
 
     // FOUR PIXELS THICK, measured across the pill's middle: the horizontal pill's
     // column at the centre of the run, and the vertical pill's row.
-    const int hPillThickness =
-        toneCount(aWithBars.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.outline);
-    const int vPillThickness =
-        toneCount(aWithBars.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.outline);
+    const int hPillThickness = toneCount(
+        aWithBars.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.outline, kFillTol
+    );
+    const int vPillThickness = toneCount(
+        aWithBars.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.outline, kFillTol
+    );
     // ...AND WHERE THAT BAND IS. The same two probes cross the pill through its
     // straight section, where the fill is opaque, so the token's extent along the
     // thickness axis is the pill's own band: it must be exactly the shared
@@ -3649,13 +3472,14 @@ bool checkScrollBars(
     // axis - not merely four pixels somewhere in the lane. A pill centred one pixel
     // off, or drawn from a different thickness/lane rule, fails here.
     const QPair<int, int> hBand = tokenSpan(
-        aWithBars.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.outline, false
+        aWithBars.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.outline, false,
+        kFillTol
     );
     const QPair<int, int> vBand = tokenSpan(
-        aWithBars.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.outline, true
+        aWithBars.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.outline, true, kFillTol
     );
-    const int hPillInk = toneCount(aWithBars.image, hPill, colors.outline);
-    const int vPillInk = toneCount(aWithBars.image, vPill, colors.outline);
+    const int hPillInk = toneCount(aWithBars.image, hPill, colors.outline, kFillTol);
+    const int vPillInk = toneCount(aWithBars.image, vPill, colors.outline, kFillTol);
     std::printf(
         "MEASURED scroll_bars outline=%s hover=%s lane=%d  hTrack(%d,%d %dx%d) hPill(%d,%d %dx%d) ink=%d thick=%d"
         " band=%d..%d (shared %d..%d)  vTrack(%d,%d %dx%d) vPill(%d,%d %dx%d) ink=%d thick=%d band=%d..%d"
@@ -3690,6 +3514,32 @@ bool checkScrollBars(
         vPill.left(), vPill.right()
     );
 
+    // THE PILL'S ENDS ARE A ROUNDED, ANTIALIASED CAP - the Ink contract owes every filled
+    // shape an antialiased edge even while the chrome's LINE antialias is off (the scroll
+    // bars are drawn inside that block), and the bar is the one rounded fill that lives
+    // there. A 3x3 box at the end's outer corner must carry at least one pixel that is
+    // neither the pill's token nor the panel floor: that partial coverage IS the arc.
+    // A hard-edged fill leaves only the two.
+    const auto blendsIn = [&](const QImage& aImage, const QRect& aBox) {
+        int blends = 0;
+        for (int y = aBox.top(); y <= aBox.bottom(); ++y) {
+            for (int x = aBox.left(); x <= aBox.right(); ++x) {
+                const QColor c = pixelAt(aImage, x, y);
+                if (colourDistance(c, colors.outline) > kFillTol && clearDistance(c) > kFillTol)
+                    ++blends;
+            }
+        }
+        return blends;
+    };
+    // The horizontal pill's cap is at its RIGHT end; the vertical one's at its BOTTOM.
+    const int hCap = blendsIn(aWithBars.image, QRect(hPill.right() - 2, hPill.top(), 3, 3));
+    const int vCap = blendsIn(aWithBars.image, QRect(vPill.left(), vPill.bottom() - 2, 3, 3));
+    std::printf("MEASURED scroll_bars_caps h_end_blends=%d v_end_blends=%d of 9\n", hCap, vCap);
+    REQUIRE(hCap > 0, "the horizontal pill's end has %d antialiased pixels: its %dpx cap is drawn hard",
+            hCap, ctrl::graph::scrollBar::kPillRadius);
+    REQUIRE(vCap > 0, "the vertical pill's end has %d antialiased pixels: its %dpx cap is drawn hard",
+            vCap, ctrl::graph::scrollBar::kPillRadius);
+
     // THE TROUGH PAINTS NOTHING. Adding the four rects to the model may change pixels
     // ONLY inside the pills (grown by 1px for the fill's antialiased cap): every other
     // pixel of the two frames is identical.
@@ -3712,13 +3562,13 @@ bool checkScrollBars(
     REQUIRE(stray == 0, "the bars painted %d pixels outside their pills: the trough is not invisible", stray);
 
     // THE HOVERED PILL TAKES theme::Colors::hover, and the other bar does not - in
-    // BOTH directions. Each pass differs from the rest frame only in io.MousePos, so a
+    // BOTH directions. Each pass differs from the rest frame only in the pointer, so a
     // colour change at a pill is the pointer's and nothing else.
     const QRect hProbe(hPill.center().x(), hTrack.top(), 1, hTrack.height());
     const QRect vProbe(vTrack.left(), vPill.center().y(), vTrack.width(), 1);
-    const int hoveredHPill = toneCount(aHoveredH.image, hProbe, colors.hover);
+    const int hoveredHPill = toneCount(aHoveredH.image, hProbe, colors.hover, kFillTol);
     const int restVPill = toneCount(aHoveredH.image, vPill, colors.outline);
-    const int hoveredVPill = toneCount(aHoveredV.image, vProbe, colors.hover);
+    const int hoveredVPill = toneCount(aHoveredV.image, vProbe, colors.hover, kFillTol);
     const int restHPill = toneCount(aHoveredV.image, hPill, colors.outline);
     // ...and with the pointer OFF neither pill is hot, so the change above is the
     // pointer's and not a constant.
@@ -3816,19 +3666,22 @@ bool checkFullLaneBars(
         aModel.hThumb.width(), aModel.hThumb.height(), hTrack.width(), hTrack.height(),
         aModel.vThumb.width(), aModel.vThumb.height(), vTrack.width(), vTrack.height()
     );
-    const int hPillInk = toneCount(aWithBars.image, hPill, colors.outline);
-    const int vPillInk = toneCount(aWithBars.image, vPill, colors.outline);
-    const int hThickness =
-        toneCount(aWithBars.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.outline);
-    const int vThickness =
-        toneCount(aWithBars.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.outline);
+    const int hPillInk = toneCount(aWithBars.image, hPill, colors.outline, kFillTol);
+    const int vPillInk = toneCount(aWithBars.image, vPill, colors.outline, kFillTol);
+    const int hThickness = toneCount(
+        aWithBars.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.outline, kFillTol
+    );
+    const int vThickness = toneCount(
+        aWithBars.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.outline, kFillTol
+    );
     // The band's POSITION as well as its thickness, off the same opaque cross-section
     // (see checkScrollBars): a full-lane pill is the shared rect's, row for row.
     const QPair<int, int> hBand = tokenSpan(
-        aWithBars.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.outline, false
+        aWithBars.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.outline, false,
+        kFillTol
     );
     const QPair<int, int> vBand = tokenSpan(
-        aWithBars.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.outline, true
+        aWithBars.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.outline, true, kFillTol
     );
     std::printf(
         "MEASURED scroll_bars_zero_travel hPill(%d,%d %dx%d) ink=%d thick=%d band=%d..%d (shared %d..%d)"
@@ -3884,10 +3737,12 @@ bool checkFullLaneBars(
     REQUIRE(stray == 0, "a zero-travel lane painted %d px outside its pills", stray);
 
     // HOVER STILL LIGHTS A FULL-LENGTH PILL - both lanes.
-    const int hHot =
-        toneCount(aHoveredH.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.hover);
-    const int vHot =
-        toneCount(aHoveredV.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.hover);
+    const int hHot = toneCount(
+        aHoveredH.image, QRect(hPill.center().x(), hTrack.top(), 1, hTrack.height()), colors.hover, kFillTol
+    );
+    const int vHot = toneCount(
+        aHoveredV.image, QRect(vTrack.left(), vPill.center().y(), vTrack.width(), 1), colors.hover, kFillTol
+    );
     const int restVWhileHHot = toneCount(aHoveredH.image, vPill, colors.outline);
     const int restHWhileVHot = toneCount(aHoveredV.image, hPill, colors.outline);
     std::printf(
@@ -3990,12 +3845,12 @@ bool checkRulerHairline(const Rendered& aRendered, const gui::GraphPanelModel& a
 // those coordinates - and highlight the dot the pointer is on, in the same token
 // and at the same distance the editor's hit-test grabs through.
 //
-// The pair is the whole rule: with the pointer OFF (the default pass, io.MousePos
+// The pair is the whole rule: with the pointer OFF (the default pass, the pointer
 // off-screen) every STORED dot is filled with theme::Graph::handleFill() and BOTH the
 // stem and the dot's stroke are the CURVE's hue mixed 0.2 toward
 // theme::Graph::halo() - the stem at 0.85, the stroke at 0.9 (mock-graph.js's alphas
 // over a hue lowered in chroma so the handle reads on its own stroke); with the
-// pointer ON one dot's centre (a second pass that differs ONLY in io.MousePos) that
+// pointer ON one dot's centre (a second pass that differs ONLY in the pointer) that
 // dot takes the hue-derived highlight mixedToward(handleInk, axisText, 0.45) while
 // every other dot keeps its fill. Nothing else in the model moved between the two
 // passes, so a change at a dot's centre is the highlight and nothing else.
@@ -4018,11 +3873,9 @@ bool checkHandles(
             // each coordinate, and the difference is the whole assertion: the midpoint of
             // the segment (base+dot)/2 has fractional parts, and rounding (192.5, 242.5) to
             // (193,243) picks a pixel whose centre (193.5,243.5) sits 1.37px PERPENDICULAR
-            // to the line the stem is meant to draw - a pixel that only had ink because
-            // ImGui's AddLine shifts its geometry by (+0.5,+0.5) and its fringe smears over
-            // 1.5px, i.e. the old probe was measuring the misplaced edge of the stem rather
-            // than the stem. Flooring picks the pixel whose centre is at most half a pixel
-            // from the midpoint, which is where a 1px stroke's own core must be.
+            // to the line the stem is meant to draw, where a 1px stroke puts no core. Flooring
+            // picks the pixel whose centre is at most half a pixel from the midpoint, which
+            // is where a 1px stroke's own core must be.
             const QPoint mid(
                 int(std::floor((handle.base.x() + handle.dot.x()) * 0.5)),
                 int(std::floor((handle.base.y() + handle.dot.y()) * 0.5))
@@ -4042,8 +3895,8 @@ bool checkHandles(
             const QColor handleInk = mixedToward(curve.color, aTheme.halo(), kHandleChroma);
             const QColor stemInk = over(withAlpha(handleInk, kStoredStem), kClear);
             // The strongest STROKE pixel among the offsets a 1px circle centred on
-            // kHandleRadius can land on (ImGui strokes a few-segment polyline, so its
-            // chord can sit inside the nominal radius).
+            // kHandleRadius can land on (the circle is a many-segment path, so its chord
+            // can sit inside the nominal radius).
             QPoint strokePixel(dot.x() + ctrl::graph::kHandleRadius, dot.y());
             QColor stroke = pixelAt(aOff.image, strokePixel.x(), strokePixel.y());
             for (int step = ctrl::graph::kHandleRadius - 1; step <= ctrl::graph::kHandleRadius + 1; ++step) {
@@ -4119,7 +3972,7 @@ bool checkHandles(
                 ++highlighted;
             } else {
                 // Every other dot is untouched: the two passes differ only in
-                // io.MousePos, so a change here would be the highlight leaking.
+                // the pointer, so a change here would be the highlight leaking.
                 REQUIRE(moved == 0, "the dot at (%d,%d) is not under the pointer but changed (delta %d)",
                         dot.x(), dot.y(), moved);
             }
@@ -4358,7 +4211,7 @@ bool checkMarquee(
     REQUIRE(aModel.marquee == aMarquee, "precondition: the model must publish the marquee rectangle");
     REQUIRE(kPlot.contains(aMarquee), "precondition: the marquee rectangle must be inside the plot");
 
-    const std::vector<Geom> geoms = geometryOf(aModel, aPlain.font, aPlain.fontSize);
+    const std::vector<Geom> geoms = geometryOf(aModel, aPlain.font);
     for (const Geom& geom : geoms) {
         REQUIRE(
             !grow(aMarquee, 2).intersects(geom.rect),
@@ -4450,32 +4303,33 @@ bool checkValueLabels(
     const Rendered& aRendered, const gui::GraphPanelModel& aModel, const Rendered& aGuarded,
     const gui::GraphPanelModel& aGuardedModel
 ) {
-    REQUIRE(aRendered.font != nullptr, "the draw list carried no font: the label geometry cannot be described");
+    // The gate's own font is the application font unless a pass overrode it; the canvas backend
+    // has already been handed it, so the glyph arithmetic below and the glyphs share one face.
     REQUIRE(aModel.valueLabels.size() == 2, "precondition: the full model must carry two value labels");
 
     // ---- the gutter, label by label ----
     int checked = 0;
     int pulled = 0;
+    const QFontMetricsF labelMetrics(aRendered.font);
     for (const gui::PanelLabel& label : aModel.valueLabels) {
-        const QByteArray utf8 = label.text.toUtf8();
-        const ImVec2 size = aRendered.font->CalcTextSizeA(aRendered.fontSize, FLT_MAX, 0.0f, utf8.constData());
-        const float flushRight = float(label.rect.left() + label.rect.width()) - size.x;
+        const double advance = labelMetrics.horizontalAdvance(label.text);
+        const double flushRight = double(label.rect.left() + label.rect.width()) - advance;
         const QRect glyph = glyphBox(
-            label.rect, label.text, aRendered.font, aRendered.fontSize, Align::Right, VAlign::Centre,
+            label.rect, label.text, aRendered.font, Align::Right, VAlign::Centre,
             gui::kValueLabelGap
         );
         const int shift = int(std::lround(flushRight)) - glyph.left();
-        const float spare = float(label.rect.width()) - size.x;
-        const int expected = int(std::min(float(gui::kValueLabelGap), spare));
+        const double spare = double(label.rect.width()) - advance;
+        const int expected = int(std::min(double(gui::kValueLabelGap), spare));
         std::printf(
             "MEASURED value_label text=%s box=(%d,%d %dx%d) text_width=%d spare=%d flush_right_x=%d glyph_x=%d"
             " shift_left=%d expected=%d gap=%d\n",
             qPrintable(label.text), label.rect.left(), label.rect.top(), label.rect.width(), label.rect.height(),
-            int(std::lround(size.x)), int(std::lround(spare)), int(std::lround(flushRight)), glyph.left(), shift,
+            int(std::lround(advance)), int(std::lround(spare)), int(std::lround(flushRight)), glyph.left(), shift,
             expected, gui::kValueLabelGap
         );
         REQUIRE(
-            spare > float(gui::kValueLabelGap),
+            spare > double(gui::kValueLabelGap),
             "precondition: the label '%s' fills its box (spare %dpx), so the gutter could not be taken from it",
             qPrintable(label.text), int(std::lround(spare))
         );
@@ -4510,12 +4364,12 @@ bool checkValueLabels(
     REQUIRE(!aModel.frameLabels.isEmpty(), "precondition: the full model must carry a frame label");
     const gui::PanelLabel& frame = aModel.frameLabels.at(0);
     const QRect frameGlyph =
-        glyphBox(frame.rect, frame.text, aRendered.font, aRendered.fontSize, Align::Left, VAlign::Top);
+        glyphBox(frame.rect, frame.text, aRendered.font, Align::Left, VAlign::Top);
     int bestGap = -1;
     QString bestLabel;
     for (const gui::PanelLabel& label : aModel.valueLabels) {
         const QRect glyph = glyphBox(
-            label.rect, label.text, aRendered.font, aRendered.fontSize, Align::Right, VAlign::Centre,
+            label.rect, label.text, aRendered.font, Align::Right, VAlign::Centre,
             gui::kValueLabelGap
         );
         const int gap = rectGap(glyph, frameGlyph);
@@ -4528,7 +4382,7 @@ bool checkValueLabels(
         "MEASURED value_label_gutter nearest_value_label=%s frame_label=%s value_glyph_right=%d frame_glyph_left=%d"
         " gap_px=%d gutter=%d\n",
         qPrintable(bestLabel), qPrintable(frame.text),
-        glyphBox(aModel.valueLabels.at(0).rect, aModel.valueLabels.at(0).text, aRendered.font, aRendered.fontSize,
+        glyphBox(aModel.valueLabels.at(0).rect, aModel.valueLabels.at(0).text, aRendered.font,
                  Align::Right, VAlign::Centre, gui::kValueLabelGap)
             .right(),
         frameGlyph.left(), bestGap, gui::kValueLabelGap
@@ -4545,20 +4399,19 @@ bool checkValueLabels(
     REQUIRE(aGuardedModel.panel.left() > 0, "precondition: the guarded model's panel must start inside the framebuffer");
     REQUIRE(aGuardedModel.valueLabels.size() == 1, "precondition: the guarded model must carry one value label");
     const gui::PanelLabel& overflowing = aGuardedModel.valueLabels.at(0);
-    const QByteArray utf8 = overflowing.text.toUtf8();
-    const ImVec2 size = aGuarded.font->CalcTextSizeA(aGuarded.fontSize, FLT_MAX, 0.0f, utf8.constData());
+    const double guardedAdvance = QFontMetricsF(aGuarded.font).horizontalAdvance(overflowing.text);
     REQUIRE(
-        size.x > float(overflowing.rect.width()),
+        guardedAdvance > double(overflowing.rect.width()),
         "precondition: the guarded model's label (%dpx of text in a %dpx box) is not wider than its box",
-        int(std::lround(size.x)), overflowing.rect.width()
+        int(std::lround(guardedAdvance)), overflowing.rect.width()
     );
 
     // Where right-alignment alone would have put it, and where it may paint: the text
     // starts LEFT of the panel's own edge without the clip.
     const QRect flush =
-        glyphBox(overflowing.rect, overflowing.text, aGuarded.font, aGuarded.fontSize, Align::Right, VAlign::Centre);
+        glyphBox(overflowing.rect, overflowing.text, aGuarded.font, Align::Right, VAlign::Centre);
     const QRect guarded = glyphBox(
-        overflowing.rect, overflowing.text, aGuarded.font, aGuarded.fontSize, Align::Right, VAlign::Centre,
+        overflowing.rect, overflowing.text, aGuarded.font, Align::Right, VAlign::Centre,
         gui::kValueLabelGap
     );
     const QRect outsidePanel(0, 0, aGuardedModel.panel.left(), kViewH);
@@ -4567,9 +4420,9 @@ bool checkValueLabels(
     std::printf(
         "MEASURED value_label_guard panel_left=%d text=%s text_width=%d box=(%d,%d %dx%d) flush_x=%d glyph_x=%d"
         " outside_panel_ink=%d inside_panel_ink=%d\n",
-        aGuardedModel.panel.left(), qPrintable(overflowing.text), int(std::lround(size.x)), overflowing.rect.left(),
-        overflowing.rect.top(), overflowing.rect.width(), overflowing.rect.height(), flush.left(), guarded.left(),
-        outsideInk, insideInk
+        aGuardedModel.panel.left(), qPrintable(overflowing.text), int(std::lround(guardedAdvance)),
+        overflowing.rect.left(), overflowing.rect.top(), overflowing.rect.width(), overflowing.rect.height(),
+        flush.left(), guarded.left(), outsideInk, insideInk
     );
     REQUIRE(
         flush.left() < aGuardedModel.panel.left(),
@@ -4610,29 +4463,9 @@ bool checkHandleFocus(
     REQUIRE(!withHandles.handles.isEmpty(), "precondition: the first curve must carry the handles");
     REQUIRE(withoutHandles.handles.isEmpty(), "precondition: the focused curve must carry no handle of its own");
 
-    std::printf(
-        "MEASURED handle_focus unfocused_vtx=%d focused_other_vtx=%d delta_vtx=%d unfocused_idx=%d"
-        " focused_other_idx=%d delta_idx=%d\n",
-        aUnfocused.vtx, aFocusedOther.vtx, aUnfocused.vtx - aFocusedOther.vtx, aUnfocused.idx,
-        aFocusedOther.idx, aUnfocused.idx - aFocusedOther.idx
-    );
-    REQUIRE(
-        aFocusedOther.vtx < aUnfocused.vtx && aFocusedOther.idx < aUnfocused.idx,
-        "focusing a curve drew no fewer vertices: the unfocused curve's handles are still being submitted"
-        " (%d/%d against %d/%d)",
-        aFocusedOther.vtx, aFocusedOther.idx, aUnfocused.vtx, aUnfocused.idx
-    );
-
-    // ...and the pixels agree: the unfocused curve's handle geometry is GONE (nothing
-    // is left where its stems and dots were). Each position is checked against the
-    // unfocused pass first, so a position that is clean in BOTH would be a probe that
-    // cannot see a handle at all.
-    //
-    // THE STEM PROBE IS THE PIXEL THAT CONTAINS THE MIDPOINT (floor, not rounding each
-    // coordinate): the stem is a 1px stroke drawn by the coverage pass, so its ink is on the
-    // line the model asked for and nowhere else - while the rounded probe (193,243) for the
-    // midpoint (192.5,242.5) has its own centre 1.37px off that line, where a 1px stroke puts
-    // no ink at all. Same re-derivation, same reason as checkHandles' stem probe.
+    // THE INK IS THE MEASUREMENT. drawPanel draws the tangent handles only for the focused
+    // channel (every channel while no focus exists), so the unfocused curve's handle ink must be
+    // GONE in the focused pass - while the unfocused pass proves the probes can see it at all.
     int positions = 0;
     int gone = 0;
     for (const gui::PanelHandle& handle : withHandles.handles) {
@@ -4703,7 +4536,7 @@ bool checkGhostHandle(const Rendered& aRendered, const gui::GraphPanelModel& aMo
     const QColor ghostPixel = pixelAt(aRendered.image, ghostCentre.x(), ghostCentre.y());
     // Three pixels out along the dot's own radius: on the 1px ring each drawing strokes
     // (kHandleRadius at 5; the ghost's is inset by kGhostHandleShrink, 1.5px, so its
-    // radius is 3.5 and ImGui's 1px band is 2.5..3.5 about the centre).
+    // radius is 3.5 and the stroke's 1px band is 2.5..3.5 about the centre).
     const QPoint ghostRing(ghostCentre.x() + 3, ghostCentre.y());
     const QColor ghostRingPixel = pixelAt(aRendered.image, ghostRing.x(), ghostRing.y());
     const QColor fill = aTheme.handleFill();
@@ -4749,1988 +4582,6 @@ bool checkGhostHandle(const Rendered& aRendered, const gui::GraphPanelModel& aMo
         " rgb=%s (%d against %d): a ghost pair is ringed in the curve's reduced-chroma hue",
         hex(ghostRingPixel).c_str(), hex(handleInk).c_str(), hex(aTheme.handleFill()).c_str(), ringToColour,
         ringToEdge
-    );
-    return true;
-}
-
-//-------------------------------------------------------------------------------------------------
-// THE CONTRAST OUTLINE AND COMPOSITE PASS (gui::outline, src/gui/GraphPanelFrame.cpp).
-//
-// WHAT IS DRIVEN. The pass itself, with two textures this file authors by hand: the
-// OVERLAY (the panel as the ImGui backend leaves it - rgb PREMULTIPLIED by the
-// coverage in alpha, because the backend blends source-over into a framebuffer
-// cleared to zero) and the BACKDROP (the pixels the panel would sit on). The
-// backdrop goes through the pass's own copy - copyBackdrop, a glBlitFramebuffer -
-// from a source framebuffer, so the copy is covered as well as the composite.
-//
-// Every assertion here is a regression gate on a MEASURED decision:
-//   11 a low-contrast stroke over a BRIGHT patch gets a black ring, and the ring's
-//      strength follows the stroke's COVERAGE: the same ink at 40% gets a 40% ring.
-//      This is the whole point of the pass - and the coverage is the ring's alpha,
-//      which is a property of the TAPS and not of the pixel.
-//   12 the same stroke over a CONTRASTING patch gets NO ring: the pixels around it
-//      are byte-identical to the backdrop, and the stroke's own interior is the
-//      ink - i.e. the pass is invisible where it is not needed.
-//   13 the inverse "always draws" assertion: with NO overlay coverage anywhere, the
-//      WHOLE framebuffer comes back byte-identical to a patterned backdrop, through
-//      the blit. A pass that painted anything unconditionally cannot pass this.
-//   14 the composite is not gated at alpha >= 1.0: a 50%-covered overlay pixel
-//      blends with the backdrop and lands between the two (the >= 1.0 failure mode
-//      would make it either replace the backdrop or vanish).
-//   15 the +/-2px second ring (outline::Params::ringRadiusPx), which is the
-//      extension for a ring that reads too thin: with it on, a pixel two away from
-//      the stroke is ringed where the shipped 1px ring leaves the backdrop alone.
-//   11 ALSO PINS THE THRESHOLD'S OWN VALUE, which is the knob the ring's eagerness
-//      lives in and the one the user's "the ring shows up everywhere" report is
-//      about. The shader rings where the contrast is BELOW the constant, so a higher
-//      constant rings more: 3.0 (WCAG's large-text minimum) ringed white ink over
-//      every backdrop darker than grey 149, which is most mid-tones; 2.0 rings it
-//      only over grey 183 and brighter, i.e. only where the ink is nearly lost. The
-//      pair below is a stroke BETWEEN the two constants (2.30:1, measured in linear
-//      light): untouched at 2.0, ringed at 3.0.
-
-// The authored geometry, in the pass's own texture space. The readback is aligned
-// with it: uploadTexture flips for GL's bottom-up rows, and readFboTopDown
-// un-flips the attachment again.
-const QRect kBrightPatch(20, 30, 61, 131);     // x 20..80, y 30..160
-const QRect kSolidStroke(40, 40, 10, 10);      // x 40..49, y 40..49
-const QRect kThresholdStroke(60, 40, 10, 10);  // 2.30:1 over the bright patch
-const QRect kPartialStroke(40, 140, 10, 10);   // the same ink at 40% coverage
-const QRect kContrastStroke(40, 240, 10, 10);  // a contrasting ink over the dark area
-const QRect kHalfPixel(240, 40, 10, 10);       // a 50%-covered overlay pixel
-
-const QColor kBright(200, 200, 200);  // the patch the low-contrast inks sit on
-const QColor kDark(60, 60, 60);       // the rest of the backdrop
-const QColor kLowInk(180, 180, 180);  // ~1.24:1 against kBright: far below both
-const QColor kWhiteInk(255, 255, 255); // ~11:1 against kDark: far above both
-// The ink BETWEEN the two candidate thresholds. WCAG contrast in LINEAR light,
-// computed from the sRGB channels (the shader's own luma): 2.30:1 against kBright -
-// above the shipped 2.0 (no ring) and below the 3.0 this shipped with (ring).
-const QColor kThresholdInk(130, 130, 130);
-
-// The 40% stroke's alpha byte: 102/255 is exactly 0.4, which keeps every expected
-// value below an exact number rather than a rounded one.
-constexpr int kPartialAlpha = 102;
-constexpr int kHalfAlpha = 128; // 128/255, the 50% pixel
-
-QImage blankImage(const QColor& aFill) {
-    QImage image(kViewW, kViewH, QImage::Format_RGBA8888);
-    image.fill(aFill);
-    return image;
-}
-
-// The overlay texel that an ImGui draw of aColour at aCoverage leaves behind: the
-// backend's glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, ...)
-// makes dst.rgb = src.rgb * src.a into a cleared target, so the rgb is
-// PREMULTIPLIED. That is a property of the pass's INPUT, not an assumption of the
-// pass: dividing it back out is what the shader has to do.
-QColor overlayInk(const QColor& aColour, int aAlpha) {
-    const auto premultiply = [aAlpha](int aChannel) {
-        return int(std::lround(double(aChannel) * double(aAlpha) / 255.0));
-    };
-    return QColor(premultiply(aColour.red()), premultiply(aColour.green()), premultiply(aColour.blue()), aAlpha);
-}
-
-void fillRect(QImage& aImage, const QRect& aRect, const QColor& aColour) {
-    for (int y = aRect.top(); y <= aRect.bottom(); ++y) {
-        for (int x = aRect.left(); x <= aRect.right(); ++x)
-            aImage.setPixelColor(x, y, aColour);
-    }
-}
-
-// A backdrop that is DIFFERENT in every pixel, so "byte-identical" is a real
-// statement about the whole pass and not about a flat fill.
-QImage patternBackdrop() {
-    QImage image(kViewW, kViewH, QImage::Format_RGBA8888);
-    for (int y = 0; y < kViewH; ++y) {
-        for (int x = 0; x < kViewW; ++x) {
-            image.setPixelColor(
-                x, y, QColor((x * 7 + y * 3) & 0xFF, (x * 5 + y * 11) & 0xFF, (x * 13 + y * 2) & 0xFF, 255)
-            );
-        }
-    }
-    return image;
-}
-
-// The authored images are TOP-DOWN, GL's texture rows are bottom-up, and the
-// readback below is un-flipped by readFboTopDown: uploading the image FLIPPED is
-// what makes pixelAt(readback, x, y) the authored (x, y) instead of its mirror.
-//
-// It re-uploads into the EXISTING texture object rather than calling
-// gl::Texture::create() again: create() deletes the texture and generates a new
-// one, and a framebuffer that was attached to the old name would then be reading a
-// deleted texture (measured: the blit becomes a no-op and the backdrop comes back
-// black).
-void uploadTexture(gl::Texture& aTexture, const QImage& aTopDown) {
-    const QImage bottomUp = aTopDown.flipped(Qt::Vertical);
-    auto& funcs = gl::Global::functions();
-    funcs.glBindTexture(GL_TEXTURE_2D, aTexture.id());
-    funcs.glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_RGBA8, aTopDown.width(), aTopDown.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE,
-        bottomUp.constBits()
-    );
-    funcs.glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-// The harness's own GL-error gate: a blit or an upload that failed silently would
-// otherwise be measured as "the pass produced black".
-bool noGlError(const char* aWhere) {
-    const GLuint error = gl::Global::functions().glGetError();
-    if (error != GL_NO_ERROR) {
-        std::printf("FAIL: GL error 0x%x %s\n", error, aWhere);
-        return false;
-    }
-    return true;
-}
-
-// The pass's inputs and targets, at the size of this file's framebuffer. The
-// backdrop is uploaded into a SOURCE framebuffer and then COPYBACKDROP-ed into the
-// texture the pass reads, which is the shipping path (the widget's framebuffer
-// becomes the backdrop) with a hand-authored pattern in place of the artwork.
-struct OutlineHarness {
-    gl::Texture overlayTexture;
-    gl::Texture backdropSourceTexture;
-    gl::Framebuffer backdropSourceFbo;
-    gl::Texture backdropTexture;
-    gl::Framebuffer backdropFbo;
-
-    bool init() {
-        const QSize size(kViewW, kViewH);
-        overlayTexture.create(size);
-        backdropSourceTexture.create(size);
-        backdropTexture.create(size);
-        // gl::Texture::create leaves the parameters at GL's defaults, and the
-        // default MIN filter is a MIPMAP one: with no mipmaps the texture is
-        // INCOMPLETE and samples as (0,0,0,1). The pass samples both 1:1 at the
-        // texel centre, and CLAMP_TO_EDGE is what keeps a tap one pixel outside the
-        // first column from wrapping to the last one.
-        for (gl::Texture* texture : {&overlayTexture, &backdropSourceTexture, &backdropTexture}) {
-            texture->setFilter(GL_NEAREST);
-            texture->setWrap(GL_CLAMP_TO_EDGE);
-        }
-        backdropSourceFbo.setColorAttachment(0, backdropSourceTexture.id());
-        backdropFbo.setColorAttachment(0, backdropTexture.id());
-        return backdropSourceFbo.isComplete() && backdropFbo.isComplete();
-    }
-
-    // The uploads and the backdrop BLIT - everything before the pass itself, so a
-    // caller that wants to arrange the state around the composite call alone can.
-    bool prepare(const QImage& aBackdrop, const QImage& aOverlay) {
-        uploadTexture(overlayTexture, aOverlay);
-        uploadTexture(backdropSourceTexture, aBackdrop);
-        if (!noGlError("uploading the pass's textures"))
-            return false;
-        gui::outline::copyBackdrop(backdropSourceFbo.id(), backdropFbo.id(), QSize(kViewW, kViewH));
-        return noGlError("copyBackdrop");
-    }
-
-    // One whole composite: upload, blit, run the pass, read back. The framebuffer
-    // is cleared to the clear colour first, so a pass that drew NOTHING leaves
-    // magenta behind rather than passing quietly.
-    QImage run(const QImage& aBackdrop, const QImage& aOverlay, const gui::outline::Params& aParams) {
-        if (!prepare(aBackdrop, aOverlay))
-            return QImage();
-
-        const QSize size(kViewW, kViewH);
-        auto& funcs = gl::Global::functions();
-        gFbo->bind();
-        funcs.glDisable(GL_SCISSOR_TEST);
-        funcs.glScissor(0, 0, kViewW, kViewH);
-        funcs.glViewport(0, 0, kViewW, kViewH);
-        funcs.glClearColor(kClear.redF(), kClear.greenF(), kClear.blueF(), 1.0f);
-        funcs.glClear(GL_COLOR_BUFFER_BIT);
-
-        gui::outline::composite(overlayTexture.id(), backdropTexture.id(), size, aParams);
-        if (!noGlError("the composite pass"))
-            return QImage();
-
-        const QImage image = readFboTopDown();
-        gFbo->release();
-        return image;
-    }
-};
-
-// Whether every byte of two images agrees. The identity assertions are about the
-// pass being a no-op, so they are byte comparisons and not tolerance tests.
-bool imagesEqual(const QImage& a, const QImage& b) {
-    if (a.size() != b.size() || a.format() != b.format())
-        return false;
-    for (int y = 0; y < a.height(); ++y) {
-        const uchar* left = a.constScanLine(y);
-        const uchar* right = b.constScanLine(y);
-        if (std::memcmp(left, right, size_t(4 * a.width())) != 0)
-            return false;
-    }
-    return true;
-}
-
-// The backdrop the ring assertions use: a bright patch in the top-left quadrant,
-// dark everywhere else.
-QImage ringBackdrop() {
-    QImage image = blankImage(kDark);
-    for (int y = kBrightPatch.top(); y <= kBrightPatch.bottom(); ++y) {
-        for (int x = kBrightPatch.left(); x <= kBrightPatch.right(); ++x)
-            image.setPixelColor(x, y, kBright);
-    }
-    return image;
-}
-
-// 11 + 12 + 14 + 15: ONE overlay, one backdrop, five statements about the ring and
-// the composite (the threshold's own value included, at the end). The strokes are
-// 10x10 blocks with integer edges, so every sampled pixel is decided by an exact tap
-// and not by anti-aliasing.
-bool checkOutlineRing(OutlineHarness& aHarness) {
-    QImage overlay = blankImage(QColor(0, 0, 0, 0));
-    fillRect(overlay, kSolidStroke, overlayInk(kLowInk, 255));
-    fillRect(overlay, kThresholdStroke, overlayInk(kThresholdInk, 255));
-    fillRect(overlay, kPartialStroke, overlayInk(kLowInk, kPartialAlpha));
-    fillRect(overlay, kContrastStroke, overlayInk(kWhiteInk, 255));
-    fillRect(overlay, kHalfPixel, overlayInk(kWhiteInk, kHalfAlpha));
-
-    const QImage backdrop = ringBackdrop();
-    gui::outline::Params params;
-    params.colour = QColor(0, 0, 0);
-
-    const QImage solid = aHarness.run(backdrop, overlay, params);
-
-    // The pixel one column LEFT of each stroke: for the solid and the 40% stroke it
-    // sits on the bright patch, and the only ink its taps can see is the stroke.
-    const QColor ringSolid = pixelAt(solid, kSolidStroke.left() - 1, kSolidStroke.center().y());
-    const QColor ringPartial = pixelAt(solid, kPartialStroke.left() - 1, kPartialStroke.center().y());
-    const QColor fillSolid = pixelAt(solid, kSolidStroke.center().x(), kSolidStroke.center().y());
-    const QColor fillPartial = pixelAt(solid, kPartialStroke.center().x(), kPartialStroke.center().y());
-    const QColor half = pixelAt(solid, kHalfPixel.center().x(), kHalfPixel.center().y());
-    const QColor besideHalf = pixelAt(solid, kHalfPixel.left() - 1, kHalfPixel.center().y());
-    const QColor twoAwaySolid = pixelAt(solid, kSolidStroke.left() - 2, kSolidStroke.center().y());
-
-    std::printf(
-        "MEASURED outline_ring solid_ring=(%d,%d,%d,%d) partial_ring=(%d,%d,%d,%d) ring_distance=%d"
-        " solid_fill=(%d,%d,%d,%d) partial_fill=(%d,%d,%d,%d) half=(%d,%d,%d,%d) beside_half=(%d,%d,%d,%d)"
-        " two_away=(%d,%d,%d,%d)\n",
-        ringSolid.red(), ringSolid.green(), ringSolid.blue(), ringSolid.alpha(), ringPartial.red(),
-        ringPartial.green(), ringPartial.blue(), ringPartial.alpha(),
-        colourDistance(ringSolid, ringPartial), fillSolid.red(), fillSolid.green(), fillSolid.blue(),
-        fillSolid.alpha(), fillPartial.red(), fillPartial.green(), fillPartial.blue(), fillPartial.alpha(),
-        half.red(), half.green(), half.blue(), half.alpha(), besideHalf.red(), besideHalf.green(),
-        besideHalf.blue(), besideHalf.alpha(), twoAwaySolid.red(), twoAwaySolid.green(), twoAwaySolid.blue(),
-        twoAwaySolid.alpha()
-    );
-
-    // 11: the solid stroke's ring is BLACK - the outline colour at full strength.
-    REQUIRE(
-        colourDistance(ringSolid, QColor(0, 0, 0)) <= 2,
-        "the ring beside a solid low-contrast stroke is (%d,%d,%d), not the outline colour",
-        ringSolid.red(), ringSolid.green(), ringSolid.blue()
-    );
-    // ... and the 40% stroke's ring is the SAME ink at 40%, i.e. 60% of the bright
-    // patch. The exact value is the pass's arithmetic, so it is asserted exactly
-    // (mix(200, 0, 102/255) = 120).
-    REQUIRE(
-        std::abs(ringPartial.red() - 120) <= 3 && ringPartial.red() == ringPartial.green() &&
-            ringPartial.green() == ringPartial.blue(),
-        "the ring beside a 40%% stroke is (%d,%d,%d), not 40%% of the outline over the patch (120)",
-        ringPartial.red(), ringPartial.green(), ringPartial.blue()
-    );
-    // The two rings differ: the strength really does follow the coverage.
-    REQUIRE(
-        colourDistance(ringSolid, ringPartial) > 60,
-        "a solid and a 40%% stroke produced rings %d apart: the ring does not follow the coverage",
-        colourDistance(ringSolid, ringPartial)
-    );
-    // The stroke itself is the composite of the ink over the patch, i.e. the INK -
-    // never the ring colour, and never the patch.
-    REQUIRE(
-        colourDistance(fillSolid, kLowInk) <= kFillTol,
-        "the solid stroke's own pixel is (%d,%d,%d), not its ink (%d,%d,%d)", fillSolid.red(),
-        fillSolid.green(), fillSolid.blue(), kLowInk.red(), kLowInk.green(), kLowInk.blue()
-    );
-    // The 40%-covered pixel ALSO has low-contrast ink among its taps, so the ring is
-    // painted UNDER its own ink and shows through the coverage: 0.6 * ring(120) +
-    // 0.4 * ink(180) = 144, not the plain composite (192). That order is the pass's,
-    // and it is pinned here because it is the only place a translucency is darkened;
-    // over the panel's own opaque ink the ring is simply hidden by it. It is also a
-    // second, independent pin on the premultiplied overlay being divided back out:
-    // compositing it premultiplied again would give 101.
-    REQUIRE(
-        std::abs(fillPartial.red() - 144) <= 3 && fillPartial.red() == fillPartial.green() &&
-            fillPartial.green() == fillPartial.blue(),
-        "a 40%%-covered low-contrast pixel came out (%d,%d,%d); ink at 40%% over its own 40%% ring is 144",
-        fillPartial.red(), fillPartial.green(), fillPartial.blue()
-    );
-    // 14: the 50%-covered pixel blends. bg = 60, ink = 255, so the expected value is
-    // 0.5*60 + 0.5*255 = 157.5 -> 157 or 158. Both the "replaced" (255) and the
-    // "vanished" (60) failure modes are far outside the tolerance.
-    REQUIRE(
-        std::abs(half.red() - 158) <= 3,
-        "a 50%%-covered overlay pixel came out (%d,%d,%d); the blend of %d and 255 is 158",
-        half.red(), half.green(), half.blue(), kDark.red()
-    );
-    REQUIRE(half.red() == half.green() && half.green() == half.blue(), "the 50%% pixel is not grey");
-    // 12 (the composite half): that pixel's surroundings are untouched, because a
-    // white pixel over a dark backdrop has all the contrast it needs.
-    REQUIRE(
-        colourDistance(besideHalf, kDark) == 0,
-        "the pixel beside the high-contrast stroke is (%d,%d,%d), not the untouched backdrop",
-        besideHalf.red(), besideHalf.green(), besideHalf.blue()
-    );
-    // The shipped ring is exactly ONE pixel wide: two columns out is still backdrop.
-    REQUIRE(
-        colourDistance(twoAwaySolid, kBright) == 0,
-        "the shipped 1px ring reached two pixels from the stroke: (%d,%d,%d)", twoAwaySolid.red(),
-        twoAwaySolid.green(), twoAwaySolid.blue()
-    );
-
-    // 15: the +/-2px second ring, the same model and only the radius differs.
-    gui::outline::Params wide = params;
-    wide.ringRadiusPx = 2.0f;
-    const QImage wideRing = aHarness.run(backdrop, overlay, wide);
-    const QColor wideTwoAway = pixelAt(wideRing, kSolidStroke.left() - 2, kSolidStroke.center().y());
-    const QColor narrowTwoAway = pixelAt(solid, kSolidStroke.left() - 2, kSolidStroke.center().y());
-    std::printf(
-        "MEASURED outline_ring_radius=2 two_away=(%d,%d,%d) one_away=(%d,%d,%d) narrow_two_away=(%d,%d,%d)\n",
-        wideTwoAway.red(), wideTwoAway.green(), wideTwoAway.blue(),
-        pixelAt(wideRing, kSolidStroke.left() - 1, kSolidStroke.center().y()).red(),
-        pixelAt(wideRing, kSolidStroke.left() - 1, kSolidStroke.center().y()).green(),
-        pixelAt(wideRing, kSolidStroke.left() - 1, kSolidStroke.center().y()).blue(), narrowTwoAway.red(),
-        narrowTwoAway.green(), narrowTwoAway.blue()
-    );
-    REQUIRE(
-        colourDistance(wideTwoAway, QColor(0, 0, 0)) <= 2,
-        "with ringRadiusPx = 2 the pixel two away from the stroke is (%d,%d,%d), not ringed",
-        wideTwoAway.red(), wideTwoAway.green(), wideTwoAway.blue()
-    );
-    REQUIRE(
-        colourDistance(narrowTwoAway, kBright) == 0,
-        "precondition: the 1px ring must leave the pixel two away alone, it is (%d,%d,%d)", narrowTwoAway.red(),
-        narrowTwoAway.green(), narrowTwoAway.blue()
-    );
-
-    // 11 (the threshold's own value): THE PAIR THAT PINS gui::outline::kMinContrast.
-    //
-    // kThresholdInk is 2.30:1 against the bright patch - in linear light, which is the
-    // only light the ratio means that in - so it sits BETWEEN the shipped 2.0 and the
-    // 3.0 this shipped with. The pixel beside it must therefore be the UNTOUCHED
-    // backdrop at the shipped constant, and BLACK (the outline colour) at 3.0: the two
-    // runs differ in one field of Params and nothing else, which is what makes this a
-    // statement about the constant rather than about the ink.
-    const QColor besideThreshold = pixelAt(solid, kThresholdStroke.left() - 1, kThresholdStroke.center().y());
-    const QColor thresholdFill = pixelAt(solid, kThresholdStroke.center().x(), kThresholdStroke.center().y());
-    gui::outline::Params old = params;
-    old.minContrast = 3.0f;
-    const QImage atThree = aHarness.run(backdrop, overlay, old);
-    const QColor besideThresholdAtThree = pixelAt(atThree, kThresholdStroke.left() - 1, kThresholdStroke.center().y());
-    std::printf(
-        "MEASURED outline_threshold ink_rgb=%s min_contrast=%.1f beside_ink=(%d,%d,%d) backdrop=(%d,%d,%d)"
-        " distance=%d at_3_0=(%d,%d,%d)\n",
-        hex(kThresholdInk).c_str(), double(gui::outline::kMinContrast), besideThreshold.red(),
-        besideThreshold.green(), besideThreshold.blue(), kBright.red(), kBright.green(), kBright.blue(),
-        colourDistance(besideThreshold, kBright), besideThresholdAtThree.red(), besideThresholdAtThree.green(),
-        besideThresholdAtThree.blue()
-    );
-    REQUIRE(
-        colourDistance(thresholdFill, kThresholdInk) <= kFillTol,
-        "the threshold probe's own pixel is (%d,%d,%d), not its ink (%d,%d,%d): the probe is not where it thinks",
-        thresholdFill.red(), thresholdFill.green(), thresholdFill.blue(), kThresholdInk.red(),
-        kThresholdInk.green(), kThresholdInk.blue()
-    );
-    REQUIRE(
-        colourDistance(besideThreshold, kBright) == 0,
-        "a 2.30:1 stroke was ringed at the shipped kMinContrast = %.1f (the pixel beside it is (%d,%d,%d), not the"
-        " untouched backdrop): the ring is drawn where the ink still reads",
-        double(gui::outline::kMinContrast), besideThreshold.red(), besideThreshold.green(), besideThreshold.blue()
-    );
-    REQUIRE(
-        colourDistance(besideThresholdAtThree, QColor(0, 0, 0)) <= 2,
-        "precondition: the same stroke at minContrast = 3.0 is NOT ringed ((%d,%d,%d)): the two constants do not"
-        " straddle this ink, so this pair pins nothing",
-        besideThresholdAtThree.red(), besideThresholdAtThree.green(), besideThresholdAtThree.blue()
-    );
-    return true;
-}
-
-// 12: the same stroke over a CONTRASTING patch gets NO ring, and the backdrop
-// around it survives byte for byte in every direction.
-bool checkOutlineNoRing(OutlineHarness& aHarness) {
-    QImage overlay = blankImage(QColor(0, 0, 0, 0));
-    fillRect(overlay, kContrastStroke, overlayInk(kWhiteInk, 255));
-
-    const QImage backdrop = ringBackdrop();
-    gui::outline::Params params;
-    params.colour = QColor(0, 0, 0);
-    const QImage rendered = aHarness.run(backdrop, overlay, params);
-
-    int checked = 0;
-    int changed = 0;
-    for (int y = kContrastStroke.top() - 2; y <= kContrastStroke.bottom() + 2; ++y) {
-        for (int x = kContrastStroke.left() - 2; x <= kContrastStroke.right() + 2; ++x) {
-            if (kContrastStroke.contains(x, y))
-                continue;
-            ++checked;
-            if (colourDistance(pixelAt(rendered, x, y), pixelAt(backdrop, x, y)) != 0)
-                ++changed;
-        }
-    }
-    const QColor inside = pixelAt(rendered, kContrastStroke.center().x(), kContrastStroke.center().y());
-    std::printf(
-        "MEASURED outline_no_ring patch=%d,%d,%d stroke_ink=(%d,%d,%d) ring_pixels_checked=%d changed=%d\n",
-        kDark.red(), kDark.green(), kDark.blue(), inside.red(), inside.green(), inside.blue(), checked, changed
-    );
-    REQUIRE(checked > 0, "the no-ring probe checked no pixels at all");
-    REQUIRE(
-        changed == 0, "%d of %d pixels around a high-contrast stroke changed: the ring is unconditional", changed,
-        checked
-    );
-    REQUIRE(
-        colourDistance(inside, kWhiteInk) <= kFillTol, "the high-contrast stroke's own pixel is (%d,%d,%d), not white",
-        inside.red(), inside.green(), inside.blue()
-    );
-    return true;
-}
-
-// 13: the inverse assertion. With NO overlay coverage anywhere, the whole
-// framebuffer must come back byte-identical to a patterned backdrop - through the
-// blit AND through the pass. This is what catches an "always draws" regression:
-// a backdrop that is one bit off, one ringed pixel, one blend applied to the panel
-// area, and it fails.
-bool checkOutlineBackdropIdentical(OutlineHarness& aHarness) {
-    const QImage overlay = blankImage(QColor(0, 0, 0, 0));
-    const QImage backdrop = patternBackdrop();
-    gui::outline::Params params;
-    params.colour = QColor(0, 0, 0);
-
-    const QImage rendered = aHarness.run(backdrop, overlay, params);
-
-    int changed = 0;
-    int worst = 0;
-    QRect worstAt;
-    for (int y = 0; y < kViewH; ++y) {
-        for (int x = 0; x < kViewW; ++x) {
-            const int distance = colourDistance(pixelAt(rendered, x, y), pixelAt(backdrop, x, y));
-            if (distance != 0) {
-                ++changed;
-                if (distance > worst) {
-                    worst = distance;
-                    worstAt = QRect(x, y, 1, 1);
-                }
-            }
-        }
-    }
-    std::printf(
-        "MEASURED outline_backdrop_identical pixels=%d changed=%d worst_distance=%d worst_at=(%d,%d)"
-        " byte_equal=%d\n",
-        kViewW * kViewH, changed, worst, worstAt.left(), worstAt.top(), int(imagesEqual(rendered, backdrop))
-    );
-    REQUIRE(
-        changed == 0,
-        "%d of %d pixels changed with an empty overlay (worst %d at (%d,%d)): the pass is not a no-op",
-        changed, kViewW * kViewH, worst, worstAt.left(), worstAt.top()
-    );
-    return true;
-}
-
-// 16: the pass is a GUEST in the frame - the bindings it finds are the bindings it
-// leaves. THIS IS NOT A COURTESY: the application's paint path keeps ONE default
-// vertex array bound for the whole session (MainDisplayWidget::initializeGL creates
-// it and comments "keep binding"), and the painter engine that runs at the TOP of
-// the next paint relies on it - every glVertexAttribPointer it makes needs an array
-// object bound in a core profile. A version of this pass that ended with
-// glBindVertexArray(0) made the application's next paint fail with
-// GL_INVALID_OPERATION in glVertexAttribPointer and glDrawArrays (measured on a real
-// run; the error surfaced one call later as an assert in
-// gl::EasyShaderProgram::release()). The unit itself is also asserted to be quiet:
-// a pass that leaves a GL error behind fails this file's own noGlError checks.
-bool checkOutlineRestoresBindings(OutlineHarness& aHarness) {
-    auto& funcs = gl::Global::functions();
-
-    const QImage overlay = blankImage(QColor(0, 0, 0, 0));
-    const QImage backdrop = patternBackdrop();
-    REQUIRE(aHarness.prepare(backdrop, overlay), "precondition: the harness could not prepare its textures");
-
-    // A marker binding in every slot the pass touches: its own vertex array, its own
-    // texture on each unit, and a NON-ZERO active unit (the pass restores the active
-    // unit last, so leaving it elsewhere would be invisible otherwise).
-    gl::VertexArrayObject markerVao;
-    gl::Texture markerTexture0;
-    gl::Texture markerTexture1;
-    markerTexture0.create(QSize(4, 4));
-    markerTexture1.create(QSize(4, 4));
-    markerVao.bind();
-    funcs.glActiveTexture(GL_TEXTURE0);
-    funcs.glBindTexture(GL_TEXTURE_2D, markerTexture0.id());
-    funcs.glActiveTexture(GL_TEXTURE1);
-    funcs.glBindTexture(GL_TEXTURE_2D, markerTexture1.id());
-
-    gFbo->bind();
-    funcs.glDisable(GL_SCISSOR_TEST);
-    funcs.glScissor(0, 0, kViewW, kViewH);
-    funcs.glViewport(0, 0, kViewW, kViewH);
-    funcs.glClearColor(kClear.redF(), kClear.greenF(), kClear.blueF(), 1.0f);
-    funcs.glClear(GL_COLOR_BUFFER_BIT);
-
-    gui::outline::Params params;
-    params.colour = QColor(0, 0, 0);
-    gui::outline::composite(aHarness.overlayTexture.id(), aHarness.backdropTexture.id(), QSize(kViewW, kViewH), params);
-
-    GLint vao = 0;
-    GLint activeTexture = 0;
-    GLint texture0 = 0;
-    GLint texture1 = 0;
-    GLint program = -1;
-    GLint drawFbo = 0;
-    funcs.glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
-    funcs.glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
-    funcs.glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture1);
-    funcs.glActiveTexture(GL_TEXTURE0);
-    funcs.glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture0);
-    funcs.glActiveTexture(GLenum(activeTexture));
-    funcs.glGetIntegerv(GL_CURRENT_PROGRAM, &program);
-    funcs.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
-
-    std::printf(
-        "MEASURED outline_state_restored vao=%d expected_vao=%u active_texture=0x%x expected=0x%x"
-        " texture0=%d expected0=%u texture1=%d expected1=%u program=%d draw_fbo=%u expected_fbo=%u\n",
-        vao, markerVao.id(), activeTexture, GLuint(GL_TEXTURE1), texture0, markerTexture0.id(), texture1,
-        markerTexture1.id(), program, drawFbo, gFbo->id()
-    );
-
-    REQUIRE(
-        vao == GLint(markerVao.id()),
-        "the pass left vertex array %d bound, not the %u it found: the application's default VAO would be gone",
-        vao, markerVao.id()
-    );
-    REQUIRE(
-        activeTexture == GLint(GL_TEXTURE1), "the pass left texture unit 0x%x active, not the 0x%x it found",
-        activeTexture, GLuint(GL_TEXTURE1)
-    );
-    REQUIRE(
-        texture0 == GLint(markerTexture0.id()) && texture1 == GLint(markerTexture1.id()),
-        "the pass left textures %d/%d bound on units 0/1, not the %u/%u it found", texture0, texture1,
-        markerTexture0.id(), markerTexture1.id()
-    );
-    // The framebuffer is the one binding the pass does not put back, and it must not
-    // need to: it is a full-screen pass and it writes into whatever is bound.
-    REQUIRE(
-        GLuint(drawFbo) == gFbo->id(), "the pass ended with FBO %u bound, not the %u it was asked to draw into",
-        drawFbo, gFbo->id()
-    );
-    // The program is DELIBERATELY left unbound, exactly as the application's own
-    // gl::EasyTextureDrawer leaves it at the end of every paint.
-    REQUIRE(program == 0, "the pass left program %d bound; the application's drawers leave 0", program);
-    REQUIRE(noGlError("the pass's own state"), "the pass left a GL error behind");
-    return true;
-}
-
-//-------------------------------------------------------------------------------------------------
-// THE CURVE STROKE: the coverage pass (gui::stroke) against the geometry/fringe stroke it
-// replaces (ImDrawList::AddPolyline, which is what the panel shipped and what drawPanel
-// still falls back to when the pass is not built).
-//
-// ONE MODEL, FIVE RUNS, TWO STROKE GEOMETRIES. The runs below are chosen so that EVERY
-// measurement points at a region no other run's ink can reach, and the model publishes
-// nothing else at all - no ticks, no labels, no zero rule, no playhead, no keys, no
-// handles, no chips - so the ink in a region is that run's ink. The same model is then
-// rendered twice out of ONE process: with the pass built (AFTER) and before it is built
-// (BEFORE), which is what makes the two implementations comparable number for number
-// rather than across two runs of the gate.
-//
-// WHY FOUR ASSERTIONS AND NOT ONE. The defect the user reported ("jagged and inconsistent
-// line thickness") is a property of the stroke's SHAPE, and no single number describes a
-// shape. Each assertion below pins a different way a stroke can be wrong, and each is
-// stated with the numbers it measured (before AND after, printed) so a failure reads as a
-// measurement rather than a verdict:
-//   22 equal thickness across the angle - the ink's average PERPENDICULAR extent, over the
-//      run's own interior, at four angles including a 45-degree one;
-//   23 the edges are antialiased - the coverage ramp across the stroke's boundary, on the
-//      run deliberately placed half a pixel off the grid, where an unantialiased edge has
-//      no partial pixel at all;
-//   24 no double-darkening at a join - the coverage of every pixel near a right-angle
-//      corner against what ONE capsule's profile allows at that pixel's own distance, with
-//      the curve dimmed so a double blend is visible as ink DARKER than the stroke's body;
-//   25 the ink is still where the polyline is - every sample of every run lands on inked
-//      pixels, the whole frame's ink is inside the runs' own bounds, and the stroke's
-//      coverage-weighted centre is on the centreline.
-// Plus 26, the guest rule, which the pass shares with the contrast outline's.
-
-// A horizontal run ON the pixel grid, and one HALF a pixel off it: see assertion 23 for why
-// the phase is the whole point of the second one.
-const QPointF kFlatA(110, 60);
-const QPointF kFlatB(260, 60);
-const QPointF kPhaseA(110, 95.5);
-const QPointF kPhaseB(260, 95.5);
-// 45 degrees, and a steeper ~71.6 degrees (run 3, rise 9): the angle the reported defect is
-// about, and one far enough from it that a measurement which only handles the diagonal
-// cannot pass both.
-const QPointF kDiagonalA(110, 140);
-const QPointF kDiagonalB(200, 230);
-const QPointF kSteepA(240, 250);
-const QPointF kSteepB(285, 115);
-// The right-angle joint assertion 24 measures: arm A runs in to the vertex and arm B runs
-// out of it, so the outer bisector from kCornerV is the one direction BOTH segments' own
-// capsules must cover by themselves.
-const QPointF kCornerV(370, 40);
-const QPointF kCornerA(300, 40);
-const QPointF kCornerB(370, 110);
-
-// A DENSE WAVY POLYLINE: the panel's own curve is a polyline sampled every ~2px of plot
-// width (GraphPanelModel.cpp's drawing budget), so its direction changes from sample to
-// sample, and how a stroke treats those small turns is what "inconsistent line thickness"
-// means along a curve. This fixture is that situation in isolation: samples 4px apart
-// along a sine of amplitude 5px and wavelength 48px, which turns the local direction by up
-// to ~33 degrees between neighbours - the middle of the range a curvy panel curve reaches.
-QVector<QPointF> denseWavyPoints() {
-    QVector<QPointF> points;
-    for (int i = 0; i <= 30; ++i) {
-        const double x = 110.0 + 4.0 * i;
-        const double phase = (2.0 * M_PI) * (4.0 * i) / 48.0;
-        points.append(QPointF(x, 253.0 + 5.0 * std::sin(phase)));
-    }
-    return points;
-}
-
-gui::GraphPanelModel makeInkModel(const theme::Graph& aTheme) {
-    gui::GraphPanelModel model;
-    model.panel = kPanel;
-    model.plot = kPlot;
-    model.valueColumn = kValueColumn;
-    model.rulerBandTop = kRulerBand.top();
-    // NOTHING but the runs: see the block comment above.
-    model.zeroY = -1;
-    model.playheadX = -1;
-
-    const auto run = [&aTheme](const QVector<QPointF>& aPoints) {
-        gui::PanelCurve curve;
-        curve.node = nullptr;
-        curve.channel = ctrl::graph::Channel(kTypeA, 0);
-        curve.points = aPoints;
-        // ONE colour for all five: the regions are disjoint, so the ink's identity is
-        // never in question, and the measurements below are all against this token.
-        curve.color = aTheme.channelColor(kTypeA, 0);
-        curve.channelRow = -1;
-        return curve;
-    };
-    model.curves = {
-        run({kFlatA, kFlatB}), run({kPhaseA, kPhaseB}), run({kDiagonalA, kDiagonalB}),
-        run({kSteepA, kSteepB}), run({kCornerA, kCornerV, kCornerB}), run(denseWavyPoints()),
-    };
-    return model;
-}
-
-// A model shaped like ONE of the shipping panel's own curves: a single polyline sampled at
-// the panel's own budget (one point per ~2px of plot width, GraphPanelModel.cpp), i.e. ~145
-// samples for this plot. The cost measurement below uses it because the panel's curve is
-// what the pass has to stroke every frame, and the ink model's fixtures are not that shape.
-gui::GraphPanelModel makeDenseModel(const theme::Graph& aTheme) {
-    gui::GraphPanelModel model;
-    model.panel = kPanel;
-    model.plot = kPlot;
-    model.valueColumn = kValueColumn;
-    model.rulerBandTop = kRulerBand.top();
-    model.zeroY = -1;
-    model.playheadX = -1;
-
-    gui::PanelCurve curve;
-    curve.node = nullptr;
-    curve.channel = ctrl::graph::Channel(kTypeA, 0);
-    curve.color = aTheme.channelColor(kTypeA, 0);
-    curve.channelRow = -1;
-    for (int i = 0; i <= 144; ++i) {
-        const double x = 92.0 + 2.0 * i;
-        curve.points.append(QPointF(x, 150.0 + 60.0 * std::sin((x - 92.0) / 70.0)));
-    }
-    model.curves = {curve};
-    return model;
-}
-
-// The four straight runs, as the measurements name them. `gridCount` says whether the literal
-// whole-pixel count is a measurement of the stroke at all on that run: it is on the run that
-// lies on the pixel grid, and it is not on the one deliberately placed half a pixel off it
-// (where a stroke of this width straddles three rows at 0.5 apiece whatever an implementation
-// does, so the count would be measuring the pixel grid rather than the ink).
-struct InkRun {
-    const char* name;
-    QPointF a;
-    QPointF b;
-    bool gridCount;
-};
-const InkRun kInkRuns[] = {
-    {"horizontal", kFlatA, kFlatB, true},
-    {"horizontal_half_pixel_off", kPhaseA, kPhaseB, false},
-    {"diagonal45", kDiagonalA, kDiagonalB, true},
-    {"steep72", kSteepA, kSteepB, true},
-};
-
-// One curve's ink as the measurements read it: the colour, and the channel of the framebuffer
-// it is furthest from the clear colour in. The panel composites source-over onto an opaque
-// clear, so a pixel that carries coverage a is ink*a + clear*(1-a) - and inverting that along
-// the widest channel recovers a for BOTH stroke geometries (the coverage pass and ImGui's own
-// fringe both blend source-over). The recovered number is therefore the stroke's own alpha,
-// and comparing the two implementations' alphas is comparing the two strokes.
-struct InkProbe {
-    QColor ink;
-    int channel = 0;
-
-    static InkProbe make(const QColor& aInk) {
-        const int clear[3] = {kClear.red(), kClear.green(), kClear.blue()};
-        const int rgb[3] = {aInk.red(), aInk.green(), aInk.blue()};
-        InkProbe probe;
-        probe.ink = aInk;
-        int widest = -1;
-        for (int c = 0; c < 3; ++c) {
-            const int spread = std::abs(clear[c] - rgb[c]);
-            if (spread > widest) {
-                widest = spread;
-                probe.channel = c;
-            }
-        }
-        return probe;
-    }
-
-    double coverage(const QImage& aImage, int aX, int aY) const {
-        const QColor c = pixelAt(aImage, aX, aY);
-        const int clear[3] = {kClear.red(), kClear.green(), kClear.blue()};
-        const int rgb[3] = {ink.red(), ink.green(), ink.blue()};
-        const int got[3] = {c.red(), c.green(), c.blue()};
-        const double a =
-            double(clear[channel] - got[channel]) / double(clear[channel] - rgb[channel]);
-        return std::min(1.0, std::max(0.0, a));
-    }
-};
-
-// How wide one straight run's ink is. Both numbers are averages over the run's own INTERIOR
-// (the segment pulled in by aMargin at each end, so the round caps - which lie beyond a
-// segment's endpoints - are outside the measurement), and both are per unit length, so a
-// run's own length cancels out:
-//   * integrated: the sum of every covered pixel's coverage over the interior's length. The
-//     sum of pixel coverages is the AREA of the ink band, and area over length is the band's
-//     width at ANY angle - the threshold limit of "count the pixels over a coverage
-//     threshold", with the sub-pixel part kept.
-//   * overHalf: the literal count of pixels whose coverage is over 0.5, over the same length.
-//     A whole-pixel measurement, and it is asserted on the run that lies ON the grid: at a
-//     half-pixel phase a stroke of this width straddles three rows at 0.5 each and this
-//     count reads 1 whatever the implementation does, which is a statement about the pixel
-//     grid and not about the stroke.
-struct RunWidth {
-    double integrated = 0.0;
-    double overHalf = 0.0;
-    double length = 0.0;
-    int pixels = 0;
-};
-
-RunWidth measureRun(
-    const QImage& aImage, const InkProbe& aProbe, const QPointF& aA, const QPointF& aB, double aMargin = 6.0,
-    double aWindow = 3.0, double aBodyThreshold = 0.5
-) {
-    const double dx = aB.x() - aA.x();
-    const double dy = aB.y() - aA.y();
-    const double full = std::hypot(dx, dy);
-    const double ux = dx / full;
-    const double uy = dy / full;
-    const double nx = -uy;
-    const double ny = ux;
-    const QPointF mid((aA.x() + aB.x()) * 0.5, (aA.y() + aB.y()) * 0.5);
-    const double halfLength = std::max(0.0, full * 0.5 - aMargin);
-
-    RunWidth out;
-    out.length = halfLength * 2.0;
-    const QRect bounds = grow(QRect(int(std::floor(std::min(aA.x(), aB.x()))), int(std::floor(std::min(aA.y(), aB.y()))), int(std::ceil(std::abs(dx))) + 1, int(std::ceil(std::abs(dy))) + 1), int(aWindow) + 2).intersected(aImage.rect());
-    for (int y = bounds.top(); y <= bounds.bottom(); ++y) {
-        for (int x = bounds.left(); x <= bounds.right(); ++x) {
-            // The pixel's own centre: the point its coverage is the area about.
-            const double s = (double(x) + 0.5 - mid.x()) * ux + (double(y) + 0.5 - mid.y()) * uy;
-            const double t = (double(x) + 0.5 - mid.x()) * nx + (double(y) + 0.5 - mid.y()) * ny;
-            if (std::abs(s) > halfLength || std::abs(t) > aWindow)
-                continue;
-            const double cov = aProbe.coverage(aImage, x, y);
-            out.integrated += cov;
-            // The whole-pixel count at a FRACTION of the stroke's own body level (the
-            // threshold a caller passes is body * 0.5, which is "more than half of a fully
-            // covered pixel" at any emphasis strength - a fixed 0.5 would count nothing at
-            // all while the panel is drawn dimmed).
-            if (cov > aBodyThreshold)
-                out.overHalf += 1.0;
-            ++out.pixels;
-        }
-    }
-    out.integrated /= out.length;
-    out.overHalf /= out.length;
-    return out;
-}
-
-// The coverage profile ACROSS a horizontal run, in one pixel column: the run's own
-// perpendicular direction is the vertical one, so the pixels of the column ARE the samples -
-// no interpolation anywhere, and every number below is a pixel's own coverage. The rows run
-// from aFirstRow to aLastRow, and the centreline between them is aCentreY.
-std::vector<double> columnProfile(
-    const QImage& aImage, const InkProbe& aProbe, int aColumn, int aFirstRow, int aLastRow
-) {
-    std::vector<double> profile;
-    for (int row = aFirstRow; row <= aLastRow; ++row)
-        profile.push_back(aProbe.coverage(aImage, aColumn, row));
-    return profile;
-}
-
-// The row window a profile about a horizontal centreline is read over: seven rows below it and
-// eight above, which is wider than the stroke and its filter can reach on either side.
-void profileRows(double aCentreY, int& aFirst, int& aLast) {
-    aFirst = int(std::floor(aCentreY)) - 7;
-    aLast = int(std::floor(aCentreY)) + 8;
-}
-
-// The distance from a point to a SEGMENT (not its line), which is what one capsule's ink
-// reaches from: the pass measures exactly this, so it is also the bound a correct union of
-// two segments' capsules must never exceed.
-double distanceToSegment(const QPointF& aP, const QPointF& aA, const QPointF& aB) {
-    const double dx = aB.x() - aA.x();
-    const double dy = aB.y() - aA.y();
-    const double lengthSquared = dx * dx + dy * dy;
-    const double t = lengthSquared > 0.0
-        ? std::min(1.0, std::max(0.0, ((aP.x() - aA.x()) * dx + (aP.y() - aA.y()) * dy) / lengthSquared))
-        : 0.0;
-    return std::hypot(aP.x() - aA.x() - t * dx, aP.y() - aA.y() - t * dy);
-}
-
-QString profileText(const std::vector<double>& aProfile) {
-    QString text;
-    for (size_t i = 0; i < aProfile.size(); ++i)
-        text += QStringLiteral("%1%2").arg(i ? QStringLiteral(" ") : QString(), QString::number(aProfile[i], 'f', 3));
-    return text;
-}
-
-//-------------------------------------------------------------------------------------------------
-// THE PANEL'S OTHER 1px LINES (assertion 27). Two families, and they are not the same
-// question:
-//   * the ticks, the zero rule and the playhead are drawn with the draw list's
-//     ImDrawListFlags_AntiAliasedLines turned OFF (drawPanel says so where it does it, with
-//     the timeline's hairline rule as the reason), and every one of them is positioned by an
-//     INTEGER in the model: frameTickX/valueTickY are QVector<int>, zeroY is an int, and
-//     playheadX is an int - the frame is mapped through the scaler and resolved to a whole
-//     column before a drawing layer ever sees it.
-//   * the tangent-handle STEM is 1px too, but drawPanel leaves the flag alone for it, so it
-//     goes through ImGui's texture-AA path - and it is the only 1px geometry in the panel
-//     whose coordinates are fractional (PanelHandle::base/dot are QPointF).
-// The two fixtures below put one family in front of the camera at a time.
-
-// A model whose ONLY ink is the playhead, at aPixelX.
-gui::GraphPanelModel makePlayheadModel(int aPixelX) {
-    gui::GraphPanelModel model;
-    model.panel = kPanel;
-    model.plot = kPlot;
-    model.valueColumn = kValueColumn;
-    model.rulerBandTop = kRulerBand.top();
-    model.zeroY = -1;
-    model.playheadX = aPixelX;
-    return model;
-}
-
-// The panel's OTHER 1px line family, alone: one tangent handle, with the fractional
-// coordinates a handle really has. Nothing else is published, so the ink in the frame is the
-// stem and its dot.
-const QPointF kStemBase(150.5, 250.25);
-const QPointF kStemDot(230.5, 190.75);
-
-gui::GraphPanelModel makeStemModel(const theme::Graph& aTheme) {
-    gui::GraphPanelModel model;
-    model.panel = kPanel;
-    model.plot = kPlot;
-    model.valueColumn = kValueColumn;
-    model.rulerBandTop = kRulerBand.top();
-    model.zeroY = -1;
-    model.playheadX = -1;
-
-    gui::PanelCurve curve;
-    curve.node = nullptr;
-    curve.channel = ctrl::graph::Channel(kTypeA, 0);
-    curve.channelRow = -1;
-    // The stem and the dot are drawn in the HANDLE hue (the channel colour mixed 0.2
-    // toward the panel's halo) at 0.85 / 0.9, so this fixture has to give the curve
-    // the channel hue the probe below derives that ink from.
-    curve.color = aTheme.channelColor(kTypeA, 0);
-    gui::PanelHandle handle;
-    handle.segment = 0;
-    handle.index = 0;
-    handle.base = kStemBase;
-    handle.dot = kStemDot;
-    handle.radius = ctrl::graph::kHandleRadius;
-    curve.handles = {handle};
-    model.curves = {curve};
-    return model;
-}
-
-// The playhead's own ink, column by column, over the plot's rows: the model above publishes
-// nothing else, so this is the line's placement and nothing beside it.
-std::vector<double> columnInk(const Rendered& aRendered, const InkProbe& aProbe, int aFirst, int aLast) {
-    std::vector<double> ink;
-    for (int x = aFirst; x <= aLast; ++x) {
-        double sum = 0.0;
-        for (int y = kPlot.top(); y <= kPlot.bottom(); ++y)
-            sum += aProbe.coverage(aRendered.image, x, y);
-        ink.push_back(sum);
-    }
-    return ink;
-}
-
-// 22: EQUAL THICKNESS ACROSS THE ANGLE. The same nominal width, stroked horizontally, at 45
-// degrees and at ~72 degrees - and, along the second half of the assertion, along a DENSE
-// WAVY polyline the way the panel's own curve is sampled. The ink's perpendicular extent
-// must not care which way the stroke runs, nor where along the line it is measured.
-//
-// WHAT THE TWO NUMBERS SAID (MEASURED, and the reason the discrimination this file makes is
-// named where it is rather than here): at the shipping width ImGui's own AddPolyline takes
-// its TEXTURE path (a width with a zero fractional part, and the font atlas bakes the line
-// texture), and that path's fringe is a 1px ramp perpendicular to each segment - so its
-// area, which is what the extent below measures, comes out angle-independent too: 0.053px of
-// spread for BOTH implementations. What the texture path does NOT get right is the JOIN,
-// where its cross-section rotates with the sampled normal and its segments' fringes blend
-// over one another - assertion 24 measures that, and it is the one the old stroke fails.
-// This assertion is therefore a gate on the NEW path (a stroke that tied its width to its
-// vertices, or that measured its fringe in the wrong space, would fail it) rather than a
-// demonstration that the old one was wrong here.
-//
-// THE EMPHASIS: every pass this group is handed is drawn with an EMPTY selection, i.e. every
-// curve at the design's dimmed strength (kUnselectedAlpha, GraphPanelFrame.cpp), so both metrics
-// are stated strength-free: `integrated` is compared as a SPREAD across the runs (a constant
-// strength scales every run's area by the same factor), and the whole-pixel count thresholds
-// at HALF THE STROKE'S OWN BODY LEVEL, measured here - a fixed 0.5 would count nothing while
-// the panel is dimmed and the bar would pass vacuously.
-bool checkStrokeAngle(const Rendered& aAfter, const Rendered& aBefore, const theme::Graph& aTheme) {
-    REQUIRE(gui::stroke::isReady(), "precondition: the coverage pass must be built for this assertion");
-
-    const InkProbe probe = InkProbe::make(aTheme.channelColor(kTypeA, 0));
-    // The stroke's own body level, MEASURED off the grid-aligned run instead of assumed: every
-    // pass here is drawn with an EMPTY selection, so every curve is at the design's dimmed
-    // strength (kUnselectedAlpha, GraphPanelFrame.cpp). The whole-pixel metric below counts
-    // pixels against a fraction of THIS level, so it cannot degrade to zero under the dimming.
-    double body = 0.0;
-    for (int x = 120; x <= 250; ++x)
-        body = std::max(body, probe.coverage(aAfter.image, x, 60));
-    REQUIRE(body > 0.15, "precondition: the ink model's horizontal run carries no body ink (%.3f)", body);
-    std::printf(
-        "MEASURED stroke_angle nominal_width=%.2fpx filter=%.2fpx framebuffer_scale=1:1 colour=%s channel=%d"
-        " body=%.3f (dimmed_strength=0.45)\n",
-        double(gui::stroke::kWidthPx), double(gui::stroke::kFilterPx), hex(probe.ink).c_str(), probe.channel, body
-    );
-
-    double afterMin = 1e9;
-    double afterMax = -1e9;
-    double beforeMin = 1e9;
-    double beforeMax = -1e9;
-    double afterHalfMin = 1e9;
-    double afterHalfMax = -1e9;
-    int countable = 0;
-    for (const InkRun& run : kInkRuns) {
-        const RunWidth after = measureRun(aAfter.image, probe, run.a, run.b, 6.0, 3.0, body * 0.5);
-        const RunWidth before = measureRun(aBefore.image, probe, run.a, run.b, 6.0, 3.0, body * 0.5);
-        std::printf(
-            "MEASURED stroke_angle run=%-24s length=%.1fpx interior=%dpx2 after_integrated=%.3f"
-            " after_over_half=%.3f before_integrated=%.3f before_over_half=%.3f\n",
-            run.name, after.length, after.pixels, after.integrated, after.overHalf, before.integrated,
-            before.overHalf
-        );
-        REQUIRE(after.pixels > 100, "precondition: run %s measured only %d pixels", run.name, after.pixels);
-
-        afterMin = std::min(afterMin, after.integrated);
-        afterMax = std::max(afterMax, after.integrated);
-        beforeMin = std::min(beforeMin, before.integrated);
-        beforeMax = std::max(beforeMax, before.integrated);
-        // The literal count only where the grid can count it: see InkRun::gridCount.
-        if (run.gridCount) {
-            afterHalfMin = std::min(afterHalfMin, after.overHalf);
-            afterHalfMax = std::max(afterHalfMax, after.overHalf);
-            countable += 1;
-        }
-    }
-    REQUIRE(countable >= 3, "precondition: only %d runs are countable against the whole-pixel metric", countable);
-
-    std::printf(
-        "MEASURED stroke_angle_spread after_integrated=%.3fpx before_integrated=%.3fpx"
-        " after_over_half=%.3fpx\n",
-        afterMax - afterMin, beforeMax - beforeMin, afterHalfMax - afterHalfMin
-    );
-
-    // ...AND ALONG THE LINE. The panel's own curve is a polyline sampled every ~2px, so its
-    // direction changes from sample to sample, and a stroke that tied its cross-section to
-    // each SAMPLED normal would change its apparent width at every one of those turns. The
-    // wavy fixture is that situation in isolation - samples 4px apart on a sine, turning by
-    // up to ~33 degrees between neighbours - and the width is measured the same way, over
-    // the 8px of line centred on every interior sample.
-    //
-    // MEASURED: 0.049px of spread (this pass) against 0.052px (the fringe stroke). The
-    // extent is an AREA over its own length, and rotating a cross-section does not change
-    // its area - so this metric does not see the rotation either, which the assertion on the
-    // JOIN does (the rotation moves ink OUTSIDE the union, and that is what 24 catches). The
-    // numbers are printed for both because that is what the measurement says.
-    const QVector<QPointF> wavy = denseWavyPoints();
-    double wavyMin = 1e9;
-    double wavyMax = -1e9;
-    double wavyBeforeMin = 1e9;
-    double wavyBeforeMax = -1e9;
-    QString wavyAfter;
-    QString wavyBefore;
-    for (int i = 1; i + 1 < wavy.size(); ++i) {
-        const RunWidth after = measureRun(aAfter.image, probe, wavy.at(i - 1), wavy.at(i + 1), 0.0, 3.0);
-        const RunWidth before = measureRun(aBefore.image, probe, wavy.at(i - 1), wavy.at(i + 1), 0.0, 3.0);
-        wavyMin = std::min(wavyMin, after.integrated);
-        wavyMax = std::max(wavyMax, after.integrated);
-        wavyBeforeMin = std::min(wavyBeforeMin, before.integrated);
-        wavyBeforeMax = std::max(wavyBeforeMax, before.integrated);
-        wavyAfter += QStringLiteral("%1 ").arg(after.integrated, 0, 'f', 3);
-        wavyBefore += QStringLiteral("%1 ").arg(before.integrated, 0, 'f', 3);
-    }
-    std::printf(
-        "MEASURED stroke_angle_along_line samples=%d after_min=%.3f after_max=%.3f after_spread=%.3fpx"
-        " before_min=%.3f before_max=%.3f before_spread=%.3fpx\n",
-        int(wavy.size()) - 2, wavyMin, wavyMax, wavyMax - wavyMin, wavyBeforeMin, wavyBeforeMax,
-        wavyBeforeMax - wavyBeforeMin
-    );
-    std::printf("MEASURED stroke_angle_along_line after=[%s]\n", qPrintable(wavyAfter));
-    std::printf("MEASURED stroke_angle_along_line before=[%s]\n", qPrintable(wavyBefore));
-    REQUIRE(
-        wavyMax - wavyMin <= 0.5,
-        "the stroke's thickness changes along a curve: %.3fpx to %.3fpx over %d samples (before: %.3fpx to %.3fpx)",
-        wavyMin, wavyMax, int(wavy.size()) - 2, wavyBeforeMin, wavyBeforeMax
-    );
-    // THE ASSERTION. 1px is the tolerance the report states, and both offsets are printed
-    // with it: the measured numbers are 0.053px (this pass) and 0.053px (the fringe stroke
-    // it replaces) across the angles - see the note above for why the second number is not
-    // the discrimination this file is making.
-    REQUIRE(
-        afterMax - afterMin <= 1.0,
-        "the stroke's width still depends on the angle: %.3fpx to %.3fpx across the runs"
-        " (before: %.3fpx to %.3fpx)",
-        afterMin, afterMax, beforeMin, beforeMax
-    );
-    REQUIRE(
-        afterHalfMax - afterHalfMin <= 1.0,
-        "the whole-pixel width still depends on the angle: %.3fpx to %.3fpx", afterHalfMin, afterHalfMax
-    );
-    return true;
-}
-
-// 23: ANTIALIASED EDGES. The run placed half a pixel off the grid has partial coverage at
-// both of its edges, and the profile ramps monotonically into the body and back out of it.
-// This is a statement about the RAMP, so it is measured on the run whose edges cannot land on
-// a pixel boundary: a stroke that ends exactly on a pixel boundary has no partial pixel in any
-// implementation, and asserting a ramp there would assert the wrong thing.
-//
-// BOTH EMPHASIS STATES, because what the pass writes is the STROKE'S STRENGTH times its own
-// coverage (GraphPanelFrame.cpp's curveStrength), and the profile therefore scales with the
-// strength without changing shape:
-//   * `aAfter`/`aBefore` are the ink model as the file renders it everywhere else - an EMPTY
-//     selection, i.e. every curve at the design's dimmed strength (kUnselectedAlpha);
-//   * `aFullStrength` is the SAME model with the measured run put in play by a selection, so
-//     its body is at full strength.
-// The ORIGINAL bar (a fully covered body, and the column's ink being the nominal width)
-// is asserted on the full-strength pass, and the dimmed pass carries it scaled by the
-// design's own dimmed strength; the WIDTH claim is stated strength-free in both (the
-// column's ink is the body's level times the nominal width, whatever that level is), so a
-// smear fails at either strength.
-bool checkStrokeEdges(
-    const Rendered& aAfter, const Rendered& aBefore, const Rendered& aFullStrength, const theme::Graph& aTheme
-) {
-    REQUIRE(gui::stroke::isReady(), "precondition: the coverage pass must be built for this assertion");
-
-    // GraphPanelFrame.cpp's kUnselectedAlpha, file-static there: the strength every curve takes
-    // while no channel owns a selected key.
-    constexpr double kDimmedStrength = 0.45;
-
-    const InkProbe probe = InkProbe::make(aTheme.channelColor(kTypeA, 0));
-    int firstRow = 0;
-    int lastRow = 0;
-    profileRows(kPhaseA.y(), firstRow, lastRow);
-    const int columns[] = {140, 185, 230};
-    int ramps = 0;
-    for (int column : columns) {
-        const std::vector<double> after = columnProfile(aAfter.image, probe, column, firstRow, lastRow);
-        const std::vector<double> before = columnProfile(aBefore.image, probe, column, firstRow, lastRow);
-        const std::vector<double> full = columnProfile(aFullStrength.image, probe, column, firstRow, lastRow);
-
-        struct Profile {
-            const char* state;
-            const std::vector<double>* values;
-            bool fullStrength;
-        };
-        const Profile profiles[] = {
-            {"dimmed", &after, false},
-            {"full_strength", &full, true},
-        };
-        for (const Profile& profile : profiles) {
-            const std::vector<double>& values = *profile.values;
-            // The peak and its index.
-            int peak = 0;
-            for (size_t i = 1; i < values.size(); ++i)
-                if (values[i] > values[size_t(peak)])
-                    peak = int(i);
-            double sum = 0.0;
-            for (double c : values)
-                sum += c;
-            const double body = values[size_t(peak)];
-            std::printf(
-                "MEASURED stroke_edge column=%d state=%s rows=%d..%d sum=%.3fpx body=%.3f (dimmed_strength=%.2f)"
-                " profile=[%s] fringe_sum=%.3fpx fringe=[%s]\n",
-                column, profile.state, firstRow, lastRow, sum, body, kDimmedStrength, qPrintable(profileText(values)),
-                std::accumulate(before.begin(), before.end(), 0.0), qPrintable(profileText(before))
-            );
-
-            // THE BODY. Full strength: the original bar, a fully covered body. Dimmed: the
-            // SAME bar scaled by the strength the design applies (0.45), which is the state
-            // the panel is actually in whenever nothing is selected.
-            if (profile.fullStrength) {
-                REQUIRE(
-                    body >= 0.99,
-                    "column %d: the FULL-STRENGTH stroke's body is only %.3f covered (dimmed_strength=%.2f)",
-                    column, body, kDimmedStrength
-                );
-            } else {
-                REQUIRE(
-                    std::abs(body - kDimmedStrength) <= 0.02,
-                    "column %d: the dimmed stroke's body is %.3f, not the design's dimmed strength %.2f"
-                    " (kUnselectedAlpha in GraphPanelFrame.cpp)",
-                    column, body, kDimmedStrength
-                );
-            }
-            // An intermediate sample on EACH side of the body, and nothing outside the ramp
-            // reaching the body's own level.
-            const auto intermediate = [](const std::vector<double>& aProfile, int aFrom, int aTo) {
-                int found = 0;
-                for (int i = aFrom; i <= aTo && i >= 0 && i < int(aProfile.size()); ++i)
-                    if (aProfile[size_t(i)] > 0.15 && aProfile[size_t(i)] < 0.85)
-                        ++found;
-                return found;
-            };
-            const int below = intermediate(values, peak - 3, peak - 1);
-            const int above = intermediate(values, peak + 1, peak + 3);
-            REQUIRE(
-                below >= 1 && above >= 1,
-                "column %d: the %s stroke's edge carries no intermediate coverage (%d samples below the body, %d"
-                " above) - the stroke's edge is a hard step, not a ramp",
-                column, profile.state, below, above
-            );
-            // Monotone into the body and monotone out of it.
-            for (int i = 1; i <= peak; ++i)
-                REQUIRE(
-                    values[size_t(i)] >= values[size_t(i - 1)] - 0.02,
-                    "column %d: the %s stroke's rising edge is not monotone at sample %d (%.3f then %.3f)", column,
-                    profile.state, i, values[size_t(i - 1)], values[size_t(i)]
-                );
-            for (int i = peak + 1; i < int(values.size()); ++i)
-                REQUIRE(
-                    values[size_t(i)] <= values[size_t(i - 1)] + 0.02,
-                    "column %d: the %s stroke's falling edge is not monotone at sample %d (%.3f then %.3f)", column,
-                    profile.state, i, values[size_t(i - 1)], values[size_t(i)]
-                );
-            // The ramp is a RAMP, not a smear: the whole column's ink is the nominal width AT
-            // THIS STROKE'S OWN BODY LEVEL - the strength-free form of the original bar, which
-            // is exactly `sum == kWidthPx` on the full-strength pass.
-            REQUIRE(
-                std::abs(sum - body * double(gui::stroke::kWidthPx)) <= 0.6,
-                "column %d: the %s stroke's perpendicular ink is %.3fpx against %.3fpx at a body of %.3f - the"
-                " column does not carry the nominal width",
-                column, profile.state, sum, body * double(gui::stroke::kWidthPx), body
-            );
-        }
-        ++ramps;
-    }
-
-    REQUIRE(ramps == 3, "precondition: only %d of 3 columns were measured", ramps);
-    return true;
-}
-
-// 24: NO DOUBLE-DARKENING AT A JOIN. Two segments' capsules overlap around their shared
-// vertex, and a stroke that composites one segment after the other blends the overlap twice.
-// The curve measured here is DIMMED (the pass selects nothing, so every curve is stroked at
-// kUnselectedAlpha - the emphasis is the SELECTION's, not the focus's) and that is what makes
-// the assertion sharp: on a dimmed curve an
-// overlap that both segments fully cover composites DARKER than the stroke's own body, which
-// a full-strength curve would hide (opaque ink over opaque ink is the same pixel).
-//
-// The bound is the pass's own arithmetic: a pixel's coverage can never exceed what ONE
-// segment's capsule produces at that pixel's distance, because the stroke is the UNION of the
-// capsules - and every pixel near the corner is measured against it.
-//
-// MEASURED on the ink model's corner, dimmed (body 0.450): the worst pixel for the coverage
-// stroke is +0.000 over the bound (measured 0.357 against a bound of 0.357 - the pass IS the
-// bound), and for the fringe stroke +0.093 (0.450 against 0.357). At FULL strength the same
-// pixel comes out 1.000 against 0.79, i.e. the fringe stroke puts 21% more ink on the join's
-// outer shoulder than one capsule can explain.
-bool checkStrokeJoin(const Rendered& aAfter, const Rendered& aBefore, const theme::Graph& aTheme) {
-    REQUIRE(gui::stroke::isReady(), "precondition: the coverage pass must be built for this assertion");
-
-    const InkProbe probe = InkProbe::make(aTheme.channelColor(kTypeA, 0));
-    // The curve's strength, MEASURED off its own body rather than assumed: the pixels along
-    // arm A's centreline are fully covered, so their coverage IS the strength.
-    double body = 0.0;
-    for (int x = 305; x <= 365; ++x)
-        body = std::max(body, probe.coverage(aAfter.image, x, 40));
-    REQUIRE(
-        body > 0.15 && body < 0.99,
-        "precondition: the join assertion needs a DIMMED curve (measured body coverage %.3f)", body
-    );
-
-    struct Worst {
-        double excess = -1e9;
-        double measured = 0.0;
-        double bound = 0.0;
-        QPoint at;
-    };
-    const auto scan = [&probe, body](const Rendered& aRendered, const QPointF& aA, const QPointF& aB, const QPointF& aV) {
-        Worst worst;
-        for (int y = int(aV.y()) - 5; y <= int(aV.y()) + 5; ++y) {
-            for (int x = int(aV.x()) - 5; x <= int(aV.x()) + 5; ++x) {
-                const QPointF centre(double(x) + 0.5, double(y) + 0.5);
-                // The union's coverage: the NEARER capsule, which is the larger of the two.
-                const double d = std::min(distanceToSegment(centre, aA, aV), distanceToSegment(centre, aV, aB));
-                const double bound = capsuleCoverage(d, body);
-                const double measured = probe.coverage(aRendered.image, x, y);
-                if (measured - bound > worst.excess) {
-                    worst.excess = measured - bound;
-                    worst.measured = measured;
-                    worst.bound = bound;
-                    worst.at = QPoint(x, y);
-                }
-            }
-        }
-        return worst;
-    };
-    const Worst before = scan(aBefore, kCornerA, kCornerB, kCornerV);
-    const Worst after = scan(aAfter, kCornerA, kCornerB, kCornerV);
-
-    // THE PIXELS AROUND THE VERTEX, as the excess of each pixel's own coverage over what ONE
-    // capsule's profile allows at that pixel's centre - printed as whole percents, so a digit
-    // is the claim itself: a stroke that matches the union shows zeros, and a stroke that
-    // blends its segments twice shows the fringe pixels one or two steps dark.
-    const auto excessGrid = [&probe, body](const Rendered& aRendered, const QPointF& aA, const QPointF& aB,
-                                           const QPointF& aV) {
-        QString text;
-        for (int y = int(aV.y()) - 2; y <= int(aV.y()) + 2; ++y) {
-            for (int x = int(aV.x()) - 2; x <= int(aV.x()) + 2; ++x) {
-                const QPointF centre(double(x) + 0.5, double(y) + 0.5);
-                const double d = std::min(distanceToSegment(centre, aA, aV), distanceToSegment(centre, aV, aB));
-                const double excess = probe.coverage(aRendered.image, x, y) - capsuleCoverage(d, body);
-                const int step = int(std::floor(excess * 100.0 + 0.5));
-                text += step < 0 ? QLatin1Char('-') : QLatin1Char(char('0' + std::min(9, step)));
-            }
-            text += QLatin1Char(' ');
-        }
-        return text;
-    };
-    std::printf(
-        "MEASURED stroke_join_box pixels=%d..%d x %d..%d before=[%s] after=[%s] (percents of coverage over"
-        " one capsule's own profile, one digit per pixel, rows top to bottom)\n",
-        int(kCornerV.y()) - 2, int(kCornerV.y()) + 2, int(kCornerV.x()) - 2, int(kCornerV.x()) + 2,
-        qPrintable(excessGrid(aBefore, kCornerA, kCornerB, kCornerV)),
-        qPrintable(excessGrid(aAfter, kCornerA, kCornerB, kCornerV))
-    );
-
-    std::printf(
-        "MEASURED stroke_join vertex=(%d,%d) body_coverage=%.3f arms=A(%d,%d)->V(%d,%d)->B(%d,%d)\n",
-        int(kCornerV.x()), int(kCornerV.y()), body, int(kCornerA.x()), int(kCornerA.y()), int(kCornerV.x()),
-        int(kCornerV.y()), int(kCornerB.x()), int(kCornerB.y())
-    );
-    std::printf(
-        "MEASURED stroke_join_worst after_excess=%+.3f after_measured=%.3f after_bound=%.3f at=(%d,%d)"
-        " before_excess=%+.3f before_measured=%.3f before_bound=%.3f at=(%d,%d)\n",
-        after.excess, after.measured, after.bound, after.at.x(), after.at.y(), before.excess, before.measured,
-        before.bound, before.at.x(), before.at.y()
-    );
-    // THE ASSERTION: no pixel within 5px of the vertex carries more ink than the nearest
-    // capsule's own profile allows at that pixel's own distance. A stroke that composites its
-    // segments one after another breaks this by up to (1-a) of the covered amount.
-    REQUIRE(
-        after.excess <= 0.08,
-        "the join is darker than a single segment can explain: %.3f of coverage over the bound %.3f"
-        " (measured %.3f) at (%d,%d)",
-        after.excess, after.bound, after.measured, after.at.x(), after.at.y()
-    );
-    // ... and no pixel there is darker than the stroke's own body.
-    REQUIRE(
-        after.measured <= body + 0.02,
-        "the join is darker than the stroke's body: %.3f at (%d,%d) against a body of %.3f", after.measured,
-        after.at.x(), after.at.y(), body
-    );
-    // The measurement DISCRIMINATES: the fringe stroke this pass replaces is the one the bound
-    // catches (its segments' fringes are blended over each other). If that ever stops being
-    // true, the assertion above is no longer measuring what it claims to.
-    REQUIRE(
-        before.excess > after.excess,
-        "the join bound does not separate the two strokes: before %+.3f, after %+.3f", before.excess,
-        after.excess
-    );
-    return true;
-}
-
-// 25: THE INK IS STILL WHERE THE POLYLINE IS. The stroke's width and its joins were the
-// defect; its POSITION is not up for negotiation. Three statements, all of them about the
-// shipping frame: every sample of every run has ink on the pixel under it, every inked pixel
-// of the frame is inside the runs' own bounds (grown by the stroke's whole footprint), and
-// the coverage-weighted centre of the stroke's cross-section is on the centreline.
-bool checkStrokePosition(const Rendered& aAfter, const Rendered& aBefore, const theme::Graph& aTheme) {
-    REQUIRE(gui::stroke::isReady(), "precondition: the coverage pass must be built for this assertion");
-
-    const InkProbe probe = InkProbe::make(aTheme.channelColor(kTypeA, 0));
-
-    // The stroke's own body level, MEASURED off the fully covered horizontal run instead of
-    // assumed: the emphasis gives a curve that owns no selected key the design's dimmed
-    // strength (kUnselectedAlpha, GraphPanelFrame.cpp), and every pass here is drawn with an
-    // empty selection - so every bar below is stated against this level, not against a
-    // full-strength 1.0.
-    double body = 0.0;
-    for (int x = 120; x <= 250; ++x)
-        body = std::max(body, probe.coverage(aAfter.image, x, 60));
-    REQUIRE(body > 0.15, "precondition: the ink model's horizontal run carries no body ink (%.3f)", body);
-
-    // (a) the ink covers the polyline: 17 samples of every segment, in TWO SETS.
-    //
-    // THE PATH'S ENDS ARE NOT INTERIOR SAMPLES, and the difference is the round cap rather than
-    // a shift: a sample at t = 0 or t = 1 of a path's OWN end is the pixel at the tip of the
-    // stroked path, whose centre sits up to sqrt(0.5) px from the endpoint and therefore
-    // carries the capsule's profile at THAT distance (measured: 0.793 of the body) rather than
-    // the body's own level. Every run here lies inside the plot, and no two runs share ink
-    // (they are disjoint regions), so a tip pixel is a cap and nothing else. The corner run's
-    // MIDDLE vertex is NOT an end - two of its segments cover that pixel, and its coverage is
-    // the union's, which is why the table marks each sample's own end flags.
-    struct SampleRun {
-        QPointF a;
-        QPointF b;
-        bool aIsPathEnd; // a path's own end (a round cap), not a vertex shared with the next segment
-        bool bIsPathEnd;
-    };
-    const SampleRun runs[] = {
-        {kFlatA, kFlatB, true, true},
-        {kPhaseA, kPhaseB, true, true},
-        {kDiagonalA, kDiagonalB, true, true},
-        {kSteepA, kSteepB, true, true},
-        {kCornerA, kCornerV, true, false},
-        {kCornerV, kCornerB, false, true},
-    };
-    double worst = 2.0; // above any coverage, so the first interior sample always sets the pair below
-    QPoint worstAt;
-    int interiorSamples = 0;
-    int endSamples = 0;
-    for (const SampleRun& run : runs) {
-        for (int i = 0; i <= 16; ++i) {
-            const double t = double(i) / 16.0;
-            const double px = run.a.x() + t * (run.b.x() - run.a.x());
-            const double py = run.a.y() + t * (run.b.y() - run.a.y());
-            const int x = int(std::floor(px));
-            const int y = int(std::floor(py));
-            const double cov = probe.coverage(aAfter.image, x, y);
-            const bool isPathEnd = (i == 0 && run.aIsPathEnd) || (i == 16 && run.bIsPathEnd);
-            if (!isPathEnd) {
-                ++interiorSamples;
-                if (cov < worst) {
-                    worst = cov;
-                    worstAt = QPoint(x, y);
-                }
-                continue;
-            }
-            // THE CAP'S OWN LEVEL, at the tip pixel's own distance from the endpoint: the same
-            // capsuleCoverage(distance, strength, halfWidth) the join assertion bounds with,
-            // with the strength measured above as `body` and the filter read from the pass's
-            // own constant - so it is a measurement of the cap's profile, not a hardcoded
-            // pi/4, and it keeps its meaning if the width or the filter ever changes. A square
-            // end loses exactly this pixel and fails here; the round cap cannot.
-            const QPointF end = (i == 0) ? run.a : run.b;
-            const double d = std::hypot(double(x) + 0.5 - end.x(), double(y) + 0.5 - end.y());
-            const double capExpected = capsuleCoverage(d, body, double(gui::stroke::kWidthPx) * 0.5);
-            ++endSamples;
-            std::printf(
-                "MEASURED stroke_position_path_end sample=(%d,%d) t=%.2f coverage=%.3f distance=%.2fpx"
-                " cap_expected=%.3f body=%.3f\n",
-                x, y, t, cov, d, capExpected, body
-            );
-            REQUIRE(
-                cov >= capExpected - 0.02,
-                "the stroked path's END at (%d,%d) (t=%.2f of its segment) carries %.3f, less than its own round"
-                " cap's profile allows at %.2fpx from the endpoint (%.3f at a body of %.3f): the end is not the"
-                " capsule's round cap",
-                x, y, t, cov, d, capExpected, body
-            );
-        }
-    }
-    std::printf(
-        "MEASURED stroke_position interior_samples=%d worst_coverage=%.3f at=(%d,%d) interior_bar=%.3f"
-        " end_samples=%d body=%.3f\n",
-        interiorSamples, worst, worstAt.x(), worstAt.y(), body - 0.02, endSamples, body
-    );
-    REQUIRE(
-        interiorSamples == 92 && endSamples == 10,
-        "precondition: the sample sets are %d interior and %d end samples, not the 92 and 10 the runs have",
-        interiorSamples, endSamples
-    );
-    // THE INTERIOR BAR IS THE BODY'S OWN LEVEL, strength-free: every interior sample of every
-    // run measures a RAW coverage of 1.0 (verified over all 92 of them: the pixel under a
-    // fractional sample is at most half a pixel off the centreline in each axis, and the runs'
-    // own fractional structure keeps the perpendicular distance inside the body), so "the ink
-    // under every sample of the polyline is the stroke's own body" is what the original
-    // full-strength bar meant, at any strength.
-    REQUIRE(
-        worst >= body - 0.02,
-        "the stroke does not cover its own polyline: an INTERIOR sample at (%d,%d) carries only %.3f against the"
-        " stroke's own body level %.3f",
-        worstAt.x(), worstAt.y(), worst, body
-    );
-
-    // (b) no ink anywhere the runs are not. The bound is every run's own bounding box, grown
-    // by the stroke's whole footprint (half the width, half the filter, and a pixel).
-    QRect allowed;
-    const int reach = 3;
-    for (const InkRun& run : kInkRuns)
-        allowed = allowed.united(grow(QRect(int(std::min(run.a.x(), run.b.x())), int(std::min(run.a.y(), run.b.y())), int(std::abs(run.a.x() - run.b.x())) + 1, int(std::abs(run.a.y() - run.b.y())) + 1), reach));
-    allowed = allowed.united(grow(QRect(int(kCornerA.x()), int(kCornerA.y()), int(kCornerV.x() - kCornerA.x()) + 1, int(kCornerB.y() - kCornerA.y()) + 1), reach));
-    for (const QPointF& point : denseWavyPoints())
-        allowed = allowed.united(grow(QRect(int(point.x()), int(point.y()), 1, 1), reach));
-    QRect inked;
-    for (int y = kPlot.top(); y <= kPlot.bottom(); ++y) {
-        for (int x = kPlot.left(); x <= kPlot.right(); ++x) {
-            if (probe.coverage(aAfter.image, x, y) > 0.1) {
-                const QRect pixel(x, y, 1, 1);
-                inked = inked.isNull() ? pixel : inked.united(pixel);
-            }
-        }
-    }
-    std::printf(
-        "MEASURED stroke_position ink_bbox=(%d,%d %dx%d) allowed=(%d,%d %dx%d) reach=%dpx\n", inked.left(),
-        inked.top(), inked.width(), inked.height(), allowed.left(), allowed.top(), allowed.width(),
-        allowed.height(), reach
-    );
-    REQUIRE(!inked.isNull(), "precondition: the ink model painted nothing at all");
-    REQUIRE(
-        allowed.contains(inked), "the stroke painted outside its own polylines: ink at (%d,%d %dx%d)",
-        inked.left(), inked.top(), inked.width(), inked.height()
-    );
-
-    // (c) the cross-section's own centre: the coverage-weighted centroid of each perpendicular
-    // profile must sit on the centreline, for the grid-aligned run and the half-phase one.
-    struct Centroid {
-        const char* name;
-        QPointF a;
-        QPointF b;
-    };
-    const Centroid centroids[] = {
-        {"horizontal", kFlatA, kFlatB}, {"horizontal_half_pixel_off", kPhaseA, kPhaseB},
-    };
-    for (const Centroid& run : centroids) {
-        int rowFirst = 0;
-        int rowLast = 0;
-        profileRows(run.a.y(), rowFirst, rowLast);
-        const std::vector<double> profile = columnProfile(aAfter.image, probe, 185, rowFirst, rowLast);
-        double weight = 0.0;
-        double moment = 0.0;
-        for (size_t i = 0; i < profile.size(); ++i) {
-            const double y = double(rowFirst) + double(i) + 0.5;
-            weight += profile[i];
-            moment += profile[i] * y;
-        }
-        const double centroid = weight > 0.0 ? moment / weight : -1.0;
-        std::printf(
-            "MEASURED stroke_position centroid run=%-24s centre=%.1f measured=%.3f offset=%+.3fpx\n",
-            run.name, run.a.y(), centroid, centroid - run.a.y()
-        );
-        REQUIRE(
-            std::abs(centroid - run.a.y()) <= 0.5, "run %s: the ink's centre is %.3fpx off the centreline",
-            run.name, centroid - run.a.y()
-        );
-    }
-
-    // (d) the ENDS are the capsule's own round caps - the reason the pass measures the
-    // distance to the SEGMENT and not to its infinite line. The pixels beside an endpoint
-    // and inside the stroke's own half width are part of the cap's disc; a stroke whose ends
-    // are cut square (which is what a quad strip's end is) puts nothing there at all.
-    struct EndCap {
-        const char* name;
-        QPointF end;  // the polyline's own endpoint
-        QPointF ask;  // the pixel to read: its CENTRE must be a corner of the cap's disc
-        int outward;  // the direction that leaves the stroke, in pixels
-    };
-    const double half = double(gui::stroke::kWidthPx) * 0.5;
-    const EndCap caps[] = {
-        {"horizontal_start", kFlatA, QPointF(109, 60), -1},
-        {"horizontal_end", kFlatB, QPointF(260, 60), +1},
-    };
-    for (const EndCap& cap : caps) {
-        const QPointF centre(cap.ask.x() + 0.5, cap.ask.y() + 0.5);
-        const double d = std::hypot(centre.x() - cap.end.x(), centre.y() - cap.end.y());
-        REQUIRE(
-            d < half, "precondition: the cap probe %s is %.2fpx from the endpoint, not inside %.1fpx", cap.name, d,
-            half
-        );
-        const double after = probe.coverage(aAfter.image, int(cap.ask.x()), int(cap.ask.y()));
-        const double before = probe.coverage(aBefore.image, int(cap.ask.x()), int(cap.ask.y()));
-        const double beyond = probe.coverage(aAfter.image, int(cap.ask.x()) + 2 * cap.outward, int(cap.ask.y()));
-        std::printf(
-            "MEASURED stroke_position_cap %s endpoint=(%.1f,%.1f) probe=(%d,%d) distance=%.2fpx after=%.3f"
-            " before=%.3f two_px_beyond=%.3f body=%.3f tolerance=%.3f\n",
-            cap.name, cap.end.x(), cap.end.y(), int(cap.ask.x()), int(cap.ask.y()), d, after, before, beyond, body,
-            body * 0.5
-        );
-        // The cap's ink is a fraction of the stroke's OWN body level (measured above), so the
-        // bar is the strength-scaled form of the original "at least half covered": a square-cut
-        // end puts nothing there at any strength, and the round cap covers most of the probe.
-        REQUIRE(
-            after >= body * 0.5,
-            "%s: the stroke's end carries %.3f of ink against its own body level %.3f (the capsule's own round cap"
-            " covers most of that probe; the fringe stroke puts %.3f there)",
-            cap.name, after, body, before
-        );
-        REQUIRE(beyond <= 0.05, "%s: the cap spills two pixels past its own end: %.3f", cap.name, beyond);
-    }
-    return true;
-}
-
-// 26: THE PASS IS A GUEST IN THE FRAME - the same rule the contrast outline's own check pins,
-// and for the same reason. The ImGui backend keeps its shader program, its vertex array and
-// its ARRAY BUFFER bound across the commands of a draw list and uploads the NEXT draw list's
-// vertices with whatever array buffer is bound when it gets there, so the one place a leak
-// would be invisible in a single-draw-list frame is exactly the place it would be fatal. The
-// callback is therefore driven directly, with the participants bound to markers, from the
-// command ImGui itself recorded for this frame.
-bool checkStrokeGuestState() {
-    REQUIRE(gui::stroke::isReady(), "precondition: the coverage pass must be built for this assertion");
-
-    // The command the panel inserted: a callback command carrying this curve's own geometry.
-    // Finding it is itself the structural assertion that the pass is IN the draw list (and so
-    // between the ticks and the key markers) rather than a pass over the finished frame.
-    ImDrawData* drawData = ImGui::GetDrawData();
-    REQUIRE(drawData != nullptr, "precondition: the frame must still be current");
-    const ImDrawList* list = nullptr;
-    const ImDrawCmd* command = nullptr;
-    int callbacks = 0;
-    for (int i = 0; i < drawData->CmdListsCount; ++i) {
-        const ImDrawList* candidate = drawData->CmdLists[i];
-        for (int c = 0; c < candidate->CmdBuffer.Size; ++c) {
-            if (candidate->CmdBuffer[c].UserCallback != gui::stroke::drawListCallback)
-                continue;
-            ++callbacks;
-            if (!list) {
-                list = candidate;
-                command = &candidate->CmdBuffer[c];
-            }
-        }
-    }
-    REQUIRE(callbacks > 0, "the frame carries no stroke callback at all: drawPanel did not insert the pass");
-    REQUIRE(command->UserCallbackData != nullptr, "the stroke callback carries no geometry");
-
-    // Every participant the pass could disturb, bound to a marker: its own vertex array, its
-    // own texture on unit 0 with a NON-ZERO active unit, its own array buffer, and a real
-    // program (the pass binds two of its own).
-    auto& funcs = gl::Global::functions();
-    gl::VertexArrayObject markerVao;
-    markerVao.bind();
-    gl::Texture markerTexture;
-    markerTexture.create(QSize(4, 4));
-    gl::BufferObject markerBuffer(GL_ARRAY_BUFFER);
-    markerBuffer.bind();
-    gl::EasyShaderProgram markerProgram;
-    REQUIRE(
-        markerProgram.setVertexSource(QStringLiteral(
-            "#version 400 core\nvoid main() { gl_Position = vec4(0.0, 0.0, 0.0, 1.0); }\n"
-        )) && markerProgram.setFragmentSource(QStringLiteral(
-            "#version 400 core\nout vec4 c;\nvoid main() { c = vec4(0.0); }\n"
-        )) && markerProgram.link(),
-        "precondition: the marker program did not build"
-    );
-    markerProgram.bind();
-    funcs.glActiveTexture(GL_TEXTURE1);
-    funcs.glBindTexture(GL_TEXTURE_2D, markerTexture.id());
-    funcs.glActiveTexture(GL_TEXTURE0);
-    funcs.glBindTexture(GL_TEXTURE_2D, markerTexture.id());
-    funcs.glActiveTexture(GL_TEXTURE1);
-    // The rest of the state the pass touches, set to the values the ImGui backend itself
-    // keeps while a draw list is being rendered - so "the state it found is the state it
-    // leaves" is a statement about the backend's own state and not about the harness's.
-    markerProgram.bind();
-    funcs.glEnable(GL_BLEND);
-    funcs.glBlendEquation(GL_FUNC_ADD);
-    funcs.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    funcs.glEnable(GL_SCISSOR_TEST);
-    funcs.glScissor(kPlot.left(), kPlot.top(), kPlot.width(), kPlot.height());
-
-    gFbo->bind();
-    funcs.glDisable(GL_SCISSOR_TEST);
-    funcs.glScissor(0, 0, kViewW, kViewH);
-    funcs.glViewport(0, 0, kViewW, kViewH);
-    funcs.glClearColor(kClear.redF(), kClear.greenF(), kClear.blueF(), 1.0f);
-    funcs.glClear(GL_COLOR_BUFFER_BIT);
-
-    // Every piece of state the pass has any business touching, read before and after the
-    // call: the assertion is that the two are the same, so a leak cannot be mistaken for a
-    // value this harness happened to set.
-    struct GuestState {
-        GLint program = 0;
-        GLint vao = 0;
-        GLint arrayBuffer = 0;
-        GLint activeTexture = 0;
-        GLint texture1 = 0;
-        GLint drawFbo = 0;
-        GLint viewport[4] = {0, 0, 0, 0};
-        GLint scissor[4] = {0, 0, 0, 0};
-        GLint blend = 0;
-        GLint dither = 0;
-        GLint equation = 0;
-        GLint src = 0;
-        GLint dst = 0;
-    };
-    const auto readState = [&funcs]() {
-        GuestState state;
-        funcs.glGetIntegerv(GL_CURRENT_PROGRAM, &state.program);
-        funcs.glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &state.vao);
-        funcs.glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &state.arrayBuffer);
-        funcs.glGetIntegerv(GL_ACTIVE_TEXTURE, &state.activeTexture);
-        funcs.glGetIntegerv(GL_TEXTURE_BINDING_2D, &state.texture1);
-        funcs.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &state.drawFbo);
-        funcs.glGetIntegerv(GL_VIEWPORT, state.viewport);
-        funcs.glGetIntegerv(GL_SCISSOR_BOX, state.scissor);
-        funcs.glGetIntegerv(GL_BLEND_EQUATION_RGB, &state.equation);
-        funcs.glGetIntegerv(GL_BLEND_SRC_RGB, &state.src);
-        funcs.glGetIntegerv(GL_BLEND_DST_RGB, &state.dst);
-        state.blend = funcs.glIsEnabled(GL_BLEND) ? 1 : 0;
-        state.dither = funcs.glIsEnabled(GL_DITHER) ? 1 : 0;
-        return state;
-    };
-    const GuestState found = readState();
-    const bool quiet = noGlError("the harness's own state before the stroke callback");
-
-    gui::stroke::drawListCallback(list, command);
-
-    const GuestState left = readState();
-
-    // The callback drew: its ink is in the framebuffer it was handed, through its own
-    // scratch and composite, and not one pixel outside the plot.
-    const QImage after = readFboTopDown();
-    const int ink = inkCount(after, QRect(kPlot.left(), kPlot.top(), kPlot.width(), kPlot.height()));
-    const int outside = inkCount(after, QRect(0, 0, kViewW, kViewH))
-        - inkCount(after, QRect(0, 0, kViewW, kViewH).intersected(QRect(kPlot.left(), kPlot.top(), kPlot.width(), kPlot.height())));
-    std::printf(
-        "MEASURED stroke_state_restored callbacks=%d quiet_before=%d ink_in_plot=%d ink_outside=%d\n", callbacks,
-        quiet ? 1 : 0, ink, outside
-    );
-    std::printf(
-        "MEASURED stroke_state_restored found: program=%d vao=%d array_buffer=%d active_texture=0x%x texture1=%d"
-        " draw_fbo=%d viewport=%d,%d,%d,%d scissor=%d,%d,%d,%d blend=%d dither=%d equation=0x%x src=0x%x dst=0x%x\n",
-        found.program, found.vao, found.arrayBuffer, found.activeTexture, found.texture1, found.drawFbo,
-        found.viewport[0], found.viewport[1], found.viewport[2], found.viewport[3], found.scissor[0],
-        found.scissor[1], found.scissor[2], found.scissor[3], found.blend, found.dither, GLuint(found.equation),
-        GLuint(found.src), GLuint(found.dst)
-    );
-    std::printf(
-        "MEASURED stroke_state_restored left:  program=%d vao=%d array_buffer=%d active_texture=0x%x texture1=%d"
-        " draw_fbo=%d viewport=%d,%d,%d,%d scissor=%d,%d,%d,%d blend=%d dither=%d equation=0x%x src=0x%x dst=0x%x\n",
-        left.program, left.vao, left.arrayBuffer, left.activeTexture, left.texture1, left.drawFbo, left.viewport[0],
-        left.viewport[1], left.viewport[2], left.viewport[3], left.scissor[0], left.scissor[1], left.scissor[2],
-        left.scissor[3], left.blend, left.dither, GLuint(left.equation), GLuint(left.src), GLuint(left.dst)
-    );
-
-    REQUIRE(ink > 200, "the callback, driven directly, painted %d pixels of ink", ink);
-    REQUIRE(outside == 0, "the callback painted %d pixels outside the plot's own clip", outside);
-    // The state it was handed is not an accident of the harness: it is the backend's own.
-    REQUIRE(
-        found.program == GLint(markerProgram.id()) && found.vao == GLint(markerVao.id())
-            && found.arrayBuffer == GLint(markerBuffer.id()) && found.activeTexture == GLint(GL_TEXTURE1)
-            && found.texture1 == GLint(markerTexture.id()) && found.blend == 1
-            && found.equation == GLint(GL_FUNC_ADD) && found.src == GLint(GL_SRC_ALPHA)
-            && found.dst == GLint(GL_ONE_MINUS_SRC_ALPHA),
-        "precondition: the harness could not present the pass with the frame's own bindings"
-    );
-
-    REQUIRE(
-        left.program == found.program,
-        "the pass left program %d bound, not the %d it found (the ImGui backend keeps ITS program bound across a"
-        " draw list's commands, and every command after this one would be drawn with the wrong shader)",
-        left.program, found.program
-    );
-    REQUIRE(
-        left.vao == found.vao, "the pass left vertex array %d bound, not the %d it found", left.vao, found.vao
-    );
-    REQUIRE(
-        left.arrayBuffer == found.arrayBuffer,
-        "the pass left array buffer %d bound, not the %d it found (the backend uploads the next draw list's"
-        " vertices with whatever is bound)",
-        left.arrayBuffer, found.arrayBuffer
-    );
-    REQUIRE(
-        left.activeTexture == found.activeTexture && left.texture1 == found.texture1,
-        "the pass left texture unit 0x%x with texture %d bound, not the 0x%x/%d it found", left.activeTexture,
-        left.texture1, found.activeTexture, found.texture1
-    );
-    REQUIRE(
-        left.drawFbo == found.drawFbo,
-        "the pass ended with FBO %d bound, not the %d it was asked to draw into", left.drawFbo, found.drawFbo
-    );
-    REQUIRE(
-        left.scissor[0] == found.scissor[0] && left.scissor[1] == found.scissor[1]
-            && left.scissor[2] == found.scissor[2] && left.scissor[3] == found.scissor[3],
-        "the pass left the scissor box %d,%d,%d,%d, not the %d,%d,%d,%d it found", left.scissor[0],
-        left.scissor[1], left.scissor[2], left.scissor[3], found.scissor[0], found.scissor[1], found.scissor[2],
-        found.scissor[3]
-    );
-    REQUIRE(
-        left.viewport[0] == found.viewport[0] && left.viewport[1] == found.viewport[1]
-            && left.viewport[2] == found.viewport[2] && left.viewport[3] == found.viewport[3],
-        "the pass left the viewport %d,%d,%d,%d, not the %d,%d,%d,%d it found", left.viewport[0],
-        left.viewport[1], left.viewport[2], left.viewport[3], found.viewport[0], found.viewport[1],
-        found.viewport[2], found.viewport[3]
-    );
-    REQUIRE(
-        left.blend == found.blend && left.equation == found.equation && left.src == found.src
-            && left.dst == found.dst && left.dither == found.dither,
-        "the pass left blending as enabled %d equation 0x%x src 0x%x dst 0x%x (dither %d), not the"
-        " %d/0x%x/0x%x/0x%x (dither %d) it found",
-        left.blend, GLuint(left.equation), GLuint(left.src), GLuint(left.dst), left.dither, found.blend,
-        GLuint(found.equation), GLuint(found.src), GLuint(found.dst), found.dither
-    );
-    REQUIRE(noGlError("the stroke pass's own state"), "the pass left a GL error behind");
-    return true;
-}
-
-// The BEFORE/AFTER crops the report is read from: the same regions of the same two frames,
-// magnified by the same nearest-neighbour zoom (a crop has to show the PIXELS, not a resampled
-// interpretation of them), as PNGs under build/shots/graph_ink/.
-bool writeInkCrops(const Rendered& aBefore, const Rendered& aAfter, const QString& aDir) {
-    REQUIRE(QDir().mkpath(aDir), "the crop directory %s could not be created", qPrintable(aDir));
-
-    struct Crop {
-        const char* name;
-        QRect region;
-        int zoom;
-    };
-    const auto around = [](const QPointF& aA, const QPointF& aB) {
-        const QPointF mid((aA.x() + aB.x()) * 0.5, (aA.y() + aB.y()) * 0.5);
-        return QRect(int(mid.x()) - 16, int(mid.y()) - 16, 32, 32);
-    };
-    const Crop crops[] = {
-        {"horizontal", around(kFlatA, kFlatB), 6},
-        {"horizontal_half_pixel_off", around(kPhaseA, kPhaseB), 6},
-        {"diagonal45", around(kDiagonalA, kDiagonalB), 6},
-        {"steep72", around(kSteepA, kSteepB), 6},
-        {"join90", QRect(int(kCornerV.x()) - 12, int(kCornerV.y()) - 12, 24, 24), 8},
-        // The dense wavy fixture, cropped where it turns hardest: the "along the line" case.
-        {"dense_curve_turn", QRect(150, 238, 32, 32), 6},
-        // The horizontal run's END: the round cap against the fringe stroke's square end.
-        {"cap_end", QRect(int(kFlatB.x()) - 12, int(kFlatB.y()) - 12, 24, 24), 8},
-    };
-
-    for (const Crop& crop : crops) {
-        const QRect region = crop.region.intersected(QRect(0, 0, kViewW, kViewH));
-        REQUIRE(!region.isEmpty(), "precondition: crop %s is outside the framebuffer", crop.name);
-        const QStringList tags = {QStringLiteral("before"), QStringLiteral("after")};
-        const Rendered* frames[] = {&aBefore, &aAfter};
-        for (int i = 0; i < 2; ++i) {
-            const QImage magnified = frames[i]->image.copy(region).scaled(
-                region.size() * crop.zoom, Qt::IgnoreAspectRatio, Qt::FastTransformation
-            );
-            const QString path = QStringLiteral("%1/%2_%3.png").arg(aDir, tags.at(i), QString::fromLatin1(crop.name));
-            REQUIRE(
-                magnified.save(path, "PNG"), "the crop %s could not be written as a PNG", qPrintable(path)
-            );
-            std::printf(
-                "MEASURED ink_crop file=%s region=(%d,%d %dx%d) zoom=%d pixels=%dx%d\n", qPrintable(path),
-                region.left(), region.top(), region.width(), region.height(), crop.zoom, magnified.width(),
-                magnified.height()
-            );
-        }
-    }
-    return true;
-}
-
-// 27: SUB-PIXEL PLACEMENT OF THE PANEL'S OTHER 1px LINES. MEASURED FIRST, and the answer is
-// a REFUTATION, which is why nothing about these lines was changed:
-//
-//   * the non-AA family (ticks, zero rule, playhead) is only ever asked for an INTEGER
-//     column, and at an integer column the hard-edged line is EXACT: one column at full
-//     coverage, its neighbours at zero, and the column is the one the model named, to the
-//     pixel. There is no phase for it to lose, so the "it jumps a whole pixel" the report
-//     describes is not the renderer's - it is the model's own integer
-//     (GraphPanelModel::playheadX is an `int`, so a fractional frame position is resolved
-//     before the drawing layer sees it, and a fix belongs in that model rather than here).
-//   * what routing the same 1px line through the coverage pass WOULD do is measured too,
-//     with the pass's own coverage function (the function assertion 24 verifies against the
-//     drawn ink to three decimals): a 1px stroke on a pixel boundary puts 0.500 in EACH of
-//     the two columns the boundary divides. That is a two-column grey line where the panel
-//     today has one crisp column - the exact trade the panel's own hairline comment names -
-//     so the chrome stays as it is, and this assertion is what fails if someone routes it
-//     through the pass without re-deriving that decision.
-//   * the handle STEM - 1px, AA on, fractional coordinates - was measured FIRST and was
-//     WRONG: at three stations along it the ink's centroid sat +0.68, +0.75 and +0.76px off
-//     the line the model asked for, because ImGui's AddLine shifts its geometry by
-//     (+0.5,+0.5) (its own 1px convention) and that shift is a perpendicular move of up to
-//     0.71px on a diagonal stem (0.699 for this fixture). It is now drawn by the same
-//     coverage pass as the curves, and re-measured at -0.01, -0.00 and +0.01px -
-//     same colour, same 1px width, same order (between the key marker and its own dot), same
-//     clip - and the measurement below is taken again on the result: the centroid within
-//     0.5px of the line, and partial coverage still at both of its edges.
-// Nothing about the integer chrome was changed, and that is what the assertion pins.
-bool checkHairlinePlacement(
-    const Rendered& aPlayhead, const Rendered& aPlayheadNext, const Rendered& aStem, const Rendered& aStemFringe,
-    const theme::Graph& aTheme
-) {
-    REQUIRE(!aPlayhead.image.isNull() && !aPlayheadNext.image.isNull() && !aStem.image.isNull()
-                && !aStemFringe.image.isNull(),
-            "precondition: the hairline passes were not rendered");
-
-    // (a) the playhead at the integer the model publishes: one column, full, exactly there.
-    const InkProbe playhead = InkProbe::make(aTheme.selected());
-    int x = 200;
-    const std::vector<double> ink = columnInk(aPlayhead, playhead, x - 2, x + 2);
-    const std::vector<double> inkNext = columnInk(aPlayheadNext, playhead, x - 2, x + 2);
-    QString profile;
-    QString profileNext;
-    for (size_t i = 0; i < ink.size(); ++i) {
-        profile += QStringLiteral("%1 ").arg(ink[i], 0, 'f', 1);
-        profileNext += QStringLiteral("%1 ").arg(inkNext[i], 0, 'f', 1);
-    }
-    // The ink's own centre of mass across the columns, in columns: the position a line
-    // placement claim is about. (The column at index i spans [x-2+i, x-1+i] and its centre
-    // is x-1.5+i.)
-    const auto centroidColumn = [&x](const std::vector<double>& aInk) {
-        double weight = 0.0;
-        double moment = 0.0;
-        for (size_t i = 0; i < aInk.size(); ++i) {
-            weight += aInk[i];
-            moment += aInk[i] * (double(x) - 1.5 + double(i));
-        }
-        return weight > 0.0 ? moment / weight : -1.0;
-    };
-    const double centre = centroidColumn(ink);
-    const double centreNext = centroidColumn(inkNext);
-    const double rows = double(kPlot.height());
-    std::printf(
-        "MEASURED hairline_playhead model_x=%d columns=%d..%d ink_per_column=[%s] (full column = %.0f) centroid=%.3f"
-        " (column centre %.1f) model_x+1 ink=[%s] centroid=%.3f\n",
-        x, x - 2, x + 2, qPrintable(profile), rows, centre, double(x) + 0.5, qPrintable(profileNext), centreNext
-    );
-    // The measured claim: the drawn column is the model's own, fully covered, and its
-    // neighbours carry nothing - no gain, no loss, no bleed.
-    REQUIRE(
-        ink[2] >= rows - 1.0, "the playhead's column at x=%d is only %.1f covered of %0.f rows", x, ink[2], rows
-    );
-    REQUIRE(
-        ink[0] <= 0.5 && ink[1] <= 0.5 && ink[3] <= 0.5 && ink[4] <= 0.5,
-        "the playhead bleeds outside its own column at x=%d: [%s]", x, qPrintable(profile)
-    );
-    REQUIRE(
-        std::abs(centre - (double(x) + 0.5)) <= 0.05,
-        "the playhead's ink centre is at %.3f, not the centre of the column it was asked for (%.1f)", centre,
-        double(x) + 0.5
-    );
-    REQUIRE(
-        inkNext[3] >= rows - 1.0,
-        "moving the model one column did not move the line: the column at x+1 carries %.1f of %0.f rows",
-        inkNext[3], rows
-    );
-
-    // (b) what the SAME 1px line would be through the coverage pass, at the same phase: the
-    // stroke's centreline on the boundary between two columns puts half the ink in each. The
-    // function below is the pass's own arithmetic (assertion 24 measures the drawn ink
-    // against it to three decimals), applied to a 1px stroke: halfWidth 0.5.
-    const double split = capsuleCoverage(0.5, 1.0, 0.5);
-    std::printf(
-        "MEASURED hairline_coverage_alternative line=1px phase=boundary (centreline on the column edge) column_left=%.3f"
-        " column_right=%.3f columns=2 drawn_today=1 (column %d at %.1f)\n",
-        split, split, x, ink[2]
-    );
-    REQUIRE(
-        split >= 0.45 && split <= 0.55,
-        "the coverage arithmetic no longer splits a 1px line on a boundary 50/50 (%.3f): the hairline decision below"
-        " needs re-deriving",
-        split
-    );
-
-    // (c) the handle stem, as drawn: 1px, AA on, fractional endpoints. The offset is measured
-    // the only way it means anything - every pixel CENTRE in a window around the station,
-    // weighted by its own coverage and by its own SIGNED perpendicular distance from the line
-    // the model asked for - so the answer is "where is the ink, in pixels, relative to the
-    // line", not "how far does some sampling scheme drift".
-    // The stem's ink is the handle hue - the channel colour mixed 0.2 toward the
-    // panel's halo - at the stored stem's 0.85 alpha.
-    const QColor stemHandleInk = mixedToward(aTheme.channelColor(kTypeA, 0), aTheme.halo(), 0.2f);
-    const InkProbe stem = InkProbe::make(over(withAlpha(stemHandleInk, 0.85f), kClear));
-    const QPointF direction = kStemDot - kStemBase;
-    const double length = std::hypot(direction.x(), direction.y());
-    const QPointF along(direction.x() / length, direction.y() / length);
-    const QPointF across(-along.y(), along.x());
-    // Both strokes, one method: the fringes' stem (ImGui's AddLine, the shipping path) and
-    // the pass's - so the two numbers are comparable rather than two instruments.
-    struct StemMeasure {
-        double worstOffset = 0.0;
-        double worstInk = 0.0;
-        int ramps = 0;
-        QString stations;
-    };
-    const auto measureStem = [&stem, &along, &across, &direction](const Rendered& aRendered) {
-        StemMeasure out;
-        for (double t : {0.25, 0.5, 0.75}) {
-            const QPointF at(kStemBase.x() + t * direction.x(), kStemBase.y() + t * direction.y());
-            const int originX = int(std::floor(at.x()));
-            const int originY = int(std::floor(at.y()));
-            double weight = 0.0;
-            double moment = 0.0;
-            double partials = 0.0;
-            for (int dy = -3; dy <= 3; ++dy) {
-                for (int dx = -3; dx <= 3; ++dx) {
-                    const QPointF centre(double(originX + dx) + 0.5, double(originY + dy) + 0.5);
-                    const QPointF rel(centre.x() - at.x(), centre.y() - at.y());
-                    const double s = rel.x() * along.x() + rel.y() * along.y();
-                    const double d = rel.x() * across.x() + rel.y() * across.y();
-                    if (std::abs(s) > 2.0 || std::abs(d) > 2.5)
-                        continue;
-                    const double cov = stem.coverage(aRendered.image, originX + dx, originY + dy);
-                    weight += cov;
-                    moment += cov * d;
-                    if (cov > 0.15 && cov < 0.85)
-                        partials += 1.0;
-                }
-            }
-            const double offset = weight > 0.0 ? moment / weight : 0.0;
-            const double inked = weight / 4.0;
-            out.worstOffset = std::max(out.worstOffset, std::abs(offset));
-            out.worstInk = std::max(out.worstInk, std::abs(inked - 1.0));
-            if (partials > 0.0)
-                out.ramps += 1;
-            out.stations += QStringLiteral("t%1:off%2/partials%3/ink%4 ")
-                                .arg(t, 0, 'f', 2)
-                                .arg(QString::asprintf("%+.2f", offset))
-                                .arg(int(partials))
-                                .arg(inked, 0, 'f', 2);
-        }
-        return out;
-    };
-    const StemMeasure stemFringe = measureStem(aStemFringe);
-    const StemMeasure stemPass = measureStem(aStem);
-
-    std::printf(
-        "MEASURED hairline_stem base=(%.2f,%.2f) dot=(%.2f,%.2f) length=%.1fpx tolerance=0.50px (offset: + is one"
-        " pixel to one side of the requested line; ink: px per px of stem, 1.00 for a 1px stroke)\n",
-        kStemBase.x(), kStemBase.y(), kStemDot.x(), kStemDot.y(), length
-    );
-    std::printf(
-        "MEASURED hairline_stem_fringe stations=[%s] worst_centroid_offset=%.2fpx worst_ink_error=%.2fpx (ImGui's"
-        " ImGui's raw AddLine - the primitive the panel must not use for a stem)\n",
-        qPrintable(stemFringe.stations), stemFringe.worstOffset, stemFringe.worstInk
-    );
-    std::printf(
-        "MEASURED hairline_stem_pass stations=[%s] worst_centroid_offset=%.2fpx worst_ink_error=%.2fpx (the coverage"
-        " pass)\n",
-        qPrintable(stemPass.stations), stemPass.worstOffset, stemPass.worstInk
-    );
-    REQUIRE(
-        stemPass.ramps == 3,
-        "the handle stem's edges carry no partial coverage at %d of 3 stations: it is not antialiased",
-        3 - stemPass.ramps
-    );
-    REQUIRE(
-        stemPass.worstOffset <= 0.5,
-        "the handle stem's ink sits %.2fpx off the line the model asked for", stemPass.worstOffset
-    );
-    REQUIRE(
-        stemPass.worstInk <= 0.25, "the handle stem loses ink: %.2fpx per px of stem against 1.00 for a 1px stroke",
-        stemPass.worstInk
-    );
-    // The measurement discriminates: ImGui's own AddLine is the stroke that puts the ink off
-    // the line, which is what made routing the stems through the pass worth doing.
-    REQUIRE(
-        stemFringe.worstOffset > stemPass.worstOffset,
-        "the stem measurement does not separate the two strokes: AddLine %.2fpx, the pass %.2fpx",
-        stemFringe.worstOffset, stemPass.worstOffset
     );
     return true;
 }
@@ -6989,15 +4840,83 @@ bool checkHoverMatchesPress() {
 XCAssertHandler* gXCAssertHandler = &gAssertHandler;
 XCErrorHandler* gXCErrorHandler = &gErrorHandler;
 
+//-------------------------------------------------------------------------------------------------
+// THE INK FIXTURE, kept for the two-backend parity block at the end of this file: six runs whose
+// geometry exercises the stroke at four angles, a polyline joint, and the dense waviness of a real
+// panel curve. Nothing else is published, so every pixel the parity walk reads is a stroke pixel.
+
+// A horizontal run ON the pixel grid, and one HALF a pixel off it: see assertion 23 for why
+// the phase is the whole point of the second one.
+const QPointF kFlatA(110, 60);
+const QPointF kFlatB(260, 60);
+const QPointF kPhaseA(110, 95.5);
+const QPointF kPhaseB(260, 95.5);
+// 45 degrees, and a steeper ~71.6 degrees (run 3, rise 9): the angle the reported defect is
+// about, and one far enough from it that a measurement which only handles the diagonal
+// cannot pass both.
+const QPointF kDiagonalA(110, 140);
+const QPointF kDiagonalB(200, 230);
+const QPointF kSteepA(240, 250);
+const QPointF kSteepB(285, 115);
+// The right-angle joint assertion 24 measures: arm A runs in to the vertex and arm B runs
+// out of it, so the outer bisector from kCornerV is the one direction BOTH segments' own
+// capsules must cover by themselves.
+const QPointF kCornerV(370, 40);
+const QPointF kCornerA(300, 40);
+const QPointF kCornerB(370, 110);
+
+// A DENSE WAVY POLYLINE: the panel's own curve is a polyline sampled every ~2px of plot
+// width (GraphPanelModel.cpp's drawing budget), so its direction changes from sample to
+// sample, and how a stroke treats those small turns is what "inconsistent line thickness"
+// means along a curve. This fixture is that situation in isolation: samples 4px apart
+// along a sine of amplitude 5px and wavelength 48px, which turns the local direction by up
+// to ~33 degrees between neighbours - the middle of the range a curvy panel curve reaches.
+QVector<QPointF> denseWavyPoints() {
+    QVector<QPointF> points;
+    for (int i = 0; i <= 30; ++i) {
+        const double x = 110.0 + 4.0 * i;
+        const double phase = (2.0 * M_PI) * (4.0 * i) / 48.0;
+        points.append(QPointF(x, 253.0 + 5.0 * std::sin(phase)));
+    }
+    return points;
+}
+
+gui::GraphPanelModel makeInkModel(const theme::Graph& aTheme) {
+    gui::GraphPanelModel model;
+    model.panel = kPanel;
+    model.plot = kPlot;
+    model.valueColumn = kValueColumn;
+    model.rulerBandTop = kRulerBand.top();
+    // NOTHING but the runs: see the block comment above.
+    model.zeroY = -1;
+    model.playheadX = -1;
+
+    const auto run = [&aTheme](const QVector<QPointF>& aPoints) {
+        gui::PanelCurve curve;
+        curve.node = nullptr;
+        curve.channel = ctrl::graph::Channel(kTypeA, 0);
+        curve.points = aPoints;
+        // ONE colour for all five: the regions are disjoint, so the ink's identity is
+        // never in question, and the measurements below are all against this token.
+        curve.color = aTheme.channelColor(kTypeA, 0);
+        curve.channelRow = -1;
+        return curve;
+    };
+    model.curves = {
+        run({kFlatA, kFlatB}), run({kPhaseA, kPhaseB}), run({kDiagonalA, kDiagonalB}),
+        run({kSteepA, kSteepB}), run({kCornerA, kCornerV, kCornerB}), run(denseWavyPoints()),
+    };
+    return model;
+}
+
 // ---- ONE INK, TWO PORTABLE RASTERISERS --------------------------------------------
 //
 // The panel's ink decisions live once (gui::drawPanel over gui::ink::Ink). This block renders
-// the SAME model through the two backends that do NOT need ImGui - InkQPainter (Qt's own
-// rasteriser, the default tree's) and InkCanvas (Canvas Painter, the 6.12 host) - and compares
+// the SAME model through the two portable backends - InkQPainter (Qt's own rasteriser, the
+// reference) and InkCanvas (Canvas Painter, the shipping host) - and compares
 // them under this file's own rules: geometry and fills exact, translucent ink allowed ONE unit
 // per channel, text compared for PRESENCE per published label box (a label drawn by one engine
 // and not the other is a failure; both-empty is the rule the ruler's pill suppression needs).
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
 namespace {
 
 int inkChannelDistance(QRgb a, QRgb b) {
@@ -7533,119 +5452,32 @@ bool rendBackendParity(const gui::GraphPanelModel& aModel, const theme::Graph& a
 }
 
 } // namespace
-#endif // AE_CANVAS_PAINTER
-
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
 
     // THE HOVER MUST NAME WHAT A PRESS SELECTS (see checkHoverMatchesPress): a real
     // editor's press and the model's pick at the three overlapping-ring probes. It
-    // needs no GL - a document, a scaler and the model - so it runs before the
-    // context is taken, and a failure stops the gate here.
+    // needs no window, GL or frame - a document, a scaler and the model - so it runs
+    // before the first Canvas frame, and a failure stops the gate here.
     if (!checkHoverMatchesPress())
         return 1;
 
-    // A live core-profile context, exactly as tests/overlay_engine_primitives.cpp
-    // and roundtrip_main.cpp take one. The format has to be the default before the
-    // widget creates its context, which happens on the first show()/makeCurrent().
-    QSurfaceFormat fmt = QSurfaceFormat::defaultFormat();
-    fmt.setProfile(QSurfaceFormat::CoreProfile);
-    fmt.setVersion(gl::Global::kVersion.first, gl::Global::kVersion.second);
-    fmt.setSamples(4);
-    QSurfaceFormat::setDefaultFormat(fmt);
-
-    QOpenGLWidget glWidget;
-    glWidget.resize(kViewW, kViewH);
-    glWidget.show();
-    glWidget.makeCurrent();
-    if (!glWidget.context()) {
-        std::fprintf(stderr, "FAIL: no GL context could be created\n");
-        return 2;
-    }
-    auto funcs = QOpenGLVersionFunctionsFactory::get<gl::Global::Functions>(glWidget.context());
-    if (!funcs || !funcs->initializeOpenGLFunctions()) {
-        std::fprintf(stderr, "FAIL: no GL function table for the widget's context\n");
-        return 2;
-    }
-    gl::Global::setContext(glWidget);
-    gl::Global::setFunctions(*funcs);
-
-    gl::DeviceInfo device;
-    device.vender = "harness";
-    device.renderer = "harness";
-    device.version = "4.0";
-    device.maxTextureSize = 16384;
-    device.maxRenderBufferSize = 16384;
-    gl::DeviceInfo::setInstance(&device);
-
-    // Every rect in this file is in the panel's own coordinates, and ImGui's
-    // projection is built from io.DisplaySize: a window manager that resized this
-    // widget would move every sampled pixel, so the size is asserted.
-    if (glWidget.width() != kViewW || glWidget.height() != kViewH) {
-        std::fprintf(
-            stderr, "FAIL: the widget is %dx%d, not %dx%d\n", glWidget.width(), glWidget.height(), kViewW, kViewH
-        );
-        return 2;
-    }
-
-    std::printf(
-        "INFO GL renderer=%s version=%s\n",
-        reinterpret_cast<const char*>(funcs->glGetString(GL_RENDERER)),
-        reinterpret_cast<const char*>(funcs->glGetString(GL_VERSION))
-    );
-
-    // A pending GL error would be turned into an abort by GL_CHECK_ERROR on the
-    // first call below and read as that call's fault. Drop what the widget's setup
-    // left behind.
-    {
-        GLuint glError = 0;
-        while ((glError = funcs->glGetError()) != GL_NO_ERROR) {
-        }
-    }
-
-    // A core-profile draw with no VAO bound is GL_INVALID_OPERATION.
-    gl::VertexArrayObject vao;
-    vao.bind();
-
-    // This harness's OWN framebuffer, never the widget's (see the file header).
-    gl::Texture colorTexture;
-    colorTexture.create(QSize(kViewW, kViewH));
-    gl::Framebuffer fbo;
-    fbo.setColorAttachment(0, colorTexture.id());
-    if (!fbo.isComplete()) {
-        std::fprintf(stderr, "FAIL: the harness framebuffer is incomplete\n");
-        return 2;
-    }
-    gFbo = &fbo;
-
-    // The ImGui context. NO renderer backend other than the GL3 one compiled
-    // through src/gui/ImGuiGLBackend.cpp: that TU carries the loader shim over
-    // gl::Global::functions(), which is why the app's function table has to be
-    // installed before ImGui_ImplOpenGL3_Init().
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr; // never write imgui.ini from a test
-    io.LogFilename = nullptr;
-    if (!io.Fonts->AddFontDefaultBitmap()) {
-        std::fprintf(stderr, "FAIL: ImGui's default bitmap font could not be added\n");
-        return 2;
-    }
-    if (!ImGui_ImplOpenGL3_Init("#version 400 core")) {
-        std::fprintf(stderr, "FAIL: the GL3 backend refused to initialize\n");
-        return 2;
-    }
+    // NO GL CONTEXT OF THIS FILE'S OWN: QCanvasPainterWidget creates the RHI (GL) device
+    // its paint runs on, and renderPass() owns one widget per frame. The gate still needs
+    // a window system with a real GL implementation - scripts/gui/gpu_headless.sh is the
+    // default, xvfb-run the fallback - because the widget refuses to render otherwise.
+    // Every rect below is in the widget's own logical pixels, the widget is sized by
+    // renderPass, and the DPR is asserted at 1 by the frame-size check there.
 
     const theme::Graph palette = theme::Graph::from(theme::Colors::current());
     std::printf(
         "INFO palette halo=%s axisText=%s gridMajor=%s axisLine=%s selected=%s keyEdge=%s channelA=%s"
-        " channelB=%s marqueeFill=%s marqueeEdge=%s menuBody=%s menuHover=%s menuHoverText=%s clear=%s\n",
+        " channelB=%s marqueeFill=%s marqueeEdge=%s clear=%s\n",
         hex(palette.halo()).c_str(), hex(palette.axisText()).c_str(), hex(palette.gridMajor()).c_str(),
         hex(palette.axisLine()).c_str(), hex(palette.selected()).c_str(), hex(palette.keyEdge()).c_str(),
         hex(palette.channelColor(kTypeA, 0)).c_str(), hex(palette.channelColor(kTypeB, 1)).c_str(),
-        hex(palette.marqueeFill()).c_str(), hex(palette.marqueeEdge()).c_str(), hex(palette.menuBody()).c_str(),
-        hex(palette.menuHover()).c_str(), hex(palette.menuHoverText()).c_str(), hex(kClear).c_str()
+        hex(palette.marqueeFill()).c_str(), hex(palette.marqueeEdge()).c_str(), hex(kClear).c_str()
     );
 
     // The clear colour has to be far from everything the model can paint, or "this
@@ -7654,8 +5486,7 @@ int main(int argc, char** argv) {
         const QColor painted[] = {
             palette.halo(), palette.axisText(), palette.gridMajor(), palette.axisLine(), palette.selected(),
             palette.keyEdge(), palette.channelColor(kTypeA, 0), palette.channelColor(kTypeB, 1),
-            palette.marqueeFill(), palette.marqueeEdge(), palette.menuBody(), palette.menuText(),
-            palette.menuHover(), palette.menuHoverText(), palette.menuSeparator(),
+            palette.marqueeFill(), palette.marqueeEdge(),
             // The scroll bars' own two tokens (assertion 31): the pill's rest and
             // hover inks are read out of the framebuffer by colour, so each has to be
             // far from the clear colour like every other ink here.
@@ -7671,20 +5502,6 @@ int main(int argc, char** argv) {
             }
         }
     }
-
-    // The contrast outline pass's own gate (assertions 11-15): the pass has to
-    // build on this context before any of it can be measured.
-    OutlineHarness outlineHarness;
-    if (!outlineHarness.init()) {
-        std::printf("FAIL: the outline harness's framebuffers are incomplete\n");
-        return 2;
-    }
-    if (!gui::outline::init()) {
-        std::printf("FAIL: the contrast outline pass refused to build on this context\n");
-        return 2;
-    }
-    std::printf("INFO outline minContrast=%.1f ringPx=%.1f outlineColour=%s\n", gui::outline::kMinContrast,
-                gui::outline::kRingRadiusPx, hex(palette.outline()).c_str());
 
     const gui::GraphPanelModel full = makeFullModel(palette);
     const gui::GraphPanelModel clip = makeClipModel(palette);
@@ -7803,55 +5620,11 @@ int main(int argc, char** argv) {
 
     // 0: the control, then one pass per model the assertions read.
     //
-    // THE CURVE STROKE, BEFORE AND AFTER, OUT OF ONE PROCESS. The ink model is rendered
-    // once with the coverage pass NOT built - which is exactly the panel the user
-    // reported on, ImDrawList::AddPolyline - and once with it built. Every stroke
-    // assertion below then reads the same model's ink twice, so the two geometries are
-    // compared number for number rather than across two runs of the gate, and the crops
-    // are the same two frames.
+    // The ink fixture is no longer driven by a stroke assertion (the coverage pass it
+    // compared against is gone with the ImGui backend): it is the parity block's stress
+    // model, six runs at four angles, a joint and a dense polyline, painted through both
+    // portable backends at the end of this file.
     const gui::GraphPanelModel ink = makeInkModel(palette);
-    // The dimmed pair: the EMPHASIS is the selection's, and this focus selects nothing, so
-    // every curve in the model is stroked at kUnselectedAlpha - which is what makes a doubled
-    // join visible as ink darker than the stroke's own body (see checkStrokeJoin). The focus
-    // itself is only the handle rule, so it is left as it was.
-    gui::PanelFocus inkDimmed;
-    inkDimmed.valid = true;
-    inkDimmed.node = nullptr;
-    inkDimmed.channel = ctrl::graph::Channel(kTypeB, 1);
-    const Rendered inkFringe = renderPass(ink, palette, focus, "curve_ink_fringe");
-    const Rendered inkFringeDimmed = renderPass(ink, palette, inkDimmed, "curve_ink_fringe_dimmed");
-    // Assertion 27's stem, drawn by ImGui's own AddLine: the before half of the stem
-    // measurement, taken through the SAME method as the after half.
-    const Rendered stemFringe = renderPass(
-        makeStemModel(palette), palette, focus, "hairline_stem_fringe", ImVec2(-FLT_MAX, -FLT_MAX), 0.0f, false, true
-    );
-    if (!gui::stroke::init()) {
-        std::printf("FAIL: the coverage stroke pass refused to build on this context\n");
-        return 2;
-    }
-    const Rendered inkCoverage = renderPass(ink, palette, focus, "curve_ink_coverage");
-    const Rendered inkCoverageDimmed = renderPass(ink, palette, inkDimmed, "curve_ink_coverage_dimmed");
-    // THE SAME INK AT FULL STRENGTH, for the edge profile (checkStrokeEdges asserts BOTH
-    // emphasis states): the emphasis is the SELECTION's, so the measured run - the half-pixel
-    // phase one, `ink.curves[1]` - is given ONE key and the selection names it, which puts
-    // that run at full strength while every other run stays dimmed. The key sits at (300,200),
-    // clear of every run and of every column and row the group measures, so this pass differs
-    // from `inkCoverage` only in the phase run's strength.
-    gui::GraphPanelModel inkFull = ink;
-    inkFull.curves[1].keys = {QRect(295, 195, 2 * ctrl::graph::kKeyRadius, 2 * ctrl::graph::kKeyRadius)};
-    inkFull.curves[1].keyDots = {QPointF(300, 200)};
-    inkFull.curves[1].keyFrames = {core::Frame(1)};
-    // The marker STATE is the model's now (PanelCurve::keySelected), so the key this
-    // addition carries is named SELECTED there - with no sibling, which is the single
-    // marker of a one-component key. The focus stays invalid for the same reason as
-    // `inkCoverage`'s: the handles are the focus's, the emphasis is the marker flags'.
-    inkFull.curves[1].keySelected = {true};
-    inkFull.curves[1].keySiblingSelected = {false};
-    const Rendered inkCoverageFull = renderPass(inkFull, palette, focus, "curve_ink_coverage_full");
-    // The same developer aid the panel pass gets, for the two stroke geometries: the ink
-    // model's own frame, per curve, through the model's geometry.
-    dumpInkCrops(inkFringe, ink, QStringLiteral("ink_before"));
-    dumpInkCrops(inkCoverage, ink, QStringLiteral("ink_after"));
 
     const Rendered control = renderPass(gui::GraphPanelModel(), palette, focus, "control");
     const Rendered rendered = renderPass(full, palette, focus, "full_model");
@@ -7875,24 +5648,28 @@ int main(int argc, char** argv) {
     const Rendered focusedOtherRendered = renderPass(full, palette, focusOther, "full_model_focus_other_curve");
     // The tight-ruler pass draws with a font twice the box height: the defect is a
     // drawing font taller than the model's box, and this is it (see checkRulerReserve).
+    QFont tightFont = QApplication::font();
+    tightFont.setPixelSize(26);
     const Rendered tightRulerRendered =
-        renderPass(tightRuler, palette, focus, "full_model_tight_ruler", ImVec2(-FLT_MAX, -FLT_MAX), 26.0f);
+        renderPass(tightRuler, palette, focus, "full_model_tight_ruler", kPointerOff, tightFont);
     // The label-less pair for the halo and ruler assertions: the same models with
     // their frame labels removed, so a pixel that differs is the LABEL's ink.
     const Rendered fullBareRendered = renderPass(fullNoLabels, palette, focus, "full_model_no_labels");
     const Rendered fullNoFrameRendered = renderPass(fullNoFrame, palette, focus, "full_model_no_frame");
     const Rendered tightRulerBareRendered =
-        renderPass(tightRulerBare, palette, focus, "full_model_tight_ruler_bare", ImVec2(-FLT_MAX, -FLT_MAX), 26.0f);
-    // THE RULER'S ROW PASSES (see checkRulerRows): the full model at a font size whose
-    // centring offset against the 14px number row is TWO rows, and the same model with
-    // its frame labels removed, so the number's own ink is read as the difference.
+        renderPass(tightRulerBare, palette, focus, "full_model_tight_ruler_bare", kPointerOff, tightFont);
+    // THE RULER'S ROW PASSES (see checkRulerRows): the full model at a pixel size whose
+    // centring offset against the 14px number row is AT LEAST TWO rows, and the same model
+    // with its frame labels removed, so the number's own ink is read as the difference.
+    QFont rowFont = QApplication::font();
+    rowFont.setPixelSize(8);
     const Rendered rulerRowRendered =
-        renderPass(full, palette, focus, "full_model_ruler_rows", ImVec2(-FLT_MAX, -FLT_MAX), 10.0f);
+        renderPass(full, palette, focus, "full_model_ruler_rows", kPointerOff, rowFont);
     const Rendered rulerRowBareRendered =
-        renderPass(fullNoLabels, palette, focus, "full_model_ruler_rows_bare", ImVec2(-FLT_MAX, -FLT_MAX), 10.0f);
+        renderPass(fullNoLabels, palette, focus, "full_model_ruler_rows_bare", kPointerOff, rowFont);
 
     // The handle highlight pass: the SAME model with the pointer on the first
-    // handle's dot, so the ONLY difference from `rendered` is io.MousePos - which
+    // handle's dot, so the ONLY difference from `rendered` is the pointer - which
     // is what makes "the dot changed" a statement about the highlight alone.
     if (full.curves.isEmpty() || full.curves.at(0).handles.isEmpty()) {
         std::printf("FAIL: the full model publishes no tangent handle to point at\n");
@@ -7903,7 +5680,7 @@ int main(int argc, char** argv) {
     );
     const Rendered highlightRendered = renderPass(
         full, palette, focus, "full_model_pointer_on_handle",
-        ImVec2(float(pointerDot.x()), float(pointerDot.y()))
+        QPointF(pointerDot.x(), pointerDot.y())
     );
 
     // THE EMPHASIS PASSES. A channel is at full strength when it OWNS a selected marker,
@@ -7998,9 +5775,9 @@ int main(int argc, char** argv) {
     const Rendered markerPlain = renderPass(marker, palette, focus, "marker_plain");
     const Rendered markerSelected = renderPass(markerSelectedModel, palette, focus, "marker_selected");
     // The hover pass: the UNFLAGGED model with the pointer on the first marker, so the only
-    // difference from `markerPlain` is io.MousePos.
+    // difference from `markerPlain` is the pointer.
     const Rendered markerHover = renderPass(
-        marker, palette, focus, "marker_hover", ImVec2(float(markerDot.x()), float(markerDot.y()))
+        marker, palette, focus, "marker_hover", QPointF(markerDot.x(), markerDot.y())
     );
 
     // THE PROPORTIONAL MARKER (assertion 32), on its own one-channel fixture: an absolute
@@ -8033,8 +5810,12 @@ int main(int argc, char** argv) {
     const Rendered recededGuideRendered =
         renderPass(recededGuideModel, palette, focus, "full_model_range_guides_receded");
 
-    if (rendered.vtx <= 0) {
-        std::printf("FAIL: the full model emitted no vertices at all\n");
+    if (rendered.image.isNull()) {
+        std::printf("FAIL: the full model produced no frame at all\n");
+        return 1;
+    }
+    if (inkCount(rendered.image, kPanel) <= 0) {
+        std::printf("FAIL: the full model painted nothing inside its own panel\n");
         return 1;
     }
 
@@ -8133,42 +5914,9 @@ int main(int argc, char** argv) {
         std::printf("FAILED: the value column's gutter and its guard\n");
         return 1;
     }
-    // 22-26: THE CURVE STROKE, coverage against fringe, out of the same two frames.
-    if (!checkStrokeAngle(inkCoverage, inkFringe, palette)) {
-        std::printf("FAILED: the stroke's width across the angle\n");
-        return 1;
-    }
-    if (!checkStrokeEdges(inkCoverage, inkFringe, inkCoverageFull, palette)) {
-        std::printf("FAILED: the stroke's antialiased edges\n");
-        return 1;
-    }
-    if (!checkStrokeJoin(inkCoverageDimmed, inkFringeDimmed, palette)) {
-        std::printf("FAILED: the stroke's join\n");
-        return 1;
-    }
-    if (!checkStrokePosition(inkCoverage, inkFringe, palette)) {
-        std::printf("FAILED: the stroke's position\n");
-        return 1;
-    }
-    // The guest rule drives the callback from THIS frame's own command, so the frame is
-    // rendered immediately before it: GetDrawData() has to be the frame it reads from.
-    renderPass(ink, palette, focus, "curve_ink_guest");
-    if (!checkStrokeGuestState()) {
-        std::printf("FAILED: the stroke pass does not leave the frame's GL state as it found it\n");
-        return 1;
-    }
-    // 27: the panel's OTHER 1px lines - measured, and left exactly as they were. Each of
-    // these three frames carries one line family and nothing else.
-    const Rendered playhead200 = renderPass(makePlayheadModel(200), palette, focus, "hairline_playhead_200");
-    const Rendered playhead201 = renderPass(makePlayheadModel(201), palette, focus, "hairline_playhead_201");
-    const Rendered stem = renderPass(makeStemModel(palette), palette, focus, "hairline_stem");
-    if (!checkHairlinePlacement(playhead200, playhead201, stem, stemFringe, palette)) {
-        std::printf("FAILED: the panel's 1px lines\n");
-        return 1;
-    }
     // 31: THE SCROLL BARS, on the passes that isolate them: the full model with the
     // four rects published, the SAME model with them empty (the state an empty plot
-    // publishes), and hover passes that differ from the first only in io.MousePos - one
+    // publishes), and hover passes that differ from the first only in the pointer - one
     // on each lane, so each direction of the hover rule is measured. A further pair is
     // the ZERO-TRAVEL state: both runs equal their tracks (the state the real scaler
     // publishes when the window covers its content), which must still paint a
@@ -8186,11 +5934,11 @@ int main(int argc, char** argv) {
     const Rendered noBarsRendered = renderPass(noBarModel, palette, focus, "scroll_bars_absent");
     const Rendered barsHoverHRendered = renderPass(
         barModel, palette, focus, "scroll_bars_hover_h",
-        ImVec2(float(kHScrollThumb.center().x()), float(kHScrollTrack.center().y()))
+        QPointF(kHScrollThumb.center())
     );
     const Rendered barsHoverVRendered = renderPass(
         barModel, palette, focus, "scroll_bars_hover_v",
-        ImVec2(float(kVScrollTrack.center().x()), float(kVScrollThumb.center().y()))
+        QPointF(kVScrollTrack.center().x(), kVScrollThumb.center().y())
     );
     if (!checkScrollBars(barsRendered, noBarsRendered, barsHoverHRendered, barsHoverVRendered, barModel)) {
         std::printf("FAILED: the scroll bars\n");
@@ -8199,11 +5947,11 @@ int main(int argc, char** argv) {
     const Rendered fullLaneRendered = renderPass(fullBarModel, palette, focus, "scroll_bars_zero_travel");
     const Rendered fullLaneHoverHRendered = renderPass(
         fullBarModel, palette, focus, "scroll_bars_zero_travel_hover_h",
-        ImVec2(float(fullBarModel.hTrack.center().x()), float(fullBarModel.hTrack.center().y()))
+        QPointF(fullBarModel.hTrack.center())
     );
     const Rendered fullLaneHoverVRendered = renderPass(
         fullBarModel, palette, focus, "scroll_bars_zero_travel_hover_v",
-        ImVec2(float(fullBarModel.vTrack.center().x()), float(fullBarModel.vTrack.center().y()))
+        QPointF(fullBarModel.vTrack.center())
     );
     if (!checkFullLaneBars(
             fullLaneRendered, noBarsRendered, fullLaneHoverHRendered, fullLaneHoverVRendered, fullBarModel
@@ -8216,56 +5964,11 @@ int main(int argc, char** argv) {
         std::printf("FAILED: the ruler hairline's ink\n");
         return 1;
     }
-    if (!writeInkCrops(inkFringe, inkCoverage, QStringLiteral("build/shots/graph_ink"))) {
-        std::printf("FAILED: the before/after crops\n");
-        return 1;
-    }
 
-    // THE COST, LAST, so a timing change can never move a measured pixel: the SAME model
-    // drawn both ways, one number each, with the method and the structural cost printed
-    // beside them (see timeFrames).
-    const gui::GraphPanelModel dense = makeDenseModel(palette);
-    const FrameCost denseAfter = timeFrames(dense, palette, focus, 40);
-    const FrameCost afterCost = timeFrames(ink, palette, focus, 40);
-    gui::stroke::shutdown();
-    const FrameCost denseBefore = timeFrames(dense, palette, focus, 40);
-    const FrameCost beforeCost = timeFrames(ink, palette, focus, 40);
-    gui::stroke::init();
-    std::printf(
-        "MEASURED stroke_cost model=dense_curve(1 curve, %d segments - the shipping sampling) frames=40"
-        " after_ms_per_frame=%.3f before_ms_per_frame=%.3f after_vtx=%d before_vtx=%d\n",
-        int(dense.curves.at(0).points.size()) - 1, denseAfter.ms, denseBefore.ms, denseAfter.vtx, denseBefore.vtx
-    );
-    int inkSegments = 0;
-    for (const gui::PanelCurve& curve : ink.curves)
-        inkSegments += std::max(0, int(curve.points.size()) - 1);
-    std::printf(
-        "MEASURED stroke_cost model=curve_ink(%d curves, %d segments) frames=40 after_ms_per_frame=%.3f"
-        " before_ms_per_frame=%.3f after_vtx=%d before_vtx=%d after_idx=%d before_idx=%d scratch=%dx%d rgba8=%.0fKB"
-        " gl_calls_per_curve=3 (1 scratch clear + 1 segment draw + 1 composite) method=whole_frame_including_readback\n",
-        int(ink.curves.size()), inkSegments, afterCost.ms, beforeCost.ms, afterCost.vtx, beforeCost.vtx, afterCost.idx, beforeCost.idx, kViewW, kViewH,
-        double(kViewW) * double(kViewH) * 4.0 / 1024.0
-    );
-    if (!checkOutlineRing(outlineHarness)) {
-        std::printf("FAILED: contrast outline ring\n");
-        return 1;
-    }
-    if (!checkOutlineNoRing(outlineHarness)) {
-        std::printf("FAILED: contrast outline draws where it is not needed\n");
-        return 1;
-    }
-    if (!checkOutlineBackdropIdentical(outlineHarness)) {
-        std::printf("FAILED: the composite pass is not a no-op without the panel\n");
-        return 1;
-    }
-    if (!checkOutlineRestoresBindings(outlineHarness)) {
-        std::printf("FAILED: the pass does not leave the GL bindings it found\n");
-        return 1;
-    }
-
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
-    // THE TWO PORTABLE BACKENDS, on the same models this file has just asserted against the
-    // ImGui reference: geometry and label presence must match the Qt rasteriser.
+    // THE TWO PORTABLE BACKENDS, on every state the panel gets into and on the ink fixture:
+    // geometry and label presence must match the Qt rasteriser. This block is now the only
+    // user of InkQPainter - the shipping path is InkCanvas, and asking the two rasterisers to
+    // agree is what keeps a shape decision from being a rasteriser's accident.
     if (!renderBackendMatrix(palette, focus)) {
         std::printf("FAILED: the backend matrix disagrees in at least one state\n");
         return 1;
@@ -8274,23 +5977,10 @@ int main(int argc, char** argv) {
         std::printf("FAILED: the portable backends disagree\n");
         return 1;
     }
-    if (!rendBackendParity(makeStemModel(palette), palette, focus)) {
-        std::printf("FAILED: the portable backends disagree on the stem model\n");
-        return 1;
-    }
-#endif
-
-    // The pass's GL objects go while this context is current, exactly as the
-    // overlay's shutdown() does it.
-    gui::stroke::shutdown();
-    gui::outline::shutdown();
-
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui::DestroyContext();
 
     std::printf(
-        "OK: the graph panel's pixel contract holds (every assertion above printed its measurement; the panel's"
-        " own passes, and the outline and composite pass's five)\n"
+        "OK: the graph panel's pixel contract holds on the shipping Canvas Painter host (every assertion above"
+        " printed its measurement)\n"
     );
     return 0;
 }

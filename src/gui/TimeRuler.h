@@ -20,8 +20,8 @@ namespace gui {
 class TimeLineEditorWidget;
 
 // The ruler: the fixed strip above the track lanes. Its INK comes from the shared
-// frame-ruler model (gui/FrameRuler.h) - the same model the graph panel paints with
-// ImGui, so the two cannot disagree about a tick, a number or the temporary window's
+// frame-ruler model (gui/FrameRuler.h) - the same model the graph panel paints on its
+// Canvas Painter page, so the two cannot disagree about a tick, a number or the temporary window's
 // pills; this widget supplies the geometry, the font's measurements and the editor's
 // facts, and paints the result with QPainter. It keeps its own input (header seek,
 // the shift-drag window gesture), fed through the editor's cursor machinery - exactly

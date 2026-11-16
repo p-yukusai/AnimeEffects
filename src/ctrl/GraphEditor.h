@@ -234,11 +234,11 @@ private:
 // The layering is the timeline's, deliberately:
 //   * geometry, scales, sampling and hit-testing live here and in ctrl::graph -
 //     widget-free, no GL, no camera;
-//   * painting is NOT here: the panel is drawn by gui::drawPanel (Dear ImGui)
-//     from gui::GraphPanelModel, in the ImGui pass at the end of
-//     MainDisplayWidget::paintEvent. The geometry this class picks through is
-//     the model's geometry too - both read ctrl/graph/graph_Geometry.h - so the
-//     drawn item and the picked item are one;
+//   * painting is NOT here: the panel is drawn by gui::drawPanel from
+//     gui::GraphPanelModel, on the dock's Canvas Painter page (gui::GraphPanelWidget)
+//     and in the headless pixel gate. The geometry this class picks through is the
+//     model's geometry too - both read ctrl/graph/graph_Geometry.h - so the drawn
+//     item and the picked item are one;
 //   * the widget only feeds the cursor, so this class owns the mouse semantics
 //     for the panel the same way ctrl::Driver's editors own them elsewhere.
 //
@@ -560,9 +560,8 @@ public:
     // ESCAPE BELONGS TO WHOEVER CONSUMED IT. The key is only this panel's when
     // nothing else took it: a picker or a menu that is up owns its own dismissal
     // (the timeline's easing picker is a Qt::Popup and holds the keyboard while it
-    // is open - a Qt::ApplicationShortcut does not even fire then), and so does an
-    // ImGui text field (gui::ImGuiInputBridge::keyboardCaptured gates the
-    // application's own commands on exactly that). The rule cannot be decided HERE -
+    // is open - a Qt::ApplicationShortcut does not even fire then). The rule cannot be
+    // decided HERE -
     // it is decided by the consumer that receives the QKeyEvent, after every other
     // consumer has had it - so the action ANSWERS what it did and the caller calls
     // it only once the event reached it unconsumed.

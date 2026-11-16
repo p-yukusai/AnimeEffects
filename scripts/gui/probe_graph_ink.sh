@@ -1,13 +1,12 @@
 #!/bin/bash
 # THE GRAPH PANEL IN THE TIMELINE DOCK, ON A LIVE APPLICATION.
 #
-# THE PANEL MOVED. It used to be a full-viewport Dear ImGui overlay toggled from the Tools
-# dock; it is now the dock's own Graph tab (gui::TimeLineHeader's tab bar, drawn by
-# gui::GraphPanelWidget at the dock's size on the dock's opaque floor, with the object tree
-# still beside it). The overlay goes away in the commit after this one, so every claim here is
-# made through the DOCK's own route: the tab by name, the dock's AT-SPI rectangle, and the
-# dock's own pixels. Nothing here touches the old toggle and nothing here reads a viewport
-# crop: the panel is not on the viewport any more.
+# THE PANEL MOVED. It used to be a full-viewport overlay toggled from the Tools dock; it is
+# now the dock's own Graph tab (gui::TimeLineHeader's tab bar, drawn by gui::GraphPanelWidget
+# at the dock's size on the dock's opaque floor, with the object tree still beside it). Every
+# claim here is made through the DOCK's own route: the tab by name, the dock's AT-SPI rectangle,
+# and the dock's own pixels. Nothing here reads a viewport crop: the panel is not on the
+# viewport any more.
 #
 # WHAT THIS PROBE PROVES, AND WHY A PROBE AT ALL. tests/graph_panel_pixels.cpp renders the
 # panel from a synthetic model and reads the framebuffer back, and tests/graph_panel_model.cpp
@@ -41,7 +40,7 @@
 #      the panel is drawn in the dock's page area, not over the screen. This is the docked form of
 #      the claim the old overlay probe made with a viewport crop, and it is stronger where it
 #      matters: the docked panel paints its own OPAQUE floor (theme::Colors::base;
-#      GraphPanelWidget::paintGL), so what changes inside that rectangle is the panel's own ink on
+#      GraphPanelWidget::paint), so what changes inside that rectangle is the panel's own ink on
 #      its own surface, with no artwork composited under it.
 #      THE RECTANGLE IS NOT A CONSTANT, AND THE TWO CAPTURES MUST SHARE A LAYOUT. The header is
 #      TimeLineHeader, and the Graph page's own controls in it (the four quick-easing check boxes
@@ -70,19 +69,6 @@
 #      keys sit at one value and only the selected channel's stroke is visible (see "TWO
 #      CHANNELS OF DIFFERENT KEY TYPES ARE TWO COLOURS" below).
 #
-# WHY THAT FRAME USED TO KILL THE APPLICATION, AND WHAT NOW PINS IT (measured 2026-10-18). The
-# docked host used to abort on the first frame it had to STROKE: gui::GraphPanelWidget::paintGL
-# -> ImGui_ImplOpenGL3_RenderDrawData -> gui::stroke's draw callback ->
-# gl::EasyShaderProgram::makeSureVBO -> gl::BufferObject::resetRawData -> GL_CHECK_ERROR ->
-# Q_ASSERT(0), "OpenGL Error (code:1282)". The mechanism was that gui::stroke's pass (its VAO
-# above all) was a process-global created by whichever host ran a frame first - the viewport's
-# overlay - and a vertex-array object is not shared between OpenGL contexts, while
-# glBindVertexArray on a name the CURRENT context never generated is GL_INVALID_OPERATION. The
-# empty panel drew no stroke, which is why every claim above it measured fine. The fix (the
-# overlay host deleted, one context owning the panel's GL objects, and the frame driver
-# rebuilding them if another context ever turns up) is what this phase now exercises: if the
-# process dies on the keyed frame again, the crash's own log tail is printed beside the failure.
-#
 # WHAT THIS PROBE DELIBERATELY DOES NOT ASSERT, AND WHERE THOSE CLAIMS ARE GATED INSTEAD. The
 # tick ALPHAS (0.85 / 0.60 / 0.20), the selection EMPHASIS (full strength for a channel that owns
 # a selected key, 0.45 for every other curve, everything dimmed with an empty selection) and the
@@ -99,7 +85,7 @@
 #   * tests/graph_panel_pixels.cpp - a model whose frame ticks carry all three levels, read off
 #     the rendered image (the alphas); the key-marker pair plus the stroke group's
 #     dimmed/full-strength split (the emphasis, in both states); and the three marker inks, read
-#     through a two-row probe because ImGui strokes a circle as a POLYLINE;
+#     through a two-row probe around the marker's 1px ring;
 #   * tests/graph_panel_model.cpp - the published tick levels, the per-channel classification and
 #     the per-key selection flags the drawing layer reads.
 # See "WHAT IS NOT ASSERTED HERE" at the foot of this file, beside the assertions dropped for
@@ -1115,7 +1101,7 @@ check $? "and pressing it repaints the docked panel's own page: ${ZOOM_DIFF:-0}p
 #   * tests/graph_panel_pixels.cpp - a model whose frame ticks carry all three levels, read off the
 #     rendered image (the alphas); the key-marker pair plus the stroke group's dimmed/full-strength
 #     split (the emphasis, in both states); and the marker's three inks, read through a two-row
-#     probe because ImGui strokes a circle as a POLYLINE;
+#     probe around the marker's 1px ring;
 #   * tests/graph_panel_model.cpp - the published tick levels, the per-channel classification and
 #     the per-key selection flags the drawing layer reads.
 # What THIS probe adds to those is what only a running application can show: that the dock's own

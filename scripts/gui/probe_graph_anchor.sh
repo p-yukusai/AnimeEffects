@@ -9,8 +9,8 @@
 # middle-drag pan moves the content by exactly the pixels dragged, and a wheel notch holds the
 # frame under the cursor.
 #
-# THE PANEL MOVED, and this probe moved with it. It used to be a full-viewport Dear ImGui
-# overlay toggled from the Tools dock; it is now the timeline dock's own Graph tab
+# THE PANEL MOVED, and this probe moved with it. It used to be a full-viewport overlay
+# toggled from the Tools dock; it is now the timeline dock's own Graph tab
 # (gui::TimeLineHeader's tab bar over gui::GraphPanelWidget, drawn on the dock's page with
 # the object tree still beside it - see probe_graph_ink.sh, which drove the dock from the
 # day it landed). The overlay, and with it the control named "Show animation graph", went
@@ -22,7 +22,7 @@
 #   * the measured surfaces are the PANEL's own rectangle and, inside it, the plot the panel
 #     PUBLISHES for its own "Fit graph" action, both read by AT-SPI. The panel's root Pane is
 #     gui::GraphPanelFrame's buildAccessibilityModel's Model: its name is the model's summary
-#     and its rectangle IS Model::panel (ImGuiA11y's OverlayRoot::rect returns that rect), so
+#     and its rectangle IS Model::panel (PanelA11y's PanelRoot::rect returns that rect), so
 #     the Pane is found by the button it owns and read by name; fitItem.rect is the model's
 #     plot. The crop below is the PANEL's columns below the band, and the notch witness is the
 #     band's top to the panel's last row - application geometry, not this probe's arithmetic;
@@ -312,7 +312,7 @@ xvfb-run -a --server-args="-screen 0 1440x900x24" bash -c '
   # ---- the panel, and the plot it PUBLISHES inside itself ----
   # THE PANEL OWN RECTANGLE IS THE MODEL OWN: GraphPanelModel sets model.panel =
   # ctrl::GraphEditor::panelRect (the whole editor rect), and the root Pane of the panel
-  # publishes THAT rect (ImGuiA11y OverlayRoot::rect returns Model::panel mapped to the
+  # publishes THAT rect (PanelA11y PanelRoot::rect returns Model::panel mapped to the
   # screen). The Pane NAME is the model summary, so the Pane is found in this run own tree -
   # the one whose child is the Fit graph button - and not hardcoded: the summary changes with
   # the document ("No keys on the selected layers", "N channel(s) shown", ...).

@@ -1,5 +1,5 @@
-#ifndef GUI_IMGUIA11Y_H
-#define GUI_IMGUIA11Y_H
+#ifndef GUI_PANELA11Y_H
+#define GUI_PANELA11Y_H
 
 #include <QRect>
 #include <QString>
@@ -11,22 +11,21 @@ class QWidget;
 namespace gui {
 namespace a11y {
 
-// Publish the ImGui-drawn viewport overlay to Qt's accessibility layer.
+// Publish the framebuffer-drawn animation graph panel to Qt's accessibility layer.
 //
-// WHY THIS EXISTS. The overlay is not made of QWidgets: ImGui rasterises its
-// triangles into a GL framebuffer, so the animation-graph panel it draws over
-// the canvas is not a widget, owns no QObject, and therefore does not exist for
+// WHY THIS EXISTS. The panel is not made of QWidgets: the panel's host rasterises its drawing into a texture, so the animation-graph panel
+// is not a widget, owns no QObject, and therefore does not exist for
 // assistive technology at all - the AT-SPI dump of the window is byte-identical
-// with the overlay on and off. Qt only builds accessible objects for widgets,
+// with the panel on and off. Qt only builds accessible objects for widgets,
 // and only understands the accessibility protocols it implements itself; the
 // documented answer for content it cannot see is a QAccessible FACTORY, which is
 // what this file installs (same mechanism as
 // gui::installQmlFormAccessibility, src/gui/qml/QmlFormAccessibility.cpp).
 //
-// HOW IT WORKS. The overlay hands its content over once per frame as the plain
+// HOW IT WORKS. The panel's host hands its content over once per frame as the plain
 // Model below - no QObject, no signals, nothing that ties the panel's drawing
 // code to Qt's object tree. This module turns that model into one accessible
-// object for the viewport widget plus one child object per Item, and reports
+// object for the host widget plus one child object per Item, and reports
 // every action the user (or a script) performs back through aOnAction(item.id).
 // Item::id is the only handle that crosses the boundary in either direction.
 //
@@ -56,11 +55,11 @@ namespace a11y {
 //     QAccessibleImageInterface is added: the rect plus the item's name/value
 //     already say what the swatch is, and the precedent adds a protocol only
 //     where Qt has none or cannot express it.
-//   * the Model itself -> the viewport widget's interface: QAccessible::Pane
+//   * the Model itself -> the host widget's interface: QAccessible::Pane
 //     (a container AT-SPI can name and walk), its Name is Model::summary, and
 //     its rect is Model::panel.
 //
-// COORDINATE MAPPING. Item::rect and Model::panel are in VIEWPORT PIXELS, i.e.
+// COORDINATE MAPPING. Item::rect and Model::panel are in HOST-WIDGET PIXELS, i.e.
 // QWidget coordinates of the widget passed to install(). Everything Qt asks for
 // through QAccessibleInterface::rect() is in SCREEN coordinates, so each rect is
 // pushed through QWidget::mapToGlobal(topLeft) and keeps its size - the same
@@ -70,31 +69,31 @@ namespace a11y {
 //     model's rects and QAccessible rects are all in device-INDEPENDENT pixels;
 //     multiplying by the ratio would double-count a scaling that Qt already
 //     folded into the widget's coordinates. The mapping is identical at
-//     dpr = 1 and dpr = 2 (tests/imgui_a11y.cpp checks both).
+//     dpr = 1 and dpr = 2 (tests/panel_a11y.cpp checks both).
 //   * A window decoration offset is NOT added by hand either: mapToGlobal
 //     already includes whatever the platform puts between the widget and the
 //     screen (visible on the offscreen platform, whose frame margin moves a
 //     widget asked to sit at 120,64 to 122,66).
-//   * There is no QQuickWidget-style offset to handle here: the overlay draws
-//     into the widget's own framebuffer, and child interfaces are not QML items
+//   * There is no QQuickWidget-style offset to handle here: the panel draws
+//     into the host widget's own texture, and child interfaces are not QML items
 //     reporting window-relative rectangles into a second, offscreen window. That
 //     trap - and its lack here - is the reason the form-accessibility rect()
 //     cannot be copied verbatim.
 //
-// LIFETIME. install() is a process-wide singleton (one overlay viewport, one
+// LIFETIME. install() is a process-wide singleton (one panel host, one
 // installation). A repeat install for the SAME widget keeps the installation -
 // and therefore the interface and its id - and only takes over the callback; an
 // install for a DIFFERENT widget ends the previous installation (like
 // uninstall()) and starts a new one. uninstall() removes the factory AND drops
 // the cached interface, so a query afterwards falls back to Qt's ordinary
-// behaviour for the widget instead of answering with a stale panel. The widget
+// behaviour for the widget instead of answering with a stale panel. The host widget
 // may also be destroyed first; the interfaces then report themselves invalid
 // instead of pointing at it.
 //
 // WHERE TO CALL IT, and why the ORDER matters. Qt keeps ONE accessible
 // interface per QObject in a process-global cache, and queryAccessibleInterface()
 // answers from that cache before it consults any factory. Nothing has to ask
-// about the viewport for that entry to appear: QAccessible::updateAccessibility()
+// about the host for that entry to appear: QAccessible::updateAccessibility()
 // resolves and caches the interface of an event's object, and QWidget raises such
 // events on its own - ObjectShow when a widget is first shown, ParentChanged when
 // it is (re)parented, StateChanged while windows come and go - as soon as
@@ -104,9 +103,9 @@ namespace a11y {
 // to make room (see below), so the panel would simply not be published for that
 // window.
 //
-// installFactoryOnly() exists for that reason: call it from the viewport widget's
+// installFactoryOnly() exists for that reason: call it from the host widget's
 // CONSTRUCTOR (it needs no GL context and no model), so the entry Qt creates for
-// the viewport is ours, and let install() - from the first frame - take over the
+// the host is ours, and let install() - from the first frame - take over the
 // action callback. That pairing is one installation: same interface, same id,
 // nothing a client attached in between is holding gets invalidated. A constructor
 // is early enough because the entry Qt makes while the widget is still being
@@ -115,9 +114,9 @@ namespace a11y {
 // documents), so the interface for the finished widget is the factory's. The one
 // shape this cannot cover is a widget whose accessible class is its base class -
 // no Q_OBJECT - because then the construction-time entry IS the entry for the
-// finished widget; the application's viewport declares Q_OBJECT.
+// finished widget; the panel's host widget declares Q_OBJECT.
 //
-// WHAT IS NOT ACHIEVED, deliberately. A viewport that something already queried
+// WHAT IS NOT ACHIEVED, deliberately. A host that something already queried
 // before installFactoryOnly()/install() ran keeps answering with Qt's own
 // interface: the factory is shadowed for it, the panel is not published for it,
 // and install() reports that with a qWarning instead of fixing it. An id is an
@@ -125,9 +124,9 @@ namespace a11y {
 // free an interface a client may already be addressing - that is the bug this
 // order-of-installation requirement replaces. The same shadowing is reached from
 // the other side when an installation ENDS: uninstall() removes the factory, so
-// the next accessibility event Qt raises for the viewport caches the widget's own
+// the next accessibility event Qt raises for the host caches the widget's own
 // interface again, and installing on that widget afterwards reports the shadowing
-// and publishes nothing. An overlay that is torn down and built again therefore
+// and publishes nothing. A host that is torn down and built again therefore
 // relies on the constructor-time install still being in place, not on a
 // re-install after uninstall().
 //
@@ -136,13 +135,13 @@ namespace a11y {
 // under an id of their own (that id is the AT-SPI path a client later queries,
 // so a stale entry is reachable from outside the process). They leave it on
 // uninstall(), when install() replaces a previous installation for a DIFFERENT
-// viewport, when the viewport is destroyed first, and in Qt's own cache teardown
-// walk; the same must hold for a viewport that is installed and uninstalled
+// host widget, when the host widget is destroyed first, and in Qt's own cache teardown
+// walk; the same must hold for a host that is installed and uninstalled
 // repeatedly. (A client holding such an id sees that path stop resolving once
-// the installation that owned it ends - the teardown the overlay itself asks
+// the installation that owned it ends - the teardown the host itself asks
 // for, not a silent eviction of someone else's interface.)
 //
-// Threading: the overlay's UI thread only; the model is not copied or locked.
+// Threading: the panel's UI thread only; the model is not copied or locked.
 
 struct Item {
     enum Role { PushButton, CheckBox, StaticText, Image };
@@ -150,7 +149,7 @@ struct Item {
     int id = 0;              // stable identity, handed back on activation
     QString name;            // translated, user-visible
     QString value;           // e.g. "shown"/"hidden", or a channel name
-    QRect rect;              // viewport pixels
+    QRect rect;              // host-widget pixels
     bool checked = false;
     bool enabled = true;
 };
@@ -161,35 +160,35 @@ struct Model {
     QVector<Item> items;
 };
 
-// Install the factory for aViewport WITHOUT a model and WITHOUT GL: the
+// Install the factory for aHost WITHOUT a model and WITHOUT GL: the
 // constructor-time half of install(), for the one call site that must run before
 // anything can ask Qt for the widget's interface (see "WHERE TO CALL IT" above).
 //
-// Publishing starts when sync() is first called; until then the viewport answers
+// Publishing starts when sync() is first called; until then the host answers
 // as an empty Pane, and no item can be activated (the model has no items, so
 // there is no action to name). Calling it twice for the same widget, or calling
 // install() for a widget it already covers, keeps the installation and changes
 // nothing but the callback install() supplies.
-void installFactoryOnly(QWidget& aViewport);
+void installFactoryOnly(QWidget& aHost);
 
-// Registers the accessible factory for aViewport and installs the model. Any
+// Registers the accessible factory for aHost and installs the model. Any
 // activation of an item calls aOnAction(item.id).
 //
 // aOnAction is invoked synchronously from the accessibility call that performed
 // the action (QAccessibleActionInterface::doAction) - a screen reader waits for
-// the action to have happened. The overlay is free to queue internally; it must
+// the action to have happened. The host is free to queue internally; it must
 // not assume the frame is unchanged when it returns.
-void install(QWidget& aViewport, std::function<void(int aId)> aOnAction);
+void install(QWidget& aHost, std::function<void(int aId)> aOnAction);
 
 // Publish aModel as the current content. Safe to call every frame, before any
 // install (does nothing), and after uninstall() (does nothing).
 void sync(const Model& aModel);
 
 // Unregister the factory and delete the interface, if any. Safe to call twice,
-// and safe when the viewport was destroyed first.
+// and safe when the host widget was destroyed first.
 void uninstall();
 
 } // namespace a11y
 } // namespace gui
 
-#endif // GUI_IMGUIA11Y_H
+#endif // GUI_PANELA11Y_H

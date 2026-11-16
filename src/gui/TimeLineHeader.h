@@ -8,17 +8,13 @@
 #include <vector>
 #include "util/SlotId.h"
 #include "util/Easing.h"
-#ifdef AE_ENABLE_IMGUI
 // The channel rows the Header's channels button lists (gui::PanelChannelRow): the
 // header hands them to gui::MainDisplayWidget, which owns the popup.
 #include "gui/GraphPanelModel.h"
-#endif
 
 class QAbstractButton;
 class QHBoxLayout;
-#ifdef AE_ENABLE_IMGUI
 class QTabBar;
-#endif
 
 namespace theme {
 class Theme;
@@ -32,9 +28,7 @@ class PlayBackWidget;
 class TimeLineWidget;
 class TimeLineEditorWidget;
 class ProportionalButton;
-#ifdef AE_ENABLE_IMGUI
 class GraphPanelWidget;
-#endif
 
 namespace prop {
 class EasingItem;
@@ -50,10 +44,8 @@ class EasingItem;
 // dock, two tabs"): Timeline is the lanes' surface (this bar's own surface) and Graph
 // is the animation graph panel drawn on the same dock floor, with the object tree
 // still beside it - the bar keeps ONE transport and ONE chip for both,
-// and the tab is what says which view the dock's body is showing. In a build without
-// the graph panel (AE_ENABLE_IMGUI off) the strip, the channels button and their rules
-// do not exist at all: the bar keeps the transport, the chip, the quick easings and the
-// view. The transport is the existing eight-button PlayBackWidget group, moved
+// and the tab is what says which view the dock's body is showing. The transport is the
+// existing eight-button PlayBackWidget group, moved
 // out of its column and laid out horizontally; the easing chip is the picker's only
 // home (design section 2) and names the timeline's key selection; the four QUICK
 // EASINGS to its left apply one easing TYPE to that same selection in one click (a
@@ -85,9 +77,7 @@ public:
     // no graph value can be reported.
     enum class Surface {
         Timeline,
-#ifdef AE_ENABLE_IMGUI
         Graph,
-#endif
     };
 
     TimeLineHeader(GUIResources& aResources, PlayBackWidget* aTransport, QWidget* aParent = nullptr);
@@ -126,7 +116,6 @@ protected:
 
 private:
     void addHairline(QHBoxLayout& aLayout);
-#ifdef AE_ENABLE_IMGUI
     // The tab strip's own ink: the mock's .tl-tabs numbers (11px, 3px/8px padding,
     // a 4px radius) on the application's tokens - muted text at rest, the ACCENT
     // fill for the selected tab, `raised` on hover - re-applied on every theme
@@ -135,7 +124,6 @@ private:
     // this bar must not add one: the theme's tokens are the same ones the app's
     // own tab bar (ProjectTabBar's modetabbar.ssa) is written against.
     void refreshTabStyle();
-#endif
     // The chip's click: the picker opens for the timeline's key selection, under
     // the chip (the chip's state is pushed to it by the surface, see
     // TimeLineEditorWidget::setEasingItemHost).
@@ -160,7 +148,6 @@ private:
     // composed with this bar's re-read - the one easing write that does NOT move the
     // selection.
     void bindEasingHost();
-#ifdef AE_ENABLE_IMGUI
     // QTabBar::currentChanged, in the header's own currency.
     void onTabChanged(int aIndex);
     // The channels button: it opens the panel's channel list (gui::GraphChannelPopup,
@@ -179,19 +166,16 @@ private:
     // Subscribe to the page's own "the shown channels changed" - once, the first time the
     // page can be found (it is a sibling page that may not exist when this bar is built).
     void connectChannels();
-#endif
     void onThemeUpdated(theme::Theme& aTheme);
 
     GUIResources& mGUIResources;
     PlayBackWidget* mTransport;
-#ifdef AE_ENABLE_IMGUI
     // The dock's views, as tabs at the bar's left end (the mock's .tl-tabs). The
     // control is a real QTabBar: it is the application's own tab control
     // (gui::ProjectTabBar is a QTabBar too), so keyboard left/right, the hover and
     // the selected states all come from Qt rather than from a hand-rolled pair of
     // buttons. Not built without the graph panel (see the constructor).
     QTabBar* mTabs;
-#endif
     TimeLineWidget* mTimeLine;
     // The timeline's surface widget, found inside mTimeLine: the ONE easing picker
     // and the chip's state both live there, and the timeline itself hands out its
@@ -233,7 +217,6 @@ private:
         bool autoPreset;
     };
     std::vector<QuickEase> mQuickEases;
-#ifdef AE_ENABLE_IMGUI
     // The channels trigger: the mock's .tl-chans, hosted in the dock's header (the
     // panel's one control is a view action, so it sits with the view controls) and
     // shown only while the Graph tab is the dock's view. Its words are the panel's
@@ -247,7 +230,6 @@ private:
     // the TAB changes, and a layer picked while the Graph tab is already up leaves the
     // count stale (measured: "0 channel(s)" over three drawn curves).
     bool mChannelsConnected = false;
-#endif
 };
 
 } // namespace gui

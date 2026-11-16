@@ -1796,107 +1796,55 @@ target_link_libraries(proportional_keys PRIVATE
 )
 
 # ---------------------------------------------------------------------------
-# The overlay's units (the Dear ImGui renderer of the viewport panel). They exist
-# because the pieces a screenshot cannot see need gates of their own: the font
-# stack, the Qt->ImGuiIO translation, the accessibility bridge and the panel
-# model. The first two link ae_imgui (declared in the root CMakeLists, behind
-# AE_ENABLE_IMGUI); the last two deliberately do not - the accessibility bridge is
-# pure QAccessible over a plain model, and the panel model is geometry. All four
-# are headless: offscreen, no GL context, no window.
+# THE PANEL'S PIXEL CONTRACT (tests/graph_panel_pixels.cpp): gui::drawPanel through the
+# SHIPPING host - a QCanvasPainterWidget painted by gui::ink::InkCanvas - with its own
+# 400x320 frame read back by grabFramebuffer(). It asserts the pixels the model's geometry
+# promises, including the INVERSE assertion that a plot area holding no geometry is left
+# untouched ("no background, no grid" in pixels), and runs the same models through
+# InkQPainter for the two-backend parity block. Needs a window system with a real GL
+# implementation: it runs under xvfb (the GL branch in scripts/run_suites.sh) or
+# scripts/gui/gpu_headless.sh.
 #
-# scripts/run_suites.sh discovers targets from this file, so registering one here
-# is all that puts it on the gate.
+# There is no `gui` library to link against - the application target compiles these files
+# itself - so the panel's own units come along as sources.
 # ---------------------------------------------------------------------------
-if(AE_ENABLE_IMGUI)
-    # The font loader: ImGui rasterizes through Qt (QRawFont), which is what makes
-    # CJK, .ttc, CFF and variable fonts work. Builds an atlas and reads glyph
-    # pixels - no GL. See src/gui/ImGuiQtFontLoader.h.
-    add_executable(imgui_qt_font_loader imgui_qt_font_loader.cpp
-        ../src/gui/ImGuiQtFontLoader.cpp)
-    target_include_directories(imgui_qt_font_loader PRIVATE .. ../src)
-    target_compile_definitions(imgui_qt_font_loader PRIVATE
-        AE_MAJOR_VERSION=1
-        AE_MINOR_VERSION=7
-        AE_MICRO_VERSION=1
-        USE_GL_CORE_PROFILE
-    )
-    target_link_libraries(imgui_qt_font_loader PRIVATE
-        Qt6::Core Qt6::Gui Qt6::Widgets
-        ae_imgui
-    )
+add_executable(graph_panel_pixels graph_panel_pixels.cpp
+    ../src/gui/GraphPanelFrame.cpp
+    ../src/gui/GraphPanelModel.cpp
+    ../src/gui/InkQPainter.cpp
+    ../src/gui/InkCanvas.cpp
+    ../src/gui/FrameRuler.cpp
+    ../src/gui/PanelA11y.cpp
+    ../src/gui/theme/Graph.cpp
+    ../src/gui/theme/TimeLine.cpp)
+target_include_directories(graph_panel_pixels PRIVATE .. ../src)
+target_compile_definitions(graph_panel_pixels PRIVATE
+    AE_MAJOR_VERSION=1
+    AE_MINOR_VERSION=7
+    AE_MICRO_VERSION=1
+    USE_GL_CORE_PROFILE
+    AE_CANVAS_PAINTER=1
+)
+target_link_libraries(graph_panel_pixels PRIVATE
+    Qt6::Core Qt6::Core5Compat Qt6::Widgets
+    Qt6::Gui
+    Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia Qt6::CanvasPainter
+    cmnd core ctrl gl img thr util pugixml
+)
 
-    # The input bridge: mouse/keys/wheel, IME (commit and pre-edit), tablet, touch,
-    # DPR, and the WantCapture consumption policy the application's key routing has
-    # to obey. No GL, no window.
-    add_executable(imgui_input_bridge imgui_input_bridge.cpp
-        ../src/gui/ImGuiInputBridge.cpp)
-    target_include_directories(imgui_input_bridge PRIVATE .. ../src)
-    target_compile_definitions(imgui_input_bridge PRIVATE
-        AE_MAJOR_VERSION=1
-        AE_MINOR_VERSION=7
-        AE_MICRO_VERSION=1
-        USE_GL_CORE_PROFILE
-    )
-    target_link_libraries(imgui_input_bridge PRIVATE
-        Qt6::Core Qt6::Gui Qt6::Widgets
-        ae_imgui
-    )
-
-    # The panel's PIXEL contract, and the replacement for graph_render_pixels (which
-    # pins the painter renderer the cutover deletes). It drives gui::drawPanel through
-    # a real ImGui frame into its own offscreen framebuffer and asserts the pixels the
-    # model's geometry promises - including the INVERSE assertion that a plot area
-    # holding no geometry is left untouched, which is what "no background, no grid"
-    # means in pixels. Needs a real GL context, so it runs under xvfb (the GL branch
-    # in scripts/run_suites.sh).
-    #
-    # There is no `gui` library to link against - the application target compiles
-    # these files itself - so the overlay's own units come along as sources.
-    # ImGuiSpikeGL.cpp must stay the first ImGui translation unit: its loader shim
-    # precedes the backend.
-    add_executable(graph_panel_pixels graph_panel_pixels.cpp
-        ../src/gui/ImGuiGLBackend.cpp
-        ../src/gui/GraphPanelFrame.cpp
-        ../src/gui/GraphPanelModel.cpp
-        ../src/gui/InkImGui.cpp
-        ../src/gui/InkQPainter.cpp
-        ../src/gui/FrameRuler.cpp
-        ../src/gui/ImGuiInputBridge.cpp
-        ../src/gui/ImGuiA11y.cpp
-        ../src/gui/ImGuiQtFontLoader.cpp
-        ../src/gui/theme/Graph.cpp
-        ../src/gui/theme/TimeLine.cpp)
-    target_include_directories(graph_panel_pixels PRIVATE .. ../src)
-    target_compile_definitions(graph_panel_pixels PRIVATE
-        AE_MAJOR_VERSION=1
-        AE_MINOR_VERSION=7
-        AE_MICRO_VERSION=1
-        USE_GL_CORE_PROFILE
-        AE_ENABLE_IMGUI=1
-    )
-    target_link_libraries(graph_panel_pixels PRIVATE
-        Qt6::Core Qt6::Core5Compat Qt6::Widgets
-        Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
-        Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia
-        cmnd core ctrl gl img thr util pugixml
-        ae_imgui
-    )
-endif()
-
-# The accessibility bridge for the overlay's framebuffer-drawn content. No ImGui
-# dependency at all: it publishes a plain item model through QAccessible, and the
-# live AT-SPI dump (scripts/gui/probe_graph_overlay.sh) is what finally checks it
-# against a screen reader's view. See ImGuiA11y.h.
-add_executable(imgui_a11y imgui_a11y.cpp
-    ../src/gui/ImGuiA11y.cpp)
-target_include_directories(imgui_a11y PRIVATE .. ../src)
-target_compile_definitions(imgui_a11y PRIVATE
+# The accessibility bridge for the panel's framebuffer-drawn content: pure QAccessible over
+# a plain item model, and the live AT-SPI dump (scripts/gui/probe_graph_overlay.sh) is what
+# finally checks it against a screen reader's view. See PanelA11y.h.
+add_executable(panel_a11y panel_a11y.cpp
+    ../src/gui/PanelA11y.cpp)
+target_include_directories(panel_a11y PRIVATE .. ../src)
+target_compile_definitions(panel_a11y PRIVATE
     AE_MAJOR_VERSION=1
     AE_MINOR_VERSION=7
     AE_MICRO_VERSION=1
     USE_GL_CORE_PROFILE
 )
-target_link_libraries(imgui_a11y PRIVATE
+target_link_libraries(panel_a11y PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets
 )
 
@@ -2009,10 +1957,10 @@ target_link_libraries(graph_drag PRIVATE
 
 # The panel's pixels used to be pinned here, by driving the raster QPainter
 # renderer (ctrl::graph::Renderer) into a QImage. That renderer is gone: the panel
-# is drawn by gui::drawPanel (Dear ImGui), and its pixel contract lives in
-# tests/graph_panel_pixels.cpp, which drives the real drawing through a GL frame and
-# asserts the same primitives - plus the inverse assertion that an area with no
-# geometry in it is untouched, which no test of the painter path could make.
+# is drawn by gui::drawPanel on its shipping Canvas Painter host, and its pixel contract
+# lives in tests/graph_panel_pixels.cpp, which reads the host's own frame and asserts the
+# same primitives - plus the inverse assertion that an area with no geometry in it is
+# untouched, which no test of the painter path could make.
 
 # The image-offset channel's step-hold, in the one environment where it can be
 # observed: constructing a core::ImageKey binds a GL buffer for its GridMesh, so
@@ -2147,15 +2095,6 @@ target_link_libraries(time_body_canvas PRIVATE
     Qt6::Core Qt6::Core5Compat Qt6::Widgets Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
     Qt6::Svg Qt6::Xml Qt6::Concurrent Qt6::Multimedia Qt6::CanvasPainter
     cmnd core ctrl gl img thr util pugixml)
-
-# THE GRAPH PANEL'S BACKEND PARITY (Qt >= 6.12 + AE_CANVAS_PAINTER): the pixel gate above
-# renders the SAME models through InkQPainter (Qt's own rasteriser) and InkCanvas (Canvas
-# Painter) and compares them. It lives inside graph_panel_pixels because that target already
-# carries the whole panel - the ink decisions, the fixtures and the ImGui reference.
-target_sources(graph_panel_pixels PRIVATE
-    ../src/gui/InkCanvas.cpp)
-target_compile_definitions(graph_panel_pixels PRIVATE AE_CANVAS_PAINTER=1)
-target_link_libraries(graph_panel_pixels PRIVATE Qt6::CanvasPainter)
 
 # THE COMMAND LOG'S CONTRACT (src/gui/CommandLogView.{h,cpp}): badges instead of the
 # old "Undone : X" strings, and - the load-bearing half - a selection that still

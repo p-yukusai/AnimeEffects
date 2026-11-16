@@ -4,14 +4,6 @@
 
 namespace theme {
 
-namespace {
-// The neutral row's darkest column: Tailwind's neutral-950, the palette's own
-// black. The contrast outline is the one token that must NOT follow the
-// palette polarity (see Graph::outline() in the header), so it takes this cell
-// from BOTH tables rather than a theme::Colors role - every content token in
-// Colors flips to near-white in the dark palette.
-constexpr int kNeutralBlackStep = 10;
-} // namespace
 
 //-------------------------------------------------------------------------------------------------
 Graph::Graph() {
@@ -42,18 +34,15 @@ void Graph::assignFrom(const Colors& aColors) {
     // hands the numbers.
     mGridMajor = aColors.text;
 
-    // Value axis: the hover separator is the one line tone that stays legible
-    // over the artwork the panel floats on.
+    // Value axis: the hover separator is the line tone that stays legible against
+    // the panel's floor.
     //
     // The labels read at FULL text strength - the token the timeline draws its own
     // ruler numbers in (theme::TimeLine::headerContentColor() == Colors::text), so
     // the panel's numbers and the ruler's numbers are the same ink. textMuted, the
-    // token this used to be, is the too-dim grey the user reported: the halo that
-    // would have backed these glyphs ships OFF (gui::kDrawTextHalo), so they sit on
-    // arbitrary artwork like the rest of the panel's ink, and a mid grey is the one
-    // tone that vanishes over mid-grey artwork. The contrast outline pass can only
-    // RING such ink (black at kMinContrast = 3:1, gui::outline::kMinContrast), it
-    // cannot brighten the glyph - so the fix is the ink, not the ring.
+    // token this used to be, is the too-dim grey the user reported; the panel's floor
+    // is opaque (the dock's base) and the halo ships off (gui::kDrawTextHalo), so the
+    // fix is the ink itself.
     //
     // WCAG contrast (relative luminance, sRGB linearised) of the two candidates,
     // computed from this palette's Tailwind cells:
@@ -63,15 +52,12 @@ void Graph::assignFrom(const Colors& aColors) {
     //     text  vs recessed        16.44 : 1       16.44 : 1
     //     text  vs raised          14.23 : 1        9.51 : 1
     //     textMuted vs halo/base    4.54 : 1        7.11 /  6.00 : 1
-    //     textMuted vs mid-grey    1.20 : 1        1.57 : 1   (artwork, no halo)
-    //     text      vs mid-grey    4.54 : 1        3.62 : 1   (artwork, no halo)
     //
     // (light halo == base == neutral-50 #fafafa, dark halo neutral-950 #171717 over
-    // base neutral-800 #262626; mid-grey is #808080, the worst case for both
-    // palettes' greys.) text clears the application's own 3:1 threshold
-    // (gui::outline::kMinContrast) on every surface by 3x or more, and by 5x on the
-    // halo; textMuted meets it on the halo but falls to 1.20:1 - below the threshold,
-    // so the outline pass rings it - where the label actually lands, on the artwork.
+    // base neutral-800 #262626). text clears the application's own 3:1 readability
+    // threshold on every surface by more than 4x; textMuted meets it on the floor but
+    // reads as a different, dimmer ink than the ruler's, which is the defect that was
+    // reported.
     mAxisLine = aColors.hairlineHover;
     mAxisText = aColors.text;
 
@@ -100,7 +86,6 @@ void Graph::assignFrom(const Colors& aColors) {
     // ring, which is the one thing the halo exists to prevent.
     mHalo = aColors.floaterBody;
 
-    mOutline = paletteColor(kTailwindRows[kTailwindNeutralRow][kNeutralBlackStep]);
 
     // Fallback curve color, i.e. the generic line for a type channelColor()
     // does not name: the bright brand edge, the same family the playhead and
@@ -121,19 +106,6 @@ void Graph::assignFrom(const Colors& aColors) {
     mMarqueeFill.setAlpha(24);
     mMarqueeEdge = aColors.accentBright;
     mMarqueeEdge.setAlpha(230);
-
-    // The menu: the app's own context menu, token for token (see the header).
-    mMenuBody = aColors.floaterBody;
-    mMenuEdge = aColors.floaterEdge;
-    mMenuText = aColors.text;
-    mMenuTextDisabled = aColors.textDisabled;
-    mMenuHover = aColors.accentHover;
-    mMenuHoverText = aColors.accentText;
-    // A rule on the floater body takes the floater's edge token, not hairline:
-    // hairline shares the dark body's palette cell (invisible at 1px), while
-    // floaterEdge is one step above the body in both themes. Same decision as
-    // QMenu::separator (standard.ssa) and AppStyle's combo popup.
-    mMenuSeparator = aColors.floaterEdge;
 
     // Tangent handles: a stored pair is filled with the raised surface the reference
     // fills it with; its stroke and stem take the CHANNEL's own hue where they are

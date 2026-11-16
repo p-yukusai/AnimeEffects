@@ -77,8 +77,8 @@ Model build(const Inputs& aInputs, const Axis& aAxis) {
     };
 
     // THE PLAYHEAD'S PILL, before the labels, because its width is what suppresses
-    // them. The host measured the text (QFontMetrics vs the ImGui atlas), so the span
-    // is the pill's own geometry rather than a guessed number.
+    // them. The host measured the text with its own font metrics, so the span is the
+    // pill's own geometry rather than a guessed number.
     if (aInputs.hasPlayhead && !aInputs.playheadText.isEmpty() && aInputs.playheadTextWidth > 0) {
         const int width = aInputs.playheadTextWidth + 2 * kPillPadding;
         const int centre = pixelOf(aInputs.playheadFrame);

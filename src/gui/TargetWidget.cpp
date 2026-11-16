@@ -1,8 +1,6 @@
 #include "gui/TargetWidget.h"
 #include "gui/AnimationSettingDialog.h"
-#ifdef AE_ENABLE_IMGUI
 #include "gui/GraphPanelWidget.h"
-#endif
 #include "gui/MainMenuBar.h"
 #include "gui/TimeLineHeader.h"
 #include "cmnd/BasicCommands.h"
@@ -29,7 +27,6 @@ TargetWidget::TargetWidget(
     mObjTree(nullptr),
     mSurfaceStack(nullptr),
     mTimeLine(nullptr),
-#ifdef AE_ENABLE_IMGUI
     mGraphPanel(nullptr),
     mFrameSlot(),
     mSelectionSlot(),
@@ -37,7 +34,6 @@ TargetWidget::TargetWidget(
     mAttributeSlot(),
     mSelectionChangedSlot(),
     mSelectionSource(nullptr),
-#endif
     mHeader(nullptr),
     mSuspendCount(0) {
     mHorizontalSplitter = new ThinSplitter(Qt::Horizontal, this);
@@ -70,14 +66,11 @@ TargetWidget::TargetWidget(
         if (mObjTree)
             mObjTree->refreshRows();
     });
-#ifdef AE_ENABLE_IMGUI
     // The Graph tab is the SAME panel the viewport's overlay draws, docked: it is the
     // panel's own widget (gui::GraphPanelWidget), pinned over the dock's floor at the
     // dock's size - no scrim, because that floor is already opaque.
     mGraphPanel = new GraphPanelWidget(aResources, mSurfaceStack);
-#endif
     mSurfaceStack->addWidget(mTimeLine);
-#ifdef AE_ENABLE_IMGUI
     mSurfaceStack->addWidget(mGraphPanel);
 
     // THE PANEL IS THE SAME CURRENT FRAME'S SECOND VIEW. What a step, a playback tick or
@@ -116,7 +109,6 @@ TargetWidget::TargetWidget(
         if (mGraphPanel)
             mGraphPanel->refresh();
     });
-#endif
     mSurfaceStack->setCurrentWidget(mTimeLine);
 
     // The transport is a fixed-size group of buttons; it belongs to the header
@@ -135,12 +127,10 @@ TargetWidget::TargetWidget(
     // always had - object tree | surface - now without the transport column.
     mHeader = new TimeLineHeader(aResources, mPlayBack, this);
     mHeader->setTimeLineWidget(mTimeLine);
-#ifdef AE_ENABLE_IMGUI
     // The header's tab is the dock's view switch, for the whole life of the dock: the
     // tab names the page, so the panel needs no title of its own and both pages keep
     // the one header's transport, chip, quick easings and zoom.
     connect(mHeader, &TimeLineHeader::surfaceChanged, this, &TargetWidget::onSurfaceChanged);
-#endif
 
     auto* row = new QHBoxLayout();
     row->setContentsMargins(0, 0, 0, 0);
@@ -184,7 +174,6 @@ TargetWidget::~TargetWidget() {
     // the rest of this body.
     delete mHeader;
     mHeader = nullptr;
-#ifdef AE_ENABLE_IMGUI
     // The signaler lives in the timeline widget, the receiver is the panel; both are
     // children destroyed after this body, and the connection is dropped here so nothing
     // can be emitted into the panel while the dock is being torn down.
@@ -198,12 +187,10 @@ TargetWidget::~TargetWidget() {
     // body: drop the last connection here for the same reason as the others.
     if (mSelectionSource)
         mSelectionSource->onChanged.disconnect(mSelectionChangedSlot);
-#endif
 }
 
 void TargetWidget::setProject(core::Project* aProject) {
     mPlayBack->pushPauseButton();
-#ifdef AE_ENABLE_IMGUI
     // The OUTGOING project's notifications go first: the panel must never be asked to
     // redraw from a document that is being dropped, and the old project may be gone the
     // moment MainWindow finishes this reset.
@@ -211,9 +198,7 @@ void TargetWidget::setProject(core::Project* aProject) {
         mProject->onTimeLineModified.disconnect(mDocumentSlot);
         mProject->onProjectAttributeModified.disconnect(mAttributeSlot);
     }
-#endif
     mProject = aProject;
-#ifdef AE_ENABLE_IMGUI
     if (mProject) {
         // THE PANEL IS A VIEW OF THIS DOCUMENT. Two of the project's changes alter what it
         // draws without touching this page's pixels, and each is announced by the project
@@ -250,8 +235,6 @@ void TargetWidget::setProject(core::Project* aProject) {
                 mGraphPanel->refresh();
         });
     }
-#endif
-#ifdef AE_ENABLE_IMGUI
     // THE PANEL'S DRIVER DIES WITH THE PROJECT, and the bar below asks the panel for its
     // channel rows (the header's channels button names them). When the project is being
     // CLEARED the old driver is already destroyed while this widget still holds the
@@ -263,7 +246,6 @@ void TargetWidget::setProject(core::Project* aProject) {
     // resetProjectRefs pass.
     if (!aProject && mGraphPanel)
         mGraphPanel->setDriver(nullptr);
-#endif
     // The TIMELINE first, then the tree: the tree's rebuild announces the new row list, and
     // the timeline must already be on the new project (and its editor) to receive it.
     mTimeLine->setProject(aProject);
@@ -284,7 +266,6 @@ void TargetWidget::setProject(core::Project* aProject) {
 }
 
 void TargetWidget::setDriver(ctrl::Driver* aDriver) {
-#ifdef AE_ENABLE_IMGUI
     // The driver owns ctrl::GraphEditor, and it is created and destroyed with the
     // project: MainWindow hands it over from the same call site that hands it to the
     // viewport and the tool widget, so the docked panel and the overlay read the ONE
@@ -327,14 +308,8 @@ void TargetWidget::setDriver(ctrl::Driver* aDriver) {
     // A new editor is a new panel: the view it draws is built from it, so re-read it
     // now rather than on the next frame that happens to repaint.
     mGraphPanel->refresh();
-#else
-    // No graph surface in this build: the dock has nothing that reads the driver
-    // (the viewport's overlay and the tool widget have their own setDriver).
-    (void)aDriver;
-#endif
 }
 
-#ifdef AE_ENABLE_IMGUI
 void TargetWidget::onSurfaceChanged(TimeLineHeader::Surface aSurface) {
     const bool graph = aSurface == TimeLineHeader::Surface::Graph;
     mSurfaceStack->setCurrentWidget(graph ? static_cast<QWidget*>(mGraphPanel) : static_cast<QWidget*>(mTimeLine));
@@ -364,7 +339,6 @@ void TargetWidget::onSurfaceChanged(TimeLineHeader::Surface aSurface) {
     }
     target->setFocus(Qt::TabFocusReason);
 }
-#endif
 
 core::Frame TargetWidget::currentFrame() const { return mTimeLine->currentFrame(); }
 

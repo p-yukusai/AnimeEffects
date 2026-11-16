@@ -34,7 +34,7 @@ namespace time {
     //             fill keeps its size. The graph's marker radius is
     //             ctrl::graph::kKeyDotRadius, pinned to keyRadius, so the two
     //             engines put the same band at the same distance.
-    // The timeline's pen is centred on the radius (QPainter); the graph's ImGui
+    // The timeline's pen is centred on the radius (QPainter); the graph's Canvas
     // circle strokes INWARD, so it adds half a pixel (see its marker pass). That
     // half pixel is the only difference, and it is the engines' stroke convention,
     // not the rule's.

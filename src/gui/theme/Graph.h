@@ -60,15 +60,6 @@ public:
     // (see GraphPanelModel's header), so the halo is the panel tone the text
     // would sit on if it had one, and the text colour is chosen against it.
     QColor halo() const { return mHalo; }
-    // Contrast outline: the ring the composite pass (gui::outline, in
-    // src/gui/GraphPanelFrame.cpp) draws around panel ink whose own colour is too
-    // close to the artwork underneath it. It is BLACK on both palettes, on
-    // purpose: the ring exists only where the panel has lost contrast against
-    // arbitrary artwork, and a theme's polarity is a statement about the
-    // application's own surfaces, not about what happens to be behind the
-    // panel. The palette's black is the neutral row's darkest cell, the same
-    // cell in the light and the dark table.
-    QColor outline() const { return mOutline; }
     QColor curve() const { return mCurve; }          // fallback curve color
     // The key marker's edge: the ring around a key square, and the ring around a
     // legend swatch. The FILL is the channel's own colour (channelColor), which is what
@@ -91,45 +82,6 @@ public:
     QColor marqueeFill() const { return mMarqueeFill; }
     QColor marqueeEdge() const { return mMarqueeEdge; }
 
-    // ---- the key context menu ----
-    //
-    // The panel's one ImGui POPUP (the key context menu, ImGuiOverlay::
-    // drawKeyContextMenu). Its appearance is the application's own context menu's:
-    // gui::AppStyle draws a QMenu as a rounded floater (radius 8) filled with
-    // floaterBody and edged with floaterEdge, highlights a row with accentHover
-    // under accentText text, and separates with the same floaterEdge (a rule on
-    // the floater body cannot use hairline: in dark that is the body's own
-    // palette cell) - and these tokens are those five decisions plus the
-    // disabled text. applyPanelStyle (declared in
-    // gui/GraphPanelFrame.h) copies them, and the panel's geometry tokens below, into
-    // ImGui's style; that is the ONE place the palette meets ImGuiStyle, and it is
-    // re-applied on every frame so a runtime palette or accent change is picked up
-    // without any signal (see applyPanelStyle).
-    QColor menuBody() const { return mMenuBody; }
-    QColor menuEdge() const { return mMenuEdge; }
-    QColor menuText() const { return mMenuText; }
-    QColor menuTextDisabled() const { return mMenuTextDisabled; }
-    QColor menuHover() const { return mMenuHover; }
-    QColor menuHoverText() const { return mMenuHoverText; }
-    QColor menuSeparator() const { return mMenuSeparator; }
-
-    // The menu's METRICS. They are not palette cells (the palette carries colours),
-    // and they do not follow the light/dark polarity: they are the panel's own
-    // context for the app's menu geometry, stated here so the popup's layout is not
-    // a second copy of them.
-    //
-    // menuRounding is gui::AppStyle's own QMenu panel radius (8) and
-    // menuItemRounding its item pill radius (4). The paddings are the popup's own -
-    // it is an ImGui window confined to the viewport and has to stay compact, so its
-    // window padding (6/4) and a row's inner padding (6) are the panel's numbers and
-    // NOT Qt's font-relative ones (0.3em/0.25em panel, 0.23em/1.3em item, which
-    // ImGui's pixel-based style cannot express at all).
-    float menuRounding() const { return kMenuRounding; }
-    float menuItemRounding() const { return kMenuItemRounding; }
-    float menuPadX() const { return kMenuPadX; }
-    float menuPadY() const { return kMenuPadY; }
-    float menuItemPadX() const { return kMenuItemPadX; }
-
     // The hue of ONE graph channel: the shared table in theme::Colors (THE
     // CHANNEL HUE TABLE), i.e. the axis hue where the component lies on an axis
     // and the key type's own hue otherwise. Falls back to curve() for a type the
@@ -150,14 +102,6 @@ private:
     // other way to obtain storage).
     void assignFrom(const Colors& aColors);
 
-    // The menu's metrics (see the accessors above): the app's QMenu panel and item
-    // radii, and this popup's own paddings.
-    static constexpr float kMenuRounding = 8.0f;
-    static constexpr float kMenuItemRounding = 4.0f;
-    static constexpr float kMenuPadX = 6.0f;
-    static constexpr float kMenuPadY = 4.0f;
-    static constexpr float kMenuItemPadX = 6.0f;
-
     QColor mGridMajor;
     QColor mAxisLine;
     QColor mRulerBand;
@@ -172,13 +116,6 @@ private:
     QColor mHandleFill;
     QColor mMarqueeFill;
     QColor mMarqueeEdge;
-    QColor mMenuBody;
-    QColor mMenuEdge;
-    QColor mMenuText;
-    QColor mMenuTextDisabled;
-    QColor mMenuHover;
-    QColor mMenuHoverText;
-    QColor mMenuSeparator;
     // The channel hue table's axis cells, from theme::Colors, so channelColor()
     // needs no palette lookup per paint.
     QColor mAxisColors[kChannelAxisCount];

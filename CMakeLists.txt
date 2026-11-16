@@ -63,51 +63,6 @@ endfunction()
 
 # Get sources
 # ---------------------------------------------------------------------------
-# Dear ImGui: the renderer of the viewport overlay (the animation graph panel).
-#
-# WHY A TAG AND NOT A BRANCH: v1.92.7 is the release the sibling project on this
-# machine already carries (commit dac0719), so the two agree; GIT_SHALLOW keeps
-# the fetch to one commit (22 MB in the build tree). The sources stay OUT of this
-# repository - a pinned release is fetched into build/_deps.
-#
-# OFFLINE / HERMETIC BUILDS: FetchContent honours
-# -DFETCHCONTENT_SOURCE_DIR_IMGUI=<an existing imgui checkout> and then fetches
-# nothing at all (measured: configures in the same time as with the option OFF,
-# and creates no _deps directory).
-#
-# ImGui ships no CMakeLists.txt upstream, so FetchContent_MakeAvailable only
-# populates it: no add_subdirectory, and there is no find_package for it to need.
-#
-# ONE LIBRARY FOR THE APP AND THE TESTS: ae_imgui compiles the four core sources
-# (imgui_demo.cpp, the demo window, is left out). The GL3 backend is deliberately
-# NOT here - it is compiled inside the gui target through ImGuiSpikeGL.cpp,
-# because that translation unit's loader shim must precede it (see
-# src/gui/CMakeLists.txt).
-# ---------------------------------------------------------------------------
-option(AE_ENABLE_IMGUI "Build the Dear ImGui viewport overlay (the animation graph panel)" ON)
-
-if(AE_ENABLE_IMGUI)
-    include(FetchContent)
-    FetchContent_Declare(
-        imgui
-        GIT_REPOSITORY https://github.com/ocornut/imgui.git
-        GIT_TAG        v1.92.7
-        GIT_SHALLOW    TRUE
-    )
-    FetchContent_MakeAvailable(imgui)
-
-    add_library(ae_imgui STATIC
-        ${imgui_SOURCE_DIR}/imgui.cpp
-        ${imgui_SOURCE_DIR}/imgui_draw.cpp
-        ${imgui_SOURCE_DIR}/imgui_tables.cpp
-        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    )
-    target_include_directories(ae_imgui PUBLIC
-        ${imgui_SOURCE_DIR}
-        ${imgui_SOURCE_DIR}/backends
-    )
-endif()
-
 # Canvas Painter is required by the find_package above; it is no longer an option.
 set(AE_CANVAS_PAINTER 1)
 # ...AND ITS HEADERS ARE PART OF A PUBLIC CHAIN. gui/TimeLineEditorWidget.h IS a

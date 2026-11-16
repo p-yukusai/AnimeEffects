@@ -1,4 +1,4 @@
-#include "gui/ImGuiA11y.h"
+#include "gui/PanelA11y.h"
 
 #include <QAccessible>
 #include <QAccessibleActionInterface>
@@ -22,10 +22,10 @@ namespace {
 // ---------------------------------------------------------------------------
 // The one object an installation owns. The root interface and every child read
 // THIS and keep nothing of their own, which is what makes sync() visible at
-// once: there is no second copy of the model to keep in step with the overlay.
+// once: there is no second copy of the model to keep in step with the host.
 // ---------------------------------------------------------------------------
 struct Published {
-    QPointer<QWidget> viewport;
+    QPointer<QWidget> host;
     std::function<void(int)> onAction;
     Model model;
     // The live root interface, or null when none is alive. The root clears this
@@ -38,8 +38,8 @@ struct Published {
 
 std::shared_ptr<Published> gPublished;
 
-QWidget* viewportOf(const std::shared_ptr<Published>& aPublished) {
-    return aPublished->viewport.data();
+QWidget* hostOf(const std::shared_ptr<Published>& aPublished) {
+    return aPublished->host.data();
 }
 
 // AT-SPI's conventional action names for setting a checkable value. Qt offers a
@@ -77,20 +77,20 @@ const QString& uncheckActionName() {
 // iface) that the bridge's own uniqueId() would do) and the cache is what
 // deletes it from then on. The root keeps only a borrowed pointer together with
 // that id, and drops the ENTRY - never `delete`s the interface - so exactly one
-// owner frees it in every path. See ~OverlayRoot for why that matters.
+// owner frees it in every path. See ~PanelRoot for why that matters.
 // ---------------------------------------------------------------------------
-class OverlayItem : public QAccessibleInterface, public QAccessibleActionInterface {
+class PanelItem : public QAccessibleInterface, public QAccessibleActionInterface {
 public:
-    OverlayItem(std::shared_ptr<Published> aPublished, int aIndex)
+    PanelItem(std::shared_ptr<Published> aPublished, int aIndex)
         : mPublished(std::move(aPublished)), mIndex(aIndex) {}
 
     // ---- state of the published model -------------------------------------
     bool isValid() const override {
-        return mPublished->installed && viewportOf(mPublished) != nullptr && item() != nullptr;
+        return mPublished->installed && hostOf(mPublished) != nullptr && item() != nullptr;
     }
     QObject* object() const override { return nullptr; } // see the class comment
     QWindow* window() const override {
-        QWidget* w = viewportOf(mPublished);
+        QWidget* w = hostOf(mPublished);
         return w != nullptr ? w->window()->windowHandle() : nullptr;
     }
 
@@ -128,7 +128,7 @@ public:
         }
     }
 
-    // The panel is rebuilt from the overlay's model every frame; there is
+    // The panel is rebuilt from the panel's model every frame; there is
     // nothing here for a client to write into, so a write is ignored.
     void setText(QAccessible::Text, const QString&) override {}
 
@@ -136,9 +136,9 @@ public:
         QAccessible::State s;
         const Item* it = item();
         if (it == nullptr) return s;
-        const QWidget* viewport = viewportOf(mPublished);
+        const QWidget* host = hostOf(mPublished);
         s.disabled = !it->enabled; // the state bits are the NEGATIVE senses
-        s.invisible = viewport == nullptr || !viewport->isVisible();
+        s.invisible = host == nullptr || !host->isVisible();
         s.checkable = it->role == Item::CheckBox;
         s.checked = s.checkable && it->checked;
         s.readOnly = !hasActions();
@@ -150,14 +150,14 @@ public:
     }
 
     // ---- geometry ----------------------------------------------------------
-    // The item's viewport-pixel rectangle in SCREEN coordinates: translate the
+    // The item's host-widget-pixel rectangle in SCREEN coordinates: translate the
     // top-left through the widget (which already contains the device pixel ratio
     // and any window decoration offset) and keep the size. Nothing is scaled by
     // devicePixelRatio: these rectangles are device independent, like every
     // other QWidget geometry.
     QRect rect() const override {
         const Item* it = item();
-        QWidget* w = viewportOf(mPublished);
+        QWidget* w = hostOf(mPublished);
         if (it == nullptr || w == nullptr) return QRect();
         return QRect(w->mapToGlobal(it->rect.topLeft()), it->rect.size());
     }
@@ -187,7 +187,7 @@ public:
         case Item::CheckBox:
             // Measured from Qt itself: a real QCheckBox advertises "Toggle",
             // "Press" (and SetFocus - which would be a lie here, because the
-            // overlay's items are not Qt focus scopes), so those two come first.
+            // the panel's items are not Qt focus scopes), so those two come first.
             // AT-SPI's "check"/"uncheck" follow because that is the vocabulary a
             // screen reader and this repository's own AT-SPI probes
             // (scripts/gui/probe_exportbg.sh) use for a checkable value. All four
@@ -208,7 +208,7 @@ public:
         const Item* it = item();
         if (it == nullptr || !it->enabled) return;
         // Read everything this call needs OUT of the model before handing
-        // control to the overlay: aOnAction may call sync() from inside this
+        // control to the panel: aOnAction may call sync() from inside this
         // call, which replaces the model and invalidates `it`.
         const int id = it->id;
         const bool checked = it->checked;
@@ -246,16 +246,16 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// The viewport itself: the panel's container, and the parent of every item.
+// The host widget itself: the panel's container, and the parent of every item.
 // ---------------------------------------------------------------------------
-class OverlayRoot : public QAccessibleObject {
+class PanelRoot : public QAccessibleObject {
 public:
-    OverlayRoot(QWidget* aViewport, std::shared_ptr<Published> aPublished)
-        : QAccessibleObject(aViewport), mPublished(std::move(aPublished)) {
+    PanelRoot(QWidget* aHost, std::shared_ptr<Published> aPublished)
+        : QAccessibleObject(aHost), mPublished(std::move(aPublished)) {
         mPublished->root = this;
     }
 
-    ~OverlayRoot() override {
+    ~PanelRoot() override {
         // A child may outlive this interface (a bridge holding one when the
         // factory is removed); its parent() must then answer null, not a
         // dangling pointer. FIRST, because dropping the entries below can deliver
@@ -270,17 +270,17 @@ public:
     bool isValid() const override { return mPublished->installed && QAccessibleObject::isValid(); }
 
     QWindow* window() const override {
-        QWidget* w = viewportOf(mPublished);
+        QWidget* w = hostOf(mPublished);
         return w != nullptr ? w->window()->windowHandle() : nullptr;
     }
 
     // ---- properties --------------------------------------------------------
     // A container role, which is what the panel is: a named region inside the
-    // viewport that holds the items a reader walks.
+    // host widget that holds the items a reader walks.
     QAccessible::Role role() const override { return QAccessible::Pane; }
 
     QString text(QAccessible::Text aType) const override {
-        // The panel's summary is the one line that says what the overlay shows
+        // The panel's summary is the one line that says what the panel shows
         // ("Graph: Move X, Rotate on 2 layers"), so it is the panel's name -
         // the same rule the form-accessibility port applies to a combo box,
         // whose name is its current value.
@@ -291,7 +291,7 @@ public:
 
     QAccessible::State state() const override {
         QAccessible::State s;
-        QWidget* w = viewportOf(mPublished);
+        QWidget* w = hostOf(mPublished);
         s.disabled = w == nullptr || !w->isEnabled();
         s.invisible = w == nullptr || !w->isVisible();
         s.focusable = w != nullptr && w->focusPolicy() != Qt::NoFocus;
@@ -300,11 +300,11 @@ public:
     }
 
     // The panel's rectangle, in screen coordinates. Model::panel is the region
-    // the overlay actually draws in; an empty or unset panel falls back to the
-    // whole viewport, so the interface always has a rectangle that contains its
+    // the panel actually draws in; an empty or unset panel falls back to the
+    // whole host widget, so the interface always has a rectangle that contains its
     // children instead of an empty one.
     QRect rect() const override {
-        QWidget* w = viewportOf(mPublished);
+        QWidget* w = hostOf(mPublished);
         if (w == nullptr) return QRect();
         const QRect panel = mPublished->model.panel;
         const QRect local = panel.isValid() ? panel : w->rect();
@@ -323,14 +323,14 @@ public:
         while (int(mChildren.size()) <= aIndex) mChildren.push_back(Child());
         Child& slot = mChildren[size_t(aIndex)];
         if (slot.iface == nullptr) {
-            slot.iface = new OverlayItem(mPublished, aIndex);
+            slot.iface = new PanelItem(mPublished, aIndex);
             // QAccessible::registerAccessibleInterface is the documented call for
             // exactly this shape - "when it is necessary to reimplement
             // QAccessibleInterface::child() and return the child after
             // constructing it" - and it "ensures that manually created interfaces
             // are properly memory managed": it puts the interface in the cache
             // (insert(nullptr, iface), since object() is null) and from then on
-            // the CACHE is what deletes it, which is what ~OverlayRoot relies on.
+            // the CACHE is what deletes it, which is what ~PanelRoot relies on.
             // Called exactly once per interface, as documented. A bridge that
             // later asks for the id (QAccessible::uniqueId, which is what AT-SPI's
             // pathForInterface does) gets this same id back instead of adding a
@@ -348,7 +348,7 @@ public:
 
     // QAccessible's childAt takes SCREEN coordinates, like rect() returns.
     QAccessibleInterface* childAt(int x, int y) const override {
-        QWidget* w = viewportOf(mPublished);
+        QWidget* w = hostOf(mPublished);
         if (w == nullptr) return nullptr;
         const QPoint local = w->mapFromGlobal(QPoint(x, y));
         const QVector<Item>& items = mPublished->model.items;
@@ -363,9 +363,9 @@ public:
 
     QAccessibleInterface* parent() const override {
         // The widget hierarchy, as QAccessibleWidget does it. A top-level
-        // viewport has no widget parent and answers null; Qt reaches it through
+        // host has no widget parent and answers null; Qt reaches it through
         // the window instead.
-        QWidget* w = viewportOf(mPublished);
+        QWidget* w = hostOf(mPublished);
         if (w == nullptr) return nullptr;
         QWidget* p = w->parentWidget();
         return p != nullptr ? QAccessible::queryAccessibleInterface(p) : nullptr;
@@ -376,14 +376,14 @@ private:
     // The CACHE owns the interface; this slot only borrows the pointer, so it
     // must never be deleted from here (see dropChildren()).
     struct Child {
-        OverlayItem* iface = nullptr;
+        PanelItem* iface = nullptr;
         QAccessible::Id id = 0;
     };
 
     // Drop every child's cache entry. This is the one place where the interfaces
     // this unit created leave the cache, and it runs in every path that ends an
-    // installation - uninstall(), install() for a different viewport (which ends
-    // the previous installation first), the viewport widget being destroyed first
+    // installation - uninstall(), install() for a different host widget (which ends
+    // the previous installation first), the host widget being destroyed first
     // (Qt's cache deletes the root along with the widget) and Qt's own cache
     // teardown walk - because all of them destroy this root.
     //
@@ -419,21 +419,21 @@ private:
 
 // ---------------------------------------------------------------------------
 // The factory. It sees every object in the process, so the test is an identity
-// compare against the one installed viewport and everything else falls through
+// compare against the one installed host widget and everything else falls through
 // to Qt.
 // ---------------------------------------------------------------------------
-QAccessibleInterface* overlayFactory(const QString&, QObject* aObject) {
+QAccessibleInterface* panelFactory(const QString&, QObject* aObject) {
     const std::shared_ptr<Published>& published = gPublished;
     if (!published || !published->installed) return nullptr;
-    if (aObject == nullptr || aObject != published->viewport) return nullptr;
+    if (aObject == nullptr || aObject != published->host) return nullptr;
     // Qt caches one interface per object, so this normally runs once; returning
     // the live root rather than a second one keeps Published::root honest.
     if (published->root != nullptr) return published->root;
-    return new OverlayRoot(static_cast<QWidget*>(aObject), published);
+    return new PanelRoot(static_cast<QWidget*>(aObject), published);
 }
 
 // ---------------------------------------------------------------------------
-// The one thing install() does about the viewport's cache entry: ASK for it.
+// The one thing install() does about the host widget's cache entry: ASK for it.
 //
 // Qt answers from its cache BEFORE it consults any factory
 // (QAccessible::queryAccessibleInterface, qaccessible.cpp: queryAccessibleInterface()
@@ -462,13 +462,13 @@ QAccessibleInterface* overlayFactory(const QString&, QObject* aObject) {
 // holds is a worse one, and it is also unfixable from here.
 //
 // So: leave the entry alone and say so. The caller avoids the situation entirely
-// by installing the factory before anything can query the viewport.
-void adoptViewportInterface(QWidget* aViewport) {
-    QAccessibleInterface* cached = QAccessible::queryAccessibleInterface(aViewport);
-    if (cached == nullptr || dynamic_cast<OverlayRoot*>(cached) != nullptr) return;
-    qWarning("gui::a11y: the viewport was queried for accessibility before install(), so "
-             "Qt's cache answers for it with the widget's own interface; the overlay factory "
-             "cannot be reached for that widget and the ImGui panel is not published for it. "
+// by installing the factory before anything can query the host widget.
+void adoptHostInterface(QWidget* aHost) {
+    QAccessibleInterface* cached = QAccessible::queryAccessibleInterface(aHost);
+    if (cached == nullptr || dynamic_cast<PanelRoot*>(cached) != nullptr) return;
+    qWarning("gui::a11y: the host widget was queried for accessibility before install(), so "
+             "Qt's cache answers for it with the widget's own interface; the panel factory "
+             "cannot be reached for that widget and the panel is not published for it. "
              "Install the factory from the widget's constructor (gui::a11y::installFactoryOnly) "
              "instead of from its first frame. The stale entry is deliberately left in place: "
              "a client may be holding the id it lives under.");
@@ -497,15 +497,15 @@ Change compare(const Model& aBefore, const Model& aAfter) {
 
 } // namespace
 
-void installFactoryOnly(QWidget& aViewport) {
+void installFactoryOnly(QWidget& aHost) {
     // Already this widget's installation: nothing to do, and nothing to end.
-    if (gPublished && viewportOf(gPublished) == &aViewport) return;
+    if (gPublished && hostOf(gPublished) == &aHost) return;
     if (gPublished) uninstall(); // a DIFFERENT viewport: that installation ends here
     auto published = std::make_shared<Published>();
-    published->viewport = &aViewport;
+    published->host = &aHost;
     published->installed = true; // no callback yet; the model is empty until the first sync()
     gPublished = published;
-    QAccessible::installFactory(overlayFactory);
+    QAccessible::installFactory(panelFactory);
     // Deliberately NO query for the interface here, unlike install(). This call's
     // whole purpose is to run from the widget's CONSTRUCTOR, and Qt's cache keys
     // an entry by the metaObject the object had when the entry was made: an
@@ -518,17 +518,17 @@ void installFactoryOnly(QWidget& aViewport) {
     // because a widget that is not shown yet has not been asked about.
 }
 
-void install(QWidget& aViewport, std::function<void(int)> aOnAction) {
+void install(QWidget& aHost, std::function<void(int)> aOnAction) {
     // A second install for the SAME widget must NOT tear the live installation
     // down: the root interface it made, and the id that interface lives under,
     // are the AT-SPI path a client may already be holding (see
-    // adoptViewportInterface above), so replacing them here is the very failure
+    // adoptHostInterface above), so replacing them here is the very failure
     // this path must not cause. A repeat install only takes over the callback -
     // which is what makes installFactoryOnly() (the widget's constructor) and
     // install() (its first frame) one installation, with one interface and one
     // id, no matter who attached in between.
     if (gPublished) {
-        if (viewportOf(gPublished) == &aViewport) {
+        if (hostOf(gPublished) == &aHost) {
             gPublished->onAction = std::move(aOnAction);
             gPublished->installed = true;
             return;
@@ -536,12 +536,12 @@ void install(QWidget& aViewport, std::function<void(int)> aOnAction) {
         uninstall(); // a DIFFERENT viewport: that installation ends here
     }
     auto published = std::make_shared<Published>();
-    published->viewport = &aViewport;
+    published->host = &aHost;
     published->onAction = std::move(aOnAction);
     published->installed = true;
     gPublished = published;
-    QAccessible::installFactory(overlayFactory);
-    adoptViewportInterface(&aViewport);
+    QAccessible::installFactory(panelFactory);
+    adoptHostInterface(&aHost);
 }
 
 void sync(const Model& aModel) {
@@ -573,7 +573,7 @@ void uninstall() {
     published->installed = false;   // children of any surviving interface report invalid
     published->onAction = nullptr;  // nothing may activate after this point
     published->model = Model();
-    QAccessible::removeFactory(overlayFactory);
+    QAccessible::removeFactory(panelFactory);
     if (QAccessibleInterface* root = published->root) {
         // Also removes the widget's cache entry (verified: the next query gets
         // Qt's ordinary interface for the widget, not this one), and deletes the

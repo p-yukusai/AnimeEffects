@@ -15,8 +15,8 @@ namespace {
 
 // A QRectF's far edge IS x + w (unlike a QRect's x + w - 1), and gui/Ink.h's contract says a
 // QRectF(x,y,w,h) names the same pixels as QRect(x,y,w,h) - so the far edge here is the rect's
-// own right()/bottom(), never one more. MEASURED on the ImGui backend: adding 1 widened every
-// converted rect by a column.
+// own right()/bottom(), never one more. MEASURED while porting the panel: adding 1 widened
+// every converted rect by a column.
 QRectF boxOf(const QRectF& aRect) { return aRect; }
 
 // PENS AND BRUSHES carry their colour's alpha unchanged: the panel's strengths are expressed as
@@ -50,7 +50,7 @@ void InkQPainter::fillRect(const QRectF& aRect, const QColor& aColor, double aRa
     mPainter.setPen(Qt::NoPen);
     mPainter.setBrush(aColor);
     if (aRadius > 0.0) {
-        // ImGui's rounded fill covers the rect's own pixels with the corners cut; Qt's
+        // A rounded fill covers the rect's own pixels with the corners cut; Qt's
         // drawRoundedRect insets by the pen only when a pen is set, so with NoPen the shape is
         // the rect's own box.
         mPainter.drawRoundedRect(boxOf(aRect), aRadius, aRadius);
@@ -66,9 +66,9 @@ void InkQPainter::strokeRect(const QRectF& aRect, const QColor& aColor, double a
     mPainter.setBrush(Qt::NoBrush);
     // THE STROKE IS CENTRED ON THE PATH, so a 1px stroke on an integer edge would split
     // itself over two device rows. Inset by half the width: the stroke then covers exactly
-    // the rows the given box names, which is what ImGui's antialiased 1px line already
-    // does. The caller hands over the geometry it means (gui::ink::paintMarquee's raw
-    // rect) and this conversion stays where the rasteriser convention lives.
+    // the rows the given box names, which is the same inset gui::InkCanvas applies. The
+    // caller hands over the geometry it means (gui::ink::paintMarquee's raw rect) and this
+    // conversion stays where the rasteriser convention lives.
     const double half = aWidth * 0.5;
     const QRectF box = aRect.adjusted(half, half, -half, -half);
     if (aRadius > 0.0)
@@ -83,10 +83,10 @@ void InkQPainter::line(const QPointF& aFrom, const QPointF& aTo, const QColor& a
     const bool axisAligned = qFuzzyCompare(aFrom.y(), aTo.y()) || qFuzzyCompare(aFrom.x(), aTo.x());
     if (!mPainter.renderHints().testFlag(QPainter::Antialiasing) && axisAligned) {
         // THE PANEL'S CHROME CONVENTION, stated as a FILL. A 1px non-antialiased line at an
-        // integer coordinate inks ONE whole row or column (ImGui's non-AA path offsets by half a
-        // pixel to achieve exactly that). Qt's own non-AA line decides the row by rounding the
-        // endpoints, which lands on the neighbouring row for a half-pixel phase the caller never
-        // meant to state. Filling the band makes the rule explicit and independent of rounding.
+        // integer coordinate must ink ONE whole row or column. Qt's own non-AA line decides the
+        // row by rounding the endpoints, which lands on the neighbouring row for a half-pixel
+        // phase the caller never meant to state. Filling the band makes the rule explicit and
+        // independent of rounding.
         const double w = std::max(1.0, std::floor(aWidth + 0.5));
         if (qFuzzyCompare(aFrom.y(), aTo.y())) {
             const double x0 = std::min(aFrom.x(), aTo.x());
@@ -133,8 +133,8 @@ void InkQPainter::circleStroke(const QPointF& aCentre, double aRadius, const QCo
     mPainter.setRenderHint(QPainter::Antialiasing, true);
     mPainter.setPen(penOf(aColor, aWidth));
     mPainter.setBrush(Qt::NoBrush);
-    // THE BAND IS INSIDE aRadius, which is the convention the panel's geometry was measured
-    // against (ImGui's AddCircle strokes inward from the radius it is given). A centred pen at
+    // THE BAND IS INSIDE aRadius, which is the convention the panel's geometry is written
+    // against (the marker passes add the half pixel themselves). A centred pen at
     // aRadius - aWidth/2 covers exactly [aRadius - aWidth, aRadius].
     mPainter.drawEllipse(aCentre, aRadius - aWidth * 0.5, aRadius - aWidth * 0.5);
     mPainter.restore();
@@ -158,7 +158,7 @@ void InkQPainter::text(
         const double spare = std::max(0.0, double(aBox.width()) - advance);
         x = double(aBox.left() + aBox.width()) - advance - std::min(double(aRightGap), spare);
     }
-    // THE ORIGIN IS A WHOLE PIXEL, the same rule the ImGui backend states: alignment is float
+    // THE ORIGIN IS A WHOLE PIXEL, the same rule gui::InkCanvas states: alignment is float
     // arithmetic on a measured advance, and a fractional origin is what makes a glyph's cell and
     // its ink disagree by a column.
     const double snappedX = std::floor(x);
@@ -168,8 +168,7 @@ void InkQPainter::text(
     // rect whose top is the number row). Qt draws from the baseline, so both are `y + ascent`.
     // The ink-row arithmetic (`kRulerNumberInkTop` + `tightBoundingRect`) is NOT used here any
     // more: it placed the run one row above the timeline's (measured 2026-10-23 through
-    // probe_graph_parity, which read the panel 242..250 against the timeline's 243..252). The
-    // constant survives for gui::InkImGui only, whose line box really is its own.
+    // probe_graph_parity, which read the panel 242..250 against the timeline's 243..252).
     const double lineHeight = metrics.height();
     const double baseline = aVAlign == VAlign::Top
         ? std::floor(double(aBox.top()) + metrics.ascent())

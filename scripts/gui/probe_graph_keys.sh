@@ -4,10 +4,10 @@
 #
 # WHY THIS IS A PROBE AND NOT A TEST. tests/graph_drag.cpp pins what the two actions DO to the
 # document (ctrl::GraphEditor::selectAllMarkers / clearSelection, called directly), and
-# gui::GraphPanelWidget's binding to them is implemented behind two gates: THIS widget is the
-# focus widget, and gui::ImGuiInputBridge::keyboardCaptured() is false (GraphPanelWidget.cpp,
-# panelKeyAction). Neither gate, and neither key, has ever been exercised in the running
-# application - the keys only exist if Qt routes them to the docked page, which is what this probe
+# gui::GraphPanelWidget's binding to them is implemented behind one gate: THIS widget is the
+# focus widget (GraphPanelWidget.cpp, panelKeyAction). Neither the gate nor either key has ever
+# been exercised in the running application - the keys only exist if Qt routes them to the
+# docked page, which is what this probe
 # measures. Its subject is the BINDING: the selection it edits is the same shared set the timeline
 # reads, so a pixel witness on either page is the same fact.
 #

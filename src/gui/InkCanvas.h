@@ -1,8 +1,3 @@
-// COMPILED ONLY WHERE THE MODULE EXISTS. The default tree is a Qt without Canvas Painter, and
-// the app links the two portable backends there; the file is empty behind this guard so that no
-// include of <QCanvasPainter> reaches a compiler that has never heard of it.
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
-
 #ifndef GUI_INKCANVAS_H
 #define GUI_INKCANVAS_H
 
@@ -24,8 +19,9 @@ namespace ink {
 // port already paid for (see AGENTS.md):
 //   * a 1px ROW or COLUMN cannot be stroked: a span of [x, x+1) inks three columns and
 //     [x+0.5, x+1.5) two, so every axis-aligned chrome line is drawn as a FILLED rect;
-//   * a stroke's band sits INSIDE the radius (Qt and the panel's geometry agree; ImGui's
-//     AddCircle used to need a +0.5 the caller baked in);
+//   * a stroke's band sits INSIDE the radius: the painting path is pulled in by half the
+//     width, and a caller that wants the band centred on a reference radius adds that
+//     half pixel itself (the marker and ring passes do);
 //   * text is anchored explicitly (Left/Centre/Right, and a BASELINE computed from the font's
 //     own ascent), because a Canvas text origin defaults to a top-left box that is not the box
 //     the panel's model measured.
@@ -60,4 +56,3 @@ private:
 
 #endif // GUI_INKCANVAS_H
 
-#endif // AE_CANVAS_PAINTER

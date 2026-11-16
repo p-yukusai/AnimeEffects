@@ -1,5 +1,4 @@
 #include <functional>
-#include <QInputMethodEvent>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QFile>
@@ -25,12 +24,10 @@
 #include "ctrl/MaskEditor.h"
 #include "gui/KeyCommandMap.h"
 #include "gui/MouseSetting.h"
-#ifdef AE_ENABLE_IMGUI
 // The dock's Graph page: syncGraphPanelSharedState (and every list action that changes
 // what it draws) asks it for a repaint, because the panel is a WIDGET of its own and
 // the viewport's updateRender() no longer touches it.
 #include "gui/GraphPanelWidget.h"
-#endif
 
 namespace gui {
 
@@ -41,8 +38,7 @@ namespace {
 // the CHANNEL LIST (showGraphChannelMenu) and the KEY MENU (showGraphKeyMenu) are
 // opened from here, and the panel's accessibility items reach them through this class
 // too. Both read the editor HERE, at the moment they fire, rather than capturing one:
-// a list can be open across a project change. Independent of the ImGui build flag,
-// like the two panel questions below: the editor is the driver's either way.
+// a list can be open across a project change. The editor is the driver's either way.
 ctrl::GraphEditor* graphEditorOrNull(ctrl::Driver* aDriver) {
     return aDriver ? aDriver->graphEditor() : nullptr;
 }
@@ -358,17 +354,14 @@ void MainDisplayWidget::syncGraphPanelSharedState() {
 }
 
 void MainDisplayWidget::refreshGraphPanel() {
-#ifdef AE_ENABLE_IMGUI
     // The dock's Graph page, found through the window (this widget is the viewport and
     // holds no reference to the dock, exactly as gui::GraphPanelWidget finds this one
     // for its own menus). It is one widget per window, and a no-op elsewhere: with no
-    // dock (a harness) or with the page not constructed (no ImGui build) there is
-    // nothing to ask, and the request is dropped.
+    // dock (a harness) there is nothing to ask, and the request is dropped.
     if (QWidget* top = this->window()) {
         if (auto* panel = top->findChild<GraphPanelWidget*>())
             panel->refresh();
     }
-#endif
 }
 
 bool MainDisplayWidget::showGraphKeyMenu(const core::TimeLineEvent::Target& aPressedKey, const QPoint& aGlobalPos) {
@@ -1099,28 +1092,6 @@ void MainDisplayWidget::mouseDoubleClickEvent(QMouseEvent* aEvent) {
     // gesture used to be taken here; it is the docked panel's, on its own page.)
     QOpenGLWidget::mouseDoubleClickEvent(aEvent);
 }
-
-void MainDisplayWidget::keyPressEvent(QKeyEvent* aEvent) {
-    // The event is ignored, i.e. it propagates to the main window's key map, which is
-    // where the application's key routing has always been. (A Dear ImGui text field
-    // used to hold the keyboard while the panel was drawn over this widget; the panel
-    // is the dock's page now and its own widget forwards its keys.)
-    QOpenGLWidget::keyPressEvent(aEvent);
-}
-
-void MainDisplayWidget::keyReleaseEvent(QKeyEvent* aEvent) { QOpenGLWidget::keyReleaseEvent(aEvent); }
-
-void MainDisplayWidget::inputMethodEvent(QInputMethodEvent* aEvent) { QOpenGLWidget::inputMethodEvent(aEvent); }
-
-QVariant MainDisplayWidget::inputMethodQuery(Qt::InputMethodQuery aQuery) const {
-    // The ImGui caret an input context used to ask about lives in the panel's own page
-    // now (gui::GraphPanelWidget forwards the same queries).
-    return QOpenGLWidget::inputMethodQuery(aQuery);
-}
-
-void MainDisplayWidget::focusInEvent(QFocusEvent* aEvent) { QOpenGLWidget::focusInEvent(aEvent); }
-
-void MainDisplayWidget::focusOutEvent(QFocusEvent* aEvent) { QOpenGLWidget::focusOutEvent(aEvent); }
 
 void MainDisplayWidget::onVisualUpdated() {
     // A TOOL'S "the view changed" is its GIZMO, and gizmos are drawn in the overlay pass on top of

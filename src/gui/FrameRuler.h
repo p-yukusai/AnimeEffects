@@ -25,15 +25,14 @@ namespace gui {
 // "first-last" label, how the playhead's pill suppresses the number in its column, and
 // the temporary playback window's band, stems and label pills. It publishes GEOMETRY
 // and CLASSIFICATION only - never ink: the timeline paints it with QPainter
-// (paintRuler) and the graph panel paints the same model with ImGui
-// (GraphPanelFrame.cpp), each with its own tokens, and the two therefore cannot
-// disagree about which frame is numbered or where a label sits.
+// (paintRuler) and the graph panel paints the same model through gui::ink::Ink on its
+// Canvas Painter page (GraphPanelFrame.cpp), each with its own tokens, and the two
+// therefore cannot disagree about which frame is numbered or where a label sits.
 //
 // WHY A MODEL AND NOT A SHARED PAINT ROUTINE. The two hosts' paint stacks have nothing
-// in common (QPainter over a raster widget, ImGui over a draw list in a GL widget), and
-// their fonts are measured differently (QFontMetrics vs the ImGui atlas). What they CAN
-// share is the decision - and the decision is where the two implementations used to
-// drift: every "the two views disagree" defect in this area was a rule implemented
+// in common (QPainter over a raster widget, Canvas Painter over the RHI widget), and
+// each measures its text at its own size and device ratio. What they CAN share is the
+// decision - and the decision is where the two implementations used to drift: every "the two views disagree" defect in this area was a rule implemented
 // twice (the hairline's alpha, the label column, the ring's ink). The rule now lives
 // once; the ink stays the host's.
 //
@@ -184,7 +183,7 @@ struct Inputs {
 Model build(const Inputs& aInputs, const Axis& aAxis);
 
 // The ink the timeline's ruler paints, from the model. The panel paints the same model
-// through ImGui with theme::Graph's tokens instead.
+// through gui::ink::Ink with theme::Graph's tokens instead.
 struct PaintInk {
     QColor content;     // ticks and numbers (theme::TimeLine::headerContentColor)
     QColor windowBand;  // the temporary window's wash

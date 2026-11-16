@@ -19,10 +19,8 @@
 #include <QKeyEvent>
 #include <QPainter>
 #include <QSet>
-#ifdef AE_ENABLE_IMGUI
 #include "gui/GraphPanelWidget.h"
 #include <QTabBar>
-#endif
 #include <algorithm>
 #include <functional>
 
@@ -66,7 +64,6 @@ const int kProportionalGlyphSize = 22;
 // button would read as Linear. The canonical pair makes the REAL derivation shape
 // the canonical ease-in-out, and with aAutoHandles it also shows the control
 // points.
-#ifdef AE_ENABLE_IMGUI
 // The tab strip: the mock's own numbers for a tab (.tl-tabs button - 11px text,
 // 3px/8px of padding, a 4px radius) and the bar it sits in (a 2px gap between the
 // two tabs, and the 1x16 rule the mock's border-right draws between the strip and
@@ -89,7 +86,6 @@ const int kTabRadius = 4;      // the knob
 const int kTroughRadius = 6;   // the field the knob sits in
 const int kTabMargin = 2;      // knob inset inside the field
 const int kTabEdge = 1;        // border width, both states
-#endif
 
 // The mock's .tl-hairline: the 1x16 rule between two of the bar's groups. Painted
 // rather than styled - QSS box rules do not render on plain widget surfaces (the
@@ -379,9 +375,7 @@ TimeLineHeader::TimeLineHeader(GUIResources& aResources, PlayBackWidget* aTransp
     QWidget(aParent),
     mGUIResources(aResources),
     mTransport(aTransport),
-#ifdef AE_ENABLE_IMGUI
     mTabs(nullptr),
-#endif
     mTimeLine(nullptr),
     mInner(nullptr),
     mSelectionSlot(),
@@ -390,9 +384,7 @@ TimeLineHeader::TimeLineHeader(GUIResources& aResources, PlayBackWidget* aTransp
     mEaseSlot(nullptr),
     mEasing(),
     mQuickEases(),
-#ifdef AE_ENABLE_IMGUI
     mChannelsButton(nullptr)
-#endif
     {
     // The bar is one fixed 40px row; the surface below keeps its own geometry
     // whatever the bar holds.
@@ -403,7 +395,6 @@ TimeLineHeader::TimeLineHeader(GUIResources& aResources, PlayBackWidget* aTransp
     lay->setContentsMargins(kHeaderPad, 0, kHeaderPad, 0);
     lay->setSpacing(kGroupGap);
 
-#ifdef AE_ENABLE_IMGUI
     // The dock's views, as the bar's FIRST group (the mock's .tl-tabs): the tab
     // names the page, so the Graph page carries no title and no header row of its
     // own - the panel is one component on two floors (design section 5). The control
@@ -426,7 +417,6 @@ TimeLineHeader::TimeLineHeader(GUIResources& aResources, PlayBackWidget* aTransp
     connect(mTabs, &QTabBar::currentChanged, this, &TimeLineHeader::onTabChanged);
     lay->addWidget(mTabs, 0, Qt::AlignVCenter);
     this->addHairline(*lay);
-#endif
 
     // The transport, moved out of its old column: a fixed-size group, centered in
     // the bar.
@@ -554,7 +544,6 @@ TimeLineHeader::TimeLineHeader(GUIResources& aResources, PlayBackWidget* aTransp
         this->onProportionalClicked();
     });
 
-#ifdef AE_ENABLE_IMGUI
     // THE CHANNELS TRIGGER: the panel's ONE control, in the dock's header (the mock's
     // .tl-chans - a view action, so it sits with the view controls and not in the
     // panel's own ruler band). Hidden while the Timeline tab is the dock's view, since
@@ -588,7 +577,6 @@ TimeLineHeader::TimeLineHeader(GUIResources& aResources, PlayBackWidget* aTransp
     mChannelsButton->setVisible(false);
     connect(mChannelsButton, &QAbstractButton::clicked, this, [this]() { this->onChannelsClicked(); });
     lay->addWidget(mChannelsButton, 0, Qt::AlignVCenter);
-#endif
 
     // The bar's right end is the channels trigger (on the Graph tab); the zoom
     // group that used to hang here was redundant - the timeline's wheel and its
@@ -870,13 +858,10 @@ void TimeLineHeader::refreshFrame() {
     // timeline's editor, and the editor changes with the project) and, in a build with
     // the panel, the channels button's own words.
     this->refreshQuickEasings();
-#ifdef AE_ENABLE_IMGUI
     GraphPanelWidget* panel = this->graphPanelWidget();
     this->updateChannelsButton(panel ? panel->channelRows() : QVector<PanelChannelRow>());
-#endif
 }
 
-#ifdef AE_ENABLE_IMGUI
 GraphPanelWidget* TimeLineHeader::graphPanelWidget() const {
     // The dock's Graph page, through the WINDOW: the header is constructed with a
     // GUIResources, a transport and a parent, and the dock's body is a sibling of this
@@ -1020,15 +1005,12 @@ void TimeLineHeader::refreshTabStyle() {
     mTabs->setStyleSheet(sheet);
     mTabs->update();
 }
-#endif
 
 void TimeLineHeader::onThemeUpdated(theme::Theme& aTheme) {
     this->setStyleSheet(aTheme.loadStylesheet("playbackwidget.ssa"));
-#ifdef AE_ENABLE_IMGUI
     // The strip's ink is built from the tokens, not from a sheet: re-build it here so
     // an accent change (which re-applies the app's palette) re-inks the tabs too.
     this->refreshTabStyle();
-#endif
     // The chip paints from the live palette, but its caret pixmap is tinted through
     // the icon pipeline and must be re-loaded for the new appearance.
     mEasing->refreshIcon();
@@ -1036,10 +1018,8 @@ void TimeLineHeader::onThemeUpdated(theme::Theme& aTheme) {
     // paint from the live tokens too, so a theme change is a repaint and nothing else.
     for (const QuickEase& quick : mQuickEases)
         quick.button->update();
-#ifdef AE_ENABLE_IMGUI
     if (mChannelsButton)
         mChannelsButton->update();
-#endif
     this->update();
 }
 

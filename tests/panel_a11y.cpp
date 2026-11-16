@@ -1,24 +1,23 @@
-// Standalone contract test for the accessibility bridge of the ImGui-drawn
-// viewport overlay (gui::a11y, src/gui/ImGuiA11y.{h,cpp}).
+// Standalone contract test for the accessibility bridge of the framebuffer-drawn
+// animation graph panel (gui::a11y, src/gui/PanelA11y.{h,cpp}).
 //
-// WHY IT EXISTS. The overlay paints the animation-graph panel with ImGui into a
-// GL framebuffer, so the panel is not a widget, owns no QObject, and is invisible
-// to AT-SPI: the window's accessibility dump is byte-identical with the overlay
-// on and off. gui::a11y closes that gap by publishing the overlay's plain,
-// per-frame model through a QAccessible factory, the same way
-// gui::installQmlFormAccessibility does for the QML dialogs. This file is the
-// evidence that the published tree says what the model says - roles, names,
-// values, checked state, screen rectangles - and that acting on it reaches the
-// overlay with the right id.
+// WHY IT EXISTS. The panel's host rasterises the drawing into a texture, so the
+// panel is not a widget, owns no QObject, and is invisible to AT-SPI: the
+// window's accessibility dump is byte-identical with the panel on and off.
+// gui::a11y closes that gap by publishing the panel's plain, per-frame model
+// through a QAccessible factory, the same way gui::installQmlFormAccessibility
+// does for the QML dialogs. This file is the evidence that the published tree
+// says what the model says - roles, names, values, checked state, screen
+// rectangles - and that acting on it reaches the host with the right id.
 //
-// It is a UNIT test: no GL, no ImGui, only ImGuiA11y.cpp and Qt. What it cannot
+// It is a UNIT test: no GL, no Canvas, only PanelA11y.cpp and Qt. What it cannot
 // decide (see the report): whether the AT-SPI bridge forwards this tree, and
-// whether a real screen reader sees it - that needs the live overlay under Xvfb
+// whether a real screen reader sees it - that needs the live panel under Xvfb
 // plus a dump of the real window.
 //
 // INSTALL ORDER. Step 0 is the order the module requires, and it is a gate of its
 // own: installFactoryOnly() runs before anything has asked Qt for the widget's
-// interface (the application calls it from the viewport widget's constructor),
+// interface (the application calls it from the host widget's constructor),
 // install() from the first frame then ADOPTS that same installation, and step 11
 // is the mirror image - a widget something asked about first, where the fix must
 // leave the cached interface (and the id a client would be holding) completely
@@ -37,10 +36,10 @@
 // widget destroyed, uninstall() called, and the whole sequence repeated).
 //
 // Headless and self-contained (Qt widgets + QtGui + QtCore only; no GL, no
-// ImGui, no project build system):
-//   g++ -std=c++17 -fPIC -I src -I/usr/include/qt6 -I/usr/include/qt6/QtCore -I/usr/include/qt6/QtGui -I/usr/include/qt6/QtWidgets tests/imgui_a11y.cpp src/gui/ImGuiA11y.cpp -lQt6Widgets -lQt6Gui -lQt6Core -o /tmp/imgui_a11y
-//   QT_QPA_PLATFORM=offscreen /tmp/imgui_a11y
-//   QT_QPA_PLATFORM=offscreen QT_SCALE_FACTOR=2 /tmp/imgui_a11y
+// project build system):
+//   g++ -std=c++17 -fPIC -I src -I/usr/include/qt6 -I/usr/include/qt6/QtCore -I/usr/include/qt6/QtGui -I/usr/include/qt6/QtWidgets tests/panel_a11y.cpp src/gui/PanelA11y.cpp -lQt6Widgets -lQt6Gui -lQt6Core -o /tmp/panel_a11y
+//   QT_QPA_PLATFORM=offscreen /tmp/panel_a11y
+//   QT_QPA_PLATFORM=offscreen QT_SCALE_FACTOR=2 /tmp/panel_a11y
 // The second run is not decoration: the offscreen platform then reports
 // devicePixelRatio 2, which is how the "rects are device independent" mapping is
 // checked without a HiDPI screen. Every rectangle assertion below is written
@@ -78,7 +77,7 @@
 #include <QWidget>
 #include <cstdio>
 
-#include "gui/ImGuiA11y.h"
+#include "gui/PanelA11y.h"
 
 namespace {
 
@@ -129,7 +128,7 @@ gui::a11y::Item makeItem(gui::a11y::Item::Role aRole, int aId, const char* aName
     return item;
 }
 
-// The panel as the overlay would hand it over: two checkable legend swatches, the
+// The panel as the host would hand it over: two checkable legend swatches, the
 // focused channel's line, the fit action, a colour swatch, and a disabled action.
 gui::a11y::Model makePanelModel() {
     gui::a11y::Model model;
@@ -171,24 +170,24 @@ void printInterface(const char* aLabel, QAccessibleInterface* aInterface) {
                 aInterface->rect().y(), aInterface->rect().width(), aInterface->rect().height());
 }
 
-// The expected screen rectangle of an item: the model's viewport pixels
+// The expected screen rectangle of an item: the model's host-widget pixels
 // translated by the widget's own screen origin. Sizes are NOT scaled by
 // devicePixelRatio - the model's pixels, QWidget geometry and QAccessible
 // rectangles are all device independent - so this formula is the whole mapping.
-QRect expectedScreenRect(const QPoint& aViewportOrigin, const QRect& aViewportRect) {
-    return QRect(aViewportOrigin + aViewportRect.topLeft(), aViewportRect.size());
+QRect expectedScreenRect(const QPoint& aHostOrigin, const QRect& aHostRect) {
+    return QRect(aHostOrigin + aHostRect.topLeft(), aHostRect.size());
 }
 
 int run() {
     QWidget viewport;
-    viewport.setObjectName(QStringLiteral("imguiA11yTestViewport"));
+    viewport.setObjectName(QStringLiteral("panelA11yTestHost"));
     viewport.resize(400, 300);
     viewport.move(120, 64);
     // --- 0: the factory is installed BEFORE anything can query the widget ------
-    // This is the order the module requires (ImGuiA11y.h, "WHERE TO CALL IT":
+    // This is the order the module requires (PanelA11y.h, "WHERE TO CALL IT":
     // installFactoryOnly() is the constructor-time half of install()), and it is
     // measured here on a widget that is not even shown yet, exactly like the
-    // application's viewport in its own constructor.
+    // application's panel host in its own constructor.
     //
     // WHY "BEFORE" IS EARLIER THAN IT LOOKS. Qt itself asks for the widget's
     // interface as soon as the widget takes part in an accessibility event:
@@ -228,7 +227,7 @@ int run() {
     printInterface("0 installed before the first show", early);
 
     // --- 0b: install() from the first frame ADOPTS that very interface ---------
-    // The overlay's initializeGL-time install() arrives after the widget is already
+    // The host's first-frame install() arrives after the widget is already
     // visible, i.e. after a screen reader may have walked it. Re-installing must
     // not end the installation such a client is holding: same interface, same id,
     // and only the action callback is taken over.
@@ -369,7 +368,7 @@ int run() {
     hiddenActions->doAction(QStringLiteral("check"));
     CHECK(activations == 4);
     CHECK(lastId == 42);
-    // A disabled action still advertises itself but must not reach the overlay.
+    // A disabled action still advertises itself but must not reach the host.
     QAccessibleActionInterface* disabledActions = root->child(5)->actionInterface();
     CHECK(disabledActions != nullptr);
     disabledActions->doAction(QAccessibleActionInterface::pressAction());
@@ -501,7 +500,7 @@ int run() {
                 emptyRoot->rect().height(), origin.x(), origin.y(), viewport.width(), viewport.height());
 
     // --- 8: the viewport dying under an installation ---------------------------
-    // The overlay's widget can be destroyed while the bridge is installed (a
+    // The host widget can be destroyed while the bridge is installed (a
     // document closed, a panel torn down). Qt deletes the accessible interface
     // with the widget; the label must not follow it into freed memory.
     QAccessible::Id doomedChildId = 0;
@@ -761,7 +760,7 @@ int run() {
     // interface - and asking is not something only a client does. Qt's own event
     // path asks whenever the widget takes part in an accessibility event (measured
     // above: ObjectShow when the widget is first shown; StateChanged for a shown
-    // toplevel while other windows come and go), so a viewport whose overlay was
+    // toplevel while other windows come and go), so a host whose panel was
     // torn down and is built again later can find a plain entry already cached.
     // install() reports that and publishes nothing rather than freeing an
     // interface a client may hold - the consequence to route around by installing

@@ -1,13 +1,10 @@
 #include "gui/GraphPanelFrame.h"
 
-#include "gui/InkImGui.h"
-
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <cstring>
 #include <limits>
-#include <memory>
 #include <vector>
 
 #include <QCoreApplication>
@@ -15,25 +12,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDebug>
-#include <QElapsedTimer>
 #include <QFont>
-#include <QOpenGLContext>
-#include <QOpenGLWidget>
 #include <QPointer>
-#include <QVector2D>
-#include <QVector3D>
-#include <QVector4D>
-#include <QVarLengthArray>
-
-#include "imgui.h"
-// The draw list's own font lives in ImDrawListSharedData, which imgui.h only
-// forward-declares. Reaching it here is deliberate: it is what lets drawPanel
-// measure and draw text from the DRAW LIST alone, with no ImGui context and no
-// frame - the property a headless pixel gate needs. (The vendored ImGui is
-// version-pinned, and the Qt font loader already depends on this header.)
-#include "imgui_internal.h"
-#include "backends/imgui_impl_opengl3.h"
 
 #include "core/Frame.h"
 #include "core/ObjectNode.h"
@@ -43,45 +23,20 @@
 #include "ctrl/graph/graph_Scaler.h"
 #include "ctrl/graph/graph_ScrollBarGeometry.h"
 #include "ctrl/time/time_Renderer.h"
-#include "gl/EasyShaderProgram.h"
-#include "gl/Framebuffer.h"
-#include "gl/Global.h"
-#include "gl/Texture.h"
-#include "gl/Vector2.h"
-#include "gl/VertexArrayObject.h"
-#include "gui/ImGuiA11y.h"
-#include "gui/ImGuiQtFontLoader.h"
+#include "gui/PanelA11y.h"
 #include "gui/theme/Colors.h"
 #include "gui/theme/Graph.h"
 
 namespace gui {
 namespace {
 
-// The GLSL version string handed to the GL3 backend. The application's context is
-// a 4.0 CORE profile (gl::Global::kVersion), and the backend's own table maps GL
-// 4.0 to "#version 400 core"; a core profile rejects the pre-150 strings the
-// backend would otherwise default to on desktop.
-const char* kGlslVersion = "#version 400 core";
-
-// The curve stroke width, in LOGICAL pixels - the one number the shipping coverage
-// pass (gui::stroke) and the AddPolyline fallback below both stroke with.
-//
-// WHY 2.0. The curve is read at its full 2px on the plot, and the 1.5px it had before
-// that cost 1.71px of ink per column on the pixel gate's own slope-0.5 segment against
-// 2.21 (AE_PANEL_CROPS, measured across 41 columns, both constant to 3 decimals) - so
-// the weight class is 2.0 on a real measurement, not on taste.
-//
-// WHAT IT IS FOR THE FALLBACK, where a whole number still matters: ImGui antialiases a
-// polyline by one of two paths and the WIDTH decides which (imgui_draw.cpp,
-// ImDrawList::AddPolyline). A width with a zero fractional part uses the baked LINE
-// TEXTURE - one continuous quad strip whose edges the GPU's bilinear filter turns into
-// a ramp, 2 vertices and 6 indices per point - while any fractional width falls back to
-// the GEOMETRY path, 4 vertices and 18 indices per point whose joins overlap (each
-// segment's fringe is blended over its neighbour's). 2.0 keeps the fallback on the
-// cheap path; the SHIPPING path is gui::stroke, which builds its own geometry and
-// measures the coverage per fragment, and it is what makes the stroke's width stop
-// depending on the angle (see tests/graph_panel_pixels.cpp's angle assertion).
-constexpr float kCurveWidth = stroke::kWidthPx;
+// The curve stroke's nominal width in LOGICAL pixels, and why 2.0: the curve is read at
+// its full 2px on the plot, and the 1.5px it had before cost 1.71px of ink per column on
+// the pixel gate's own slope-0.5 segment against 2.21 (AE_PANEL_CROPS, measured across 41
+// columns, both constant to 3 decimals) - so the weight class is 2.0 on a real
+// measurement, not on taste. The backend strokes the polyline at this width (half of it
+// either side of the centreline).
+constexpr float kCurveWidth = 2.0f;
 
 // Length of the short axis marks, and where they hang from. The frame ruler is the
 // TIMELINE'S RULER (see GraphPanelModel.h): its ticks are gui::frameRuler::kTickLength
@@ -156,7 +111,7 @@ constexpr float kRangeGuideWindowAlpha = 0.25f;
 
 // The label halo: the same glyphs drawn at the eight compass offsets of radius 1
 // and radius 2, so the ring reaches 2px past the glyph ink in every direction.
-// Read only while gui::kDrawTextHalo is on (shipped off: see addHaloedText).
+// Read only while gui::kDrawTextHalo is on (shipped off; the backends implement it).
 
 // Emphasis by SELECTION: the alpha a curve and its key markers are drawn at when its
 // channel owns no selected key (gui::drawPanel's curveStrength). 45% keeps the shape
@@ -204,11 +159,6 @@ constexpr float kGhostHandleStemAlpha = 0.5f;
 constexpr float kGhostHandleEdgeAlpha = 0.7f;
 constexpr float kGhostHandleShrink = 1.5f;
 
-// The text size used when the widget's font states no size at all (neither a pixel
-// nor a usable point size: gui::imgui_qt::panelFontPixelSize returns 0). 13 is
-// ImGui's own default font size, which keeps the panel legible instead of empty.
-constexpr float kFallbackFontPixelSize = 13.0f;
-
 // The accessibility ids are the header's (kPanelSummaryItemId, kPanelFitItemId,
 // kPanelKeyMenuItemId): both hosts of the panel dispatch on them through
 // publishPanelAccessibility's callback, so they are not private to this translation
@@ -242,77 +192,6 @@ QString trText(const char* aSource, int aPlural = -1) {
     return QCoreApplication::translate(kTranslationContext, aSource, nullptr, aPlural);
 }
 
-
-// The colour as it should be painted under a strength factor. Emphasis and
-// "hidden" both scale ALPHA and leave the hue alone, so a dimmed curve still
-// reads as its own channel.
-
-// The window rect as ImGui's half-open rect: right()/bottom() are the last
-// INCLUDED pixel columns.
-
-// The draw list's own font and size. drawPanel must NOT go through
-// ImGui::CalcTextSize(): that one reads the current context (g.Font), and the
-// drawing has to be callable from a headless pixel gate that owns nothing but a
-// draw list. ImDrawList keeps the frame's font in its shared data, so this is
-// the same font the glyphs are drawn with.
-
-
-// How far below the position ImGui is HANDED the first row of a run's ink falls: the
-// smallest top bearing among the run's glyphs, at the size it is drawn at.
-// ImFont::RenderText places each glyph at `trunc(pos.y) + glyph->Y0 * scale`, so the
-// run's ink begins on that row - the LINE BOX top plus this inset. 0 when the font
-// cannot answer (no baked size, no glyph), which degrades to the line box's own top.
-//
-// The bearing is the panel's problem at all only because Qt lays the timeline's
-// numbers out with the same face at the same size and its ink starts one row higher
-// (see gui::kRulerNumberInkTop): aligning the INK needs the font's own offset, and
-// this is it - not a constant, so a different size or face keeps working.
-
-// One glyph run, haloed: the 16 halo passes, then the text itself. The halo is
-// what kept a label readable over arbitrary artwork - the panel has no background
-// - and the 16 offsets are what make the ring solid rather than four smudges (see
-// the constant above for the geometry).
-//
-// SHIPPED OFF (gui::kDrawTextHalo, in the header): the 17 glyph passes per label
-// are now the contrast outline pass's job, which rings the same glyphs - and every
-// other piece of panel ink - but only where the ink would otherwise have been
-// lost, and in the outline colour rather than a panel tone. The body below is kept
-// whole so the flag is the only difference between the two.
-
-
-// Where a label's GLYPH LINE BOX sits inside its box's ROWS - an axis of its own,
-// because the horizontal alignment is the label's JOB (a value number is right-aligned
-// in its column; a frame number's BOX is centred on its tick and the run is anchored
-// LEFT in that box, the timeline's own rule) while the vertical one is whose BOX the
-// model published.
-//
-// WHY Top EXISTS - THE RULER'S ROW IS THE TIMELINE'S. Every label on the frame
-// ruler's number row is drawn by TimeRuler/TimeCursor as `drawText(rect, text)` with
-// the rect's top at `rulerTop + kNumberTop` and Qt's default top-left alignment: the
-// glyph line box starts ON the box's first row. Centring a glyph in that 14px box
-// instead - what every label here did - put the panel's numbers two rows BELOW the
-// timeline's on the same capture: same glyph, same height, shifted.
-
-// One label inside the box the model decided, at the alignment the model
-// documented for it, with the halo. The box is the model's; only the placement
-// inside it is the drawing layer's.
-//
-// THE GLYPHS ARE CLAMPED INTO THE BOX. The model measures its boxes with the
-// default UI font (it has no painter) and this layer draws with the widget's, so
-// the two line heights are not the same number; a layer font taller than the box
-// would put half its overflow ABOVE the box's top edge - and for a frame number
-// that is above the plot's top edge, i.e. inside the plot clip, which is how the
-// top row of ruler numbers came out with their caps cut off. Centring therefore
-// takes the larger of "centred" and "flush with the box's top": an over-tall font
-// hangs into the box's own interior (where there is room) instead of out of it.
-//
-// Labelink::VAlign::Top aligns the RUN'S INK, not its line box: the first inked row is
-// `box.top() + gui::kRulerNumberInkTop`, the row Qt's top-aligned drawText inks for
-// the timeline's numbers of the same face and size. The font's own top bearing is
-// subtracted to get there (inkTopInset), so the row is the same at any drawing size -
-// the panel's 12px layer font and the pixel gate's different face land on it alike.
-// The glyph CELL may therefore start above the box by that bearing; its ink does not,
-// and a font taller than the box hangs BELOW it, into the band's remaining rows.
 
 // THE MARKER RULE's ink tokens, and where each comes from.
 //
@@ -361,10 +240,10 @@ QString trText(const char* aSource, int aPlural = -1) {
 //   * the marker's own 1px edge stroke is drawn OUTSIDE its radius too (see the
 //             AddCircle below), so the coloured core is never eaten by its edge.
 //
-// THE HALF PIXEL is the only difference between the engines: Qt's pen is centred on
-// the ring's radius, while ImGui's AddCircle strokes INWARD from the radius it is
-// given, so this pass asks for ringRadius + 0.5 - the same trick the marker's own
-// edge band uses. Both then put their 1px band on [r - 0.5, r + 0.5].
+// THE HALF PIXEL is the ink backend's stroke convention: a centred 1px stroke is
+// pulled in by half its width, so this pass asks for ringRadius + 0.5 - the same
+// convention the marker's own edge band uses - and the band then covers
+// [r - 0.5, r + 0.5] about the reference radius.
 //
 // NO DARK SLEEVE under this ring, and the reason is the ink itself: the mock's sleeve
 // exists to make a WHITE highlight ring read on arbitrary artwork
@@ -429,893 +308,6 @@ float curveStrength(const PanelCurve& aCurve) {
 
 } // namespace
 
-
-//-------------------------------------------------------------------------------------------------
-// THE CONTRAST OUTLINE AND COMPOSITE PASS (declared and described in the header).
-//
-// WHY THE GLSL IS A STRING HERE AND NOT A FILE IN assets/shaders. Every other
-// shader in this repository is a resource (`:/shaders/*.glsl`, from
-// assets/assets.qrc). This pass cannot be: its own pixel gate
-// (tests/graph_panel_pixels.cpp) is the reason the pass is a free unit at all, and
-// that target compiles THIS translation unit from a source list in
-// tests/CMakeLists.txt that has never carried assets.qrc - a fragment shader that
-// is only a resource is a shader the gate cannot load. gl::EasyTextureDrawer, the
-// other full-screen textured-quad unit here, embeds its shaders for the same kind
-// of reason. One copy, reachable by both.
-namespace {
-
-// A full-screen triangle generated from gl_VertexID: the three corners (0,0) (2,0)
-// (0,2) in UV space land on (-1,-1) (3,-1) (-1,3) in clip space, so the pass needs
-// no vertex buffer and no vertex attributes - only a bound VAO, which a core
-// profile requires for any draw call.
-const char* kOutlineVertexSource =
-    "#version 400 core\n"
-    "out vec2 vUv;\n"
-    "void main() {\n"
-    "    vec2 corner = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));\n"
-    "    vUv = corner;\n"
-    "    gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);\n"
-    "}\n";
-
-const char* kOutlineFragmentSource =
-    "#version 400 core\n"
-    "in vec2 vUv;\n"
-    "out vec4 FragColor;\n"
-    "uniform sampler2D uOverlay;\n"
-    "uniform sampler2D uBackdrop;\n"
-    "uniform vec2 uTexel;\n"
-    "uniform float uMinContrast;\n"
-    "uniform vec3 uOutlineColour;\n"
-    "uniform float uRingRadiusPx;\n"
-    "\n"
-    "// WCAG relative luminance: the sRGB channels are linearised first, because\n"
-    "// uMinContrast is WCAG's 3:1 and that ratio only means 3:1 in linear light.\n"
-    "float linearise(float aChannel) {\n"
-    "    return aChannel <= 0.04045 ? aChannel / 12.92 : pow((aChannel + 0.055) / 1.055, 2.4);\n"
-    "}\n"
-    "float luma(vec3 aRgb) {\n"
-    "    return dot(vec3(0.2126, 0.7152, 0.0722),\n"
-    "               vec3(linearise(aRgb.r), linearise(aRgb.g), linearise(aRgb.b)));\n"
-    "}\n"
-    "float contrast(float aLuma, float aOther) {\n"
-    "    float hi = max(aLuma, aOther);\n"
-    "    float lo = min(aLuma, aOther);\n"
-    "    return (hi + 0.05) / (lo + 0.05);\n"
-    "}\n"
-    "\n"
-    "// One tap of the overlay, in the panel's OWN colour. The overlay target holds\n"
-    "// the ImGui backend's own source-over blend, so its rgb arrives PREMULTIPLIED\n"
-    "// by the coverage in alpha; dividing that back out is what lets the contrast\n"
-    "// test and the composite below be written in the panel's colours. Without it a\n"
-    "// partially covered pixel would composite at alpha squared.\n"
-    "vec4 tap(vec2 aUv) {\n"
-    "    vec4 t = texture(uOverlay, aUv);\n"
-    "    return vec4(t.a > 0.0 ? t.rgb / t.a : vec3(0.0), t.a);\n"
-    "}\n"
-    "\n"
-    "// The ink test is alpha > 0.0 and not an epsilon: a hairline at partial\n"
-    "// coverage still counts as ink. The tail of the anti-aliasing can therefore\n"
-    "// make the ring about a pixel wider than the visible ink; if it ever looks fat,\n"
-    "// this comparison is the knob (an epsilon on aTap.a).\n"
-    "bool lowContrastInk(vec4 aTap, float aBackdropLuma) {\n"
-    "    return aTap.a > 0.0 && contrast(luma(aTap.rgb), aBackdropLuma) < uMinContrast;\n"
-    "}\n"
-    "\n"
-    "void main() {\n"
-    "    vec4 ov = tap(vUv);\n"
-    "    vec4 tW = tap(vUv + vec2(-uTexel.x, 0.0));\n"
-    "    vec4 tE = tap(vUv + vec2( uTexel.x, 0.0));\n"
-    "    vec4 tN = tap(vUv + vec2(0.0, -uTexel.y));\n"
-    "    vec4 tS = tap(vUv + vec2(0.0,  uTexel.y));\n"
-    "\n"
-    "    // The optional second ring, two pixels out. A uniform branch, so the\n"
-    "    // shipped 1px ring pays for four taps and not eight.\n"
-    "    vec4 tW2 = vec4(0.0);\n"
-    "    vec4 tE2 = vec4(0.0);\n"
-    "    vec4 tN2 = vec4(0.0);\n"
-    "    vec4 tS2 = vec4(0.0);\n"
-    "    if (uRingRadiusPx > 1.5) {\n"
-    "        tW2 = tap(vUv + vec2(-2.0 * uTexel.x, 0.0));\n"
-    "        tE2 = tap(vUv + vec2( 2.0 * uTexel.x, 0.0));\n"
-    "        tN2 = tap(vUv + vec2(0.0, -2.0 * uTexel.y));\n"
-    "        tS2 = tap(vUv + vec2(0.0,  2.0 * uTexel.y));\n"
-    "    }\n"
-    "\n"
-    "    // The outline's strength is the STRONGEST TAP, never this pixel's own\n"
-    "    // coverage: that is what makes the ring track the shape - a 40% stroke gets\n"
-    "    // a 40% ring, adjacent strokes fill in without double-darkening, and no ink\n"
-    "    // nearby draws nothing at all.\n"
-    "    float maxA = max(max(max(tW.a, tE.a), max(tN.a, tS.a)),\n"
-    "                     max(max(tW2.a, tE2.a), max(tN2.a, tS2.a)));\n"
-    "\n"
-    "    vec4 backdrop = texture(uBackdrop, vUv);\n"
-    "    float backdropLuma = luma(backdrop.rgb);\n"
-    "    // Per pixel, against THIS pixel's backdrop, so a glyph straddling a light\n"
-    "    // and a dark region is ringed only on the side that needs it.\n"
-    "    bool low = lowContrastInk(tW, backdropLuma) || lowContrastInk(tE, backdropLuma)\n"
-    "            || lowContrastInk(tN, backdropLuma) || lowContrastInk(tS, backdropLuma)\n"
-    "            || lowContrastInk(tW2, backdropLuma) || lowContrastInk(tE2, backdropLuma)\n"
-    "            || lowContrastInk(tN2, backdropLuma) || lowContrastInk(tS2, backdropLuma);\n"
-    "\n"
-    "    vec3 col = backdrop.rgb;\n"
-    "    if (low && maxA > 0.0)\n"
-    "        col = mix(col, uOutlineColour, maxA);\n"
-    "    // The panel composites on top at its own coverage, NEVER gated at\n"
-    "    // alpha >= 1.0: every edge and every hairline is antialiased, so clipping\n"
-    "    // to full coverage would jag the edges and erase the thin strokes.\n"
-    "    col = mix(col, ov.rgb, ov.a);\n"
-    "    // The backdrop's own alpha survives where nothing is drawn, so the pass is\n"
-    "    // an exact no-op on every pixel the panel does not touch.\n"
-    "    FragColor = vec4(col, mix(backdrop.a, 1.0, ov.a));\n"
-    "}\n";
-
-// The pass's GL objects, held as a RAW OWNED POINTER rather than a smart one, and
-// deliberately: every destructor here calls GL, and a namespace-scope object is
-// destroyed by exit() - by which time the context this pass was built on is long
-// gone, which is a segfault inside glDeleteVertexArrays (measured). The objects are
-// therefore destroyed exactly once, by outline::shutdown(), while a context is
-// current; if that call is never made, the process is going away anyway.
-struct OutlinePass {
-    gl::EasyShaderProgram shader;
-    std::unique_ptr<gl::VertexArrayObject> quad;
-    int overlayLocation = -1;
-    int backdropLocation = -1;
-    int texelLocation = -1;
-    int minContrastLocation = -1;
-    int colourLocation = -1;
-    int ringLocation = -1;
-};
-
-OutlinePass* gOutline = nullptr;
-
-} // namespace
-
-namespace outline {
-
-// Builds the pass's program and its array object, on the CURRENT GL context and FOR that
-// context: the program, its uniform locations and the VAO are all context objects, and a
-// VAO name in particular is not shared between contexts even when they share buffers and
-// textures (see the frame driver's own note on the panel's GL objects). Idempotent (safe
-// to call per frame) and false when the context cannot compile the program - the caller
-// must then draw without the ring rather than draw nothing.
-bool init() {
-    if (gOutline)
-        return true;
-
-    std::unique_ptr<OutlinePass> pass(new OutlinePass());
-    // ONE program: the vertex stage derives the full-screen triangle from gl_VertexID
-    // (no attribute, no vertex buffer), so only the fragment stage's six uniforms have
-    // to be resolved here.
-    const bool linked = pass->shader.setVertexSource(QString::fromLatin1(kOutlineVertexSource))
-        && pass->shader.setFragmentSource(QString::fromLatin1(kOutlineFragmentSource)) && pass->shader.link();
-    if (!linked) {
-        XC_DEBUG_REPORT("the contrast outline pass did not build: %s", qPrintable(pass->shader.log()));
-        return false;
-    }
-
-    pass->overlayLocation = pass->shader.uniformLocation("uOverlay");
-    pass->backdropLocation = pass->shader.uniformLocation("uBackdrop");
-    pass->texelLocation = pass->shader.uniformLocation("uTexel");
-    pass->minContrastLocation = pass->shader.uniformLocation("uMinContrast");
-    pass->colourLocation = pass->shader.uniformLocation("uOutlineColour");
-    pass->ringLocation = pass->shader.uniformLocation("uRingRadiusPx");
-    // The array object the pass binds around its one draw. It carries no attribute - the
-    // positions come from gl_VertexID - but a core profile refuses to draw with NO array
-    // object bound, and the binding it makes is saved and put back by composite() (which
-    // documents why: the application's painter pass needs its own default VAO left bound).
-    pass->quad.reset(new gl::VertexArrayObject());
-
-    // Released by shutdown(), never by exit(): see gOutline above.
-    gOutline = pass.release();
-    return true;
-}
-
-void shutdown() {
-    delete gOutline;
-    gOutline = nullptr;
-}
-
-void abandon() {
-    // NOT ONE GL CALL, and the wrapper is LEAKED on purpose: its destructor would delete
-    // the program and the quad by name, and on a context that never owned them that is a
-    // wrong operation (glDeleteProgram: GL_INVALID_VALUE, measured - coredump 76726) and
-    // not a harmless no-op. Their context is gone, so the names are already the driver's;
-    // a fresh pass is built on the new context by the next init().
-    gOutline = nullptr;
-}
-
-void copyBackdrop(GLuint aSourceFbo, GLuint aDestinationFbo, const QSize& aPixelSize) {
-    if (aPixelSize.isEmpty())
-        return;
-
-    gl::Global::Functions& ggl = gl::Global::functions();
-    GLint previousRead = 0;
-    GLint previousDraw = 0;
-    ggl.glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &previousRead);
-    ggl.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previousDraw);
-
-    // A blit is scissored exactly like a draw, and the ImGui backend leaves
-    // GL_SCISSOR_TEST enabled at the box its own last draw command set.
-    ggl.glDisable(GL_SCISSOR_TEST);
-    ggl.glBindFramebuffer(GL_READ_FRAMEBUFFER, aSourceFbo);
-    ggl.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, aDestinationFbo);
-    ggl.glBlitFramebuffer(
-        0, 0, aPixelSize.width(), aPixelSize.height(), 0, 0, aPixelSize.width(), aPixelSize.height(),
-        GL_COLOR_BUFFER_BIT, GL_NEAREST
-    );
-
-    // The framebuffer bindings go back as they were found: this is a copy, not a
-    // change of target.
-    ggl.glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(previousRead));
-    ggl.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GLuint(previousDraw));
-    GL_CHECK_ERROR();
-}
-
-void composite(GLuint aOverlay, GLuint aBackdrop, const QSize& aPixelSize, const Params& aParams) {
-    if (!gOutline || aPixelSize.isEmpty())
-        return;
-
-    gl::Global::Functions& ggl = gl::Global::functions();
-
-    // THE PASS IS A GUEST IN THE FRAME, AND IT PUTS BACK WHAT IT CHANGES. The
-    // bindings it saves here are not courtesies: the application's paint path keeps
-    // ONE default vertex array bound for the whole session
-    // (MainDisplayWidget::initializeGL creates it and comments "keep binding"), and
-    // the painter engine that runs at the TOP of the next paint relies on that -
-    // every glVertexAttribPointer it makes needs an array object bound in a core
-    // profile. MEASURED: a version of this pass that ended with glBindVertexArray(0)
-    // made the next frame's painter pass fail with GL_INVALID_OPERATION in
-    // glVertexAttribPointer and glDrawArrays, and the error surfaced one call later
-    // as an assert in gl::EasyShaderProgram::release(). The ImGui backend restores
-    // the same binding for the same reason.
-    GLint savedVao = 0;
-    GLint savedActiveTexture = 0;
-    GLint savedTexture[2] = {0, 0};
-    ggl.glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVao);
-    ggl.glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActiveTexture);
-    ggl.glActiveTexture(GL_TEXTURE0);
-    ggl.glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTexture[0]);
-    ggl.glActiveTexture(GL_TEXTURE1);
-    ggl.glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTexture[1]);
-
-    // Every piece of state this pass depends on is SET rather than assumed: it runs
-    // at the very end of the frame, where the ImGui backend has left blending on
-    // with its own function, the scissor box enabled, and the viewport at whatever
-    // its last draw command asked for.
-    ggl.glDisable(GL_BLEND);
-    ggl.glDisable(GL_DEPTH_TEST);
-    ggl.glDisable(GL_CULL_FACE);
-    ggl.glDisable(GL_SCISSOR_TEST);
-    // Dithering is on by default in GL and would perturb the 8-bit write by a bit,
-    // which would stop the pass from being an exact no-op on the pixels the panel
-    // does not touch (and off it is again on the next frame: paintGL resets the
-    // render state at the top of every paint).
-    ggl.glDisable(GL_DITHER);
-    ggl.glViewport(0, 0, aPixelSize.width(), aPixelSize.height());
-
-    ggl.glActiveTexture(GL_TEXTURE0);
-    ggl.glBindTexture(GL_TEXTURE_2D, aOverlay);
-    ggl.glActiveTexture(GL_TEXTURE1);
-    ggl.glBindTexture(GL_TEXTURE_2D, aBackdrop);
-
-    OutlinePass& pass = *gOutline;
-    pass.quad->bind();
-    pass.shader.bind();
-    pass.shader.setUniformValue(pass.overlayLocation, 0);
-    pass.shader.setUniformValue(pass.backdropLocation, 1);
-    pass.shader.setUniformValue(
-        pass.texelLocation,
-        QVector2D(GLfloat(1.0) / GLfloat(aPixelSize.width()), GLfloat(1.0) / GLfloat(aPixelSize.height()))
-    );
-    pass.shader.setUniformValue(pass.minContrastLocation, aParams.minContrast);
-    pass.shader.setUniformValue(
-        pass.colourLocation,
-        QVector3D(GLfloat(aParams.colour.redF()), GLfloat(aParams.colour.greenF()), GLfloat(aParams.colour.blueF()))
-    );
-    pass.shader.setUniformValue(pass.ringLocation, aParams.ringRadiusPx);
-    ggl.glDrawArrays(GL_TRIANGLES, 0, 3);
-    // The PROGRAM is deliberately left unbound, exactly as the application's own
-    // gl::EasyTextureDrawer leaves it at the end of every paint: 0 is a state the
-    // painter's next bind() establishes for itself.
-    pass.shader.release();
-
-    ggl.glBindVertexArray(GLuint(savedVao));
-    ggl.glBindTexture(GL_TEXTURE_2D, GLuint(savedTexture[1]));
-    ggl.glActiveTexture(GL_TEXTURE0);
-    ggl.glBindTexture(GL_TEXTURE_2D, GLuint(savedTexture[0]));
-    ggl.glActiveTexture(GLenum(savedActiveTexture));
-    GL_CHECK_ERROR();
-}
-
-} // namespace outline
-
-//-------------------------------------------------------------------------------------------------
-// The coverage stroke: the panel's curve ink. gui::stroke in the header says why it is a
-// pass of its own rather than ImDrawList::AddPolyline, what the coverage function is, and
-// where in the frame its callback sits. What follows is that pass's machinery.
-namespace {
-
-// The per-segment program. Every vertex carries the quad's own corner AND the segment's
-// two endpoints, so the fragment can measure the distance to the SEGMENT rather than to
-// the quad.
-//
-// THE PROJECTION IS THE BACKEND'S OWN ORTHO, term for term
-// (ImGui_ImplOpenGL3_SetupRenderState): it is diagonal plus a translation, so its four
-// numbers are all the vertex shader needs, and using the same numbers rather than
-// rebuilding a matrix here is what makes a curve land on exactly the pixel ImGui's own
-// geometry would have inked.
-const char* kStrokeVertexSource =
-    "#version 400 core\n"
-    "layout(location = 0) in vec2 aPos;\n"
-    "layout(location = 1) in vec2 aP0;\n"
-    "layout(location = 2) in vec2 aP1;\n"
-    "uniform vec4 uOrtho;\n"
-    "out vec2 vPos;\n"
-    "out vec2 vP0;\n"
-    "out vec2 vP1;\n"
-    "void main() {\n"
-    "    vPos = aPos;\n"
-    "    vP0 = aP0;\n"
-    "    vP1 = aP1;\n"
-    "    gl_Position = vec4(aPos.x * uOrtho.x + uOrtho.z, aPos.y * uOrtho.y + uOrtho.w, 0.0, 1.0);\n"
-    "}\n";
-
-const char* kStrokeFragmentSource =
-    "#version 400 core\n"
-    "in vec2 vPos;\n"
-    "in vec2 vP0;\n"
-    "in vec2 vP1;\n"
-    "uniform float uPxScale;\n"
-    "uniform float uHalfWidth;\n"
-    "uniform float uFilter;\n"
-    "uniform vec3 uInk;\n"
-    "uniform float uAlpha;\n"
-    "uniform int uMode;\n"
-    "out vec4 FragColor;\n"
-    "\n"
-    "void main() {\n"
-    "    // The distance to the SEGMENT, never to its infinite line: the clamp on h is what\n"
-    "    // gives each segment its own round join and cap with no extra geometry at all.\n"
-    "    vec2 ba = vP1 - vP0;\n"
-    "    vec2 pa = vPos - vP0;\n"
-    "    float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-8), 0.0, 1.0);\n"
-    "    // In DEVICE pixels, which is the currency the filter and the stroke's weight are\n"
-    "    // in (the nominal width is a logical one, so a 2x screen gets a 2x stroke).\n"
-    "    float d = length(pa - ba * h) * uPxScale;\n"
-    "\n"
-    "    // The box filter: a pixel's coverage of a half-plane edge is the length of the\n"
-    "    // filter's span that lies inside the stroke over the span's own width, so the 50%\n"
-    "    // crossing lands exactly on the nominal edge at any sub-pixel phase.\n"
-    "    float r = 0.5 * uFilter;\n"
-    "    // A stroke narrower than the filter keeps the filter's footprint (1 device px) and\n"
-    "    // scales its ALPHA instead of thinning away - Rougier's sub-pixel rule.\n"
-    "    float body = max(uHalfWidth, r);\n"
-    "    float cov = clamp((body + r - d) / uFilter, 0.0, 1.0) * min(1.0, uHalfWidth / r);\n"
-    "\n"
-    "    // 0: the coverage alone, accumulated with GL_MAX, so overlapping segments take the\n"
-    "    // UNION of their capsules instead of blending twice. 1: the ink straight into the\n"
-    "    // frame - the path taken when the scratch target could not be created, where a\n"
-    "    // join that overlaps itself beats a missing curve.\n"
-    "    FragColor = (uMode == 0) ? vec4(cov) : vec4(uInk, cov * uAlpha);\n"
-    "}\n";
-
-// The composite: one full-screen triangle that turns the accumulated coverage back into
-// the panel's own premultiplied ink. No attributes at all (gl_VertexID carries the
-// corner), which is why it needs no vertex buffer.
-const char* kStrokeCompositeVertexSource =
-    "#version 400 core\n"
-    "void main() {\n"
-    "    vec2 corner = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));\n"
-    "    gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);\n"
-    "}\n";
-
-const char* kStrokeCompositeFragmentSource =
-    "#version 400 core\n"
-    "uniform sampler2D uCoverage;\n"
-    "uniform vec2 uSize;\n"
-    "uniform vec3 uInk;\n"
-    "uniform float uAlpha;\n"
-    "out vec4 FragColor;\n"
-    "void main() {\n"
-    "    // gl_FragCoord's centre is the texel centre of the same pixel of an equally sized\n"
-    "    // attachment, so this reads the coverage 1:1 with no filtering of its own.\n"
-    "    float cov = texture(uCoverage, gl_FragCoord.xy / uSize).a;\n"
-    "    // The backend's own source-over (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,\n"
-    "    // GL_ONE_MINUS_SRC_ALPHA) makes this the PREMULTIPLIED ink the contrast outline\n"
-    "    // pass reads back - the convention the overlay's framebuffer holds.\n"
-    "    FragColor = vec4(uInk, cov * uAlpha);\n"
-    "}\n";
-
-// The callback data ImGui copies for ONE curve (ImDrawList::AddCallback's userdata_size
-// path), so the geometry lives inside the draw list and nothing outlives the call. 24
-// bytes of header keeps every blob a multiple of 8, which is what keeps the float pairs
-// that follow it aligned inside ImGui's own byte buffer.
-struct CurveInkBlob {
-    int pointCount;   // >= 2
-    float red;
-    float green;
-    float blue;
-    float alpha;      // the ink's strength: 1.0, or kUnselectedAlpha
-    float halfWidth;  // the stroke's half width, in LOGICAL px: the curve's kCurveWidth/2,
-                      // a handle stem's 0.5. Both are the same stroke otherwise, which is
-                      // why there is one record and not two.
-};
-static_assert(sizeof(CurveInkBlob) == 24, "the blob's alignment rule");
-
-// The pass's GL objects, held as a RAW OWNED POINTER for the same reason outline's are:
-// every destructor here calls GL, and a namespace-scope object is destroyed by exit(),
-// by which time this context is long gone (a measured segfault inside glDelete*). They
-// are destroyed exactly once, by stroke::shutdown(), while a context is current.
-struct StrokePass {
-    gl::EasyShaderProgram segments;
-    gl::EasyShaderProgram composite;
-    std::unique_ptr<gl::VertexArrayObject> vao;
-
-    int orthoLocation = -1;
-    int pxScaleLocation = -1;
-    int halfWidthLocation = -1;
-    int filterLocation = -1;
-    int inkLocation = -1;
-    int alphaLocation = -1;
-    int modeLocation = -1;
-
-    int coverageLocation = -1;
-    int sizeLocation = -1;
-    int compositeInkLocation = -1;
-    int compositeAlphaLocation = -1;
-
-    // The coverage scratch: the union of one curve's capsules, at the framebuffer's own
-    // pixel size. Rebuilt only when that size changes.
-    QSize pixels;
-    std::unique_ptr<gl::Texture> coverageTexture;
-    std::unique_ptr<gl::Framebuffer> coverageFbo;
-
-    // The vertices of the curve being drawn, kept so a frame that draws the same curves
-    // does not reallocate three vectors per curve.
-    std::vector<gl::Vector2> positions;
-    std::vector<gl::Vector2> starts;
-    std::vector<gl::Vector2> ends;
-
-    // False when the driver refuses either object; the caller then draws the ink
-    // straight into the frame rather than losing it.
-    bool ensureCoverage(const QSize& aPixels) {
-        if (pixels == aPixels && coverageFbo)
-            return true;
-        pixels = QSize();
-        coverageFbo.reset();
-        coverageTexture.reset();
-        coverageTexture.reset(new gl::Texture());
-        coverageTexture->create(aPixels);
-        coverageTexture->setFilter(GL_NEAREST);
-        coverageTexture->setWrap(GL_CLAMP_TO_EDGE);
-        coverageFbo.reset(new gl::Framebuffer());
-        coverageFbo->setColorAttachment(0, coverageTexture->id());
-        if (!coverageFbo->isComplete()) {
-            coverageFbo.reset();
-            coverageTexture.reset();
-            return false;
-        }
-        pixels = aPixels;
-        return true;
-    }
-};
-
-StrokePass* gStroke = nullptr;
-
-// Every piece of GL state the callback changes, so it can be put back exactly as it was
-// found. This is not a courtesy: the ImGui backend keeps its shader program, its vertex
-// array and its ARRAY BUFFER bound across a draw list's commands, and uploads the NEXT
-// draw list's vertices with whatever array buffer is bound when it gets there.
-struct GuestState {
-    GLint program = 0;
-    GLint vao = 0;
-    GLint arrayBuffer = 0;
-    GLint activeTexture = 0;
-    GLint texture0 = 0;
-    GLint drawFbo = 0;
-    GLint readFbo = 0;
-    GLint viewport[4] = {0, 0, 0, 0};
-    GLint scissorBox[4] = {0, 0, 0, 0};
-    GLint blendEquationRgb = 0;
-    GLint blendEquationAlpha = 0;
-    GLint blendSrcRgb = 0;
-    GLint blendDstRgb = 0;
-    GLint blendSrcAlpha = 0;
-    GLint blendDstAlpha = 0;
-    GLboolean blend = GL_FALSE;
-    GLboolean scissor = GL_FALSE;
-    GLboolean dither = GL_FALSE;
-
-    void save(gl::Global::Functions& aGgl) {
-        aGgl.glGetIntegerv(GL_CURRENT_PROGRAM, &program);
-        aGgl.glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
-        aGgl.glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &arrayBuffer);
-        aGgl.glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
-        aGgl.glActiveTexture(GL_TEXTURE0);
-        aGgl.glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture0);
-        aGgl.glActiveTexture(GLenum(activeTexture));
-        aGgl.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
-        aGgl.glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
-        aGgl.glGetIntegerv(GL_VIEWPORT, viewport);
-        aGgl.glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
-        aGgl.glGetIntegerv(GL_BLEND_EQUATION_RGB, &blendEquationRgb);
-        aGgl.glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &blendEquationAlpha);
-        aGgl.glGetIntegerv(GL_BLEND_SRC_RGB, &blendSrcRgb);
-        aGgl.glGetIntegerv(GL_BLEND_DST_RGB, &blendDstRgb);
-        aGgl.glGetIntegerv(GL_BLEND_SRC_ALPHA, &blendSrcAlpha);
-        aGgl.glGetIntegerv(GL_BLEND_DST_ALPHA, &blendDstAlpha);
-        blend = aGgl.glIsEnabled(GL_BLEND);
-        scissor = aGgl.glIsEnabled(GL_SCISSOR_TEST);
-        dither = aGgl.glIsEnabled(GL_DITHER);
-    }
-
-    void restore(gl::Global::Functions& aGgl) const {
-        aGgl.glBlendEquationSeparate(GLenum(blendEquationRgb), GLenum(blendEquationAlpha));
-        aGgl.glBlendFuncSeparate(
-            GLenum(blendSrcRgb), GLenum(blendDstRgb), GLenum(blendSrcAlpha), GLenum(blendDstAlpha)
-        );
-        if (blend)
-            aGgl.glEnable(GL_BLEND);
-        else
-            aGgl.glDisable(GL_BLEND);
-        if (dither)
-            aGgl.glEnable(GL_DITHER);
-        else
-            aGgl.glDisable(GL_DITHER);
-        if (scissor)
-            aGgl.glEnable(GL_SCISSOR_TEST);
-        else
-            aGgl.glDisable(GL_SCISSOR_TEST);
-        aGgl.glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
-        aGgl.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-        aGgl.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GLuint(drawFbo));
-        aGgl.glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(readFbo));
-        aGgl.glBindVertexArray(GLuint(vao));
-        aGgl.glBindBuffer(GL_ARRAY_BUFFER, GLuint(arrayBuffer));
-        aGgl.glActiveTexture(GL_TEXTURE0);
-        aGgl.glBindTexture(GL_TEXTURE_2D, GLuint(texture0));
-        aGgl.glActiveTexture(GLenum(activeTexture));
-        aGgl.glUseProgram(GLuint(program));
-    }
-};
-
-// The device-pixel rect a clip rect covers, in the coordinates glScissor takes (y counted
-// from the BOTTOM), computed with the backend's own arithmetic and its own truncations -
-// so the pass clips on exactly the pixels ImGui clips its own commands on.
-QRect scissorRect(const ImVec4& aClipRect, const ImVec2& aDisplayPos, const ImVec2& aScale, int aFramebufferHeight) {
-    const ImVec2 clipMin((aClipRect.x - aDisplayPos.x) * aScale.x, (aClipRect.y - aDisplayPos.y) * aScale.y);
-    const ImVec2 clipMax((aClipRect.z - aDisplayPos.x) * aScale.x, (aClipRect.w - aDisplayPos.y) * aScale.y);
-    if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
-        return QRect();
-    return QRect(
-        int(clipMin.x), int(float(aFramebufferHeight) - clipMax.y), int(clipMax.x - clipMin.x),
-        int(clipMax.y - clipMin.y)
-    );
-}
-
-// The device-pixel rect one curve's ink can reach (its own bounding box, grown by the
-// stroke's whole footprint), in the same coordinates.
-QRect curveInkRect(const CurveInkBlob* aInk, const ImDrawData* aDrawData, int aFramebufferHeight) {
-    const float scale = aDrawData->FramebufferScale.x > 0.0f ? float(aDrawData->FramebufferScale.x) : 1.0f;
-    // Half the stroke (its own, not the curve's: this rect is asked for both the curves and
-    // the handle stems), the filter's own half width (in logical units), and a pixel of
-    // slack - the same reach the quads themselves are built with.
-    const float reach = aInk->halfWidth + (0.5f * stroke::kFilterPx + 1.0f) / scale;
-
-    const float* coords = reinterpret_cast<const float*>(reinterpret_cast<const uchar*>(aInk) + sizeof(*aInk));
-    float minX = FLT_MAX;
-    float minY = FLT_MAX;
-    float maxX = -FLT_MAX;
-    float maxY = -FLT_MAX;
-    for (int i = 0; i < aInk->pointCount; ++i) {
-        minX = std::min(minX, coords[2 * i]);
-        maxX = std::max(maxX, coords[2 * i]);
-        minY = std::min(minY, coords[2 * i + 1]);
-        maxY = std::max(maxY, coords[2 * i + 1]);
-    }
-    if (minX > maxX)
-        return QRect();
-
-    const ImVec2 offset = aDrawData->DisplayPos;
-    const ImVec2 sc = aDrawData->FramebufferScale;
-    const int left = int(std::floor((minX - reach - offset.x) * sc.x));
-    const int right = int(std::ceil((maxX + reach - offset.x) * sc.x));
-    const int top = int(std::floor((minY - reach - offset.y) * sc.y));
-    const int bottom = int(std::ceil((maxY + reach - offset.y) * sc.y));
-    return QRect(left, aFramebufferHeight - bottom, right - left, bottom - top);
-}
-
-// One polyline's place in the draw list: the geometry and the ink travel in the callback's
-// own copied data, so this keeps no state of its own and the panel stays a pure function of
-// its model. One callback PER POLYLINE is what keeps the pass in the draw list's own order -
-// over the ticks and the labels, under the key markers (a curve), and between the markers
-// and their own dots (a handle stem).
-void addInkCallback(
-    ImDrawList& aDrawList, const QVector<QPointF>& aPoints, const QColor& aColour, float aStrength,
-    float aHalfWidth
-) {
-    if (aPoints.size() < 2)
-        return;
-
-    QVarLengthArray<uchar, 2048> blob(int(sizeof(CurveInkBlob) + aPoints.size() * 2 * sizeof(GLfloat)));
-    CurveInkBlob header;
-    header.pointCount = int(aPoints.size());
-    header.red = GLfloat(aColour.redF());
-    header.green = GLfloat(aColour.greenF());
-    header.blue = GLfloat(aColour.blueF());
-    header.alpha = aStrength;
-    header.halfWidth = aHalfWidth;
-    std::memcpy(blob.data(), &header, sizeof(header));
-    GLfloat* coords = reinterpret_cast<GLfloat*>(blob.data() + sizeof(CurveInkBlob));
-    for (int i = 0; i < aPoints.size(); ++i) {
-        coords[2 * i] = GLfloat(aPoints.at(i).x());
-        coords[2 * i + 1] = GLfloat(aPoints.at(i).y());
-    }
-    // ImGui COPIES this into the draw list, so nothing here has to outlive the call.
-    aDrawList.AddCallback(stroke::drawListCallback, blob.data(), size_t(blob.size()));
-}
-
-
-} // namespace
-
-// THE IMGUI BACKEND'S STROKE. The coverage pass is this backend's own business (it exists
-// because ImGui's antialiased polyline is not area-exact), so it answers the backend's hook:
-// true when the pass is ready and drew, false when it is not, and the backend then falls back
-// to ImGui's own polyline at the same width. The colour arrives already strength-scaled.
-bool panelStrokeSink(ImDrawList& aList, const QVector<QPointF>& aPoints, const QColor& aColour, double aHalfWidth) {
-    if (!stroke::isReady())
-        return false;
-    // THE COLOUR'S ALPHA IS THE INK'S STRENGTH, one rule for every backend (Qt and Canvas
-    // Painter honour a colour's alpha by construction). The pass takes the ink as a vec3 and
-    // the strength as a scalar, so the alpha is handed over separately: baking it into the RGB
-    // draws the stroke at full opacity - MEASURED, the gate's curve samples read the token
-    // itself (distance 122) instead of the dimmed blend (55) when this passed 1.0.
-    addInkCallback(aList, aPoints, aColour, aColour.alphaF(), float(aHalfWidth));
-    return true;
-}
-
-namespace stroke {
-
-bool init() {
-    if (gStroke)
-        return true;
-
-    std::unique_ptr<StrokePass> pass(new StrokePass());
-    const bool segmentsLinked = pass->segments.setVertexSource(QString::fromLatin1(kStrokeVertexSource))
-        && pass->segments.setFragmentSource(QString::fromLatin1(kStrokeFragmentSource)) && pass->segments.link();
-    const bool compositeLinked = pass->composite.setVertexSource(QString::fromLatin1(kStrokeCompositeVertexSource))
-        && pass->composite.setFragmentSource(QString::fromLatin1(kStrokeCompositeFragmentSource))
-        && pass->composite.link();
-    if (!segmentsLinked || !compositeLinked) {
-        // Not fatal: drawPanel strokes with ImDrawList::AddPolyline instead, i.e. exactly
-        // the ink this pass was added to replace.
-        XC_DEBUG_REPORT(
-            "the coverage stroke pass did not build: %s", qPrintable(pass->segments.log() + pass->composite.log())
-        );
-        return false;
-    }
-
-    pass->vao.reset(new gl::VertexArrayObject());
-    pass->orthoLocation = pass->segments.uniformLocation("uOrtho");
-    pass->pxScaleLocation = pass->segments.uniformLocation("uPxScale");
-    pass->halfWidthLocation = pass->segments.uniformLocation("uHalfWidth");
-    pass->filterLocation = pass->segments.uniformLocation("uFilter");
-    pass->inkLocation = pass->segments.uniformLocation("uInk");
-    pass->alphaLocation = pass->segments.uniformLocation("uAlpha");
-    pass->modeLocation = pass->segments.uniformLocation("uMode");
-    pass->coverageLocation = pass->composite.uniformLocation("uCoverage");
-    pass->sizeLocation = pass->composite.uniformLocation("uSize");
-    pass->compositeInkLocation = pass->composite.uniformLocation("uInk");
-    pass->compositeAlphaLocation = pass->composite.uniformLocation("uAlpha");
-
-    // Released by shutdown(), never by exit(): see gStroke above.
-    gStroke = pass.release();
-    return true;
-}
-
-void shutdown() {
-    delete gStroke;
-    gStroke = nullptr;
-}
-
-void abandon() {
-    // See outline::abandon: no GL call, the wrapper is leaked, and init() builds a fresh
-    // pass on the context that is current.
-    gStroke = nullptr;
-}
-
-bool isReady() { return gStroke != nullptr; }
-
-void drawListCallback(const ImDrawList*, const ImDrawCmd* aCommand) {
-    if (!gStroke || !aCommand || !aCommand->UserCallbackData)
-        return;
-    const CurveInkBlob* ink = static_cast<const CurveInkBlob*>(aCommand->UserCallbackData);
-    // A callback is per curve and the data is the blob addCurveInkCallback built; the
-    // size ImGui recorded beside it is what makes a corrupt or truncated blob (never one
-    // of ours) a no-op rather than a wild read.
-    if (ink->pointCount < 2 || aCommand->UserCallbackDataSize < int(sizeof(*ink)))
-        return;
-
-    // The frame's OWN projection, clip and scale: the draw data is what the backend
-    // renders from, so a curve lands where the backend's own commands land.
-    ImDrawData* drawData = ImGui::GetDrawData();
-    if (!drawData)
-        return; // driven outside a frame: there is nothing to project against
-    const int fbWidth = int(drawData->DisplaySize.x * drawData->FramebufferScale.x);
-    const int fbHeight = int(drawData->DisplaySize.y * drawData->FramebufferScale.y);
-    if (fbWidth <= 0 || fbHeight <= 0)
-        return;
-
-    // Where this curve may draw: the panel's own clip (the plot), its own ink's bounds,
-    // and only where the two meet.
-    const QRect clip = scissorRect(aCommand->ClipRect, drawData->DisplayPos, drawData->FramebufferScale, fbHeight);
-    const QRect area = clip.intersected(curveInkRect(ink, drawData, fbHeight));
-    if (area.isEmpty())
-        return;
-
-    gl::Global::Functions& ggl = gl::Global::functions();
-    StrokePass& pass = *gStroke;
-
-    // The stroke's own numbers, both in DEVICE pixels: the filter is one of those by
-    // definition, and the nominal width is a logical one that a scaled framebuffer
-    // multiplies (so a 2x screen gets a 2x stroke and a one-device-pixel ramp).
-    const float pxScale = drawData->FramebufferScale.x > 0.0f ? float(drawData->FramebufferScale.x) : 1.0f;
-    const float halfWidth = ink->halfWidth * pxScale;
-    const float reach = ink->halfWidth + (0.5f * kFilterPx + 1.0f) / pxScale;
-
-    // The quads: one per segment, expanded on EVERY side to halfWidth + filter, so the
-    // capsule's round cap and join are inside the geometry already. All four corners
-    // carry the segment's own endpoints - that is what the fragment measures against.
-    const float* coords = reinterpret_cast<const float*>(reinterpret_cast<const uchar*>(ink) + sizeof(*ink));
-    std::vector<gl::Vector2>& positions = pass.positions;
-    std::vector<gl::Vector2>& starts = pass.starts;
-    std::vector<gl::Vector2>& ends = pass.ends;
-    positions.clear();
-    starts.clear();
-    ends.clear();
-    for (int i = 0; i + 1 < ink->pointCount; ++i) {
-        const float ax = coords[2 * i];
-        const float ay = coords[2 * i + 1];
-        const float bx = coords[2 * i + 2];
-        const float by = coords[2 * i + 3];
-        const float dx = bx - ax;
-        const float dy = by - ay;
-        const float length = std::sqrt(dx * dx + dy * dy);
-        if (!(length > 0.0f))
-            continue; // a repeated sample: no direction, nothing to stroke
-        const float ex = dx / length * reach;
-        const float ey = dy / length * reach;
-        const float fx = -dy / length * reach;
-        const float fy = dx / length * reach;
-        const gl::Vector2 corners[4] = {
-            gl::Vector2::make(ax - ex + fx, ay - ey + fy),
-            gl::Vector2::make(ax - ex - fx, ay - ey - fy),
-            gl::Vector2::make(bx + ex - fx, by + ey - fy),
-            gl::Vector2::make(bx + ex + fx, by + ey + fy),
-        };
-        // The corners alternate sides of the segment (c0/c3 on one, c1/c2 on the other), so
-        // the two triangles have to share ONE diagonal: the pairing that shares the other
-        // one (c2,c1,c3) crosses it instead, and the quad's middle is painted twice while a
-        // wedge of it is painted not at all - measured as a hole in the ink, which is why
-        // this is the order it is.
-        const int order[6] = {0, 1, 2, 0, 2, 3};
-        for (int v = 0; v < 6; ++v) {
-            positions.push_back(corners[order[v]]);
-            starts.push_back(gl::Vector2::make(ax, ay));
-            ends.push_back(gl::Vector2::make(bx, by));
-        }
-    }
-    if (positions.empty())
-        return;
-
-    GuestState guest;
-    guest.save(ggl);
-
-    // The IMGUI ORTHO, term for term (SetupRenderState): clip.x = x * sx + tx and
-    // clip.y = y * sy + ty, with the matrix's own diagonal and translation.
-    const float left = drawData->DisplayPos.x;
-    const float right = drawData->DisplayPos.x + drawData->DisplaySize.x;
-    const float top = drawData->DisplayPos.y;
-    const float bottom = drawData->DisplayPos.y + drawData->DisplaySize.y;
-    const QVector4D ortho(
-        GLfloat(2.0f / (right - left)), GLfloat(2.0f / (top - bottom)), GLfloat((right + left) / (left - right)),
-        GLfloat((top + bottom) / (bottom - top))
-    );
-
-    // The scratch has to exist before anything is drawn into it; when the driver refuses
-    // it (never measured, but cheap to survive) the ink goes straight into the frame.
-    //
-    // A SINGLE SEGMENT needs no scratch at all, and that is not a shortcut: with one segment
-    // there is no second capsule to overlap, so the union IS that segment's capsule and the
-    // direct path's source-over is bit-for-bit the same composite the accumulate path would
-    // produce. It is worth saying because a two-point polyline is the common case: every
-    // tangent handle stem, and every channel whose plot window holds one key pair.
-    const bool accumulate = ink->pointCount > 2 && pass.ensureCoverage(QSize(fbWidth, fbHeight));
-
-    // Dithering perturbs an 8-bit write by a bit, which is exactly the size of a ramp
-    // step: the coverage pass writes real coverage, so it is turned off for the pass and
-    // put back afterwards (the contrast outline pass does the same, for its own reason).
-    ggl.glDisable(GL_DITHER);
-    ggl.glDisable(GL_CULL_FACE);
-    ggl.glDisable(GL_DEPTH_TEST);
-    ggl.glEnable(GL_SCISSOR_TEST);
-    ggl.glScissor(area.left(), area.top(), area.width(), area.height());
-    ggl.glEnable(GL_BLEND);
-
-    if (accumulate) {
-        // 1. THE UNION OF THE CAPSULES, in the scratch. GL_MAX is the whole point: two
-        // overlapping segments must contribute the LARGER coverage, not the sum of two
-        // source-over blends (which would darken every join, and darken a dimmed curve's
-        // join even where both segments are fully covered).
-        pass.coverageFbo->bind();
-        ggl.glViewport(0, 0, pass.pixels.width(), pass.pixels.height());
-        ggl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        ggl.glClear(GL_COLOR_BUFFER_BIT);
-        ggl.glBlendEquation(GL_MAX);
-        ggl.glBlendFunc(GL_ONE, GL_ONE);
-
-        pass.vao->bind();
-        pass.segments.bind();
-        pass.segments.setUniformValue(pass.orthoLocation, ortho);
-        pass.segments.setUniformValue(pass.pxScaleLocation, pxScale);
-        pass.segments.setUniformValue(pass.halfWidthLocation, GLfloat(halfWidth));
-        pass.segments.setUniformValue(pass.filterLocation, GLfloat(kFilterPx));
-        pass.segments.setUniformValue(pass.modeLocation, GLint(0));
-        pass.segments.setAttributeArray(0, positions.data(), int(positions.size()));
-        pass.segments.setAttributeArray(1, starts.data(), int(starts.size()));
-        pass.segments.setAttributeArray(2, ends.data(), int(ends.size()));
-        ggl.glDrawArrays(GL_TRIANGLES, 0, GLsizei(positions.size()));
-        pass.segments.release();
-
-        // 2. ONE composite of that union into the frame, with the ImGui backend's own
-        // source-over, so the ink lands in the premultiplied convention the overlay's
-        // framebuffer holds and the contrast outline pass reads back.
-        ggl.glBindFramebuffer(GL_FRAMEBUFFER, GLuint(guest.drawFbo));
-        ggl.glViewport(0, 0, fbWidth, fbHeight);
-        ggl.glBlendEquation(GL_FUNC_ADD);
-        ggl.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        ggl.glActiveTexture(GL_TEXTURE0);
-        ggl.glBindTexture(GL_TEXTURE_2D, pass.coverageTexture->id());
-
-        pass.vao->bind();
-        pass.composite.bind();
-        pass.composite.setUniformValue(pass.coverageLocation, GLint(0));
-        pass.composite.setUniformValue(pass.sizeLocation, QVector2D(GLfloat(fbWidth), GLfloat(fbHeight)));
-        pass.composite.setUniformValue(
-            pass.compositeInkLocation, QVector3D(ink->red, ink->green, ink->blue)
-        );
-        pass.composite.setUniformValue(pass.compositeAlphaLocation, ink->alpha);
-        ggl.glDrawArrays(GL_TRIANGLES, 0, 3);
-        pass.composite.release();
-    } else {
-        // No scratch: the ink goes straight into the frame at the coverage the fragment
-        // measured. A join overlaps itself on this path - the one thing this pass exists
-        // to avoid - but the curve is on screen, which is what matters here.
-        ggl.glViewport(0, 0, fbWidth, fbHeight);
-        ggl.glBlendEquation(GL_FUNC_ADD);
-        ggl.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-        pass.vao->bind();
-        pass.segments.bind();
-        pass.segments.setUniformValue(pass.orthoLocation, ortho);
-        pass.segments.setUniformValue(pass.pxScaleLocation, pxScale);
-        pass.segments.setUniformValue(pass.halfWidthLocation, GLfloat(halfWidth));
-        pass.segments.setUniformValue(pass.filterLocation, GLfloat(kFilterPx));
-        pass.segments.setUniformValue(pass.modeLocation, GLint(1));
-        pass.segments.setUniformValue(pass.inkLocation, QVector3D(ink->red, ink->green, ink->blue));
-        pass.segments.setUniformValue(pass.alphaLocation, ink->alpha);
-        pass.segments.setAttributeArray(0, positions.data(), int(positions.size()));
-        pass.segments.setAttributeArray(1, starts.data(), int(starts.size()));
-        pass.segments.setAttributeArray(2, ends.data(), int(ends.size()));
-        ggl.glDrawArrays(GL_TRIANGLES, 0, GLsizei(positions.size()));
-        pass.segments.release();
-    }
-
-    guest.restore(ggl);
-    GL_CHECK_ERROR();
-}
-
-} // namespace stroke
 
 //-------------------------------------------------------------------------------------------------
 void drawPanel(
@@ -1405,13 +397,10 @@ void drawPanel(
     //
     // THE INK COVERS SIX ROWS - the baseline row AND the five above it - because that
     // is what the timeline's `drawLine(pos, pos + QPoint(0, -kTickLength))` inks with a
-    // 1px pen: the band's last row plus five. ImGui's non-AA 1px path is HALF-OPEN
-    // (AddLine offsets BOTH ends by +0.5, so the quad spans [start+0.5, end+0.5] and a
-    // pixel centre exactly on an edge is not covered): a line passed from the baseline
-    // to (baseline - 5) spanned [255.5, 260.5] and inked rows 256..260 - one row short
-    // at the top, which is the measured "the ticks are one row short and start one row
-    // low". Half a row of inset at each end makes the span [255, 261] and inks the six
-    // rows the timeline inks; it is the same inset the playhead's line applies below.
+    // 1px pen: the band's last row plus five. The endpoints are stated half a row
+    // outside those rows because an AA-off 1px line is a filled band: half a row of
+    // inset at each end makes the fill cover exactly rows (baseline - 5)..baseline,
+    // which is the span the timeline inks.
     const float tickTop = bandBaseline - float(kAxisTickLength) - 0.5f;
     const float tickBottom = bandBaseline + 0.5f;
     for (int i = 0; i < aModel.frameTickX.size(); ++i) {
@@ -1439,9 +428,7 @@ void drawPanel(
     //
     // TOP-ALIGNED ON THE TIMELINE'S INK ROW: the box is the RULER's, and VAlign::Top puts
     // the run's LINE BOX top on the box's top row - the rule the timeline's own rulers draw
-    // their numbers with, so the digits' ink lands three rows down on both (see
-    // gui::kRulerNumberInkTop; the ImGui backend is the one that still needs the ink-row
-    // correction, because its line box is its own).
+    // their numbers with, so the digits' ink starts on the same row in both views.
     for (const PanelLabel& label : aModel.frameLabels)
         aInk.text(label.rect, label.text, ink::HAlign::Left, ink::VAlign::Top, label.inActiveRange ? axisText : withStrength(aTheme.axisText(), kOutsideActiveRangeAlpha), halo, 0);
 
@@ -1575,19 +562,14 @@ void drawPanel(
     // curve, carrying the polyline, the colour and the strength, so the ink is measured
     // PER FRAGMENT and its width stops depending on the angle - and so the pass sits in
     // the draw list's own order, over the ticks and under the key markers below. With the
-    // pass unavailable (init() refused, or a caller that never built it) this is the
-    // ImDrawList::AddPolyline path, which is exactly what the panel shipped before: a
-    // panel drawn with the fringe stroke beats a panel with no curves.
     for (const PanelCurve& curve : aModel.curves) {
         if (curve.points.size() < 2)
             continue; // identity and colour but no geometry: the keys are outside the window
 
         const float strength = curveStrength(curve);
 
-        // ONE call: whether the coverage pass runs is the BACKEND's business (the ImGui
-        // backend appends its shader callback, the Qt and Canvas ones stroke the same
-        // polyline at the same width), and the fallback when the pass cannot run lives
-        // there too. What is not delegated is the ink: the strength is applied here, so
+        // ONE call: the backend strokes the polyline at this width, with its own joins
+        // and caps. What is not delegated is the ink: the strength is applied here, so
         // every backend receives the same colour.
         aInk.stroke(curve.points, withStrength(curve.color, strength), kCurveWidth * 0.5);
 
@@ -1643,8 +625,8 @@ void drawPanel(
     // is the marker; the hit stays where the editor's hit-test puts it.
     const float dotRadius = float(ctrl::graph::kKeyDotRadius);
     // THE TIMELINE'S RING, at ITS offset: the centre is dotRadius + the shared
-    // kSelectRingOffset, and the stroke is asked for half a pixel further out
-    // because ImGui strokes INWARD (see the marker rule's THE HALF PIXEL note).
+    // kSelectRingOffset, and the stroke is asked for half a pixel further out so the
+    // centred 1px band lands outside the marker (see THE HALF PIXEL note).
     const float ringRadius = dotRadius + float(ctrl::time::kSelectRingOffset) + 0.5f;
     const QColor highlightInk = aTheme.axisText();
     // THE HOVER, BY THE ONE SHARED PICK: gui::panelPickAt answers which CLASS of
@@ -1715,14 +697,12 @@ void drawPanel(
             } else {
                 aInk.circleFill(centre, dotRadius, fill);
             }
-            // THE EDGE STROKE IS CENTRED ON THE REFERENCE'S RADIUS. ImGui's AddCircle
-            // strokes INWARD from the radius it is given (a 1px circle at r covers
-            // [r-1, r]), so r on its own would draw the whole band inside the fill. At
-            // r + 0.5 the band is [r-0.5, r+0.5] - the same place a canvas stroke at r
-            // puts it, which is how the reference draws a key's separating edge. This
-            // edge is identical on every marker, selected or not; the ring that must be
-            // OUTSIDE is the selection ring below (that inner placement is what made a
-            // selected key read smaller).
+            // THE EDGE STROKE IS CENTRED ON THE REFERENCE'S RADIUS. The backend pulls a
+            // centred 1px stroke in by half its width (a circle at r covers [r-1, r]), so r
+            // on its own would draw the whole band inside the fill. At r + 0.5 the band is
+            // [r-0.5, r+0.5], which is how the reference draws a key's separating edge.
+            // This edge is identical on every marker, selected or not; the ring that must
+            // be OUTSIDE is the selection ring below.
             aInk.circleStroke(centre, dotRadius + 0.5f, edge, 1.0f);
             if (sibling && !selected) {
                 // The faint ring, at the selection ring's own radius and geometry;
@@ -1732,9 +712,9 @@ void drawPanel(
             }
             if (selected) {
                 // THE TIMELINE'S RING: the channel's raw hue at 0.85, 1px, centred
-                // dotRadius + kSelectRingOffset out (ringRadius is that +0.5 for
-                // ImGui's inward stroke) - drawn outside the marker, so it never
-                // eats the fill.
+                // dotRadius + kSelectRingOffset out (ringRadius is that +0.5 so the
+                // centred stroke's band sits outside the marker) - drawn outside the
+                // marker, so it never eats the fill.
                 aInk.circleStroke(centre, ringRadius, selectedRing, kKeyRingWidth);
             }
         }
@@ -1807,33 +787,22 @@ void drawPanel(
                 // filled with the raised surface (the document's surface), a ghost one
                 // with its own reduced hue at the ghost edge alpha - filled, never
                 // hollow, so it reads as a dot at 3.5px.
-                // THE STEM'S INK IS A QColor, NOT ITS PACKED FORM. addInkCallback takes
-                // the colour itself; handing it the ImU32 would reach QColor(QRgb) -
-                // ImU32 and QRgb are both `unsigned int`, so it COMPILES - and ImGui
-                // packs IM_COL32 as A<<24|B<<16|G<<8|R while QColor(QRgb) reads
-                // A<<24|R<<16|G<<8|B, i.e. the red and blue channels swap. Both
-                // branches pass the mixed colour and the strength carries the alpha.
+                // THE STEM'S INK IS A QColor, NOT A PACKED FORM. A backend packs at its
+                // own boundary; both branches pass the mixed colour and the strength
+                // carries the alpha.
                 const float stemStrength = handle.ghost ? kGhostHandleStemAlpha : kStoredHandleStemAlpha;
                 const float radius =
-                    handle.ghost ? ImMax(0.0f, float(handle.radius) - kGhostHandleShrink) : float(handle.radius);
+                    handle.ghost ? std::max(0.0f, float(handle.radius) - kGhostHandleShrink) : float(handle.radius);
                 const QColor edge = highlighted
                     ? handleHover
                     : withStrength(handleInk, handle.ghost ? kGhostHandleEdgeAlpha : kStoredHandleEdgeAlpha);
-                // THE STEM IS A 1px LINE WITH FRACTIONAL ENDS, and it goes through the same
-                // coverage pass the curves do - measured first, because it is the one 1px
-                // line in the panel whose position can be wrong: ImGui's own AddLine shifts
-                // its geometry by (+0.5,+0.5) (imgui_draw.cpp, the 1px rasterization
-                // convention), which for a stem at this slope moves the ink up to 0.71px
-                // PERPENDICULAR to the line it is supposed to draw - measured on the gate's
-                // own fractional stem at +0.68/+0.75/+0.76px along its length, against
-                // -0.01/-0.00/+0.01px for this pass. The pass has
-                // no such offset: its coverage is the distance to the segment the model
-                // asked for. The stem is already antialiased today (the draw list's
-                // AntiAliasedLines flag is not turned off here), so nothing about its
-                // crispness changes; only where its ink sits.
-                // A STEM IS A STROKE, not a chrome line: it has fractional ends and its
-                // ink must sit on the segment the model asked for, which is why it goes
-                // through the same pass as the curves (the measured reason is above).
+                // THE STEM IS A STROKE, NOT A CHROME LINE: it has fractional ends, and a
+                // 1px `line()` is a rasteriser's half-pixel convention (a centred pen or a
+                // filled band) rather than the segment the model asked for - for a stem at
+                // this slope that can move the ink up to 0.71px PERPENDICULAR to the line.
+                // `stroke()` draws the polyline itself with round caps, so its centreline is
+                // the model's, and the gate measures the midpoint pixel against the stem's
+                // own hue.
                 aInk.stroke(QVector<QPointF>{base, dot}, withStrength(handleInk, stemStrength), 0.5);
                 if (handle.ghost) {
                     // A SOLID dot of the ghost's own (reduced) hue: radius 3.5
@@ -1989,11 +958,9 @@ void drawPanel(
     // under the pill (TimeCursor's line starts at pillTop + kNumberHeight), so the
     // pill is the top of the playhead rather than a badge painted over the line.
     //
-    // It covers the plot's rows EXACTLY. ImGui's non-AA 1px path is half-open: it
-    // shifts the endpoints by half a pixel and loses the first row, so a line passed
-    // as (top, bottom+1) inks rows top+1..bottom and leaves the first row empty. The
-    // half-pixel inset below is what makes the drawn column cover the rows the model
-    // names - measured by the gate's playhead assertion
+    // It covers the plot's rows EXACTLY. The line is asked for from half a row above its
+    // first row to half a row below its last, so the AA-off 1px band covers rows
+    // lineTop..panel.bottom() - measured by the gate's playhead assertion
     // (tests/graph_panel_pixels.cpp), which walks the span.
     if (aModel.playheadX >= 0) {
         const float px = float(aModel.playheadX);
@@ -2131,20 +1098,6 @@ void drawPanel(
 
 
 namespace {
-
-// The frame delta ImGui animates with, clamped so a stall (a load, an attached
-// debugger) cannot make an animation jump and a burst of repaints cannot make it
-// crawl. The first frame has no interval to measure, so it gets 60Hz.
-float nextDeltaTime(QElapsedTimer& aTimer, bool& aStarted) {
-    if (!aStarted) {
-        aTimer.start();
-        aStarted = true;
-        return 1.0f / 60.0f;
-    }
-    const qint64 nanoseconds = aTimer.nsecsElapsed();
-    aTimer.restart();
-    return float(qBound(qint64(1000000), nanoseconds, qint64(100000000))) / 1.0e9f;
-}
 
 // The editor's sticky FOCUS, in the currency drawPanel uses - and nothing else.
 //
@@ -2398,12 +1351,12 @@ a11y::Model buildAccessibilityModel(const GraphPanelModel& aModel, ctrl::GraphEd
     }
 
     // THE PANEL'S NAME, which is the same line: gui::a11y's Model carries the summary
-    // as the ROOT Pane's Name (ImGuiA11y.h: "the Model itself -> the viewport widget's
+    // as the ROOT Pane's Name (PanelA11y.h: "the Model itself -> the host widget's
     // interface: QAccessible::Pane ..., its Name is Model::summary"), and that is what a
     // client reads as the region's label before it walks the children. The previous
     // caller never assigned it, so the panel was published as an UNNAMED pane and the
     // summary was only reachable as the StaticText item below; both places say the same
-    // thing on purpose, exactly as tests/imgui_a11y.cpp asserts (a named root whose
+    // thing on purpose, exactly as tests/panel_a11y.cpp asserts (a named root whose
     // childCount is the item count).
     published.summary = summary;
 
@@ -2451,282 +1404,7 @@ a11y::Model buildAccessibilityModel(const GraphPanelModel& aModel, ctrl::GraphEd
     return published;
 }
 
-// ---- the panel's GL objects and the context they belong to (see acquirePanelContext) ----
-// How many hosts hold the panel's context: the dock's Graph tab is the only one today,
-// and this counter is what lets a second host attach without a second ImGui context if
-// one ever returns (see the header).
-int gPanelContextHolders = 0;
-// THE CONTEXT THE PANEL'S GL OBJECTS WERE CREATED AGAINST, and the guard the panel has
-// instead of a second backend. Sharing is NOT enough for these objects: Qt's sharable
-// context group gives buffers, textures, shaders and programs, but NOT vertex-array
-// objects - a VAO name created in one context is GL_INVALID_OPERATION in another on a
-// core profile (measured: a second host of the panel bound the stroke pass's VAO in its
-// own context and the very next GL_CHECK_ERROR() aborted on 1282 in a Debug build).
-// So the ImGui context, its backend's device objects and both GL passes are re-created
-// whenever a frame arrives with a context other than this one - see
-// rebindPanelObjects() below, which runPanelFrame calls before it touches anything GL.
-QPointer<QOpenGLContext> gPanelOwnerContext;
-
-// THE PANEL'S OWN VERTEX ARRAY OBJECT, on the context the objects belong to. A core
-// profile has no default array object: every draw needs one bound, and the one the
-// application keeps bound for its painter pass belongs to MainDisplayWidget's context
-// (its initializeGL creates it and leaves it bound) - a name that means NOTHING here
-// once this widget has a context of its own, which is what a reparent after undocking
-// gives it (another window, therefore another share group: buffers, textures and
-// programs are shared inside a group, vertex-array objects never are). The panel
-// therefore owns one of its own and binds it for the whole of a paint (see
-// bindPanelVertexArray), so nothing it runs can inherit a binding from a context the
-// widget is no longer drawing on. Created and destroyed with the objects above.
-std::unique_ptr<gl::VertexArrayObject> gPanelDefaultVao;
-
-// Creates the ImGui context, its GL3 backend and the font atlas on aHost's CURRENT
-// context, and records that context as the one the objects belong to.
-bool createPanelContextOn(QOpenGLWidget& aHost) {
-    // THE HOST'S CONTEXT MUST BE CURRENT BEFORE THE BACKEND TOUCHES GL. Measured crash
-    // (coredump 55276): the dock was undocked mid-session, Qt reparented this
-    // QOpenGLWidget, initializeGL ran again - and died inside
-    // ImGui_ImplOpenGL3_Init -> sscanf(s=0x0), because the backend read
-    // glGetString(GL_VERSION), got null (no current context), and glibc's sscanf did a
-    // strlen(nullptr). Qt makes the context current for a first initializeGL, but a
-    // reparent's re-initialisation is not guaranteed to arrive with this widget's
-    // context bound, so bind it here and refuse to initialise on a context that cannot
-    // report a version.
-    QOpenGLContext* hostContext = aHost.context();
-    if (!hostContext || !hostContext->isValid())
-        return false;
-    aHost.makeCurrent();
-    if (!hostContext->functions()->glGetString(GL_VERSION))
-        return false;
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    ImGuiIO& io = ImGui::GetIO();
-    // No runtime files, ever: no imgui.ini beside the application and no ImGui log.
-    io.IniFilename = nullptr;
-    io.LogFilename = nullptr;
-    // The panel never changes the cursor itself; the viewport's cursor policy
-    // (MainDisplayWidget) stays the only thing that does.
-    io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-    // ImGui's style is left at the context's own default (ImGui::CreateContext
-    // calls StyleColorsDark itself): the panel draws every colour it uses from the
-    // palette into its own draw list, and the menus are the application's QMenus,
-    // so nothing the frame draws reads ImGuiStyle at all.
-
-    // The atlas through the Qt/QRawFont loader: the application font at the size Qt
-    // RASTERIZES it at, plus the writing-system fallbacks Qt resolves for it, so CJK,
-    // `.ttc` and variable faces rasterize with the face the rest of the application
-    // draws with.
-    //
-    // THE SIZE IS panelFontPixelSize, NOT THE FONT'S LINE HEIGHT. The panel drew
-    // every numeral ~30% larger than the timeline draws the same font, because
-    // QFontMetricsF::height() is the LINE height (ascent + descent + leading:
-    // 15.578125px for this application's Geist 9pt at 96dpi) while Qt rasterizes the
-    // face at 12px - the size panelFontPixelSize derives, and the size the
-    // timeline's own ruler numbers use. See gui/ImGuiQtFontLoader.h for the
-    // measurement; 0 means the font stated no size, and the panel keeps its own
-    // fallback rather than an atlas with no size at all.
-    //
-    // The loader's last argument is NOT the widget's device pixel ratio. It is
-    // ImFontConfig::RasterizerDensity, and on the dynamic-atlas path (which the GL3
-    // backend turns on through ImGuiBackendFlags_RendererHasTextures) ImGui
-    // multiplies it by the bake's own density, taken from
-    // io.DisplayFramebufferScale - i.e. from the widget's ratio again (imgui.cpp:4605
-    // sets g.FontRasterizerDensity from the viewport's FramebufferScale, and
-    // imgui_draw.cpp rasterizes at Size * baked->RasterizerDensity *
-    // src->RasterizerDensity). Passing the ratio here would square it: 4x the linear
-    // raster, and 16x the atlas area per glyph, for a 2x screen.
-    //
-    // The face is aHost's own font, which is the application's face (the dock's page
-    // sets none of its own), so the panel draws the text the timeline draws.
-    const float statedSize = imgui_qt::panelFontPixelSize(aHost.font(), aHost.logicalDpiY());
-    const float pixelSize = (statedSize > 0.0f) ? statedSize : kFallbackFontPixelSize;
-    if (imgui_qt::installQtFontLoader(*io.Fonts, aHost.font(), pixelSize, 1) == 0) {
-        // No Qt-rasterized source: the bundled face could not be read, or Qt has no
-        // face for any writing system. ImGui installs its own default font when the
-        // first frame builds an empty atlas (imgui_draw.cpp, ImFontAtlasBuildMain),
-        // so the panel still draws - in the wrong face for anything but Latin. A
-        // panel drawn at all beats no panel, so this is not a failure.
-    }
-
-    if (!ImGui_ImplOpenGL3_Init(kGlslVersion)) {
-        // Nothing to unwind beyond the context: the atlas and the loader state live
-        // inside it.
-        ImGui::DestroyContext();
-        return false;
-    }
-
-    // THE PANEL'S OWN ARRAY OBJECT, made on THIS context and left bound (exactly what
-    // MainDisplayWidget::initializeGL does for the application's painter pass, and for
-    // the same reason). Nothing this widget draws needs a foreign one: the ImGui backend
-    // generates and binds its own around every RenderDrawData, and both GL passes bind
-    // the array object they created. It is the FLOOR, so a GL call in the paint that
-    // assumes an array object - Qt's or the application's - cannot silently inherit one
-    // from a context this widget has left. See gPanelDefaultVao.
-    gPanelDefaultVao.reset(new gl::VertexArrayObject());
-    gPanelDefaultVao->bind();
-
-    gPanelOwnerContext = aHost.context();
-    return true;
-}
-
-// Drops the panel's GL objects. WHICH CONTEXT OWNS THE NAMES DECIDES WHAT IS DONE:
-//
-//   * the objects were made on the context that is CURRENT here - every delete is valid,
-//     so the passes, the panel's array object and the ImGui backend are shut down
-//     normally. This is the destructor path (the widget still has its context) and every
-//     teardown of objects on the context that made them;
-//   * they were made on another context, or on one that no longer exists (a reparent
-//     destroys the widget's old QOpenGLContext) - NOTHING IS DELETED. Deleting a name
-//     this context never owned is the wrong operation, not a harmless one: measured on
-//     Mesa, glDeleteProgram answered GL_INVALID_VALUE (1281) for the ImGui backend's
-//     program and the application aborted in the next paint's resetRenderState. Those
-//     names died with their context, so the wrappers are deliberately abandoned (see
-//     stroke::abandon / outline::abandon) and only ImGui's CPU-side context is dropped.
-//     This is the reparent path - undock, re-dock, a screen change - and it is what a
-//     small, once-per-reparent wrapper leak buys: no GL call is made against a context
-//     that never owned the names.
-//
-// aContextCurrent says whether there is a current context at all; with none, the second
-// path is the only one possible.
-void destroyPanelObjects(bool aContextCurrent) {
-    const bool ownContext =
-        aContextCurrent && gPanelOwnerContext && gPanelOwnerContext == QOpenGLContext::currentContext();
-
-    if (ownContext) {
-        stroke::shutdown();
-        outline::shutdown();
-        gPanelDefaultVao.reset();
-        if (ImGui::GetCurrentContext()) {
-            ImGui_ImplOpenGL3_Shutdown();
-            ImGui::DestroyContext();
-        }
-    } else {
-        // One small wrapper per reparent at worst, never per frame: its GL names are gone
-        // with the context that made them, and there is no context left on which freeing
-        // them would be valid.
-        stroke::abandon();
-        outline::abandon();
-        gPanelDefaultVao.release();
-        if (ImGui::GetCurrentContext()) {
-            // CPU state only: the backend's device objects are part of the same gone
-            // context, and its own shutdown would delete them on this one. Detach it
-            // first - ImGui::Shutdown() refuses to run with a renderer backend still
-            // attached (assertion measured: "Forgot to shutdown Renderer backend?"), and
-            // the detach is what makes this the CPU-only path. The backend's own data and
-            // its texture ids belong to a context that no longer exists.
-            ImGuiIO& io = ImGui::GetIO();
-            io.BackendRendererName = nullptr;
-            io.BackendRendererUserData = nullptr;
-            io.BackendFlags &= ~(ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasTextures);
-            ImGui::DestroyContext();
-        }
-    }
-    gPanelOwnerContext.clear();
-}
-
-// THE PER-CONTEXT GUARD: if the panel's objects belong to another context than the one
-// the frame is about to be drawn on, drop them and build them again HERE (see
-// gPanelOwnerContext for the measured failure this replaces). Idempotent, and a no-op on
-// every frame of a single host, because a host's context does not change under it.
-bool rebindPanelObjects(QOpenGLWidget& aHost) {
-    if (gPanelContextHolders <= 0)
-        return true;
-
-    // Nothing to rebind onto: a widget whose context Qt has already released cannot be
-    // made current, and every call below would act on no context at all.
-    QOpenGLContext* hostContext = aHost.context();
-    if (!hostContext || !hostContext->isValid())
-        return false;
-    if (gPanelOwnerContext == hostContext)
-        return true;
-
-    // The teardown below deletes GL objects, so the NEW host's context has to be current
-    // for it exactly as the creation does (see createPanelContextOn's guard).
-    aHost.makeCurrent();
-
-    // Whatever an ImGui context here means, it was built on ANOTHER context (the owner is
-    // different) or on one that no longer exists (the QPointer is null, because Qt
-    // destroys a widget's context when it is reparented). Both are a real change of
-    // context: drop what is there and build it again HERE.
-    if (ImGui::GetCurrentContext()) {
-        // Said out loud because it means the objects are being built twice in one session
-        // - correct, but worth a line in a log when a host is added. A failed creation
-        // below leaves gPanelOwnerContext null, so the retry on the next frame does not
-        // repeat this.
-        qWarning(
-            "gui: the panel is being drawn with a different OpenGL context than the one its ImGui "
-            "context, backend and GL passes were created on (that one is gone or not this one); "
-            "re-creating them on this context (vertex-array objects are not shared between "
-            "contexts, even in one window)."
-        );
-        destroyPanelObjects(true);
-    }
-    return createPanelContextOn(aHost);
-}
-
 } // namespace
-
-bool acquirePanelContext(QOpenGLWidget& aHost) {
-    if (gPanelContextHolders > 0) {
-        // Already up. The objects belong to a context; a host that acquires on a different
-        // one gets them re-created on ITS context (rebindPanelObjects), and the frame path
-        // makes the same check per frame - so this is belt and braces rather than the only
-        // guard.
-        if (!rebindPanelObjects(aHost))
-            return false;
-        ++gPanelContextHolders;
-        return true;
-    }
-
-    if (!createPanelContextOn(aHost))
-        return false;
-    ++gPanelContextHolders;
-    return true;
-}
-
-void releasePanelContext(QOpenGLWidget& aHost) {
-    if (gPanelContextHolders <= 0)
-        return;
-    --gPanelContextHolders;
-    if (gPanelContextHolders > 0)
-        return; // another host is still drawing with it: nothing here goes yet
-
-    // The LAST holder: the context, its backend and the two GL passes are context
-    // objects, so the releasing host's context is made current while they go. A host torn
-    // down after its context has gone leaves those few objects to the driver rather than
-    // calling into a dead context - the rule this unit always had.
-    QOpenGLWidget* widget = &aHost;
-    QOpenGLContext* widgetContext = widget->context();
-    const bool madeCurrent = widgetContext && widgetContext->isValid();
-    // Whether the teardown is a foreign one (the objects were made on another context,
-    // which a reparent destroys) is decided by destroyPanelObjects itself, from the
-    // context that is current there.
-    if (madeCurrent)
-        widget->makeCurrent();
-    destroyPanelObjects(madeCurrent);
-    if (madeCurrent)
-        widget->doneCurrent();
-}
-
-bool panelContextReady() { return gPanelContextHolders > 0 && ImGui::GetCurrentContext() != nullptr; }
-
-bool bindPanelVertexArray(QOpenGLWidget& aHost) {
-    // No context on the host: there is nothing to bind into, and nothing below may be
-    // attempted (the frame path bails the same way when no ImGui context is up).
-    QOpenGLContext* hostContext = aHost.context();
-    if (!hostContext || !hostContext->isValid() || !panelContextReady())
-        return false;
-
-    // A reparent hands this widget a new context, and the array object is a context
-    // object like everything else the panel owns: build the panel's objects on THIS
-    // context first (the same guard runPanelFrame goes through), then bind the one that
-    // was just made here.
-    if (!rebindPanelObjects(aHost) || !gPanelDefaultVao)
-        return false;
-    gPanelDefaultVao->bind();
-    return true;
-}
 
 namespace {
 
@@ -2824,81 +1502,6 @@ PanelFrame composePanelFrame(
     aState.palette = frame.palette;
     dumpPanelModel(frame, aViewport);
     return frame;
-}
-
-ImDrawData* runPanelFrame(
-    QOpenGLWidget& aHost, GraphPanelHost aHostStyle, ctrl::GraphEditor* aEditor, bool aVisible,
-    PanelFrameState& aState, const QPoint& aPointer
-) {
-    if (!panelContextReady())
-        return nullptr;
-
-    // THE OBJECTS MUST BELONG TO THIS CONTEXT (see gPanelOwnerContext): a frame that
-    // arrived with another one would bind VAOs that mean nothing here, which is a GL error
-    // and not a sharing problem. Every host goes through this function, so every host is
-    // covered.
-    if (!rebindPanelObjects(aHost) || !panelContextReady())
-        return nullptr;
-
-    const QSize viewport = aHost.size();
-    const double dpr = aHost.devicePixelRatioF();
-    ImGuiIO& io = ImGui::GetIO();
-    // Logical (device independent) pixels, which is the space QMouseEvent::position()
-    // and the model's rects are in; ImGui scales the projection by
-    // ImDrawData::FramebufferScale itself. THIS HOST'S OWN numbers: the frame lands in
-    // this widget's viewport at this widget's ratio.
-    io.DisplaySize = ImVec2(float(viewport.width()), float(viewport.height()));
-    io.DisplayFramebufferScale = ImVec2(float(dpr > 0.0 ? dpr : 1.0), float(dpr > 0.0 ? dpr : 1.0));
-    io.DeltaTime = nextDeltaTime(aState.frameTimer, aState.frameTimerStarted);
-
-    // The backend's own NewFrame is the CALLER's duty in 1.92: nothing in
-    // ImGui::NewFrame() calls ImGuiPlatformIO::Renderer_NewFrame, and it is what
-    // creates the backend's device objects (shader, VBO, EBO) on the first frame.
-    // Skipping it leaves every handle 0 and the first RenderDrawData() draws with no
-    // index buffer bound.
-    ImGui_ImplOpenGL3_NewFrame();
-
-    // The palette is COMPOSED with the model now (gui::composePanelFrame re-derives it every frame
-    // from theme::Colors::current()), so this host no longer holds one of its own.
-    ImGui::NewFrame();
-
-    // THE POINTER IS THE HOST'S, NOT ImGui's QUEUED INPUT (see the header). This host
-    // paints when it is asked to, not once per input event, and Dear ImGui trickles its
-    // event queue across NewFrame() calls - so the position the queue hands this frame can
-    // be behind the pointer the host itself has tracked. Measured in the docked host while
-    // the panel still drew a key-move readout: it was drawn a whole drag behind the
-    // pointer, at the press position (its box at the press + 12px while the pointer had
-    // moved 60px), in the frame whose model carried the gesture's final deltas - and what
-    // reads the pointer now (the hovered chip, the marker it lights) can lag the same way.
-    // ImGui's own NewFrame() has already run, so this write is what the drawing layer
-    // (and nothing else: the panel owns no ImGui window) reads as io.MousePos for the
-    // frame.
-    io.MousePos = ImVec2(float(aPointer.x()), float(aPointer.y()));
-
-    // The curve ink's own pass, built on the current context the first time this runs and
-    // kept for the life of that context (idempotent, so the call per frame costs a null
-    // check). It is called HERE because drawPanel is what decides which stroke to use, and
-    // it refuses quietly: a context that cannot compile the programs leaves the panel on
-    // its AddPolyline path rather than with no curves at all (see gui::stroke).
-    stroke::init();
-
-    // The model of this frame, composed exactly as every other host composes it.
-    const PanelFrame frame = composePanelFrame(aEditor, aVisible, viewport, aState, aHost.font(), aHostStyle);
-    ImDrawList* drawList = ImGui::GetBackgroundDrawList();
-    if (frame.drawn && drawList) {
-        // THE BACKEND IS THIS HOST'S CHOICE, and the pointer is read HERE - the one place
-        // that owns ImGui's IO - because a backend reads no pointer at all.
-        ink::InkImGui inkBackend(*drawList, &panelStrokeSink);
-        const ImGuiIO& io = ImGui::GetIO();
-        const ink::Pointer pointer{
-            QPointF(io.MousePos.x, io.MousePos.y), QPointF(io.MouseClickedPos[0].x, io.MouseClickedPos[0].y),
-            ImGui::IsMouseDown(ImGuiMouseButton_Left)
-        };
-        drawPanel(inkBackend, frame.model, frame.palette, frame.focus, pointer);
-    }
-
-    ImGui::Render();
-    return ImGui::GetDrawData();
 }
 
 //-------------------------------------------------------------------------------------------------

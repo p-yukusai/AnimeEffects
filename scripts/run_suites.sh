@@ -33,21 +33,10 @@ declare -A SKIP=(
   # ./build/tests/Debug/render_probe --project <file.anie> --out <dir>
   [render_probe]=1
 )
-# The pattern must allow leading whitespace: targets registered inside an `if()`
-# block (the overlay's, behind AE_ENABLE_IMGUI) are indented, and the anchored form
-# silently dropped three of them - a test that is never run is worse than one that
-# fails, because the suite still reports success.
+# The pattern must allow leading whitespace: a target registered inside an `if()`
+# block is indented, and the anchored form would silently drop it - a test that is
+# never run is worse than one that fails, because the suite still reports success.
 targets=$(grep -oP '^\s*add_executable\(\K[A-Za-z0-9_]+' tests/CMakeLists.txt | sort -u)
-
-# Targets that only EXIST when the overlay's ImGui dependency is enabled
-# (AE_ENABLE_IMGUI, default ON). The list above is read out of the CMakeLists text,
-# which says nothing about the option, so a configure with it OFF would otherwise
-# report these as MISSING and fail the suite for a build that is legitimately lean.
-if ! grep -q '^AE_ENABLE_IMGUI:BOOL=ON' build/CMakeCache.txt 2>/dev/null; then
-  SKIP[imgui_qt_font_loader]=1
-  SKIP[imgui_input_bridge]=1
-  SKIP[graph_panel_pixels]=1
-fi
 
 # Source level checks that are not C++ programs. They run first because they cost about
 # a second, and they answer a question no test binary can: is every catalog context

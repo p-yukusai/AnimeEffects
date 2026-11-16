@@ -3,20 +3,13 @@
 #include "ctrl/AutoScroll.h"
 
 #include <QDateTime>
-#include <QFocusEvent>
 #include <QHideEvent>
-#include <QInputMethodEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QOpenGLContext>
 #include <QTabletEvent>
-#include <QTouchEvent>
 #include <QWheelEvent>
 
-// The GL3 backend is named directly for one call: the frame's vertices go into THIS
-// widget's framebuffer with the renderer's own entry point. It is the backend the
-// gui/GraphPanelFrame.{h,cpp} frame driver brought up; nothing here initializes it.
-#include "backends/imgui_impl_opengl3.h"
+#include <QCanvasPainter>
 
 #include "core/Frame.h"
 #include "core/ObjectNode.h"
@@ -24,43 +17,31 @@
 #include "ctrl/Driver.h"
 #include "ctrl/GraphEditor.h"
 #include "ctrl/graph/graph_Geometry.h" // PickKind: the shared pick the hover repaint compares
-#include "gl/Util.h"
 #include "gui/GUIResources.h"
-#include "gui/ImGuiA11y.h"
-#include "gui/ImGuiInputBridge.h"
+#include "gui/InkCanvas.h"
 #include "gui/MainDisplayWidget.h"
 #include "gui/MouseSetting.h"
+#include "gui/PanelA11y.h"
 #include "gui/theme/Colors.h"
 #include "gui/theme/Graph.h" // the palette channelRows() builds the panel's model with
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
-#include <QCanvasPainter>
-#include "gui/InkCanvas.h"
-#endif
 
 namespace gui {
 
 //-------------------------------------------------------------------------------------------------
 GraphPanelWidget::GraphPanelWidget(GUIResources& aResources, QWidget* aParent):
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
     QCanvasPainterWidget(aParent),
-#else
-    QOpenGLWidget(aParent),
-#endif
     mResources(aResources),
     mThemeSlot(),
     mDriver(nullptr),
-    mBridge(),
     mFrame(),
     mCursor(),
-    mPointer(-1, -1),
-    mReady(false) {
+    mPointer(-1, -1) {
     this->setObjectName(QStringLiteral("GraphPanelWidget"));
     // THE PANEL CAN OWN THE KEYBOARD. It has two keys of its own (Ctrl+A and Escape,
     // see panelKeyAction) and they are the panel's only while the panel is the focus
     // widget, so a press inside it has to make it one: without a focus policy Qt gives
     // a click focus to nobody (QWidget's default is Qt::NoFocus), the panel never sees
-    // a key press (the widget has held focus only for an ImGui text field so far, see
-    // paintGL), and the two actions are unreachable by construction. Qt::StrongFocus is
+    // a key press, and the two actions are unreachable by construction. Qt::StrongFocus is
     // what the timeline page beside it uses (TimeLineWidget), so the dock's two pages
     // take the keyboard the same way.
     this->setFocusPolicy(Qt::StrongFocus);
@@ -70,11 +51,11 @@ GraphPanelWidget::GraphPanelWidget(GUIResources& aResources, QWidget* aParent):
     // The panel's own hover states need moves with no button down: the hovered curve
     // gets its chip, the tangent handle nearest the pointer is the one drawn
     // highlighted, and the scroll-bar lane under the pointer paints its pill hot (all
-    // read ImGui::GetIO().MousePos, which this widget's bridge feeds from these moves).
+    // read the pointer this host records from these moves).
     this->setMouseTracking(true);
 
     // The accessible factory goes in HERE, from the constructor, for the reason
-    // gui::MainDisplayWidget's constructor does it (gui/ImGuiA11y.h, "WHERE TO CALL IT"):
+    // gui::MainDisplayWidget's constructor does it (gui/PanelA11y.h, "WHERE TO CALL IT"):
     // a widget that is shown or parented while accessibility is active caches its plain
     // interface first, and no factory installed later is reached for it - so the panel's
     // publication (gui::publishPanelAccessibility, from this host's first frame) would
@@ -85,40 +66,16 @@ GraphPanelWidget::GraphPanelWidget(GUIResources& aResources, QWidget* aParent):
     // wrong). The action callback arrives with the first frame (see
     // publishAccessibility).
 
-    // The floor colour and the panel's palette are read per frame from
-    // theme::Colors::current(), so a theme change needs no cached state - only a frame,
-    // which nothing else would ask this widget for.
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
-    // The Canvas host's floor: it clears its texture with this, so it must be right before the
-    // first frame (see onThemeUpdated for why the floor lives here and not in the ink).
+    // The floor is this host's own fill colour: the Canvas painter clears its texture with
+    // it each frame, so it must be right before the first frame (see
+    // onThemeUpdated for why it lives here and not in the ink).
     setFillColor(theme::Colors::current().base);
-#endif
     mThemeSlot = mResources.onThemeChanged.connect(this, &GraphPanelWidget::onThemeUpdated);
 }
 
 GraphPanelWidget::~GraphPanelWidget() {
     mResources.onThemeChanged.disconnect(mThemeSlot);
-    // The GL objects (this host's hold on the shared context, its input bridge) go with
-    // a current context, while this widget still has one.
-    shutdownHost();
-}
-
-void GraphPanelWidget::shutdownHost() {
-    // The bridge is ImGui's platform IME target and reads the context: drop it before
-    // the shared context can go.
-    mBridge.reset();
     mFrame = PanelFrameState();
-
-    if (!mReady)
-        return;
-
-#if !defined(AE_CANVAS_PAINTER) || !AE_CANVAS_PAINTER
-    // The context, the backend and the atlas are NOT this host's: releasePanelContext
-    // drops this host's hold and tears them down only when it was the last holder, with
-    // the context made current for it while the widget is still usable.
-    releasePanelContext(*this);
-#endif
-    mReady = false;
 }
 
 void GraphPanelWidget::setDriver(ctrl::Driver* aDriver) {
@@ -140,127 +97,15 @@ void GraphPanelWidget::refresh() {
 }
 
 void GraphPanelWidget::onThemeUpdated(theme::Theme&) {
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
     // THE FLOOR OF AN RHI WIDGET IS ITS FILL COLOUR: the Canvas host clears its texture with it
     // each frame and draws no background of its own, so a palette change has to reach it here -
     // MEASURED: without this the page painted BLACK (the default) under a `base` floor, which read
     // as "the panel lost its floor" in the app screenshot.
     setFillColor(theme::Colors::current().base);
-#endif
     this->update();
 }
 
 //-------------------------------------------------------------------------------------------------
-#if !defined(AE_CANVAS_PAINTER) || !AE_CANVAS_PAINTER
-void GraphPanelWidget::initializeGL() {
-    // initializeGL runs when this page is first SHOWN (Qt initializes the widget's GL
-    // resources on its first paint), and it runs again whenever the widget is given a
-    // new GL context (a reparent, a screen change). Both are handled the same way: the
-    // old hold is dropped and the shared context acquired again, so this host draws with
-    // the objects of the context it is actually rendering into.
-    if (mReady)
-        shutdownHost();
-
-    if (!acquirePanelContext(*this)) {
-        // The backend refused. The page still exists and still paints its floor; the
-        // panel is simply not drawn, which is the degradation the panel always had on a
-        // context that cannot host ImGui.
-        return;
-    }
-
-    mBridge.reset(new ImGuiInputBridge(*this));
-    mReady = true;
-}
-
-//-------------------------------------------------------------------------------------------------
-void GraphPanelWidget::paintGL() {
-    // NO CONTEXT, NO GL. A widget whose context Qt has already released (teardown, or a
-    // frame still in flight while the page is being destroyed) must not reach the floor's
-    // own GL calls: there is no context for them to act on, and calling into the function
-    // table without one is the failure this guard exists to prevent. This is the paint
-    // path's half of the same bail the frame driver makes when no ImGui context is up
-    // (gui::panelContextReady in runPanelFrame).
-    QOpenGLContext* hostContext = this->context();
-    if (!hostContext || !hostContext->isValid())
-        return;
-
-    // THE FLOOR FIRST, and always. The panel draws no background of its own (it is a
-    // model and a draw list; there is no fill anywhere in drawPanel), so behind THIS panel
-    // there is only what this widget paints, and it has to paint something:
-    // a QOpenGLWidget is composited over the window and the widgets beside it do not
-    // show through it (qopenglwidget.html, "Putting other widgets underneath and making
-    // the QOpenGLWidget transparent will not lead to the expected results"). The colour
-    // is the dock's own panel floor - theme::Colors::base, "window, docks, panels,
-    // chrome, menu floor", which is the reference's own _floor (mock-graph.js:
-    // cssVar('--base')) - read per frame so a theme change needs no signal.
-    //
-    // THE PANEL'S OWN ARRAY OBJECT, BEFORE ANY OTHER GL CALL. A reparent (the dock was
-    // undocked or re-docked) gives this widget a NEW context, and a core profile has no
-    // default array object there: the one the application's painter engine relies on was
-    // created in MainDisplayWidget's context and kept bound in THAT context. Nothing
-    // this page draws needs a foreign one - the ImGui backend and both passes bind their
-    // own - but the floor has to be this context's own too, so the binding is
-    // established here rather than inherited. This call also re-creates the panel's
-    // objects on the new context if they are still the old one's (their old names are
-    // left to the context that made them, so nothing is pending for the GL_CHECK_ERROR
-    // below).
-    bindPanelVertexArray(*this);
-
-    // resetRenderState() is the application's own "known state before a pass": it turns
-    // off the scissor box (a glClear is scissored, and the ImGui backend's last draw in
-    // this shared context left one set), blending, depth and stencil. The backend sets
-    // everything IT needs before its own draws, so this is the floor's state only.
-    gl::Util::resetRenderState();
-    const QColor floor = theme::Colors::current().base;
-    gl::Util::clearColorBuffer(floor.redF(), floor.greenF(), floor.blueF(), 1.0f);
-
-    if (!mReady)
-        return; // no context for the panel: the floor is all this host can draw
-
-    ctrl::GraphEditor* editor = graphEditor();
-
-    // THE EDITOR'S GEOMETRY, PINNED TO THIS WIDGET. The frame window the panel shares
-    // with the timeline is mapped in PIXELS - pixels per frame, computed from the
-    // PANEL's width (the timeline's own columns, see Scaler::applyFrameWindow) - so the
-    // mapping left behind by the viewport's frame (or by a previous size of this one)
-    // must not be what the panel is built from. This is the call
-    // MainDisplayWidget::paintEvent makes, for exactly this reason, and it is idempotent
-    // when nothing changed. The WINDOW itself and the SELECTION are the timeline's, wired
-    // once by MainDisplayWidget::syncGraphPanelSharedState: nothing here sets them.
-    if (editor)
-        editor->syncFrameWindowFor(this->size());
-
-    // THE FRAME: the shared one, and the panel is up whenever this page is on screen and
-    // a project's editor exists. aTopInset stays 0 - nothing floats over the dock's page
-    // (the tab names it and its header belongs to the dock, not to this widget), so the
-    // ruler band sits at the plot's own top here.
-    ImDrawData* drawData = runPanelFrame(
-        *this, GraphPanelHost::Dock, editor, editor != nullptr, mFrame, mPointer
-    );
-
-    // ...into THIS widget's framebuffer, which QOpenGLWidget has bound and whose viewport
-    // it has already set: the renderer takes the projection, the viewport and the scissor
-    // boxes from the draw data, which the frame built from this host's own size and device
-    // pixel ratio. No contrast-outline composite here: its ring answers ink lost against
-    // arbitrary artwork, and this floor is one known opaque surface.
-    if (drawData)
-        ImGui_ImplOpenGL3_RenderDrawData(drawData);
-
-    // The QWidget side of the IME contract (see ImGuiInputBridge's class comment): Qt
-    // asks the FOCUS OBJECT for input-method queries, and a plain QOpenGLWidget is not an
-    // input item at all - so the attribute is set exactly while a Dear ImGui text field
-    // wants text, and the widget takes focus so Qt asks it. With no ImGui field on screen
-    // this is a no-op every frame.
-    const bool wantsText = mBridge && mBridge->imeWantsTextInput();
-    if (this->testAttribute(Qt::WA_InputMethodEnabled) != wantsText)
-        this->setAttribute(Qt::WA_InputMethodEnabled, wantsText);
-    if (wantsText && !this->hasFocus())
-        this->setFocus(Qt::OtherFocusReason);
-
-    publishAccessibility();
-}
-
-#else // AE_CANVAS_PAINTER: the Canvas host
 
 namespace {
 // The panel's pointer, as the ink wants it: the widget's own tracked position and buttons.
@@ -287,9 +132,9 @@ void GraphPanelWidget::paint(QCanvasPainter* aPainter) {
     if (!editor)
         return;
 
-    // THE EDITOR'S GEOMETRY PINNED TO THIS WIDGET (the ImGui host's own rule): the frame window
-    // is mapped in pixels computed from THIS page's width, so a mapping left by the viewport or
-    // by a previous size must not be what the panel is built from.
+    // THE EDITOR'S GEOMETRY PINNED TO THIS WIDGET: the frame window is mapped in pixels
+    // computed from THIS page's width, so a mapping left by the viewport or by a previous
+    // size must not be what the panel is built from.
     editor->syncFrameWindowFor(this->size());
 
     const PanelFrame frame =
@@ -307,16 +152,11 @@ void GraphPanelWidget::paint(QCanvasPainter* aPainter) {
     this->publishChannels(frame.model.channels);
 }
 
-#endif // AE_CANVAS_PAINTER
 
 void GraphPanelWidget::hideEvent(QHideEvent* aEvent) {
     mMarqueeScrollTimer.stop();
     mMarqueeDwell.reset();
-#if !defined(AE_CANVAS_PAINTER) || !AE_CANVAS_PAINTER
-    PanelHostBase::hideEvent(aEvent);
-#else
     QCanvasPainterWidget::hideEvent(aEvent);
-#endif
 
     // A GESTURE LEFT OPEN GOES NO FURTHER. The tab can be switched away from with a key
     // move, a handle drag, a marquee or a pan in flight (the release usually beats the
@@ -379,15 +219,10 @@ void GraphPanelWidget::routeCursor() {
 
 //-------------------------------------------------------------------------------------------------
 void GraphPanelWidget::mouseMoveEvent(QMouseEvent* aEvent) {
-    // Every move is fed to ImGui, including the ones it does not care about: ImGui
-    // derives where the pointer is from this stream, and it has to know that before a
-    // press can be attributed to anything (see ImGuiInputBridge's class comment). The
-    // move itself is never swallowed by the panel - it has no ImGui window to hover.
-    // The pointer is recorded HERE, from the event stream this host already reads: the
-    // frame is handed it instead of ImGui's trickled io.MousePos (see mPointer).
+    // The pointer is recorded HERE, from the event stream this host already reads, and the
+    // frame is handed it: the panel paints when it is asked to, not at the event rate, so
+    // the position it inks must be this host's latest, not one cached by a frame.
     mPointer = aEvent->position().toPoint();
-    if (mBridge)
-        mBridge->handleMouseMove(*aEvent);
 
     ctrl::GraphEditor* editor = graphEditor();
     if (!editor) {
@@ -474,9 +309,6 @@ void GraphPanelWidget::mousePressEvent(QMouseEvent* aEvent) {
         mLeftDown = true;
         mMarqueeDwell.reset();
     }
-    if (mBridge)
-        mBridge->handleMouseButton(*aEvent);
-
     ctrl::GraphEditor* editor = graphEditor();
     if (!editor) {
         aEvent->ignore();
@@ -514,11 +346,6 @@ void GraphPanelWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
     mPointer = aEvent->position().toPoint();
     if (aEvent->button() == Qt::LeftButton)
         mLeftDown = false;
-    // The release must reach ImGui even for a press the panel acted on, or ImGui would
-    // keep the button latched.
-    if (mBridge)
-        mBridge->handleMouseButton(*aEvent);
-
     ctrl::GraphEditor* editor = graphEditor();
     if (!editor) {
         aEvent->ignore();
@@ -534,9 +361,6 @@ void GraphPanelWidget::mouseReleaseEvent(QMouseEvent* aEvent) {
 }
 
 void GraphPanelWidget::wheelEvent(QWheelEvent* aEvent) {
-    if (mBridge)
-        mBridge->handleWheel(*aEvent);
-
     ctrl::GraphEditor* editor = graphEditor();
     if (!editor) {
         aEvent->ignore();
@@ -565,11 +389,7 @@ void GraphPanelWidget::wheelEvent(QWheelEvent* aEvent) {
 }
 
 void GraphPanelWidget::tabletEvent(QTabletEvent* aEvent) {
-    // A pen is a pointer to ImGui, and the accept() below is what keeps Qt from also
-    // synthesizing a mouse event for a tablet event the bridge consumed (see
-    // ImGuiInputBridge::handleTablet).
     mPointer = aEvent->position().toPoint();
-    const bool consumed = mBridge && mBridge->handleTablet(*aEvent);
 
     ctrl::GraphEditor* editor = graphEditor();
     if (editor) {
@@ -578,23 +398,12 @@ void GraphPanelWidget::tabletEvent(QTabletEvent* aEvent) {
             routeCursor();
     }
 
-    if (consumed)
-        aEvent->accept();
-    else
-        PanelHostBase::tabletEvent(aEvent);
+    // NOT ACCEPTED: the panel has no text input to claim the pen's stream, and a platform
+    // that synthesizes a mouse event from a pen must let this widget's mouse path see it.
+    PanelHostBase::tabletEvent(aEvent);
 }
 
 void GraphPanelWidget::keyPressEvent(QKeyEvent* aEvent) {
-    // An ImGui text field owns the keyboard this frame: the key is the field's and must
-    // not travel on. gui::KeyCommandInvoker gates the application's rebindable commands
-    // on the same flag (ImGuiInputBridge::keyboardCaptured), and that flag is read off
-    // the ONE ImGui context - so the two hosts of one panel, and the key map, cannot
-    // disagree about who has the keyboard.
-    if (mBridge && mBridge->handleKey(*aEvent)) {
-        aEvent->accept();
-        return;
-    }
-
     // THE PANEL'S OWN TWO KEYS, for a press that got this far unconsumed. Consumed
     // exactly when the panel acted on it (see panelKeyAction): a Ctrl+A or an Escape
     // that changed nothing is not this widget's to swallow.
@@ -609,47 +418,28 @@ void GraphPanelWidget::keyPressEvent(QKeyEvent* aEvent) {
 }
 
 bool GraphPanelWidget::panelKeyAction(const QKeyEvent& aEvent) {
-    // WHO HAS THE KEYBOARD, in two conditions that are about the keyboard rather than
-    // about the key. Together they are the answer to "is this press the panel's?":
-    // the two actions edit the panel's own selection, so they belong to the panel only
-    // while the panel is what the user is looking at AND nothing ahead of it took the
-    // press.
+    // WHO HAS THE KEYBOARD. The two actions edit the panel's own selection, so they
+    // belong to the panel only while the panel is what the user is looking at: Ctrl+A
+    // here is the panel's Ctrl+A, not a global shortcut, and while some other widget
+    // owns the keyboard (the object tree, the timeline, a property field) its Ctrl+A
+    // and its Escape are that widget's business. A key this panel did not consume must
+    // reach gui::MainWindow's key map exactly as it always has. hasFocus() is also what
+    // keeps a press that ARRIVED here by propagation honest: Qt sends a key up the
+    // parent chain only after the focus widget ignored it, so a forwarded press would
+    // otherwise act on the panel while the user's focus is elsewhere.
     //
-    // 1. THIS WIDGET MUST BE THE FOCUS WIDGET. Ctrl+A here is the panel's Ctrl+A, not
-    //    a global shortcut: while some other widget owns the keyboard (the object
-    //    tree, the timeline, a property field) its Ctrl+A and its Escape are that
-    //    widget's business, and a key this panel did not consume must reach
-    //    gui::MainWindow's key map exactly as it always has. hasFocus() is also what
-    //    keeps a press that ARRIVED here by propagation honest: Qt sends a key up the
-    //    parent chain only after the focus widget ignored it, so a forwarded press
-    //    (from a future child widget of this host) would otherwise act on the panel
-    //    while the user's focus is elsewhere.
-    // 2. DEAR IMGUI MUST NOT HAVE TAKEN IT. keyboardCaptured() is
-    //    io.WantCaptureKeyboard off the ONE shared context - the flag
-    //    gui::KeyCommandInvoker gates the application's commands on, and the flag the
-    //    bridge's own handleKey() above answers with. It is asked again here rather
-    //    than inferred from that call because this host may have NO bridge while the
-    //    other host has one: with no ImGui context at all (no GL, or initializeGL
-    //    never ran) mBridge is null and handleKey() is skipped, while an active ImGui
-    //    text field in the viewport's host still owns the keys - the rule is about the
-    //    context, not about this host's hold on it.
-    //
-    // AND NOTHING IS NEEDED FOR A QMENU OR THE TIMELINE'S EASING PICKER, which is the
+    // NOTHING IS NEEDED FOR A QMENU OR THE TIMELINE'S EASING PICKER, which is the
     // other half of "Escape belongs to whoever consumed it": both are Qt popups that
     // hold the keyboard while they are up, and the popup takes the key ON THE WINDOW'S
     // OWN ROUTING - a path QApplication::sendEvent (and every test that injects a
     // QKeyEvent) does not enter. Measured against Qt 6.11 for this binding: with a QMenu
     // popped up, an Escape delivered through the window closed the menu and the focused
     // widget's handler was NOT called, while the very same widget kept hasFocus() true
-    // throughout. So the first condition cannot stand in for this one - a popup really
-    // does leave this widget the focus widget - and the popup case is decided by Qt's
-    // delivery, before this function is reached. That is also why aEvent.isAccepted() is
-    // not consulted: an event something else consumed is never delivered here, and a
-    // delivered key event arrives ACCEPTED by Qt's own default (QEvent's m_accept), the
-    // flag QWidget::keyPressEvent is what clears.
+    // throughout. That is also why aEvent.isAccepted() is not consulted: an event
+    // something else consumed is never delivered here, and a delivered key event arrives
+    // ACCEPTED by Qt's own default (QEvent's m_accept), the flag QWidget::keyPressEvent
+    // is what clears.
     if (!this->hasFocus())
-        return false;
-    if (ImGuiInputBridge::keyboardCaptured())
         return false;
 
     ctrl::GraphEditor* editor = graphEditor();
@@ -666,84 +456,6 @@ bool GraphPanelWidget::panelKeyAction(const QKeyEvent& aEvent) {
     if (aEvent.key() == Qt::Key_Escape && aEvent.modifiers() == Qt::NoModifier)
         return editor->clearSelection();
     return false;
-}
-
-void GraphPanelWidget::keyReleaseEvent(QKeyEvent* aEvent) {
-    if (mBridge && mBridge->handleKey(*aEvent)) {
-        aEvent->accept();
-        return;
-    }
-    PanelHostBase::keyReleaseEvent(aEvent);
-}
-
-void GraphPanelWidget::inputMethodEvent(QInputMethodEvent* aEvent) {
-    if (mBridge && mBridge->handleInputMethod(*aEvent)) {
-        // A composition or a commit the ImGui text field swallowed: Qt's platform input
-        // context is done with it.
-        aEvent->accept();
-        return;
-    }
-    PanelHostBase::inputMethodEvent(aEvent);
-}
-
-QVariant GraphPanelWidget::inputMethodQuery(Qt::InputMethodQuery aQuery) const {
-    // Qt asks the FOCUS OBJECT for these, and the panel's input bridge is where the
-    // caret of an ImGui text field lives (see ImGuiInputBridge::inputMethodQuery). An
-    // unanswered query falls through to the base implementation.
-    if (mBridge) {
-        const QVariant answer = mBridge->inputMethodQuery(aQuery);
-        if (answer.isValid())
-            return answer;
-    }
-    return PanelHostBase::inputMethodQuery(aQuery);
-}
-
-void GraphPanelWidget::focusInEvent(QFocusEvent* aEvent) {
-    // ImGui needs to know when the stream of events stops and starts again: on focus
-    // loss it clears its own key and mouse state, and the platform input context is reset
-    // with it. This widget only ever holds focus for an ImGui text field (paintGL() asks
-    // for it while a field wants text).
-    if (mBridge)
-        mBridge->handleFocus(true);
-    PanelHostBase::focusInEvent(aEvent);
-}
-
-void GraphPanelWidget::focusOutEvent(QFocusEvent* aEvent) {
-    if (mBridge)
-        mBridge->handleFocus(false);
-    PanelHostBase::focusOutEvent(aEvent);
-}
-
-bool GraphPanelWidget::event(QEvent* aEvent) {
-    const bool handled = PanelHostBase::event(aEvent);
-
-    if (mBridge) {
-        switch (aEvent->type()) {
-        case QEvent::DevicePixelRatioChange:
-            // After the base class, which is what has just updated this widget's ratio.
-            // The frame rasterizes glyphs at io.DisplayFramebufferScale, so the bridge
-            // has to be told when that changes (it re-keys the atlas), and this frame of
-            // the panel is stale for the same reason.
-            mBridge->handleDprChanged(this->devicePixelRatioF());
-            this->update();
-            break;
-        case QEvent::TouchBegin:
-        case QEvent::TouchUpdate:
-        case QEvent::TouchEnd:
-            // One finger is a pointer to ImGui, more than one is not (the bridge says so
-            // by returning false) - and what the bridge consumed is accepted here so Qt
-            // does not ALSO synthesize a mouse event for it. Like the viewport host, this
-            // widget does not set Qt::WA_AcceptTouchEvents, so this branch is the
-            // translation path for a platform that delivers the events anyway.
-            if (mBridge->handleTouch(*static_cast<QTouchEvent*>(aEvent)))
-                aEvent->accept();
-            break;
-        default:
-            break;
-        }
-    }
-
-    return handled;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -917,7 +629,7 @@ QVector<PanelChannelRow> GraphPanelWidget::channelRows() const {
 void GraphPanelWidget::updateHoverRepaint() {
     // THE BOUNDED RULE: repaint when the target under the pointer CHANGES, and not on a
     // move that keeps the same one. The panel's pointer-driven ink is three marks
-    // (drawPanel reads io.MousePos, which this host feeds from mPointer): the marker or
+    // (drawPanel reads the pointer this host hands it): the marker or
     // tangent handle the pointer lights - gui::panelPickAt, the same query and the same
     // ctrl::graph::pickTarget comparison drawPanel inks and GraphEditor::hitTest
     // presses with, so the key and the handle are ONE answer and never both - and the
@@ -972,8 +684,8 @@ void GraphPanelWidget::leaveEvent(QEvent* aEvent) {
     // too - re-establishes both through mouseMoveEvent.
     //
     // AND THE POINTER IS PARKED WHATEVER mHover SAYS. mPointer is not only the key-marker
-    // and handle hover: drawPanel's CHIPS pass reads it too (through io.MousePos, see
-    // runPanelFrame), and its rule is the curve whose value at the pointer's own column
+    // and handle hover: drawPanel's CHIPS pass reads it too, and its rule is the curve
+    // whose value at the pointer's own column
     // is within kChipHoverDistance of the pointer. A chip is not part of HoverTarget,
     // so gating the park on mHover left the last IN-WIDGET position standing whenever no
     // marker or handle was lit, and any frame painted after the pointer had left kept

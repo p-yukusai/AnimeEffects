@@ -1,9 +1,8 @@
 // Contract test for the engine-neutral graph panel model: gui::buildGraphPanelModel
 // (src/gui/GraphPanelModel.h/.cpp).
 //
-// The model is what the overlay (Dear ImGui now, the QPainter renderer until
-// then) draws the graph panel from, so what is pinned below is the geometry a
-// drawing layer would consume: the panel/plot/value-column rectangles, the two
+// The model is what gui::drawPanel draws the panel from, so what is pinned below is
+// the geometry the drawing layer consumes: the panel/plot/value-column rectangles, the two
 // SHORT tick axes with their label rects, the curves with their keys, the channel
 // list with its rows (grouped per layer and key type, each row carrying its
 // channel hue from the one table both views read), the panel's one control (the
@@ -1535,8 +1534,7 @@ int main(int argc, char** argv) {
         // The model hands the drawing layer the sampled curve mapped through the
         // scaler, point for point and in order, and it does NOT cut the line to the
         // plot - the header's CURVES states the clipping as the CONSUMER's own
-        // obligation (the ImGui overlay pushes a clip rect to the plot, and the
-        // QPainter renderer cut every segment against it). The value window is
+        // obligation (the drawing layer pushes a clip rect to the plot). The value window is
         // narrowed here, through the editor's own scaler - the object a wheel zoom
         // moves - so the fixture is guaranteed to hold samples that leave the plot.
         const float windowMin = editor.scale().valueMin();

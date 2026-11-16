@@ -1,7 +1,3 @@
-// COMPILED ONLY WHERE THE MODULE EXISTS (see the header's guard): the default tree is a Qt
-// without Canvas Painter.
-#if defined(AE_CANVAS_PAINTER) && AE_CANVAS_PAINTER
-
 #include "gui/InkCanvas.h"
 
 #include "gui/GraphPanelFrame.h"
@@ -21,6 +17,19 @@ namespace {
 QRectF boxOf(const QRectF& aRect) { return aRect; }
 
 constexpr double kHalf = 0.5;
+
+// EVERY EDGE ON A PIXEL BOUNDARY, so the fill names whole pixels. Canvas2D's antialiasing
+// insets such an edge by a sub-pixel step even when it starts on an integer coordinate
+// (MEASURED: a fill of y [0,22) reads 31/32 coverage on rows 0 and 21 over a magenta floor
+// - #1e161e against the token #171717 - while its interior is exact). A rect that names
+// whole pixels must not pick up a fringe: it is the same rule that makes an axis-aligned
+// 1px line a filled band (see line()), and the bands, bars and stems this backend paints
+// are all integer-aligned.
+bool isPixelAligned(const QRectF& aRect) {
+    constexpr double kEpsilon = 1.0e-4;
+    const auto integral = [](double aValue) { return std::abs(aValue - std::round(aValue)) < kEpsilon; };
+    return integral(aRect.x()) && integral(aRect.y()) && integral(aRect.width()) && integral(aRect.height());
+}
 
 } // namespace
 
@@ -53,18 +62,34 @@ void InkCanvas::popClip() {
         mPainter.setClipRect(QRectF(mClips.last()));
 }
 
+// FILLED SHAPES ARE ALWAYS ANTIALIASED. The Ink contract's setLineAntialias governs LINES
+// only (the panel's integer chrome), but Canvas2D has ONE switch: a rounded pill drawn while
+// the line flag is off would lose its corners (MEASURED: the scroll-bar pills are drawn
+// inside the chrome block's AA-off span and their ends came out square). So every shape below
+// saves the state, turns AA on for itself, and puts the state back.
 void InkCanvas::fillRect(const QRectF& aRect, const QColor& aColor, double aRadius) {
     mPainter.setFillStyle(aColor);
+    const float saved = mAntialias ? 1.0f : 0.0f;
     if (aRadius > 0.0) {
+        mPainter.setAntialias(1.0f);
         mPainter.beginPath();
         mPainter.roundRect(boxOf(aRect), aRadius);
         mPainter.fill();
-    } else {
+        mPainter.setAntialias(saved);
+    } else if (isPixelAligned(aRect)) {
+        mPainter.setAntialias(0.0f);
         mPainter.fillRect(boxOf(aRect));
+        mPainter.setAntialias(saved);
+    } else {
+        mPainter.setAntialias(1.0f);
+        mPainter.fillRect(boxOf(aRect));
+        mPainter.setAntialias(saved);
     }
 }
 
 void InkCanvas::strokeRect(const QRectF& aRect, const QColor& aColor, double aRadius, double aWidth) {
+    const float saved = mAntialias ? 1.0f : 0.0f;
+    mPainter.setAntialias(1.0f);
     mPainter.setStrokeStyle(aColor);
     mPainter.setLineWidth(aWidth);
     mPainter.beginPath();
@@ -84,6 +109,7 @@ void InkCanvas::strokeRect(const QRectF& aRect, const QColor& aColor, double aRa
         mPainter.closePath();
     }
     mPainter.stroke();
+    mPainter.setAntialias(saved);
 }
 
 void InkCanvas::line(const QPointF& aFrom, const QPointF& aTo, const QColor& aColor, double aWidth) {
@@ -91,8 +117,7 @@ void InkCanvas::line(const QPointF& aFrom, const QPointF& aTo, const QColor& aCo
     if (!mAntialias && axisAligned) {
         // A 1px ROW OR COLUMN IS A FILL. Measured on the timeline: Canvas2D inks three columns
         // for a span of [x, x+1) and two for [x+0.5, x+1.5), and setAntialias(0) governs the
-        // STROKE fringe, not the rect edge - so the only exact spelling is a filled band, which
-        // is also the rule the ImGui backend's half-open non-AA path arrives at.
+        // STROKE fringe, not the rect edge - so the only exact spelling is a filled band.
         const double w = std::max(1.0, std::floor(aWidth + 0.5));
         mPainter.setFillStyle(aColor);
         if (qFuzzyCompare(aFrom.y(), aTo.y())) {
@@ -115,6 +140,8 @@ void InkCanvas::line(const QPointF& aFrom, const QPointF& aTo, const QColor& aCo
 void InkCanvas::stroke(const QVector<QPointF>& aPoints, const QColor& aColor, double aHalfWidth) {
     if (aPoints.size() < 2)
         return;
+    const float saved = mAntialias ? 1.0f : 0.0f;
+    mPainter.setAntialias(1.0f);
     mPainter.setStrokeStyle(aColor);
     mPainter.setLineWidth(aHalfWidth * 2.0);
     mPainter.beginPath();
@@ -124,16 +151,22 @@ void InkCanvas::stroke(const QVector<QPointF>& aPoints, const QColor& aColor, do
     // A path is NOT reset by fill()/stroke(): without closePath/beginPath discipline every
     // marker would be appended to the previous one's outline.
     mPainter.stroke();
+    mPainter.setAntialias(saved);
 }
 
 void InkCanvas::circleFill(const QPointF& aCentre, double aRadius, const QColor& aColor) {
+    const float saved = mAntialias ? 1.0f : 0.0f;
+    mPainter.setAntialias(1.0f);
     mPainter.setFillStyle(aColor);
     mPainter.beginPath();
     mPainter.circle(aCentre, aRadius);
     mPainter.fill();
+    mPainter.setAntialias(saved);
 }
 
 void InkCanvas::circleStroke(const QPointF& aCentre, double aRadius, const QColor& aColor, double aWidth) {
+    const float saved = mAntialias ? 1.0f : 0.0f;
+    mPainter.setAntialias(1.0f);
     mPainter.setStrokeStyle(aColor);
     mPainter.setLineWidth(aWidth);
     mPainter.beginPath();
@@ -141,6 +174,7 @@ void InkCanvas::circleStroke(const QPointF& aCentre, double aRadius, const QColo
     // pulled in by half the width to cover [aRadius - aWidth, aRadius].
     mPainter.circle(aCentre, aRadius - aWidth * kHalf);
     mPainter.stroke();
+    mPainter.setAntialias(saved);
 }
 
 void InkCanvas::text(
@@ -149,6 +183,8 @@ void InkCanvas::text(
 ) {
     if (aText.isEmpty() || aBox.isEmpty())
         return;
+    const float saved = mAntialias ? 1.0f : 0.0f;
+    mPainter.setAntialias(1.0f);
     mPainter.setFont(mFont);
     const QFontMetricsF metrics(mFont);
     const double advance = metrics.horizontalAdvance(aText);
@@ -168,7 +204,7 @@ void InkCanvas::text(
     // box (`inkTop + tightBoundingRect().top()`, i.e. box.top() + kRulerNumberInkTop) and read
     // rows 242..250 against the timeline's 243..252 for the same string and the same box top;
     // the engine's own top baseline reads 243..252. The ink-row arithmetic is GONE from this
-    // backend (kRulerNumberInkTop stays for gui::InkImGui, whose line box is its own).
+    // backend: the line box's top IS the box's top here.
     const bool topAligned = aVAlign == VAlign::Top;
     const double anchorY = topAligned ? double(aBox.top())
         : std::floor(double(aBox.top()) + std::max((double(aBox.height()) - metrics.height()) * 0.5, 0.0)
@@ -187,9 +223,9 @@ void InkCanvas::text(
     }
     mPainter.setFillStyle(aColor);
     mPainter.fillText(aText, QPointF(snappedX, anchorY));
+    mPainter.setAntialias(saved);
 }
 
 } // namespace ink
 } // namespace gui
 
-#endif // AE_CANVAS_PAINTER
